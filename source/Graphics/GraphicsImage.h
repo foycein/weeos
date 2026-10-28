@@ -1,16 +1,18 @@
 #pragma once
 
+#include "Graphics/ImageMemoryPool.h"
 #include "Graphics/VulkanContext.h"
 
 namespace Graphics
 {
 
-// A picture on the graphics card, with its memory and a view to read it or to draw into it.
+// A picture on the graphics card, with its memory from the pool and a view to read it or to draw into it.
+// The pool must outlive the picture.
 class GraphicsImage
 {
 public:
-    GraphicsImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
-        VkImageUsageFlags usage);
+    GraphicsImage(const VulkanContext& context, ImageMemoryPool& memoryPool, std::uint32_t imageWidth, std::uint32_t imageHeight,
+        VkFormat imageFormat, VkImageUsageFlags usage);
     ~GraphicsImage();
 
     GraphicsImage(const GraphicsImage&) = delete;
@@ -24,8 +26,9 @@ public:
 
 private:
     VkDevice device;
+    ImageMemoryPool& pool;
     VkImage image = VK_NULL_HANDLE;
-    VkDeviceMemory memory = VK_NULL_HANDLE;
+    ImageMemory imageMemory;
     VkImageView view = VK_NULL_HANDLE;
     std::uint32_t width;
     std::uint32_t height;

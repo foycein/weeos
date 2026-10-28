@@ -1,5 +1,6 @@
 add_library(Platform STATIC
     FileLocations.cpp
+    FitPicture.cpp
     MessagePump.cpp
     PreciseTimer.cpp
     Window.cpp

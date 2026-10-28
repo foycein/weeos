@@ -4,6 +4,7 @@
 
 #include "Formats/RgbaImage.h"
 #include "Formats/Vectors.h"
+#include "Platform/ScreenShape.h"
 
 #include <array>
 #include <cstddef>
@@ -76,14 +77,6 @@ struct Canvas
 {
     float width = 0;
     float height = 0;
-};
-
-// The shape the picture has on the screen. The picture is stretched to it the way the console's video output does.
-// A window of another shape gets black bars.
-enum class ScreenShape : std::uint8_t
-{
-    FourByThree,
-    SixteenByNine,
 };
 
 // Limits the drawing to a rectangle, in canvas units.
@@ -193,7 +186,7 @@ public:
     virtual void DestroyTexture(TextureHandle texture) = 0;
 
     // Starts a new picture of the screen and clears it to black. Everything drawn until Present is part of it.
-    virtual void BeginFrame(const Canvas& canvas, ScreenShape screenShape) = 0;
+    virtual void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) = 0;
 
     // The scissor holds until ClearScissor or until the next picture or offscreen picture starts.
     // Every picture has a scissor of its own: an offscreen picture starts without one, and after EndOffscreen

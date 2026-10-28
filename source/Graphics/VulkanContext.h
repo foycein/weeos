@@ -37,6 +37,11 @@ public:
     // Memory on the card, or memory of the PC that the card can reach, with the properties wanted.
     VkDeviceMemory AllocateMemory(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags wantedProperties) const;
 
+    // The kinds of memory are numbered. This finds the first kind that the object may use (its bit is set in allowedTypeBits)
+    // and that has the wanted properties.
+    std::uint32_t FindMemoryType(std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedProperties) const;
+    VkDeviceMemory AllocateMemoryOfType(std::uint32_t memoryTypeIndex, VkDeviceSize size) const;
+
     std::string DeviceName() const;
 
     // The validation layer is used in debug builds when it is installed.
@@ -52,8 +57,6 @@ private:
     void ChoosePhysicalDevice();
     void CreateDevice();
     void CreateCommandPool();
-
-    std::uint32_t FindMemoryType(std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedProperties) const;
 
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
