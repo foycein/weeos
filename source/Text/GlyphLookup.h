@@ -9,7 +9,7 @@ namespace Text
 {
 
 // Finds the glyph of a character in one step. A font lists its characters in several maps of three kinds
-// (direct, table and scan). The lookup reads all maps once into one table.
+// (direct, table and scan). The lookup reads all maps once into one table. The first map whose range holds a character decides.
 class GlyphLookup
 {
 public:
@@ -21,7 +21,7 @@ public:
     std::uint16_t FindGlyphIndex(char16_t character) const;
 
 private:
-    // One entry for every character code. The entry is NoGlyph where the font has no glyph.
+    // One entry for every character code: the glyph, or a number that says that the font has none.
     std::vector<std::uint16_t> glyphIndices;
 
     std::uint16_t replacementGlyphIndex;
