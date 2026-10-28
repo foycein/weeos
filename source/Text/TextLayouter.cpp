@@ -22,8 +22,8 @@ constexpr char16_t MarkCharacter = 0x001A;
 // and the tab (it moves the pen) do something.
 constexpr char16_t FirstPrintableCharacter = 0x0020;
 
-// A tab moves the pen to the next multiple of four character widths, counted from the start of the line. A character width is the
-// horizontal size of the font. The text writer of the original starts with the count four (0x81519e94).
+// A tab moves the pen to the next multiple of four character widths. A character width is the horizontal size of the font.
+// The text writer of the original starts with the count four (0x81519e94).
 constexpr float TabStopCharacterCount = 4;
 
 constexpr unsigned int FullAlpha = 255;
@@ -111,11 +111,12 @@ struct TakenLine
     bool isLastLine;
 };
 
-// Where a line is: its number, where its pen starts and where its baseline lies.
+// Where a line is: its number, where its pen starts, the left edge of its block and where its baseline lies.
 struct LinePlace
 {
     std::size_t lineNumber;
     float left;
+    float blockLeft;
     float baselineY;
 };
 
@@ -222,14 +223,14 @@ private:
         return widthBefore + characterSpace + AdvanceOf(character);
     }
 
-    // The distance from the start of the line to the first tab stop after the given distance.
-    float NextTabStop(float distanceFromLineStart) const
+    // The distance from the origin of the tab stops to the first stop after the given distance.
+    float NextTabStop(float distanceFromOrigin) const
     {
         float stopDistance = TabStopCharacterCount * style.fontSize.x;
         if (stopDistance <= 0)
-            return distanceFromLineStart;
+            return distanceFromOrigin;
 
-        int stopsBefore = static_cast<int>(distanceFromLineStart / stopDistance);
+        int stopsBefore = static_cast<int>(distanceFromOrigin / stopDistance);
         return stopDistance * static_cast<float>(stopsBefore + 1);
     }
 
@@ -266,6 +267,7 @@ private:
         LinePlace place;
         place.lineNumber = lineNumber;
         place.left = block.left + freeWidth * FreeSpaceBefore(style.alignment.horizontal);
+        place.blockLeft = block.left;
         place.baselineY = lineTop - font.ascent * scaleY;
         laidOutText.lines.push_back({line.firstCharacter, line.endCharacter, place.left, line.width, lineTop, lineHeight});
 
@@ -291,10 +293,11 @@ private:
         laidOutText.characters.push_back(placed);
     }
 
-    // No character space comes after a tab.
+    // No character space comes after a tab. The original measures a line with the stops counted from the start of the line, but it
+    // prints with the stops counted from the left edge of the block (0x8151b558); the two are the same when the line starts at the edge.
     void MovePenToNextTabStop(const LinePlace& place, Pen& pen, PlacedCharacter& placed) const
     {
-        float tabEnd = place.left + NextTabStop(pen.x - place.left);
+        float tabEnd = place.blockLeft + NextTabStop(pen.x - place.blockLeft);
         placed.advance = tabEnd - pen.x;
         pen.x = tabEnd;
         pen.followsGlyph = false;
