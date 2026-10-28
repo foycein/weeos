@@ -45,20 +45,6 @@ bool IsIndexFileName(std::string_view name)
     return name == IndexFileName || name == IndexTemporaryFileName;
 }
 
-// Windows treats "con" and "con.txt" alike, so only the part before the first dot counts.
-bool IsReservedDeviceName(std::string_view name)
-{
-    std::string_view stem = name.substr(0, name.find('.'));
-    while (!stem.empty() && stem.back() == ' ')
-        stem.remove_suffix(1);
-
-    std::string upperCaseStem;
-    for (char character : stem)
-        upperCaseStem += ToUpperCase(character);
-
-    return std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), upperCaseStem) != std::end(ReservedDeviceNames);
-}
-
 bool EqualsIgnoringCase(std::string_view first, std::string_view second)
 {
     return std::equal(first.begin(), first.end(), second.begin(), second.end(),
@@ -100,6 +86,20 @@ std::string EscapeHostName(std::string_view nandName)
     return escaped;
 }
 
+}
+
+// Windows treats "con" and "con.txt" alike, so only the part before the first dot counts.
+bool IsReservedDeviceName(std::string_view name)
+{
+    std::string_view stem = name.substr(0, name.find('.'));
+    while (!stem.empty() && stem.back() == ' ')
+        stem.remove_suffix(1);
+
+    std::string upperCaseStem;
+    for (char character : stem)
+        upperCaseStem += ToUpperCase(character);
+
+    return std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), upperCaseStem) != std::end(ReservedDeviceNames);
 }
 
 bool IsValidHostName(std::string_view name)

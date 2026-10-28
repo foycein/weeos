@@ -84,8 +84,8 @@ std::vector<FeatureRow> MakeReferenceRows()
         {Feature::KeyboardDriver, KeyboardDriver::HidVersion5, {57, 58}},
 
         // The network.
-        {Feature::NetworkConfiguration, NetworkConfiguration::Original, {9}},
-        {Feature::NetworkConfiguration, NetworkConfiguration::WithProxyChecks,
+        {Feature::NetworkConfiguration, NetworkConfigurationKind::Original, {9}},
+        {Feature::NetworkConfiguration, NetworkConfigurationKind::WithProxyChecks,
             {Through(12, 15), 17, 21, 22, 28, 31, Through(33, 38), 41, 43, 45, 46, 48, 53, Through(55, 58), 61, 62, 80}},
     };
 }

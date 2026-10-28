@@ -20,6 +20,10 @@ constexpr SystemAreaRange AllowedSystemAreaRanges[] =
     {0x1FB500000, 0x20},
 };
 
+// What the drive of the reference console answers to the Inquiry command: revision 0, device code 2, released 2008-12-18, version 0x41.
+// The first 0x20 bytes of cache.dat in the System Menu's data folder hold the answer, as the menu stored it.
+constexpr DriveInformation ReferenceDriveInformation = {0x0000, 0x0002, 0x20081218, 0x41};
+
 // The module checks that both the start and the end of the read lie inside one range. A range includes its last byte position.
 bool IsInsideAllowedRange(std::uint64_t position, std::uint32_t length)
 {
@@ -39,7 +43,7 @@ bool IsInsideAllowedRange(std::uint64_t position, std::uint32_t length)
 
 DriveInformation DiscDriveService::Inquire() const
 {
-    return DriveInformation{0, 0, 0, 0};
+    return ReferenceDriveInformation;
 }
 
 void DiscDriveService::Reset()
@@ -51,6 +55,11 @@ void DiscDriveService::Reset()
 CoverState DiscDriveService::GetCoverState() const
 {
     return CoverState::NoDisc;
+}
+
+DriveReply DiscDriveService::ClearCoverInterrupt()
+{
+    return DriveReply::Success;
 }
 
 DriveReply DiscDriveService::ReadDiscId()
