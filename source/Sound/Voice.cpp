@@ -135,6 +135,7 @@ void Voice::Start(
     position = 0.0;
     gainsAtFrameStart = {};
     gainsAtFrameEnd = {};
+    lowPassFilters = {};
 }
 
 bool Voice::IsActive() const
@@ -155,6 +156,21 @@ void Voice::Release()
 void Voice::SetSettings(const VoiceSettings& newSettings)
 {
     settings = newSettings;
+}
+
+void Voice::ChangeEnvelopeNumbers(std::uint8_t attack, std::uint8_t decay, std::uint8_t sustain, std::uint8_t release)
+{
+    if (attack != EnvelopeNumberNotSet)
+        envelope.SetAttack(attack);
+
+    if (decay != EnvelopeNumberNotSet)
+        envelope.SetDecay(decay);
+
+    if (sustain != EnvelopeNumberNotSet)
+        envelope.SetSustain(sustain);
+
+    if (release != EnvelopeNumberNotSet)
+        envelope.SetRelease(release);
 }
 
 void Voice::Stop()
@@ -220,7 +236,10 @@ void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBu
 
     std::array<WaveSamples, MaximumChannelCount> channelSamples;
     for (std::size_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
+    {
         channelSamples[channelNumber] = WaveSamples{wave->channels[channelNumber], wave->loops, wave->loopStartSample};
+        lowPassFilters[channelNumber].SetValue(settings.lowPass, deviceSampleRate);
+    }
 
     for (std::size_t outputNumber = 0; outputNumber < buffers.left.size(); ++outputNumber)
     {
@@ -229,6 +248,7 @@ void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBu
         for (std::size_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
         {
             float sample = resampler.Read(channelSamples[channelNumber], position, step);
+            sample = lowPassFilters[channelNumber].Process(sample);
 
             const MixGains& from = gainsAtFrameStart[channelNumber];
             const MixGains& to = gainsAtFrameEnd[channelNumber];

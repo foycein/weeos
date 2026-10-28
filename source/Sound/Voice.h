@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sound/Envelope.h"
+#include "Sound/LowPassFilter.h"
 #include "Sound/Resampler.h"
 #include "Sound/SoundMode.h"
 #include "Sound/WaveDecoder.h"
@@ -37,6 +38,9 @@ struct VoiceSettings
 
     // How much faster the wave is played than at its own rate. 2 is an octave up.
     float pitch = 1.0f;
+
+    // 1 plays the wave as it is. Less takes the high tones away, see LowPassFilter.h.
+    float lowPass = OpenLowPass;
 };
 
 // The files give a pan as a number from 0 (left) over 64 (middle) to 127 (right). The voice wants -1 to 1.
@@ -87,6 +91,9 @@ public:
 
     void SetSettings(const VoiceSettings& newSettings);
 
+    // Changes the numbers of the envelope of a voice that sounds. A number that is EnvelopeNumberNotSet stays as it is.
+    void ChangeEnvelopeNumbers(std::uint8_t attack, std::uint8_t decay, std::uint8_t sustain, std::uint8_t release);
+
     // Stops the voice at once.
     void Stop();
 
@@ -112,6 +119,7 @@ private:
     double position = 0.0;
     std::array<MixGains, MaximumChannelCount> gainsAtFrameStart{};
     std::array<MixGains, MaximumChannelCount> gainsAtFrameEnd{};
+    std::array<LowPassFilter, MaximumChannelCount> lowPassFilters{};
 };
 
 }

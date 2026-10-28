@@ -3,12 +3,15 @@ add_library(Sound STATIC
     BankFile.cpp
     Envelope.cpp
     LoadedFiles.cpp
+    LowPassFilter.cpp
     Mixer.cpp
+    Modulation.cpp
     NoteParameters.cpp
     Reference.cpp
     Resampler.cpp
     Reverb.cpp
     SequenceFile.cpp
+    SequenceNotes.cpp
     SequencePlayer.cpp
     SoundArchiveFile.cpp
     SoundCommandQueue.cpp
@@ -19,6 +22,7 @@ add_library(Sound STATIC
     StereoPlacement.cpp
     Voice.cpp
     VoicePool.cpp
+    WaveArchiveFile.cpp
     WaveDecoder.cpp
     WaveFileWriter.cpp
     WaveInfo.cpp
