@@ -13,8 +13,10 @@ add_library(Layout STATIC
     PaneRectangle.cpp
     RectangleDrawing.cpp
     TevStageConversion.cpp
+    TextBoxDrawing.cpp
+    TextFonts.cpp
     TransformMatrix.cpp
     WindowDrawing.cpp
 )
 
-target_link_libraries(Layout PUBLIC Formats)
+target_link_libraries(Layout PUBLIC Formats Text)

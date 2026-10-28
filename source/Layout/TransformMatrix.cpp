@@ -102,6 +102,14 @@ Formats::Vector2 TransformPoint(const TransformMatrix& matrix, Formats::Vector2 
     return moved;
 }
 
+Formats::Vector2 TransformDirection(const TransformMatrix& matrix, Formats::Vector2 direction)
+{
+    Formats::Vector2 turned;
+    turned.x = matrix.rows[0][0] * direction.x + matrix.rows[0][1] * direction.y;
+    turned.y = matrix.rows[1][0] * direction.x + matrix.rows[1][1] * direction.y;
+    return turned;
+}
+
 std::optional<Formats::Vector2> FindPointMovedTo(const TransformMatrix& matrix, Formats::Vector2 target)
 {
     float xFromX = matrix.rows[0][0];

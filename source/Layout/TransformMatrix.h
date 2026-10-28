@@ -32,6 +32,9 @@ TransformMatrix operator*(const TransformMatrix& first, const TransformMatrix& s
 // the way an orthographic view does.
 Formats::Vector2 TransformPoint(const TransformMatrix& matrix, Formats::Vector2 point);
 
+// Turns and scales a direction. A direction is not moved: the movement of the matrix does not count.
+Formats::Vector2 TransformDirection(const TransformMatrix& matrix, Formats::Vector2 direction);
+
 // The opposite of TransformPoint: finds the point of the flat layout that the matrix moves to the given point.
 // There is none when the matrix squeezes the plane into a line, for example a pane that is turned edge on.
 std::optional<Formats::Vector2> FindPointMovedTo(const TransformMatrix& matrix, Formats::Vector2 target);

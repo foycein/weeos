@@ -2,6 +2,7 @@
 
 #include "Layout/PaneRectangle.h"
 #include "Layout/RectangleDrawing.h"
+#include "Layout/TextBoxDrawing.h"
 #include "Layout/WindowDrawing.h"
 
 namespace Layout
@@ -23,7 +24,7 @@ void DrawPicture(Graphics::GraphicsDevice& device, LiveLayout& layout, const Pan
 
 }
 
-void DrawPlacedPane(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement)
+void DrawPlacedPane(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement, const TextFonts* textFonts)
 {
     switch (placement.pane->kind)
     {
@@ -36,16 +37,20 @@ void DrawPlacedPane(Graphics::GraphicsDevice& device, LiveLayout& layout, const 
         return;
 
     case Formats::PaneKind::TextBox:
+        if (textFonts)
+            DrawTextBox(layout, placement, *textFonts);
+        return;
+
     case Formats::PaneKind::Null:
     case Formats::PaneKind::Boundary:
         return;
     }
 }
 
-void DrawLayout(Graphics::GraphicsDevice& device, LiveLayout& layout, const PlacementSettings& settings)
+void DrawLayout(Graphics::GraphicsDevice& device, LiveLayout& layout, const PlacementSettings& settings, const TextFonts* textFonts)
 {
     for (const PanePlacement& placement : PlaceShownPanes(layout.RootPane(), settings))
-        DrawPlacedPane(device, layout, placement);
+        DrawPlacedPane(device, layout, placement, textFonts);
 }
 
 }
