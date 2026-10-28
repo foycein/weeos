@@ -13,8 +13,10 @@ add_library(Formats STATIC
     EllipticCurve.cpp
     FileBytes.cpp
     Font.cpp
+    GifImage.cpp
     HexText.cpp
     Huffman.cpp
+    Inflate.cpp
     Layout.cpp
     LayoutAnimation.cpp
     LayoutMaterial.cpp
@@ -24,6 +26,7 @@ add_library(Formats STATIC
     NandImage.cpp
     NandTitles.cpp
     OneTimeProgrammable.cpp
+    PngImage.cpp
     RgbaImage.cpp
     RsaSignature.cpp
     SectionedFile.cpp
