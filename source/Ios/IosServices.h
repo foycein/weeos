@@ -4,6 +4,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/IosFolders.h"
 #include "Ios/Power/PowerService.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
 
 #include <memory>
@@ -19,8 +20,9 @@ class IosServices
 {
 public:
     // Brings IOS up. First the NAND folder is made ready, as the console does every time IOS starts, then the services start.
+    // The profile tells which version of IOS this is. Unless a title needs another one, it is IOS80, the IOS of the System Menu.
     // Gives back NoFileSystem when the NAND folder cannot be used and AlreadyExists when the services are running already.
-    Result<void> Start(const IosFolders& folders);
+    Result<void> Start(const IosFolders& folders, const IosProfile& startProfile = SystemMenuProfile());
 
     // Stops the services. The file system shuts down, so a file that is still open cannot be used any more,
     // and whoever waits for a button or a request stops waiting. The services can be started again afterwards.
@@ -36,10 +38,14 @@ public:
     DiscDriveService& GetDiscDrive();
     PowerService& GetPower();
 
+    // The profile of the IOS that is running. The services read it to behave like that version.
+    const IosProfile& GetProfile() const;
+
 private:
     void RequireRunning() const;
 
     bool isRunning = false;
+    IosProfile profile = SystemMenuProfile();
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
     std::unique_ptr<PowerService> power;

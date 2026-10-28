@@ -9,7 +9,7 @@
 namespace Ios
 {
 
-Result<void> IosServices::Start(const IosFolders& folders)
+Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& startProfile)
 {
     if (isRunning)
         return IosError::AlreadyExists;
@@ -25,6 +25,7 @@ Result<void> IosServices::Start(const IosFolders& folders)
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
     discDrive = std::make_unique<DiscDriveService>();
     power = std::make_unique<PowerService>();
+    profile = startProfile;
     isRunning = true;
     return Result<void>();
 }
@@ -60,6 +61,12 @@ PowerService& IosServices::GetPower()
 {
     RequireRunning();
     return *power;
+}
+
+const IosProfile& IosServices::GetProfile() const
+{
+    RequireRunning();
+    return profile;
 }
 
 void IosServices::RequireRunning() const
