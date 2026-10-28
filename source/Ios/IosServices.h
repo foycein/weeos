@@ -6,6 +6,7 @@
 #include "Ios/IosFolders.h"
 #include "Ios/Keyboard/KeyboardService.h"
 #include "Ios/Power/PowerService.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Ios/Result.h"
 #include "Ios/Title/TitleService.h"
@@ -25,7 +26,8 @@ public:
     // Brings IOS up. First the identity of the console is read, then the NAND folder is made ready, as the console does every time IOS starts,
     // then the services start. Gives back NoFileSystem when the NAND folder cannot be used and AlreadyExists when the services are running already.
     // The files of the identity folder can be missing (NotFound), unreadable (StorageFailure) or wrong (ShortRead).
-    Result<void> Start(const IosFolders& folders);
+    // The profile tells which version of IOS this is. Unless a title needs another one, it is IOS80, the IOS of the System Menu.
+    Result<void> Start(const IosFolders& folders, const IosProfile& startProfile = SystemMenuProfile());
 
     // Stops the services. The file system shuts down, so a file that is still open cannot be used any more,
     // and whoever waits for a button or a request stops waiting. The services can be started again afterwards.
@@ -45,10 +47,14 @@ public:
     ConsoleIdentityService& GetConsoleIdentity();
     TitleService& GetTitles();
 
+    // The profile of the IOS that is running. The services read it to behave like that version.
+    const IosProfile& GetProfile() const;
+
 private:
     void RequireRunning() const;
 
     bool isRunning = false;
+    IosProfile profile = SystemMenuProfile();
     std::unique_ptr<ConsoleIdentityService> identity;
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
