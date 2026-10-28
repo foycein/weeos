@@ -3,7 +3,9 @@
 #include "Formats/Aes128.h"
 #include "Formats/Bytes.h"
 #include "Formats/NandImage.h"
+#include "Formats/Sha1.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -57,6 +59,11 @@ struct NandEntry
     // Files only: the size in bytes and the cluster where the data starts.
     std::uint32_t size;
     std::uint16_t firstCluster;
+
+    // The number of the record of the tree that describes the entry, and the four bytes at the end of that record, whose meaning
+    // nobody knows. Both go into the HMAC of the clusters of a file (see CountClustersWithWrongHmac).
+    std::uint16_t recordNumber;
+    std::array<Byte, 4> unknownField;
 };
 
 // The file system of the NAND (SFFS), read from its newest superblock.
@@ -85,12 +92,24 @@ public:
     Bytes ReadFile(const NandEntry& file);
     Bytes ReadFile(std::string_view path);
 
+    // An optional check of the HMAC that guards every cluster of a file against changes. The HMAC (SHA-1, made with the HMAC key of
+    // the console) covers 64 bytes and then the decrypted data of the cluster. The 64 bytes are the owner and the name of the file,
+    // the place of the cluster in the file, the number of the tree record and its unknown field. The spare bytes of the cluster hold
+    // the HMAC twice. Gives the number of clusters of the file where one of the two copies is not the HMAC of the cluster: 0 is good.
+    // Throws a FormatError when the chain of the clusters of the file is damaged.
+    std::size_t CountClustersWithWrongHmac(const NandEntry& file, ByteView hmacKey);
+
+    // The same check for the superblock this file system was read from. One HMAC covers its 16 clusters and is kept with the last one.
+    bool SuperblockHmacIsCorrect(ByteView hmacKey);
+
 private:
     Bytes ReadDecryptedCluster(std::uint32_t clusterNumber);
+    bool StoredHmacMatches(std::uint32_t clusterNumber, const Sha1Digest& hmac);
 
     NandImage& image;
     AesKey nandKey;
     std::uint32_t generation;
+    std::uint32_t superblockFirstCluster;
     std::vector<std::uint16_t> clusterChains;
     std::vector<NandEntry> entries;
     std::unordered_map<std::string, std::size_t> entryNumberByPath;

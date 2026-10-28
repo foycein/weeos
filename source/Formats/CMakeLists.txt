@@ -14,6 +14,7 @@ add_library(Formats STATIC
     FileBytes.cpp
     Font.cpp
     HexText.cpp
+    HmacSha1.cpp
     Huffman.cpp
     Layout.cpp
     LayoutAnimation.cpp

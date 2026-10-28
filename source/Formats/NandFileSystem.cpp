@@ -1,7 +1,9 @@
 #include "Formats/NandFileSystem.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
+#include "Formats/HmacSha1.h"
 
 #include <algorithm>
 #include <format>
@@ -36,6 +38,19 @@ constexpr std::size_t NameFieldSize = 12;
 // The last four bytes of a tree record are not known. They only go into the HMAC of the clusters.
 constexpr std::size_t UnknownFieldSize = 4;
 
+// In front of the data of a cluster, the HMAC covers 64 bytes: the owner, the name, the place of the cluster in the file,
+// the number of the tree record and the unknown field of the record, then zeros. The superblock has the number of its first cluster
+// in the place and zeros in the rest.
+constexpr std::size_t HmacSaltSize = 0x40;
+
+// The spare bytes of the 7th and 8th page of a cluster hold the HMAC twice, each time behind one byte for the mark of a bad block.
+// The first copy is in the 7th page. The second copy starts behind it with 12 bytes and ends with 8 bytes in the 8th page.
+constexpr std::uint32_t HmacPageInCluster = 6;
+constexpr std::size_t FirstCopyOffset = 1;
+constexpr std::size_t SecondCopyOffset = FirstCopyOffset + Sha1DigestSize;
+constexpr std::size_t SecondCopySizeInFirstPage = 12;
+constexpr std::size_t SecondCopyOffsetInNextPage = 1;
+
 constexpr std::uint16_t NoRecord = 0xFFFF;
 constexpr std::size_t RootRecordNumber = 0;
 constexpr std::string_view RootPath = "/";
@@ -54,6 +69,7 @@ constexpr char LastNameCharacter = '~';
 
 struct Superblock
 {
+    std::uint32_t firstCluster;
     std::uint32_t generation;
     Bytes bytes;
 };
@@ -70,6 +86,7 @@ struct TreeRecord
     std::uint32_t size;
     std::uint32_t userId;
     std::uint16_t groupId;
+    std::array<Byte, UnknownFieldSize> unknownField;
 };
 
 // Gives the generation of the superblock that starts at the cluster, or nothing when there is none.
@@ -107,6 +124,7 @@ Superblock ReadNewestSuperblock(NandImage& image)
         throw FormatError("NAND image: no superblock of the file system was found");
 
     Superblock superblock;
+    superblock.firstCluster = *newestCluster;
     superblock.generation = newestGeneration;
     for (std::uint32_t cluster = 0; cluster < ClustersPerSuperblock; ++cluster)
     {
@@ -139,7 +157,7 @@ TreeRecord ReadTreeRecord(ByteReader& reader)
     record.size = reader.ReadUint32();
     record.userId = reader.ReadUint32();
     record.groupId = reader.ReadUint16();
-    reader.Skip(UnknownFieldSize);
+    record.unknownField = reader.ReadByteArray<UnknownFieldSize>();
     return record;
 }
 
@@ -167,6 +185,30 @@ bool IsValidName(const std::string& name)
 
     return std::all_of(name.begin(), name.end(),
         [](char character) { return character >= FirstNameCharacter && character <= LastNameCharacter && character != '/'; });
+}
+
+// The 64 bytes that the HMAC of a cluster covers in front of its data.
+Bytes MakeHmacSalt(std::uint32_t userId, const std::string& name, std::uint32_t clusterField, std::uint32_t recordNumber,
+    const std::array<Byte, UnknownFieldSize>& unknownField)
+{
+    Bytes nameField(NameFieldSize, Byte(0));
+    std::copy(name.begin(), name.end(), nameField.begin());
+
+    ByteWriter writer;
+    writer.WriteUint32(userId);
+    writer.WriteBytes(nameField);
+    writer.WriteUint32(clusterField);
+    writer.WriteUint32(recordNumber);
+    writer.WriteBytes(unknownField);
+    writer.WriteZeros(HmacSaltSize - writer.GetBytes().size());
+    return writer.GetBytes();
+}
+
+Bytes JoinBytes(ByteView first, ByteView second)
+{
+    Bytes joined(first.begin(), first.end());
+    joined.insert(joined.end(), second.begin(), second.end());
+    return joined;
 }
 
 std::string JoinPath(const std::string& directoryPath, const std::string& name)
@@ -252,6 +294,8 @@ private:
         entry.groupId = record.groupId;
         entry.size = record.size;
         entry.firstCluster = entry.kind == NandEntryKind::File ? record.firstClusterOrEntry : 0;
+        entry.recordNumber = static_cast<std::uint16_t>(recordNumber);
+        entry.unknownField = record.unknownField;
         return entry;
     }
 
@@ -295,6 +339,7 @@ NandFileSystem::NandFileSystem(NandImage& nandImage, const AesKey& key)
     , nandKey(key)
 {
     Superblock superblock = ReadNewestSuperblock(image);
+    superblockFirstCluster = superblock.firstCluster;
     generation = superblock.generation;
     clusterChains = ReadClusterChains(superblock.bytes);
 
@@ -381,6 +426,67 @@ Bytes NandFileSystem::ReadDecryptedCluster(std::uint32_t clusterNumber)
 {
     constexpr AesBlock ZeroInitializationVector = {};
     return DecryptAes128Cbc(image.ReadClusterData(clusterNumber), nandKey, ZeroInitializationVector);
+}
+
+std::size_t NandFileSystem::CountClustersWithWrongHmac(const NandEntry& file, ByteView hmacKey)
+{
+    if (file.kind != NandEntryKind::File)
+        throw FormatError(std::format("NAND file system: {} is a directory, not a file", file.path));
+
+    std::uint32_t clusterCount = (file.size + NandClusterSize - 1) / NandClusterSize;
+    std::size_t wrongCount = 0;
+
+    std::uint32_t cluster = file.firstCluster;
+    for (std::uint32_t clusterInFile = 0; clusterInFile < clusterCount; ++clusterInFile)
+    {
+        if (cluster < FirstDataCluster || cluster >= DataClusterLimit)
+        {
+            throw FormatError(std::format("NAND file system: the clusters of {} end after {} of {} clusters, at the cluster {:#x}",
+                file.path, clusterInFile, clusterCount, cluster));
+        }
+
+        Bytes salt = MakeHmacSalt(file.userId, file.name, clusterInFile, file.recordNumber, file.unknownField);
+        Sha1Digest hmac = ComputeHmacSha1(hmacKey, JoinBytes(salt, ReadDecryptedCluster(cluster)));
+        if (!StoredHmacMatches(cluster, hmac))
+            ++wrongCount;
+
+        cluster = clusterChains[cluster];
+    }
+    return wrongCount;
+}
+
+bool NandFileSystem::SuperblockHmacIsCorrect(ByteView hmacKey)
+{
+    Bytes superblockData;
+    for (std::uint32_t clusterInSuperblock = 0; clusterInSuperblock < ClustersPerSuperblock; ++clusterInSuperblock)
+    {
+        Bytes clusterData = image.ReadClusterData(superblockFirstCluster + clusterInSuperblock);
+        superblockData.insert(superblockData.end(), clusterData.begin(), clusterData.end());
+    }
+
+    Bytes salt = MakeHmacSalt(0, std::string(), superblockFirstCluster, 0, {});
+    Sha1Digest hmac = ComputeHmacSha1(hmacKey, JoinBytes(salt, superblockData));
+
+    std::uint32_t lastCluster = superblockFirstCluster + ClustersPerSuperblock - 1;
+    return StoredHmacMatches(lastCluster, hmac);
+}
+
+bool NandFileSystem::StoredHmacMatches(std::uint32_t clusterNumber, const Sha1Digest& hmac)
+{
+    std::uint32_t hmacPage = clusterNumber * NandPagesPerCluster + HmacPageInCluster;
+    Bytes firstPageSpare = image.ReadPageSpare(hmacPage);
+    Bytes nextPageSpare = image.ReadPageSpare(hmacPage + 1);
+
+    Bytes firstCopy(firstPageSpare.begin() + FirstCopyOffset, firstPageSpare.begin() + FirstCopyOffset + Sha1DigestSize);
+
+    constexpr std::size_t secondCopySizeInNextPage = Sha1DigestSize - SecondCopySizeInFirstPage;
+    Bytes secondCopy(firstPageSpare.begin() + SecondCopyOffset, firstPageSpare.begin() + SecondCopyOffset + SecondCopySizeInFirstPage);
+    secondCopy.insert(secondCopy.end(), nextPageSpare.begin() + SecondCopyOffsetInNextPage,
+        nextPageSpare.begin() + SecondCopyOffsetInNextPage + secondCopySizeInNextPage);
+
+    bool firstCopyFits = std::equal(hmac.begin(), hmac.end(), firstCopy.begin());
+    bool secondCopyFits = std::equal(hmac.begin(), hmac.end(), secondCopy.begin());
+    return firstCopyFits && secondCopyFits;
 }
 
 }
