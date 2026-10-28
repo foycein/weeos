@@ -29,27 +29,23 @@ public:
     }
 };
 
-// How much sound the device is given at a time. A short period lets a sound follow the menu sooner, a long period lets the
-// audio thread be late without a gap in the sound. The thread runs at the normal priority, so the default is the period that
-// Windows uses for its own sounds, usually 10 milliseconds. The shortest period (about 2 milliseconds) makes Windows run
-// its whole mixer at that period while the output is open, which can disturb the sound of other programs.
+// How much sound the device is given at a time. The thread runs at the normal priority, so the default is the period that Windows
+// uses for its own sounds, usually 10 milliseconds. The shortest period (about 2 milliseconds) makes Windows run its whole mixer
+// at that period while the output is open, which can disturb the sound of other programs.
 enum class AudioLatency
 {
     Normal,
     Shortest,
 };
 
-// Plays what a function makes on the default playback device of Windows, with the Windows Audio Session API (WASAPI) in shared
-// mode, the way every program plays its sound while others play theirs.
+// Plays what a function makes on the default playback device of Windows, through WASAPI in shared mode like any other program.
 //
-// The format is the one Windows already mixes in (the "mix format": 32 bit floating point numbers at the sample rate and with the
-// channels that the user chose for the device). The output makes exactly that format, so Windows does not convert the sound again.
-// The device wakes the audio thread through an event whenever it needs more. The thread asks the function for exactly the number of
-// frames that are free and hands them over, with the left sound on the first channel and the right sound on the second.
+// The output uses the format Windows already mixes in (32 bit floating point, the sample rate and the channels of the device),
+// so Windows does not convert the sound again. The device wakes the audio thread through an event; the thread asks the function
+// for the free frames and puts the left sound on the first channel and the right sound on the second.
 //
-// Create, use and destroy an AudioOutput on one thread. Only this part of WeeOS includes the headers of WASAPI.
-// When the user changes the default device or the format of the device in Windows, the output fails: HasFailed() becomes true.
-// The program then creates a new AudioOutput (and a sound system for its new SampleRate).
+// Create, use and destroy an AudioOutput on one thread. When the user changes the default device or its format, the output fails
+// (HasFailed) and the program creates a new AudioOutput and a sound system for the new SampleRate.
 class AudioOutput
 {
 public:

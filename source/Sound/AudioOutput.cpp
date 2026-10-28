@@ -85,7 +85,8 @@ struct AudioOutput::Implementation
     {
         creatingThread = std::this_thread::get_id();
 
-        // This fails (and needs no undoing) when the thread has COM already in another mode. The objects of WASAPI can be used from any thread.
+        // This fails (and needs no undoing) when the thread has COM already in another mode.
+        // The objects of WASAPI can be used from any thread.
         comIsInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 
         OpenDefaultDevice();
@@ -130,7 +131,8 @@ struct AudioOutput::Implementation
         UINT32 fundamentalPeriod = 0;
         UINT32 shortestPeriod = 0;
         UINT32 longestPeriod = 0;
-        HRESULT periodResult = client->GetSharedModeEnginePeriod(&mixFormat, &defaultPeriod, &fundamentalPeriod, &shortestPeriod, &longestPeriod);
+        HRESULT periodResult =
+            client->GetSharedModeEnginePeriod(&mixFormat, &defaultPeriod, &fundamentalPeriod, &shortestPeriod, &longestPeriod);
         ThrowIfFailed(periodResult, "asking for the periods of the engine");
         periodFrames = latency == AudioLatency::Shortest ? shortestPeriod : defaultPeriod;
 

@@ -56,7 +56,8 @@ public:
     // The most channels a wave may have.
     static constexpr std::size_t MaximumChannelCount = 2;
 
-    void Start(std::shared_ptr<const DecodedWave> waveToPlay, const Envelope& envelopeToUse, int voicePriority, const VoiceSettings& firstSettings);
+    void Start(
+        std::shared_ptr<const DecodedWave> waveToPlay, const Envelope& envelopeToUse, int voicePriority, const VoiceSettings& firstSettings);
 
     bool IsActive() const;
     int Priority() const;

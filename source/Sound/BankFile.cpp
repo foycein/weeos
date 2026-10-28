@@ -45,7 +45,8 @@ struct RegionBounds
     NumberRange velocities;
 };
 
-void AddRegions(Formats::ByteReader& reader, const Reference& reference, const RegionBounds& bounds, int level, std::vector<NoteRegion>& regions);
+void AddRegions(
+    Formats::ByteReader& reader, const Reference& reference, const RegionBounds& bounds, int level, std::vector<NoteRegion>& regions);
 
 RegionBounds NarrowBounds(const RegionBounds& bounds, int level, NumberRange range)
 {
@@ -107,7 +108,8 @@ void AddIndexedRegions(Formats::ByteReader& reader, const RegionBounds& bounds, 
     }
 }
 
-void AddRegions(Formats::ByteReader& reader, const Reference& reference, const RegionBounds& bounds, int level, std::vector<NoteRegion>& regions)
+void AddRegions(
+    Formats::ByteReader& reader, const Reference& reference, const RegionBounds& bounds, int level, std::vector<NoteRegion>& regions)
 {
     if (reference.IsNull() || reference.type == NoNoteType)
         return;

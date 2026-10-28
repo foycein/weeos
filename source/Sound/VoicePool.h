@@ -27,7 +27,8 @@ public:
     // Starts a voice. When all voices are busy, the voice with the lowest priority is stopped for it (the oldest of
     // those, if several have the lowest priority), unless that voice has a higher priority than the new one.
     // Then the new voice is not started and the result is empty.
-    std::optional<VoiceHandle> Start(std::shared_ptr<const DecodedWave> wave, const Envelope& envelope, int priority, const VoiceSettings& settings);
+    std::optional<VoiceHandle> Start(
+        std::shared_ptr<const DecodedWave> wave, const Envelope& envelope, int priority, const VoiceSettings& settings);
 
     // Gives the voice, or nothing when the voice has ended or was taken over.
     Voice* Find(VoiceHandle handle);

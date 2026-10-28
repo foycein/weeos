@@ -47,7 +47,8 @@ SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expected
 
     std::uint16_t byteOrderMark = reader.ReadUint16();
     if (byteOrderMark != BigEndianByteOrderMark)
-        reader.Fail(std::format("the byte order mark {:#x} is not {:#x}, only big endian files are supported", byteOrderMark, BigEndianByteOrderMark));
+        reader.Fail(std::format("the byte order mark {:#x} is not {:#x}, only big endian files are supported",
+            byteOrderMark, BigEndianByteOrderMark));
 
     SoundFile file;
     file.version = reader.ReadUint16();

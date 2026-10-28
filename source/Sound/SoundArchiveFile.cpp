@@ -219,7 +219,8 @@ private:
         std::uint8_t panMode = reader.ReadByte();
         std::uint8_t panCurve = reader.ReadByte();
         if (panMode != DualPanMode || panCurve != SquareRootPanCurve)
-            reader.Fail(std::format("the sound {} uses the pan mode {} and the pan curve {}, which are not supported", sound.name, panMode, panCurve));
+            reader.Fail(std::format("the sound {} uses the pan mode {} and the pan curve {}, which are not supported",
+                sound.name, panMode, panCurve));
 
         ReadSettings(sound, soundType, settings);
         return sound;
@@ -298,7 +299,8 @@ void CheckGroup(const GroupInfo& group, std::size_t archiveSize)
         if (!Formats::IsRangeInside(entry.fileOffset, entry.fileSize, group.fileBlockSize) ||
             !Formats::IsRangeInside(entry.waveDataOffset, entry.waveDataSize, group.waveBlockSize))
         {
-            throw Formats::FormatError(std::format("{}: the file {} lies outside the blocks of the group {}", DataDescription, entry.fileId, name));
+            throw Formats::FormatError(
+                std::format("{}: the file {} lies outside the blocks of the group {}", DataDescription, entry.fileId, name));
         }
     }
 }

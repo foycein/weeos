@@ -18,6 +18,11 @@ constexpr std::size_t MaximumCallDepth = 3;
 // The value of an envelope number of a track that was not set by a command. Then the instrument's number is used.
 constexpr std::uint8_t EnvelopeNumberNotSet = 0xFF;
 
+// What a track starts with, before a command changes it.
+constexpr std::uint8_t StartTrackVolume = 127;
+constexpr std::uint8_t StartTrackPriority = 64;
+constexpr std::uint8_t StartMainSend = 127;
+
 // A note that sounds. It is a voice, and what the track needs to know about it to keep the voice up to date.
 struct PlayingNote
 {
@@ -64,7 +69,7 @@ struct SequenceTrack
     std::uint16_t program = 0;
 
     // The loudness of the track from 0 to 127.
-    std::uint8_t volume = 127;
+    std::uint8_t volume = StartTrackVolume;
 
     // From -1 (left) to 1 (right), and from 0 (front) to 2 (behind).
     float pan = 0.0f;
@@ -75,8 +80,8 @@ struct SequenceTrack
     // The pitch is bent by this many 128th of the bend range of 2 semitones.
     int bend = 0;
 
-    std::uint8_t priority = 64;
-    std::uint8_t mainSend = 127;
+    std::uint8_t priority = StartTrackPriority;
+    std::uint8_t mainSend = StartMainSend;
 
     std::uint8_t attack = EnvelopeNumberNotSet;
     std::uint8_t decay = EnvelopeNumberNotSet;

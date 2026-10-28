@@ -47,7 +47,8 @@ public:
     // The number of sounding notes.
     std::size_t NoteCount() const;
 
-    // The number of times a track was ended because it ran a command that is not supported, ran out of commands, or ran too long without waiting.
+    // The number of times a track was ended because it ran a command that is not supported, ran out of commands,
+    // or ran too long without waiting.
     std::size_t ErrorCount() const;
 
 private:
@@ -89,6 +90,11 @@ private:
     void StartNote(SequenceTrack& track, int key, int velocity, int length);
     void UpdateNotes(SequenceTrack& track);
 
+    // A tick is 1/48 of a beat. A frame of 3 milliseconds adds the tempo (the beats per minute) to the progress towards the next tick,
+    // and a tick is complete at 416. At 120 beats per minute that is 3.47 frames, 10.4 milliseconds, which is 1/48 of 500 milliseconds.
+    static constexpr int TickProgressForOneTick = 416;
+    static constexpr int StartTempo = 120;
+
     const SequenceFile& sequence;
     const LoadedBank& bank;
     SequenceSettings settings;
@@ -99,8 +105,10 @@ private:
     std::array<SequenceTrack, MaximumTrackCount> tracks;
     std::array<std::int16_t, VariableCount> variables;
 
-    int tempo = 120;
-    int tickProgress = 0;
+    int tempo = StartTempo;
+
+    // The progress starts complete, so that the first commands run in the first frame.
+    int tickProgress = TickProgressForOneTick;
     bool dataRanOut = false;
     std::size_t errorCount = 0;
 };

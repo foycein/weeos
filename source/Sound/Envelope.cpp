@@ -19,12 +19,17 @@ constexpr std::uint8_t InstantParameter = 127;
 constexpr std::uint8_t FastestButOneParameter = 126;
 constexpr std::uint8_t SlowRangeEnd = 50;
 
-// Attacks from 0 to 108 lose 255 - attack parts of 256 of the distance to full loudness for every 5 milliseconds.
+// Every 5 milliseconds an attack from 0 to 108 multiplies the distance to full loudness by (255 - attack) / 256.
 // The faster attacks follow this list, which is read from the fastest to the slowest.
+constexpr int SlowestAttackRate = 255;
 constexpr std::uint8_t FastAttackStart = 109;
 constexpr std::array<std::uint8_t, 19> FastAttackRates = {0, 1, 5, 14, 26, 38, 51, 63, 73, 84, 92, 100, 109, 116, 123, 127, 132, 137, 143};
 constexpr double MillisecondsPerStep = 5.0;
 constexpr double StepFraction = 256.0;
+
+// The sustain parameter is the square of the volume: 127 is full, and each halving of the number is -12 dB.
+constexpr double FullSustainParameter = 127.0;
+constexpr double SustainTenthsPerFactorOfTen = 400.0;
 
 // Sustain levels below this number of tenths of a decibel are not told apart.
 constexpr int LowestSustainParameterWithFormula = 3;
@@ -36,20 +41,19 @@ double AttackFactor(std::uint8_t attack)
 {
     int rate = 0;
     if (attack < FastAttackStart)
-        rate = 255 - attack;
+        rate = SlowestAttackRate - attack;
     else
-        rate = FastAttackRates[127 - attack];
+        rate = FastAttackRates[InstantParameter - attack];
 
     return std::pow(double(rate) / StepFraction, 1.0 / MillisecondsPerStep);
 }
 
-// The sustain parameter is the square of the volume: 127 is full, and each halving of the number is -12 dB.
 double SustainLevel(std::uint8_t sustain)
 {
     if (sustain < LowestSustainParameterWithFormula)
         return SilentSustainLevel + sustain;
 
-    return std::round(400.0 * std::log10(double(sustain) / 127.0));
+    return std::round(SustainTenthsPerFactorOfTen * std::log10(double(sustain) / FullSustainParameter));
 }
 
 // How many tenths of a decibel the loudness falls in a millisecond.
@@ -68,7 +72,10 @@ double FallRate(std::uint8_t parameter)
         return FastestButOneRate;
 
     if (parameter < SlowRangeEnd)
-        return (2 * parameter + 1) * SlowRangeStep / ParameterScale;
+    {
+        double oddNumber = 2.0 * parameter + 1.0;
+        return oddNumber * SlowRangeStep / ParameterScale;
+    }
 
     return FastRangeNumerator / (FastestButOneParameter - parameter) / ParameterScale;
 }

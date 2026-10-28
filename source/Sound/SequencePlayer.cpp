@@ -9,15 +9,12 @@ namespace Sound
 namespace
 {
 
-// A tick is 1/48 of a beat. A frame of 3 milliseconds adds the tempo (the beats per minute) to the progress towards the next tick,
-// and a tick is complete at 416. At 120 beats per minute that is 3.47 frames, 10.4 milliseconds, which is 1/48 of 500 milliseconds.
-// The progress starts complete, so that the first commands run in the first frame.
-constexpr int TickProgressForOneTick = 416;
-constexpr int StartTempo = 120;
-
 // A track that runs more commands than this without waiting is stopped. No real sequence does, and the audio thread must not hang.
 constexpr int MostCommandsInOneTick = 10000;
 
+constexpr int BitsInOneByte = 8;
+
+constexpr std::uint8_t HighestVolume = 127;
 constexpr float HighestNumber = 127.0f;
 constexpr float BendRangeInSemitones = 2.0f;
 constexpr float BendNumbersForTheRange = 128.0f;
@@ -146,8 +143,6 @@ SequencePlayer::SequencePlayer(const SequenceFile& sequenceFile, const LoadedBan
     , volume(soundVolume)
     , voices(voicePool)
     , globals(sharedGlobals)
-    , tempo(StartTempo)
-    , tickProgress(TickProgressForOneTick)
 {
     variables.fill(-1);
 
@@ -311,7 +306,7 @@ std::int16_t SequencePlayer::ReadShort(SequenceTrack& track)
 {
     std::uint16_t high = ReadByte(track);
     std::uint16_t low = ReadByte(track);
-    return static_cast<std::int16_t>(high << 8 | low);
+    return static_cast<std::int16_t>(high << BitsInOneByte | low);
 }
 
 std::uint32_t SequencePlayer::ReadThreeBytes(SequenceTrack& track)
@@ -319,7 +314,7 @@ std::uint32_t SequencePlayer::ReadThreeBytes(SequenceTrack& track)
     std::uint32_t first = ReadByte(track);
     std::uint32_t second = ReadByte(track);
     std::uint32_t third = ReadByte(track);
-    return (first << 16) | (second << 8) | third;
+    return (first << 2 * BitsInOneByte) | (second << BitsInOneByte) | third;
 }
 
 std::int16_t* SequencePlayer::FindVariable(SequenceTrack& track, std::size_t variableNumber)
@@ -522,7 +517,7 @@ bool SequencePlayer::RunSettingCommand(SequenceTrack& track, std::uint8_t comman
     switch (command)
     {
     case PanCommand: track.pan = PanFromNumber(unsignedNumber); break;
-    case VolumeCommand: track.volume = std::min<std::uint8_t>(unsignedNumber, 127); break;
+    case VolumeCommand: track.volume = std::min<std::uint8_t>(unsignedNumber, HighestVolume); break;
     case TransposeCommand: track.transpose = signedNumber; break;
     case BendCommand: track.bend = signedNumber; break;
     case NoteWaitCommand: track.noteWait = unsignedNumber != 0; break;

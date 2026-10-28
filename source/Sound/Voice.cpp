@@ -61,7 +61,8 @@ float SurroundPanFromNumber(std::uint8_t number)
     return std::clamp(float(number) / NumbersFromFrontToSide, 0.0f, HighestSurroundPan);
 }
 
-void Voice::Start(std::shared_ptr<const DecodedWave> waveToPlay, const Envelope& envelopeToUse, int voicePriority, const VoiceSettings& firstSettings)
+void Voice::Start(
+    std::shared_ptr<const DecodedWave> waveToPlay, const Envelope& envelopeToUse, int voicePriority, const VoiceSettings& firstSettings)
 {
     wave = std::move(waveToPlay);
     envelope = envelopeToUse;

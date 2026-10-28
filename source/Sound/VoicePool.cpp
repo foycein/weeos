@@ -25,7 +25,8 @@ std::optional<std::size_t> VoicePool::ChooseSlot(int newPriority) const
     return std::nullopt;
 }
 
-std::optional<VoiceHandle> VoicePool::Start(std::shared_ptr<const DecodedWave> wave, const Envelope& envelope, int priority, const VoiceSettings& settings)
+std::optional<VoiceHandle> VoicePool::Start(
+    std::shared_ptr<const DecodedWave> wave, const Envelope& envelope, int priority, const VoiceSettings& settings)
 {
     std::optional<std::size_t> chosenSlot = ChooseSlot(priority);
     if (!chosenSlot)
