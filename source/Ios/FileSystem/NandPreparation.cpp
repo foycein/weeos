@@ -29,7 +29,7 @@ struct StandardDirectory
     EntryPermissions permissions;
 };
 
-// The nine directories the title service makes sure of, in its order, with the permissions it gives them.
+// The eight directories that every title service makes sure of, in its order, with the permissions it gives them.
 constexpr StandardDirectory StandardDirectories[] =
 {
     {"/sys", SystemOnly},
@@ -40,8 +40,10 @@ constexpr StandardDirectory StandardDirectories[] =
     {TemporaryDirectoryPath, OpenToEveryone},
     {"/import", SystemOnly},
     {SystemMenuDirectoryPath, OpenToEveryone},
-    {WfsDirectoryPath, OwnerOnly},
 };
+
+// The ninth, which the title service of 2009 and later makes.
+constexpr StandardDirectory WfsDirectory = {WfsDirectoryPath, OwnerOnly};
 
 NandPath ParseConstantPath(std::string_view text)
 {
@@ -59,11 +61,13 @@ Result<void> CreateDirectoryForSuperUser(NandStorage& storage, const NandPath& p
 }
 
 // The file system module deletes /tmp and makes it again when it holds anything, and makes it when it is missing.
-Result<void> EmptyTemporaryDirectory(NandStorage& storage)
+// The module of IOS9 does not look: it deletes /tmp and makes it again every time.
+Result<void> EmptyTemporaryDirectory(NandStorage& storage, bool recreatesAtEveryStart)
 {
     NandPath path = ParseConstantPath(TemporaryDirectoryPath);
     bool exists = storage.Find(path) != nullptr;
-    if (exists && storage.ListChildren(path).empty())
+    bool isEmpty = exists && storage.ListChildren(path).empty();
+    if (isEmpty && !recreatesAtEveryStart)
         return Result<void>();
 
     if (exists)
@@ -76,20 +80,28 @@ Result<void> EmptyTemporaryDirectory(NandStorage& storage)
     return CreateDirectoryForSuperUser(storage, path, OpenToEveryone);
 }
 
-Result<void> MakeSureStandardDirectoriesExist(NandStorage& storage)
+Result<void> MakeSureDirectoryExists(NandStorage& storage, const StandardDirectory& directory)
+{
+    NandPath path = ParseConstantPath(directory.path);
+    if (storage.Find(path) != nullptr)
+        return Result<void>();
+
+    return CreateDirectoryForSuperUser(storage, path, directory.permissions);
+}
+
+Result<void> MakeSureStandardDirectoriesExist(NandStorage& storage, bool makesWfsDirectory)
 {
     for (const StandardDirectory& directory : StandardDirectories)
     {
-        NandPath path = ParseConstantPath(directory.path);
-        if (storage.Find(path) != nullptr)
-            continue;
-
-        Result<void> created = CreateDirectoryForSuperUser(storage, path, directory.permissions);
-        if (created.Failed())
-            return created;
+        Result<void> made = MakeSureDirectoryExists(storage, directory);
+        if (made.Failed())
+            return made;
     }
 
-    return Result<void>();
+    if (!makesWfsDirectory)
+        return Result<void>();
+
+    return MakeSureDirectoryExists(storage, WfsDirectory);
 }
 
 Result<void> GiveDirectoryToOwner(NandStorage& storage, std::string_view path, const EntryAttributes& attributes)
@@ -99,13 +111,13 @@ Result<void> GiveDirectoryToOwner(NandStorage& storage, std::string_view path, c
 
 }
 
-Result<void> PrepareNandFolder(NandStorage& storage)
+Result<void> PrepareNandFolder(NandStorage& storage, const IosProfile& profile)
 {
-    Result<void> emptied = EmptyTemporaryDirectory(storage);
+    Result<void> emptied = EmptyTemporaryDirectory(storage, profile.fileSystemRecreatesTmpAtEveryStart);
     if (emptied.Failed())
         return emptied;
 
-    Result<void> made = MakeSureStandardDirectoriesExist(storage);
+    Result<void> made = MakeSureStandardDirectoriesExist(storage, profile.esCreatesWfsFolder);
     if (made.Failed())
         return made;
 
@@ -113,6 +125,9 @@ Result<void> PrepareNandFolder(NandStorage& storage)
         EntryAttributes{SystemMenuUserId, SystemMenuGroupId, OpenToEveryone, NoFlags});
     if (systemMenuGiven.Failed())
         return systemMenuGiven;
+
+    if (!profile.esCreatesWfsFolder)
+        return Result<void>();
 
     return GiveDirectoryToOwner(storage, WfsDirectoryPath, EntryAttributes{WfsUserId, WfsGroupId, OwnerOnly, NoFlags});
 }

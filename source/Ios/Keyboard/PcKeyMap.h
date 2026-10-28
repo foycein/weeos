@@ -12,11 +12,11 @@ namespace Ios
 // A virtual key code follows the layout that the user chose in Windows. The code of a USB key follows the place of the key.
 // The two agree on a keyboard with the US layout. On another layout a key can get the code of another place.
 
-// The code of a key that is not a modifier. The keypad Enter key cannot be told from the Enter key by its virtual key code.
+// The code of a key that is not a modifier. The window gives the Enter key of the keypad a code of its own (Platform::KeyCode::KeypadEnter).
 std::optional<std::uint8_t> UsbKeyOfVirtualKey(int virtualKeyCode);
 
 // The bit of the modifier byte (UsbModifier) for a control, shift, alt or windows key.
-// The window reports the control, shift and alt keys without a side. They count as the left keys.
+// The window reports the side of the control, shift and alt keys. A code without a side counts as the left key.
 std::optional<std::uint8_t> UsbModifierOfVirtualKey(int virtualKeyCode);
 
 }

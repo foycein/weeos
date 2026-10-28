@@ -1,5 +1,6 @@
 #include "Platform/Window.h"
 
+#include "Platform/KeyCodes.h"
 #include "Platform/PlatformError.h"
 
 #include <cstdint>
@@ -21,6 +22,11 @@ constexpr WPARAM SystemCommandMask = 0xFFF0;
 
 // A key message has this bit set when the key was already down, which means the key is repeating.
 constexpr LPARAM KeyWasDownBit = 1 << 30;
+
+// A key message holds the scan code of the key in its bits 16 to 23, and bit 24 says that the key is an extended key.
+constexpr int ScanCodeShift = 16;
+constexpr LPARAM ScanCodeMask = 0xFF;
+constexpr LPARAM ExtendedKeyBit = 1 << 24;
 
 // Takes the events of a window that has no listener.
 class IgnoringListener : public WindowListener
@@ -261,7 +267,9 @@ void Window::HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPres
     if (isRepeating)
         return;
 
-    listener->OnKey(static_cast<int>(virtualKeyCode), isPressed);
+    unsigned int scanCode = static_cast<unsigned int>((keyInformation >> ScanCodeShift) & ScanCodeMask);
+    bool isExtendedKey = (keyInformation & ExtendedKeyBit) != 0;
+    listener->OnKey(ReportedKeyCode(static_cast<int>(virtualKeyCode), scanCode, isExtendedKey), isPressed);
 }
 
 void Window::EnterFullscreen()

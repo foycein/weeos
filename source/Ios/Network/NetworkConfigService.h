@@ -4,6 +4,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Network/MacAddress.h"
 #include "Ios/Network/NetworkConfiguration.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
 
 #include <cstdint>
@@ -50,15 +51,18 @@ enum class NetworkInterface
 // made. A program that chooses a wireless connection is told to wait for ever (Busy), a program that chooses a wired connection
 // gets a wired interface without a link, and with no connection that can be used the module says so (NoInterface).
 //
+// The module of IOS9 is older: it keeps the file in /shared2/sys/net/config.dat and does not check the proxy settings.
+//
 // All calls are thread safe.
 class NetworkConfigService
 {
 public:
     // Reads the stored configuration, the one the module works with, when it starts.
-    NetworkConfigService(FileSystemService& fileSystem, const MacAddress& wirelessMacAddress);
+    // Without a profile this is the module of IOS80.
+    NetworkConfigService(FileSystemService& fileSystem, const MacAddress& wirelessMacAddress, const IosProfile& iosProfile = SystemMenuProfile());
 
-    // The configuration file. An older console kept it in /shared2/sys/net/config.dat: that file is moved to the new place first.
-    // NotFound when there is no file, StorageFailure when it is not a configuration file.
+    // The configuration file. An older console kept it in /shared2/sys/net/config.dat: that file is moved to the new place first
+    // (not by IOS9, which keeps it there). NotFound when there is no file, StorageFailure when it is not a configuration file.
     Result<NetworkConfiguration> ReadConfiguration();
 
     // Checks the configuration and stores it in the file, which is made when it is missing, with its folders.
@@ -87,9 +91,12 @@ public:
 
 private:
     NetworkInterface ChooseInterface() const;
+    NandPath FindConfigurationFile();
+    std::vector<std::string> FindProblems(const NetworkConfiguration& configuration) const;
 
     FileSystemService& fileSystem;
     MacAddress wirelessMacAddress;
+    const IosProfile profile;
 
     mutable std::mutex mutex;
     NetworkConfiguration currentConfiguration;

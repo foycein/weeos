@@ -1,0 +1,40 @@
+#pragma once
+
+#include "Layout/AnimationPlayer.h"
+
+#include "Formats/Layout.h"
+#include "Formats/LayoutAnimation.h"
+
+#include <optional>
+#include <vector>
+
+namespace SystemMenu
+{
+
+// One animation of a menu layout, played the way the menu plays it: it starts on request, and every step moves it one frame on.
+// Unlike the layout library's player, it is not playing any more as soon as it has reached its last frame,
+// which is when the menu asks whether it is still playing.
+class MenuAnimation
+{
+public:
+    // The animation is bound to the given panes and the panes below them. The layout and the panes must outlive this object.
+    MenuAnimation(Layout::LiveLayout& layout, Formats::LayoutAnimation animation, Layout::PlaybackMode mode, std::vector<Formats::Pane*> panes);
+
+    // Plays from the first frame. An animation that plays already starts again.
+    void Start();
+
+    bool IsPlaying() const;
+
+    // One frame further, if the animation is playing.
+    void Step();
+
+private:
+    Layout::LiveLayout& layout;
+    Formats::LayoutAnimation animation;
+    Layout::PlaybackMode mode;
+    std::vector<Formats::Pane*> panes;
+    std::optional<Layout::AnimationPlayer> player;
+    bool isPlaying = false;
+};
+
+}

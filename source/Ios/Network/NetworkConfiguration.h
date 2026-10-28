@@ -121,7 +121,8 @@ struct NetworkConfiguration
 
     SelectedMedia selectedMedia = SelectedMedia::None;
 
-    // The three lowest bits say what WiiConnect24 may do. The others must be zero.
+    // The permission of WiiConnect24 that the module keeps in the file. WeeOS has no WiiConnect24, so nothing sets it; it stays in
+    // the configuration so that the file comes back byte for byte. The module wants all bits above the three lowest to be zero.
     std::uint8_t wiiConnect24Permission = 0;
 
     std::array<ConnectionProfile, ConnectionProfileCount> profiles;
@@ -137,7 +138,8 @@ Result<NetworkConfiguration> DecodeNetworkConfiguration(Formats::ByteView fileBy
 Formats::Bytes EncodeNetworkConfiguration(const NetworkConfiguration& configuration);
 
 // What is wrong with the configuration, one sentence for each problem, by the rules of the network configuration module of IOS80.
-// An empty list means that the module accepts the configuration.
-std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& configuration);
+// An empty list means that the module accepts the configuration. The module of IOS9 does not check the proxy settings:
+// it takes a proxy with a server name that is not valid and a port of 0 (checksProxies is false).
+std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& configuration, bool checksProxies = true);
 
 }

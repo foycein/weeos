@@ -12,11 +12,14 @@ namespace Input
 // The console has four remote channels, numbered 0 to 3. Remote 1 of the menu is channel 0.
 constexpr int RemoteChannelCount = 4;
 
-// A remote counts its battery in bars, like the HOME menu shows it.
+// A remote counts its battery in levels from 0 (empty) to 4 (full). The HOME menu shows one bar for each level
+// and warns below level 2 (OpenPoints/Input.md, INP-01).
 constexpr int MaximumBatteryLevel = 4;
 
-// The distance between the remote and the sensor bar. 1 is a usual distance, smaller is closer and larger is farther away.
-constexpr float UsualDistanceFactor = 1.0f;
+// The distance between the remote and the sensor bar, in meters. The pointer library works it out from the two dots of the sensor bar
+// as 0.2 / tan(21 degrees) / the separation of the dots in the picture of the camera (OpenPoints/Input.md, INP-06). The menu never asks for it.
+// Assumed: what a remote without a sensor bar reports. A couch is about 2 meters from the television.
+constexpr float UsualDistanceInMeters = 2.0f;
 
 enum class DeviceKind : std::uint8_t
 {
@@ -68,10 +71,11 @@ struct RemoteState
     Formats::Vector2 pointer = {0, 0};
 
     // How far the remote is turned around the direction it points in, in degrees. It is 0 while the remote is level.
-    // The turn is counterclockwise as seen on the screen, like the rotation of a pane, so the hand can use it as it is.
+    // This is the turn that the menu gives to the hand (the panes N_Rot and N_SRot of the cursor layout), counterclockwise
+    // as seen on the screen like the rotation of a pane, so the hand can use it as it is.
     float rollDegrees = 0;
 
-    float distanceFactor = UsualDistanceFactor;
+    float distanceInMeters = UsualDistanceInMeters;
     int batteryLevel = MaximumBatteryLevel;
 
     // Only these two are filled, and only when the device kind says that the extension is there.

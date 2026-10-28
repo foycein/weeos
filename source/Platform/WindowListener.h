@@ -24,7 +24,8 @@ public:
 
     virtual void OnMouseButton(MouseButton button, bool isPressed) = 0;
 
-    // A key went down or up. The code is the Windows virtual key code. Holding a key down gives one event, not many.
+    // A key went down or up. The code is the Windows virtual key code, with the side of the shift, control and alt keys and a code
+    // of its own for the Enter key of the keypad (KeyCodes.h). Holding a key down gives one event, not many.
     virtual void OnKey(int virtualKeyCode, bool isPressed) = 0;
 
     // The window lost the keyboard focus. A key that was held down is not reported as released after this.
