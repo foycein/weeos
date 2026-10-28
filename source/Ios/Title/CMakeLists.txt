@@ -4,6 +4,7 @@ target_sources(Ios PRIVATE
     SharedContentMap.cpp
     StoredFiles.cpp
     TicketView.cpp
+    TicketViewBytes.cpp
     TitleId.cpp
     TitleMetadataView.cpp
     TitlePaths.cpp

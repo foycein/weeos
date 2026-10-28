@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Ios/Clock.h"
 #include "Ios/DiscDrive/DiscDriveService.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Identity/ConsoleIdentityService.h"
@@ -16,7 +15,6 @@
 #include "Ios/Sockets/SecureSocketService.h"
 #include "Ios/Sockets/SocketService.h"
 #include "Ios/Title/TitleService.h"
-#include "Ios/WiiConnect24/WiiConnect24Service.h"
 
 #include <memory>
 
@@ -54,7 +52,6 @@ public:
     NetworkConfigService& GetNetworkConfig();
     SocketService& GetSockets();
     SecureSocketService& GetSecureSockets();
-    WiiConnect24Service& GetWiiConnect24();
     KeyboardService& GetKeyboard();
     RemoteService& GetRemote();
     PowerService& GetPower();
@@ -70,7 +67,6 @@ private:
 
     bool isRunning = false;
     IosProfile profile = SystemMenuProfile();
-    SystemClock clock;
     std::unique_ptr<ConsoleIdentityService> identity;
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<TitleService> titles;
@@ -80,7 +76,6 @@ private:
     std::unique_ptr<WirelessService> wireless;
     std::unique_ptr<NetworkConfigService> networkConfig;
     std::unique_ptr<SocketService> sockets;
-    std::unique_ptr<WiiConnect24Service> wiiConnect24;
     std::unique_ptr<PowerService> power;
     std::unique_ptr<KeyboardService> keyboard;
     std::unique_ptr<SecureSocketService> secureSockets;

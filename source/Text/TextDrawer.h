@@ -32,6 +32,7 @@ public:
 private:
     Graphics::GraphicsDevice& device;
     GlyphSheetTextures sheets;
+    Formats::TextureFormat sheetFormat;
 };
 
 }

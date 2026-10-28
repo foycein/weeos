@@ -121,7 +121,8 @@ struct NetworkConfiguration
 
     SelectedMedia selectedMedia = SelectedMedia::None;
 
-    // The three lowest bits say what WiiConnect24 may do. The others must be zero.
+    // The permission of WiiConnect24 that the module keeps in the file. WeeOS has no WiiConnect24, so nothing sets it; it stays in
+    // the configuration so that the file comes back byte for byte. The module wants all bits above the three lowest to be zero.
     std::uint8_t wiiConnect24Permission = 0;
 
     std::array<ConnectionProfile, ConnectionProfileCount> profiles;
