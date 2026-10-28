@@ -168,7 +168,8 @@ private:
         const std::string& animationPrefix);
     void EnableButtonsThatCanBePressed();
     const KeyRecord& RecordOf(KeyId key) const;
-    std::size_t SlotOfKeyAnimation(const KeyRecord& record, KeyAnimation animation);
+    void StartPictureAnimation(MenuLayout& layout, const std::string& picturePane, const std::string& animationName);
+    void ShowScrollArrow(const std::string& picturePane, bool shouldBeShown, bool& isShown);
 
     int LineOfCharacter(const Text::LaidOutText& text, std::size_t characterNumber) const;
     void ScrollToShowCursor(const Text::LaidOutText& text, std::size_t cursor);
@@ -194,7 +195,7 @@ private:
 
     std::vector<KeyRecord> records;
     std::map<std::string, std::size_t> recordOfButtonPane;
-    std::map<std::pair<std::string, KeyAnimation>, std::size_t> slotOfAnimation;
+    std::map<std::pair<std::string, std::string>, std::size_t> slotOfAnimation;
 
     // The animation that plays on a picture now. A new animation of the picture stops it.
     std::map<std::string, std::size_t> playingSlotOfPicture;
@@ -212,6 +213,8 @@ private:
     // The lines of the text field: how many there are, and the first one that can be seen.
     int lineCount = 0;
     int firstVisibleLine = 0;
+    bool isScrollUpShown = false;
+    bool isScrollDownShown = false;
     std::u16string shownText;
     std::size_t shownCursor = 0;
 

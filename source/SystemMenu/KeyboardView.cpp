@@ -211,6 +211,7 @@ void KeyboardView::EnableButtonsThatCanBePressed()
             break;
         case KeyKind::Cancel:
         case KeyKind::Confirm:
+            canBePressed = canBePressed && !isSymbolWindowOpen;
             break;
         case KeyKind::Symbol:
             canBePressed = canBePressed && isSymbolWindowOpen && record.id.number < symbolCountOfPage;
@@ -277,26 +278,25 @@ void KeyboardView::PlayKeyAnimation(KeyId key, KeyAnimation animation)
     if (record.animationPrefix.empty())
         return;
 
-    std::size_t slot = SlotOfKeyAnimation(record, animation);
-    auto playing = playingSlotOfPicture.find(record.picturePane);
-    if (playing != playingSlotOfPicture.end() && playing->second != slot)
-        record.layout->StopAnimation(playing->second);
-
-    playingSlotOfPicture[record.picturePane] = slot;
-    record.layout->StartAnimation(slot);
+    StartPictureAnimation(*record.layout, record.picturePane, record.animationPrefix + AnimationEnding(animation));
 }
 
-std::size_t KeyboardView::SlotOfKeyAnimation(const KeyRecord& record, KeyAnimation animation)
+// An animation file moves a whole set of panes. It is bound to the one picture, and what it does to the others is left out.
+// A picture plays one animation at a time: the one that played before stops where it is.
+void KeyboardView::StartPictureAnimation(MenuLayout& layout, const std::string& picturePane, const std::string& animationName)
 {
-    std::pair<std::string, KeyAnimation> identity = {record.picturePane, animation};
+    std::pair<std::string, std::string> identity = {picturePane, animationName};
     auto known = slotOfAnimation.find(identity);
-    if (known != slotOfAnimation.end())
-        return known->second;
+    if (known == slotOfAnimation.end())
+        known = slotOfAnimation.insert({identity, layout.BindAnimationToPane(animationName, picturePane, Layout::PlaybackMode::PlayOnce)}).first;
 
-    std::string animationName = record.animationPrefix + AnimationEnding(animation);
-    std::size_t slot = record.layout->BindAnimationToPane(animationName, record.picturePane, Layout::PlaybackMode::PlayOnce);
-    slotOfAnimation[identity] = slot;
-    return slot;
+    std::size_t slot = known->second;
+    auto playing = playingSlotOfPicture.find(picturePane);
+    if (playing != playingSlotOfPicture.end() && playing->second != slot)
+        layout.StopAnimation(playing->second);
+
+    playingSlotOfPicture[picturePane] = slot;
+    layout.StartAnimation(slot);
 }
 
 std::vector<KeyEvent> KeyboardView::Poll(const InputManager& input)
@@ -348,9 +348,19 @@ void KeyboardView::ShowField(const FieldLook& look)
     ShowVisibleLines(look, fullText);
     isCaretShown = look.isCaretShown;
 
-    field->PaneNamed("P_txtScrll_UP").alpha = firstVisibleLine > 0 ? FullAlpha : 0;
-    field->PaneNamed("P_txtScrll_DOWN").alpha = firstVisibleLine + VisibleLineCount < lineCount ? FullAlpha : 0;
+    ShowScrollArrow("P_txtScrll_UP", firstVisibleLine > 0, isScrollUpShown);
+    ShowScrollArrow("P_txtScrll_DOWN", firstVisibleLine + VisibleLineCount < lineCount, isScrollDownShown);
     EnableButtonsThatCanBePressed();
+}
+
+// The arrow next to the text field fades in when there are lines to scroll to, and fades out when there are none.
+void KeyboardView::ShowScrollArrow(const std::string& picturePane, bool shouldBeShown, bool& isShown)
+{
+    if (shouldBeShown == isShown)
+        return;
+
+    isShown = shouldBeShown;
+    StartPictureAnimation(*field, picturePane, shouldBeShown ? "fs_VK_textBox_a_Fade_IN" : "fs_VK_textBox_a_Fade_OUT");
 }
 
 void KeyboardView::ScrollField(int lineDistance)
