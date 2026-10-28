@@ -54,7 +54,7 @@ public:
 
     Bytes ReadBoot1Block();
 
-    // The data of blocks 1 to 7 one after the other.
+    // The data of blocks 1 to 7 one after the other. boot2 is stored twice in them: docs/research/Boot2.md says where.
     Bytes ReadBoot2Blocks();
 
     // The last 1024 bytes of the file.

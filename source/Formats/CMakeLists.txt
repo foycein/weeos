@@ -1,6 +1,7 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    Boot2Image.cpp
     BootMiiKeyBlock.cpp
     ByteReader.cpp
     Certificate.cpp
