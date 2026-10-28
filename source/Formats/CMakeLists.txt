@@ -1,6 +1,7 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    Boot2Image.cpp
     ByteReader.cpp
     Certificate.cpp
     DolExecutable.cpp
