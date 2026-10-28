@@ -105,6 +105,15 @@ Result<NandPath> NandPath::Child(std::string_view name) const
     return child;
 }
 
+NandPath NandPath::WithNamesCutAt(std::size_t characterCount) const
+{
+    NandPath cutPath;
+    for (const std::string& name : names)
+        cutPath.names.push_back(name.substr(0, characterCount));
+
+    return cutPath;
+}
+
 bool NandPath::IsInside(const NandPath& directory) const
 {
     if (names.size() < directory.names.size())

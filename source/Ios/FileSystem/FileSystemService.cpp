@@ -51,22 +51,23 @@ Result<const EntryRecord*> FindParentWithRights(const FileSystemState& state, co
     return parent;
 }
 
-Result<void> CreateNewEntry(FileSystemState& state, const NandPath& path, EntryKind kind,
+Result<void> CreateNewEntry(FileSystemState& state, const NandPath& requestedPath, EntryKind kind,
     const EntryPermissions& permissions, std::uint8_t flags, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
-    if (path.IsRoot())
+    if (requestedPath.IsRoot())
         return IosError::InvalidArgument;
 
-    bool isTooDeep = kind == EntryKind::Directory && path.Depth() > MaximumDirectoryDepth;
+    bool isTooDeep = kind == EntryKind::Directory && requestedPath.Depth() > MaximumDirectoryDepth;
     if (isTooDeep)
         return IosError::PathTooDeep;
 
-    if (IsNameTooLong(path))
+    if (IsNameTooLong(requestedPath))
         return IosError::InvalidArgument;
 
+    NandPath path = state.LookUpPathOf(requestedPath);
     Result<const EntryRecord*> parent = FindParentWithRights(state, path, caller, AccessRights::Write);
     if (parent.Failed())
         return parent.Error();
@@ -84,14 +85,15 @@ Result<void> CreateNewEntry(FileSystemState& state, const NandPath& path, EntryK
     return state.storage.Create(path, kind, attributes);
 }
 
-Result<void> RemoveEntry(FileSystemState& state, const NandPath& path, const Caller& caller)
+Result<void> RemoveEntry(FileSystemState& state, const NandPath& requestedPath, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
-    if (path.IsRoot() || IsNameTooLong(path))
+    if (requestedPath.IsRoot() || IsNameTooLong(requestedPath))
         return IosError::InvalidArgument;
 
+    NandPath path = state.LookUpPathOf(requestedPath);
     Result<const EntryRecord*> parent = FindParentWithRights(state, path, caller, AccessRights::Write);
     if (parent.Failed())
         return parent.Error();
@@ -140,17 +142,19 @@ Result<void> RequireWritableDirectories(const FileSystemState& state, const Nand
     return RequireRights(*newParent.Value(), caller, AccessRights::Write);
 }
 
-Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandPath& to, const Caller& caller)
+Result<void> MoveEntry(FileSystemState& state, const NandPath& requestedFrom, const NandPath& requestedTo, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
-    if (from.IsRoot() || to.IsRoot())
+    if (requestedFrom.IsRoot() || requestedTo.IsRoot())
         return IosError::InvalidArgument;
 
-    if (IsNameTooLong(from) || IsNameTooLong(to))
+    if (IsNameTooLong(requestedFrom) || IsNameTooLong(requestedTo))
         return IosError::InvalidArgument;
 
+    NandPath from = state.LookUpPathOf(requestedFrom);
+    NandPath to = state.LookUpPathOf(requestedTo);
     Result<void> directoriesAllowIt = RequireWritableDirectories(state, from, to, caller);
     if (directoriesAllowIt.Failed())
         return directoriesAllowIt;
@@ -177,11 +181,12 @@ Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandP
     return state.storage.Move(from, to);
 }
 
-Result<void> ChangeAttributes(FileSystemState& state, const NandPath& path, const EntryAttributes& attributes, const Caller& caller)
+Result<void> ChangeAttributes(FileSystemState& state, const NandPath& requestedPath, const EntryAttributes& attributes, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
+    NandPath path = state.LookUpPathOf(requestedPath);
     Result<const EntryRecord*> entry = FindEntry(state, path);
     if (entry.Failed())
         return entry.Error();
@@ -203,18 +208,19 @@ Result<void> ChangeAttributes(FileSystemState& state, const NandPath& path, cons
     return state.storage.SetAttributes(path, attributes);
 }
 
-Result<EntryAttributes> ReadAttributes(const FileSystemState& state, const NandPath& path, const Caller& caller)
+Result<EntryAttributes> ReadAttributes(const FileSystemState& state, const NandPath& requestedPath, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
     // Nobody is asked about the root.
-    if (path.IsRoot())
-        return state.storage.Find(path)->attributes;
+    if (requestedPath.IsRoot())
+        return state.storage.Find(requestedPath)->attributes;
 
-    if (IsNameTooLong(path))
+    if (IsNameTooLong(requestedPath))
         return IosError::InvalidArgument;
 
+    NandPath path = state.LookUpPathOf(requestedPath);
     Result<const EntryRecord*> parent = FindParentWithRights(state, path, caller, AccessRights::Read);
     if (parent.Failed())
         return parent.Error();
@@ -226,11 +232,12 @@ Result<EntryAttributes> ReadAttributes(const FileSystemState& state, const NandP
     return entry.Value()->attributes;
 }
 
-Result<std::vector<std::string>> ReadDirectoryNames(const FileSystemState& state, const NandPath& directory, const Caller& caller)
+Result<std::vector<std::string>> ReadDirectoryNames(const FileSystemState& state, const NandPath& requestedDirectory, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
+    NandPath directory = state.LookUpPathOf(requestedDirectory);
     Result<const EntryRecord*> entry = FindEntry(state, directory);
     if (entry.Failed())
         return entry.Error();
@@ -249,11 +256,12 @@ Result<std::vector<std::string>> ReadDirectoryNames(const FileSystemState& state
     return names;
 }
 
-Result<DirectoryUsage> MeasureDirectory(const FileSystemState& state, const NandPath& directory)
+Result<DirectoryUsage> MeasureDirectory(const FileSystemState& state, const NandPath& requestedDirectory)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
 
+    NandPath directory = state.LookUpPathOf(requestedDirectory);
     Result<const EntryRecord*> entry = FindEntry(state, directory);
     if (entry.Failed())
         return entry.Error();
@@ -276,7 +284,12 @@ std::ios::openmode HostOpenMode(OpenMode mode)
 }
 
 FileSystemService::FileSystemService(NandStorage storage, const VolumeCapacity& capacity)
-    : state(std::make_shared<FileSystemState>(std::move(storage), capacity))
+    : FileSystemService(std::move(storage), SystemMenuProfile(), capacity)
+{
+}
+
+FileSystemService::FileSystemService(NandStorage storage, const IosProfile& profile, const VolumeCapacity& capacity)
+    : state(std::make_shared<FileSystemState>(std::move(storage), capacity, profile.fileSystemChecksNameLengthInLookUp))
 {
 }
 
@@ -349,15 +362,16 @@ Result<void> FileSystemService::RenameEntry(const NandPath& from, const NandPath
     return MoveEntry(*state, from, to, caller);
 }
 
-Result<OpenFile> FileSystemService::Open(const NandPath& path, OpenMode mode, const Caller& caller)
+Result<OpenFile> FileSystemService::Open(const NandPath& requestedPath, OpenMode mode, const Caller& caller)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
     if (state->isShutDown)
         return IosError::ShutDown;
 
-    if (path.IsRoot())
+    if (requestedPath.IsRoot())
         return IosError::InvalidArgument;
 
+    NandPath path = state->LookUpPathOf(requestedPath);
     Result<const EntryRecord*> entry = FindEntry(*state, path);
     if (entry.Failed())
         return entry.Error();
