@@ -1,4 +1,5 @@
 add_library(Settings STATIC
+    ConsoleClock.cpp
     SystemSettings.cpp
 )
 
