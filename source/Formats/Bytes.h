@@ -11,4 +11,7 @@ using Byte = std::uint8_t;
 using Bytes = std::vector<Byte>;
 using ByteView = std::span<const Byte>;
 
+constexpr int BitsPerByte = 8;
+constexpr unsigned int ByteMask = 0xFF;
+
 }

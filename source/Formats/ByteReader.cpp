@@ -117,6 +117,11 @@ std::string ByteReader::ReadTextUntilZero()
     }
 }
 
+void ByteReader::Fail(std::string_view problem) const
+{
+    throw FormatError(std::format("{}: {} (at offset {:#x})", description, problem, position));
+}
+
 void ByteReader::RequireBytes(std::size_t count) const
 {
     if (count <= RemainingSize())

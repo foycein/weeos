@@ -2,6 +2,8 @@
 
 #include "Formats/Bytes.h"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -33,11 +35,24 @@ public:
     float ReadFloat();
     ByteView ReadBytes(std::size_t count);
 
+    template <std::size_t Size>
+    std::array<Byte, Size> ReadByteArray()
+    {
+        ByteView readBytes = ReadBytes(Size);
+
+        std::array<Byte, Size> byteArray;
+        std::copy(readBytes.begin(), readBytes.end(), byteArray.begin());
+        return byteArray;
+    }
+
     // Reads a text field of a fixed size. The text ends at the first zero byte.
     std::string ReadText(std::size_t fieldSize);
 
     // Reads text up to and including the next zero byte.
     std::string ReadTextUntilZero();
+
+    // Throws a FormatError that names the data being read and the current offset.
+    [[noreturn]] void Fail(std::string_view problem) const;
 
 private:
     void RequireBytes(std::size_t count) const;

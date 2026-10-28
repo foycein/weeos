@@ -1,0 +1,14 @@
+#pragma once
+
+#include "Formats/Aes128.h"
+
+namespace Formats
+{
+
+// The common key of retail Wii consoles. Tickets keep their title key encrypted with it.
+inline constexpr AesKey WiiCommonKey = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+}
