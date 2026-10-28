@@ -15,6 +15,7 @@ add_library(Sound STATIC
     SoundFileHeader.cpp
     SoundMode.cpp
     SoundSystem.cpp
+    SpeakerSounds.cpp
     StereoPlacement.cpp
     Voice.cpp
     VoicePool.cpp

@@ -208,7 +208,8 @@ Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, Audi
     stream.channelCount = mixFormat->nChannels;
     stream.periodFrames = ChoosePeriod(*stream.client.Get(), *mixFormat, latency);
 
-    HRESULT result = stream.client->InitializeSharedAudioStream(AUDCLNT_STREAMFLAGS_EVENTCALLBACK, stream.periodFrames, mixFormat.get(), nullptr);
+    HRESULT result =
+        stream.client->InitializeSharedAudioStream(AUDCLNT_STREAMFLAGS_EVENTCALLBACK, stream.periodFrames, mixFormat.get(), nullptr);
     ThrowIfFailed(result, "starting the shared stream");
     ThrowIfFailed(stream.client->GetBufferSize(&stream.bufferFrameCount), "asking for the buffer size");
     ThrowIfFailed(stream.client->SetEventHandle(bufferReadyEvent), "giving the event to the device");
@@ -255,7 +256,8 @@ struct AudioOutput::Implementation
         if (bufferReadyEvent == nullptr || wakeEvent == nullptr)
             throw AudioOutputError("Audio output: the events for the device could not be created");
 
-        ThrowIfFailed(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator)), "creating the device enumerator");
+        HRESULT enumeratorResult = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
+        ThrowIfFailed(enumeratorResult, "creating the device enumerator");
         notifications.Attach(new DeviceNotifications(defaultDeviceChanged, wakeEvent));
         ThrowIfFailed(enumerator->RegisterEndpointNotificationCallback(notifications.Get()), "asking Windows for news about the devices");
 
@@ -519,7 +521,8 @@ struct AudioOutput::Implementation
     ComPtr<IMMDeviceEnumerator> enumerator;
     ComPtr<DeviceNotifications> notifications;
 
-    // The stream is replaced only by the thread that plays, or while nobody plays. The mutex is for those who ask for the volume of the session.
+    // The stream is replaced only by the thread that plays, or while nobody plays.
+    // The mutex is for those who ask for the volume of the session.
     mutable std::mutex streamMutex;
     Stream stream;
     std::vector<float> stereoFrames;
