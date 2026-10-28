@@ -16,4 +16,6 @@ add_library(SystemMenu STATIC
     ScreenManager.cpp
 )
 
+add_subdirectory(WiiMenu)
+
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)
