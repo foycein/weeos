@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 namespace Sound
 {
@@ -15,7 +16,8 @@ enum class SoundMode
     Surround = 2,
 };
 
-// The mode for the number of the setting. A number that is no mode gives stereo, which is what the original does.
-SoundMode SoundModeFromSetting(std::uint8_t setting);
+// The mode for the number of the setting. A setting that is missing, or a number that is no mode, gives stereo, which is what the
+// original does (0x8156a248).
+SoundMode SoundModeFromSetting(std::optional<std::uint64_t> setting);
 
 }
