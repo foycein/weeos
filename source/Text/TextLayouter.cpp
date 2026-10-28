@@ -58,6 +58,14 @@ struct Line
     float width;
 };
 
+// A line and the place in the text where the next line starts.
+struct TakenLine
+{
+    Line line;
+    std::size_t nextLineStart;
+    bool isLastLine;
+};
+
 // One run of the layout: it splits the text into lines, places the block of lines in the area and makes a quad for every character.
 class LayoutJob
 {
@@ -93,20 +101,22 @@ public:
     }
 
 private:
-    // How far the pen moves after the character.
-    float AdvanceOf(char16_t character) const
+    // A text that ends with a line feed has an empty last line.
+    std::vector<Line> SplitIntoLines(std::u16string_view text) const
     {
-        std::uint16_t glyphIndex = glyphLookup.FindGlyphIndex(character);
-        return font.WidthsOf(glyphIndex).characterWidth * scaleX;
-    }
+        std::vector<Line> lines;
+        std::size_t lineStart = 0;
 
-    // A line and the place in the text where the next line starts.
-    struct TakenLine
-    {
-        Line line;
-        std::size_t nextLineStart;
-        bool isLastLine;
-    };
+        while (true)
+        {
+            TakenLine taken = TakeLine(text, lineStart);
+            lines.push_back(taken.line);
+            if (taken.isLastLine)
+                return lines;
+
+            lineStart = taken.nextLineStart;
+        }
+    }
 
     // Reads one line. It ends at a line feed, or before the character that would reach beyond the right edge of the area.
     // A line always keeps its first character, even when that one alone is wider than the area.
@@ -139,24 +149,8 @@ private:
         return {{text.substr(lineStart), lineWidth}, text.size(), true};
     }
 
-    // A text that ends with a line feed has an empty last line.
-    std::vector<Line> SplitIntoLines(std::u16string_view text) const
-    {
-        std::vector<Line> lines;
-        std::size_t lineStart = 0;
-
-        while (true)
-        {
-            TakenLine taken = TakeLine(text, lineStart);
-            lines.push_back(taken.line);
-            if (taken.isLastLine)
-                return lines;
-
-            lineStart = taken.nextLineStart;
-        }
-    }
-
-    // The menu measures a text with line breaks as one line height for each break plus the height of the font for the last line.
+    // A text without line breaks is one line high. The menu measures a text with line breaks as one line height for each
+    // break plus the height of the font for the last line.
     TextArea PlaceBlock(const std::vector<Line>& lines) const
     {
         float widestLineWidth = 0;
@@ -241,6 +235,13 @@ private:
         coordinates[RightBottomCorner] = {textureRight, textureBottom};
         coordinates[LeftBottomCorner] = {textureLeft, textureBottom};
         return glyph;
+    }
+
+    // How far the pen moves after the character.
+    float AdvanceOf(char16_t character) const
+    {
+        std::uint16_t glyphIndex = glyphLookup.FindGlyphIndex(character);
+        return font.WidthsOf(glyphIndex).characterWidth * scaleX;
     }
 
     const Formats::Font& font;
