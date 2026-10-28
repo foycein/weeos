@@ -33,6 +33,16 @@ EventQueue<PowerRequest>& PowerService::Requests()
     return requests;
 }
 
+void PowerService::SetSlotLightMode(SlotLightMode mode)
+{
+    slotLightMode = mode;
+}
+
+SlotLightMode PowerService::GetSlotLightMode() const
+{
+    return slotLightMode;
+}
+
 void PowerService::Close()
 {
     events.Close();

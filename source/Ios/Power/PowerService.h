@@ -2,6 +2,7 @@
 
 #include "Ios/EventQueue.h"
 
+#include <atomic>
 #include <cstdint>
 #include <optional>
 #include <stop_token>
@@ -39,7 +40,18 @@ enum class PowerRequest
     Shutdown,
 };
 
-// The power and reset buttons and the requests to reset or shut down, in place of /dev/stm/eventhook and /dev/stm/immediate.
+// Whether the slot light may shine. The System Menu sets it from the saved setting of the standby light.
+enum class SlotLightMode : std::uint32_t
+{
+    // The light stays dark.
+    Off = 0,
+
+    // The system may light the slot. The original treats every number but 0 like this.
+    On = 1,
+};
+
+// The power and reset buttons, the requests to reset or shut down and the mode of the slot light,
+// in place of /dev/stm/eventhook and /dev/stm/immediate.
 //
 // The platform reports the buttons (the keys of the window stand for them). The menu and the channels wait for them, and ask the platform
 // to reset or shut down. All of it is thread safe.
@@ -66,12 +78,17 @@ public:
     // The requests that the programs made, in order. The platform waits here and carries them out.
     EventQueue<PowerRequest>& Requests();
 
+    // The light starts off, as in the original. A platform that shows the light asks for the mode.
+    void SetSlotLightMode(SlotLightMode mode);
+    SlotLightMode GetSlotLightMode() const;
+
     // Ends the service: whoever waits for an event or a request stops waiting, and nothing new is accepted.
     void Close();
 
 private:
     EventQueue<PowerEvent> events;
     EventQueue<PowerRequest> requests;
+    std::atomic<SlotLightMode> slotLightMode = SlotLightMode::Off;
 };
 
 }
