@@ -68,7 +68,8 @@ public:
     Result<Formats::Bytes> Read(std::size_t count);
 
     // Writes the bytes and gives back how many were written. AccessDenied when the file was not opened for writing.
-    // NoFreeClusters when the NAND has no room for the new data. Nothing is written then.
+    // NoFreeClusters when the NAND has no room for the new data, or no free cluster at all: as on the console, writing
+    // over old data needs one too. Nothing is written then.
     Result<std::size_t> Write(Formats::ByteView data);
 
     // Moves the position and gives back the new one. The offset may be negative.

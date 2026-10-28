@@ -4,58 +4,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 
 namespace Graphics
 {
 
-namespace
-{
-
-struct ShapeProportions
-{
-    std::uint64_t width;
-    std::uint64_t height;
-};
-
-ShapeProportions ProportionsOf(ScreenShape screenShape)
-{
-    if (screenShape == ScreenShape::FourByThree)
-        return {4, 3};
-
-    return {16, 9};
-}
-
-}
-
-PixelRectangle FitPicture(Platform::WindowSize windowSize, ScreenShape screenShape)
-{
-    ShapeProportions shape = ProportionsOf(screenShape);
-    std::uint64_t windowWidth = windowSize.width;
-    std::uint64_t windowHeight = windowSize.height;
-
-    double pictureWidth = 0;
-    double pictureHeight = 0;
-
-    bool windowIsTooWide = windowWidth * shape.height > windowHeight * shape.width;
-    if (windowIsTooWide)
-    {
-        pictureHeight = static_cast<double>(windowHeight);
-        pictureWidth = std::round(pictureHeight * shape.width / shape.height);
-    }
-    else
-    {
-        pictureWidth = static_cast<double>(windowWidth);
-        pictureHeight = std::round(pictureWidth * shape.height / shape.width);
-    }
-
-    double left = std::floor((static_cast<double>(windowWidth) - pictureWidth) / 2);
-    double top = std::floor((static_cast<double>(windowHeight) - pictureHeight) / 2);
-
-    return {static_cast<float>(left), static_cast<float>(top), static_cast<float>(pictureWidth), static_cast<float>(pictureHeight)};
-}
-
-CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const PixelRectangle& coveredArea)
+CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const Platform::PixelRectangle& coveredArea)
     : canvas(mappedCanvas)
     , pictureArea(coveredArea)
 {
@@ -68,7 +21,7 @@ const Canvas& CanvasMapping::GetCanvas() const
     return canvas;
 }
 
-const PixelRectangle& CanvasMapping::PictureArea() const
+const Platform::PixelRectangle& CanvasMapping::PictureArea() const
 {
     return pictureArea;
 }
@@ -89,7 +42,7 @@ Formats::Vector2 CanvasMapping::PixelToCanvas(Formats::Vector2 pixel) const
     return {shareFromLeft * canvas.width - canvas.width / 2, canvas.height / 2 - shareFromTop * canvas.height};
 }
 
-PixelRectangle CanvasMapping::ScissorToPixels(const ScissorRectangle& scissor) const
+Platform::PixelRectangle CanvasMapping::ScissorToPixels(const ScissorRectangle& scissor) const
 {
     Formats::Vector2 topLeft = CanvasToPixel({scissor.left, scissor.top});
     Formats::Vector2 bottomRight = CanvasToPixel({scissor.right, scissor.bottom});
