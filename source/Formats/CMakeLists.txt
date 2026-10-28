@@ -1,9 +1,11 @@
 add_library(Formats STATIC
     Aes128.cpp
+    Ash0.cpp
     ByteReader.cpp
     Certificate.cpp
     DolExecutable.cpp
     FileBytes.cpp
+    Lz77.cpp
     Sha1.cpp
     Signature.cpp
     TextureDecoder.cpp
