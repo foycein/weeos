@@ -22,7 +22,12 @@ Graphics::RegisterColor ToRegisterColor(const Formats::Rgba8Color& color)
     return {color.red, color.green, color.blue, color.alpha};
 }
 
-// A glyph with the usual blank and ink colors is drawn in the color of the quad.
+bool HasOnlyIntensity(Formats::TextureFormat format)
+{
+    return format == Formats::TextureFormat::Intensity4 || format == Formats::TextureFormat::Intensity8;
+}
+
+// A sheet that holds only the intensity of the ink, with the usual blank and ink colors, is drawn in the color of the quad.
 // The alpha is the alpha of the sheet times the alpha of the quad.
 std::vector<Graphics::TevStage> MakeStagesForQuadColors()
 {
@@ -31,6 +36,22 @@ std::vector<Graphics::TevStage> MakeStagesForQuadColors()
     stage.usesRasterColor = true;
 
     stage.color.inputD = Graphics::TevColorInput::RasterColor;
+
+    stage.alpha.inputB = Graphics::TevAlphaInput::TextureAlpha;
+    stage.alpha.inputC = Graphics::TevAlphaInput::RasterAlpha;
+    return {stage};
+}
+
+// A sheet with colors of its own (every other format) is multiplied with the quad: the color of the sheet times the color of the quad,
+// and the alpha of the sheet times the alpha of the quad.
+std::vector<Graphics::TevStage> MakeStagesForModulation()
+{
+    Graphics::TevStage stage;
+    stage.textureIndex = 0;
+    stage.usesRasterColor = true;
+
+    stage.color.inputB = Graphics::TevColorInput::TextureColor;
+    stage.color.inputC = Graphics::TevColorInput::RasterColor;
 
     stage.alpha.inputB = Graphics::TevAlphaInput::TextureAlpha;
     stage.alpha.inputC = Graphics::TevAlphaInput::RasterAlpha;
@@ -64,7 +85,7 @@ std::vector<Graphics::TevStage> MakeStagesForMixedColors()
     return {mixStage, tintStage};
 }
 
-Graphics::Material MakeGlyphMaterial(Graphics::TextureHandle sheetTexture, const LaidOutText& text)
+Graphics::Material MakeGlyphMaterial(Graphics::TextureHandle sheetTexture, const LaidOutText& text, Formats::TextureFormat sheetFormat)
 {
     Graphics::MaterialTexture materialTexture;
     materialTexture.texture = sheetTexture;
@@ -76,7 +97,7 @@ Graphics::Material MakeGlyphMaterial(Graphics::TextureHandle sheetTexture, const
     bool usesDefaultColors = IsSameColor(text.blankColor, TransparentBlack) && IsSameColor(text.inkColor, OpaqueWhite);
     if (usesDefaultColors)
     {
-        material.stages = MakeStagesForQuadColors();
+        material.stages = HasOnlyIntensity(sheetFormat) ? MakeStagesForQuadColors() : MakeStagesForModulation();
         return material;
     }
 
@@ -99,6 +120,7 @@ Formats::Vector2 TextTransform::Apply(Formats::Vector2 point) const
 TextDrawer::TextDrawer(Graphics::GraphicsDevice& graphicsDevice, const Formats::Font& font)
     : device(graphicsDevice)
     , sheets(graphicsDevice, font)
+    , sheetFormat(font.sheetFormat)
 {
 }
 
@@ -113,7 +135,7 @@ void TextDrawer::Draw(const LaidOutText& text, const TextTransform& transform)
         if (material == materials.end())
         {
             Graphics::TextureHandle sheetTexture = sheets.TextureOfSheet(glyph.sheetIndex);
-            material = materials.emplace(glyph.sheetIndex, MakeGlyphMaterial(sheetTexture, text)).first;
+            material = materials.emplace(glyph.sheetIndex, MakeGlyphMaterial(sheetTexture, text, sheetFormat)).first;
         }
 
         Graphics::Quad quad = glyph.quad;
