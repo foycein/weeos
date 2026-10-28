@@ -16,6 +16,9 @@ struct Rgba8Pixel
     Byte alpha;
 };
 
+// The same four bytes, where a color is meant and not a pixel of a picture.
+using Rgba8Color = Rgba8Pixel;
+
 // A picture with a red, green, blue and alpha byte for every pixel, row by row from the top left corner.
 struct RgbaImage
 {

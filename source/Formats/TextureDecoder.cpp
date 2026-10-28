@@ -1,5 +1,6 @@
 #include "Formats/TextureDecoder.h"
 
+#include "Formats/BitFields.h"
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 
@@ -31,11 +32,6 @@ constexpr std::size_t Rgba8GreenBlueOffset = 32;
 
 using BlockPixels = std::array<Rgba8Pixel, LargestBlockPixelCount>;
 using Color16Decoder = Rgba8Pixel (*)(std::uint16_t);
-
-unsigned ExtractBits(unsigned value, int lowestBit, int bitCount)
-{
-    return (value >> lowestBit) & ((1u << bitCount) - 1);
-}
 
 // Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255.
 Byte ExpandToEightBits(unsigned value, int bitCount)

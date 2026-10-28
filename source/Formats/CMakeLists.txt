@@ -5,7 +5,10 @@ add_library(Formats STATIC
     Certificate.cpp
     DolExecutable.cpp
     FileBytes.cpp
+    Layout.cpp
+    LayoutMaterial.cpp
     Lz77.cpp
+    SectionedFile.cpp
     Sha1.cpp
     Signature.cpp
     TextureDecoder.cpp
@@ -15,5 +18,6 @@ add_library(Formats STATIC
     TitleMetadata.cpp
     TplTexture.cpp
     U8Archive.cpp
+    Vectors.cpp
     WadFile.cpp
 )
