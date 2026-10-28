@@ -138,16 +138,49 @@ FrameThickness MeasureFrameThickness(LiveLayout& layout, const std::vector<Forma
     return thickness;
 }
 
+// The corner at the other end of the same top or bottom side.
+std::size_t CornerAcrossTheWidth(std::size_t corner)
+{
+    return corner ^ RightSideBit;
+}
+
+// The corner at the other end of the same left or right side.
+std::size_t CornerAcrossTheHeight(std::size_t corner)
+{
+    return corner ^ BottomSideBit;
+}
+
+bool AreOnTheSameLeftOrRightSide(std::size_t firstCorner, std::size_t secondCorner)
+{
+    return (firstCorner & RightSideBit) == (secondCorner & RightSideBit);
+}
+
+bool AreOnTheSameTopOrBottomSide(std::size_t firstCorner, std::size_t secondCorner)
+{
+    return (firstCorner & BottomSideBit) == (secondCorner & BottomSideBit);
+}
+
 // Four bands, going around clockwise from the top: a band is as long as the window without the thickness of the frame
 // at the end where the next band starts, so the bands do not overlap.
 std::vector<FramePiece> MakeBandPieces(const FrameThickness& thickness, float windowWidth, float windowHeight)
 {
-    return {
-        {LeftTopFrame, LeftTopCorner, 0, 0, windowWidth - thickness.right, thickness.top},
-        {RightTopFrame, RightTopCorner, windowWidth - thickness.right, 0, thickness.right, windowHeight - thickness.bottom},
-        {RightBottomFrame, RightBottomCorner, thickness.left, windowHeight - thickness.bottom, windowWidth - thickness.left, thickness.bottom},
-        {LeftBottomFrame, LeftBottomCorner, 0, thickness.top, thickness.left, windowHeight - thickness.top},
-    };
+    FramePiece top = {.frameIndex = LeftTopFrame, .startCorner = LeftTopCorner,
+        .distanceFromLeft = 0, .distanceFromTop = 0,
+        .width = windowWidth - thickness.right, .height = thickness.top};
+
+    FramePiece right = {.frameIndex = RightTopFrame, .startCorner = RightTopCorner,
+        .distanceFromLeft = windowWidth - thickness.right, .distanceFromTop = 0,
+        .width = thickness.right, .height = windowHeight - thickness.bottom};
+
+    FramePiece bottom = {.frameIndex = RightBottomFrame, .startCorner = RightBottomCorner,
+        .distanceFromLeft = thickness.left, .distanceFromTop = windowHeight - thickness.bottom,
+        .width = windowWidth - thickness.left, .height = thickness.bottom};
+
+    FramePiece left = {.frameIndex = LeftBottomFrame, .startCorner = LeftBottomCorner,
+        .distanceFromLeft = 0, .distanceFromTop = thickness.top,
+        .width = thickness.left, .height = windowHeight - thickness.top};
+
+    return {top, right, bottom, left};
 }
 
 // Four corners and four edges between them, going around clockwise from the left top corner.
@@ -155,17 +188,42 @@ std::vector<FramePiece> MakeCornerAndEdgePieces(const FrameThickness& thickness,
 {
     float widthBetweenCorners = windowWidth - thickness.left - thickness.right;
     float heightBetweenCorners = windowHeight - thickness.top - thickness.bottom;
+    float rightEdgeStart = windowWidth - thickness.right;
+    float bottomEdgeStart = windowHeight - thickness.bottom;
 
-    return {
-        {LeftTopFrame, LeftTopCorner, 0, 0, thickness.left, thickness.top},
-        {TopEdgeFrame, LeftTopCorner, thickness.left, 0, widthBetweenCorners, thickness.top},
-        {RightTopFrame, RightTopCorner, windowWidth - thickness.right, 0, thickness.right, thickness.top},
-        {RightEdgeFrame, RightTopCorner, windowWidth - thickness.right, thickness.top, thickness.right, heightBetweenCorners},
-        {RightBottomFrame, RightBottomCorner, windowWidth - thickness.right, windowHeight - thickness.bottom, thickness.right, thickness.bottom},
-        {BottomEdgeFrame, RightBottomCorner, thickness.left, windowHeight - thickness.bottom, widthBetweenCorners, thickness.bottom},
-        {LeftBottomFrame, LeftBottomCorner, 0, windowHeight - thickness.bottom, thickness.left, thickness.bottom},
-        {LeftEdgeFrame, LeftBottomCorner, 0, thickness.top, thickness.left, heightBetweenCorners},
-    };
+    FramePiece leftTopCorner = {.frameIndex = LeftTopFrame, .startCorner = LeftTopCorner,
+        .distanceFromLeft = 0, .distanceFromTop = 0,
+        .width = thickness.left, .height = thickness.top};
+
+    FramePiece topEdge = {.frameIndex = TopEdgeFrame, .startCorner = LeftTopCorner,
+        .distanceFromLeft = thickness.left, .distanceFromTop = 0,
+        .width = widthBetweenCorners, .height = thickness.top};
+
+    FramePiece rightTopCorner = {.frameIndex = RightTopFrame, .startCorner = RightTopCorner,
+        .distanceFromLeft = rightEdgeStart, .distanceFromTop = 0,
+        .width = thickness.right, .height = thickness.top};
+
+    FramePiece rightEdge = {.frameIndex = RightEdgeFrame, .startCorner = RightTopCorner,
+        .distanceFromLeft = rightEdgeStart, .distanceFromTop = thickness.top,
+        .width = thickness.right, .height = heightBetweenCorners};
+
+    FramePiece rightBottomCorner = {.frameIndex = RightBottomFrame, .startCorner = RightBottomCorner,
+        .distanceFromLeft = rightEdgeStart, .distanceFromTop = bottomEdgeStart,
+        .width = thickness.right, .height = thickness.bottom};
+
+    FramePiece bottomEdge = {.frameIndex = BottomEdgeFrame, .startCorner = RightBottomCorner,
+        .distanceFromLeft = thickness.left, .distanceFromTop = bottomEdgeStart,
+        .width = widthBetweenCorners, .height = thickness.bottom};
+
+    FramePiece leftBottomCorner = {.frameIndex = LeftBottomFrame, .startCorner = LeftBottomCorner,
+        .distanceFromLeft = 0, .distanceFromTop = bottomEdgeStart,
+        .width = thickness.left, .height = thickness.bottom};
+
+    FramePiece leftEdge = {.frameIndex = LeftEdgeFrame, .startCorner = LeftBottomCorner,
+        .distanceFromLeft = 0, .distanceFromTop = thickness.top,
+        .width = thickness.left, .height = heightBetweenCorners};
+
+    return {leftTopCorner, topEdge, rightTopCorner, rightEdge, rightBottomCorner, bottomEdge, leftBottomCorner, leftEdge};
 }
 
 // The texture coordinates change by one whole texture when they move across one texture. This is how much they change
@@ -179,26 +237,26 @@ Formats::Vector2 CoordinateChangeAlongSide(Formats::Vector2 from, Formats::Vecto
     return {direction.x * textureCount, direction.y * textureCount};
 }
 
-// The corner of the turned texture that belongs to the start corner of the piece gets its own coordinates.
-// Across the piece, the coordinates go on along the sides of the texture for as many textures as fit the side.
+// The start corner of the piece gets the coordinates of the same corner of the turned texture.
+// From there the coordinates go along the sides of the texture, for as many textures as fit into the side of the piece.
 Formats::TextureCoordinateSet MakePieceCoordinates(const CornerCoordinates& turnedTexture, const FramePiece& piece, const TextureSize& textureSize)
 {
     Formats::Vector2 start = turnedTexture[piece.startCorner];
-    Formats::Vector2 alongWidth = CoordinateChangeAlongSide(start, turnedTexture[piece.startCorner ^ RightSideBit], piece.width, textureSize);
-    Formats::Vector2 alongHeight = CoordinateChangeAlongSide(start, turnedTexture[piece.startCorner ^ BottomSideBit], piece.height, textureSize);
+    Formats::Vector2 otherEndOfWidth = turnedTexture[CornerAcrossTheWidth(piece.startCorner)];
+    Formats::Vector2 otherEndOfHeight = turnedTexture[CornerAcrossTheHeight(piece.startCorner)];
+    Formats::Vector2 alongWidth = CoordinateChangeAlongSide(start, otherEndOfWidth, piece.width, textureSize);
+    Formats::Vector2 alongHeight = CoordinateChangeAlongSide(start, otherEndOfHeight, piece.height, textureSize);
 
     Formats::TextureCoordinateSet set;
     for (std::size_t corner = 0; corner < Formats::CornerCount; ++corner)
     {
-        std::size_t differentSides = corner ^ piece.startCorner;
-
         Formats::Vector2 coordinates = start;
-        if ((differentSides & RightSideBit) != 0)
+        if (!AreOnTheSameLeftOrRightSide(corner, piece.startCorner))
         {
             coordinates.x += alongWidth.x;
             coordinates.y += alongWidth.y;
         }
-        if ((differentSides & BottomSideBit) != 0)
+        if (!AreOnTheSameTopOrBottomSide(corner, piece.startCorner))
         {
             coordinates.x += alongHeight.x;
             coordinates.y += alongHeight.y;
