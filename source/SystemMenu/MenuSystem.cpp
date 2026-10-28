@@ -7,7 +7,7 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-    Platform::ScreenShape screenShape)
+    Platform::ScreenShape screenShape, SettingsFlowServices* wiiSettingsServices)
     : display(device, screenShape)
     , files(titleContents)
     , messages(files.OpenEnglishMessages())
@@ -15,7 +15,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , input(remoteService)
     , cursors(display, files)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
-    , services{display, files, messages, clock, fader, input, cursors, screens}
+    , services{display, files, messages, clock, fader, input, cursors, screens, wiiSettingsServices}
 {
     FirstScreen firstScreen = ChooseFirstScreen();
     screens.Start(firstScreen.screen, firstScreen.argument);

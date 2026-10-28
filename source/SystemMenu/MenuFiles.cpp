@@ -20,8 +20,14 @@ constexpr std::string_view EnglishMessagesPath = "message/eng/ipl_common.bmg";
 }
 
 MenuFiles::MenuFiles(TitleContents& titleContents)
-    : resourceArchive(Formats::ReadU8Archive(titleContents.ReadContent(ResourceContentIndex)))
+    : contents(titleContents)
+    , resourceArchive(Formats::ReadU8Archive(titleContents.ReadContent(ResourceContentIndex)))
 {
+}
+
+Formats::Bytes MenuFiles::ReadSharedContent(std::uint16_t contentIndex) const
+{
+    return contents.ReadContent(contentIndex);
 }
 
 Formats::ByteView MenuFiles::ReadFile(std::string_view path) const

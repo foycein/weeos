@@ -33,7 +33,11 @@ public:
     // The messages of the menu in English. WeeOS has only this language for now.
     Text::MessageCatalog OpenEnglishMessages() const;
 
+    // A content that the System Menu title shares with other titles, for example the content 5 with the two small fonts.
+    Formats::Bytes ReadSharedContent(std::uint16_t contentIndex) const;
+
 private:
+    TitleContents& contents;
     Formats::U8Archive resourceArchive;
 };
 

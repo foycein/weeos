@@ -23,8 +23,9 @@ class MenuSystem
 public:
     // Reads the resources of the menu from the contents of the System Menu title and starts the first screen.
     // The device, the contents and the remote service must outlive the menu.
+    // Wii Settings opens only when the settings are given; the other screens work without them.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-        Platform::ScreenShape screenShape);
+        Platform::ScreenShape screenShape, SettingsFlowServices* wiiSettingsServices = nullptr);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
     void Update();

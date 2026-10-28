@@ -5,7 +5,12 @@ target_sources(SystemMenu PRIVATE
     LanguagePage.cpp
     NicknamePage.cpp
     PageBuilder.cpp
+    PageFont.cpp
+    PageImages.cpp
+    PageLooks.cpp
+    PagePainter.cpp
     SensorBarPages.cpp
+    SettingsScreen.cpp
     SettingsFlow.cpp
     SoundPage.cpp
 )

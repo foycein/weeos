@@ -13,6 +13,11 @@ enum class ScreenId : int
     // The Wii Menu: the Message Board with the bottom bar and the channel grid as its children.
     MainFrame = 0x04,
 
+    WiiSettings = 0x12,
+
+    // The background of Wii Options, where the user comes back to when Wii Settings ends.
+    WiiOptionsBackground = 0x15,
+
     HealthAndSafety = 0x1a,
 };
 

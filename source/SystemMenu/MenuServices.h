@@ -15,6 +15,7 @@ class InputManager;
 class MenuClock;
 class MenuFiles;
 class ScreenManager;
+struct SettingsFlowServices;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -28,6 +29,9 @@ struct MenuServices
     InputManager& input;
     CursorManager& cursors;
     ScreenManager& screens;
+
+    // What Wii Settings works with. Nothing when the menu runs without it (the tests of the other screens).
+    SettingsFlowServices* wiiSettings;
 };
 
 }

@@ -1,7 +1,7 @@
 #include "SystemMenu/WiiSettings/DisplayPages.h"
 
 #include "SystemMenu/WiiSettings/PageBuilder.h"
-#include "SystemMenu/WiiSettings/PageText.h"
+#include "SystemMenu/WiiSettings/NumberText.h"
 
 #include <cstdlib>
 
