@@ -16,7 +16,8 @@ constexpr std::uint16_t IeeeFloatFormat = 3;
 constexpr std::uint32_t FormatChunkSize = 18;
 constexpr std::uint32_t FactChunkSize = 4;
 constexpr std::uint16_t BitsPerSample = 32;
-constexpr std::size_t ChunkHeaderSize = 8;
+constexpr std::uint32_t ChunkHeaderSize = 8;
+constexpr std::uint32_t WaveTagSize = 4;
 
 // WAV files store numbers with the least significant byte first.
 void AppendNumber(Formats::Bytes& bytes, std::uint64_t number, std::size_t byteCount)
@@ -37,7 +38,10 @@ Formats::Bytes MakeFloatWaveFileBytes(std::uint32_t sampleRate, std::uint16_t ch
     std::uint32_t sampleFrameCount = static_cast<std::uint32_t>(interleavedSamples.size() / channelCount);
     std::uint16_t bytesPerFrame = static_cast<std::uint16_t>(channelCount * sizeof(float));
     std::uint32_t dataSize = static_cast<std::uint32_t>(interleavedSamples.size() * sizeof(float));
-    std::uint32_t fileSizeAfterRiffHeader = 4 + (ChunkHeaderSize + FormatChunkSize) + (ChunkHeaderSize + FactChunkSize) + (ChunkHeaderSize + dataSize);
+    std::uint32_t formatChunkTotalSize = ChunkHeaderSize + FormatChunkSize;
+    std::uint32_t factChunkTotalSize = ChunkHeaderSize + FactChunkSize;
+    std::uint32_t dataChunkTotalSize = ChunkHeaderSize + dataSize;
+    std::uint32_t fileSizeAfterRiffHeader = WaveTagSize + formatChunkTotalSize + factChunkTotalSize + dataChunkTotalSize;
 
     Formats::Bytes bytes;
     AppendTag(bytes, "RIFF");

@@ -336,7 +336,8 @@ std::int16_t* SequencePlayer::FindVariable(SequenceTrack& track, std::size_t var
     return nullptr;
 }
 
-// A number of a command is written in the commands, or it is chosen by chance between two written numbers, or it is the value of a variable.
+// A number of a command is written in the commands, or it is chosen by chance between two written numbers,
+// or it is the value of a variable.
 // The written number has a width: a byte, two bytes, or as many bytes as it needs (7 bits in each, the last byte has the top bit clear).
 std::int32_t SequencePlayer::ReadNumber(SequenceTrack& track, NumberSource source, NumberWidth width)
 {
@@ -399,7 +400,12 @@ bool SequencePlayer::RunCommand(SequenceTrack& track)
         command = ReadByte(track);
     }
 
-    bool trackEnded = command < FirstControlCommand ? RunNote(track, command, shouldRun, source) : RunControlCommand(track, command, shouldRun, source);
+    bool trackEnded = false;
+    if (command < FirstControlCommand)
+        trackEnded = RunNote(track, command, shouldRun, source);
+    else
+        trackEnded = RunControlCommand(track, command, shouldRun, source);
+
     if (dataRanOut)
     {
         FailTrack(track);
@@ -624,8 +630,11 @@ void SequencePlayer::StartNote(SequenceTrack& track, int key, int velocity, int 
         return;
 
     const NoteParameters& note = *foundNote;
-    Envelope envelope(EnvelopeNumber(track.attack, note.attack), EnvelopeNumber(track.decay, note.decay), EnvelopeNumber(track.sustain, note.sustain),
-        EnvelopeNumber(track.release, note.release));
+    std::uint8_t attack = EnvelopeNumber(track.attack, note.attack);
+    std::uint8_t decay = EnvelopeNumber(track.decay, note.decay);
+    std::uint8_t sustain = EnvelopeNumber(track.sustain, note.sustain);
+    std::uint8_t release = EnvelopeNumber(track.release, note.release);
+    Envelope envelope(attack, decay, sustain, release);
 
     constexpr float NumbersFromMiddleToSide = 63.0f;
     constexpr float MiddleNumber = 64.0f;
@@ -637,7 +646,8 @@ void SequencePlayer::StartNote(SequenceTrack& track, int key, int velocity, int 
     playingNote.startPan = (float(note.pan) - MiddleNumber) / NumbersFromMiddleToSide;
 
     int priority = settings.channelPriority + track.priority;
-    std::optional<VoiceHandle> voice = voices.Start(bank.waves[note.waveIndex], envelope, priority, SettingsOfNote(track, playingNote, volume));
+    VoiceSettings voiceSettings = SettingsOfNote(track, playingNote, volume);
+    std::optional<VoiceHandle> voice = voices.Start(bank.waves[note.waveIndex], envelope, priority, voiceSettings);
     if (!voice)
         return;
 

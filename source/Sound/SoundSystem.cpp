@@ -160,8 +160,9 @@ void SoundSystem::StartSequenceSound(const SoundCommand& command, const SoundInf
     const SequenceFile& sequenceFile = sequenceFiles.at(info.fileId);
     const LoadedBank& bank = banks.at(archive.banks[info.sequence.bankNumber].fileId);
 
+    float soundVolume = float(info.volume) / HighestNumber;
     RunningSound sound{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, VoiceHandle{}, nullptr};
-    sound.sequence = std::make_unique<SequencePlayer>(sequenceFile, bank, info.sequence, float(info.volume) / HighestNumber, voices, sequenceGlobals);
+    sound.sequence = std::make_unique<SequencePlayer>(sequenceFile, bank, info.sequence, soundVolume, voices, sequenceGlobals);
     runningSounds.push_back(std::move(sound));
 }
 

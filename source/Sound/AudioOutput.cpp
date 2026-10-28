@@ -28,6 +28,7 @@ namespace
 using Microsoft::WRL::ComPtr;
 
 constexpr DWORD EventWaitMilliseconds = 2000;
+constexpr WORD BitsPerFloatSample = 32;
 
 // The sub format of an extensible format that stands for floating point numbers (KSDATAFORMAT_SUBTYPE_IEEE_FLOAT in the Windows headers).
 const GUID FloatSubFormat = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}};
@@ -93,7 +94,8 @@ struct AudioOutput::Implementation
         comIsInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 
         ComPtr<IMMDeviceEnumerator> enumerator;
-        ThrowIfFailed(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator)), "creating the device enumerator");
+        HRESULT enumeratorResult = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
+        ThrowIfFailed(enumeratorResult, "creating the device enumerator");
 
         ComPtr<IMMDevice> device;
         ThrowIfFailed(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device), "finding the default playback device");
@@ -114,8 +116,8 @@ struct AudioOutput::Implementation
         UINT32 fundamentalPeriod = 0;
         UINT32 shortestPeriod = 0;
         UINT32 longestPeriod = 0;
-        ThrowIfFailed(client->GetSharedModeEnginePeriod(mixFormat.get(), &defaultPeriod, &fundamentalPeriod, &shortestPeriod, &longestPeriod),
-            "asking for the periods of the engine");
+        HRESULT periodResult = client->GetSharedModeEnginePeriod(mixFormat.get(), &defaultPeriod, &fundamentalPeriod, &shortestPeriod, &longestPeriod);
+        ThrowIfFailed(periodResult, "asking for the periods of the engine");
         periodFrames = latency == AudioLatency::Shortest ? shortestPeriod : defaultPeriod;
 
         ThrowIfFailed(client->InitializeSharedAudioStream(AUDCLNT_STREAMFLAGS_EVENTCALLBACK, periodFrames, mixFormat.get(), nullptr),
@@ -220,8 +222,6 @@ struct AudioOutput::Implementation
 
         PlaceStereoOnDevice(stereo, layout, std::span<float>(deviceSamples, std::size_t(frameCount) * layout.channelCount));
     }
-
-    static constexpr WORD BitsPerFloatSample = 32;
 
     ComPtr<IAudioClient3> client;
     ComPtr<IAudioRenderClient> renderClient;
