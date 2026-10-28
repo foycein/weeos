@@ -68,37 +68,34 @@ enum class IosError : int
     // The value is not ready yet. The WiiConnect24 clock has no time difference before the first time it was set.
     NotReady = -30,
 
-    AddressInUse = -3,
-    AddressNotAvailable = -4,
+    // The host name is not known. The original gives the same number to a request whose parameters are wrong.
+    HostNotFound = -4,
 
-    // A socket has nothing to receive. The original calls this EAGAIN.
-    WouldBlock = -6,
-
-    // The number is not an open socket (or, for the secure sockets, not a context).
-    BadDescriptor = -8,
-
-    InvalidSocketArgument = -28,
-    TooManySockets = -33,
-
-    // Every call fails like this until the socket stack was started. It is the code of ENETRESET.
+    // Every call that needs a socket fails like this until the socket stack was set up with a network. It is the code of ENETRESET.
     StackNotStarted = -39,
 
-    // There is no route to the address: the network cable is not plugged in.
-    NetworkUnreachable = -40,
-
-    SocketNotConnected = -56,
-    ProtocolNotSupported = -68,
-    SocketTypeNotSupported = -69,
+    // The interface option is not known, or the buffer for it is too small. It is the code of ENOPROTOOPT.
+    InterfaceOptionNotSupported = -51,
 
     // The address lookup failed. The original reports it as EAI_AGAIN (-0x12E).
     NameLookupFailed = -302,
 
     // The secure sockets. Codes of /dev/net/ssl. The module has four contexts and numbers its errors like OpenSSL does:
-    // the code is minus the answer of SSL_get_error.
-    TooManySecureContexts = -1,
+    // the code is minus the answer of SSL_get_error. A few numbers are the module's own.
+
+    // The SSL library failed, or a limit was reached: no free context, a name or a certificate that is too long,
+    // a connection that was never set up. It is SSL_ERROR_SSL.
+    SecureLibraryFailure = -1,
 
     // The socket under the secure connection failed (SSL_ERROR_SYSCALL).
     SecureConnectionFailed = -5,
+
+    // The number is not a context of the module.
+    InvalidSecureContext = -8,
+
+    // The module has four root certificates built in and one client certificate.
+    BuiltinRootCertificateNotFound = -14,
+    BuiltinClientCertificateNotFound = -15,
 };
 
 // The result code the original IOS returns for this error.

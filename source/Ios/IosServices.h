@@ -9,6 +9,8 @@
 #include "Ios/Power/PowerService.h"
 #include "Ios/Result.h"
 #include "Ios/SdCard/SdCardService.h"
+#include "Ios/Sockets/SecureSocketService.h"
+#include "Ios/Sockets/SocketService.h"
 #include "Ios/WiiConnect24/WiiConnect24Service.h"
 
 #include <memory>
@@ -45,6 +47,8 @@ public:
     SdCardService& GetSdCard();
     WirelessService& GetWireless();
     NetworkConfigService& GetNetworkConfig();
+    SocketService& GetSockets();
+    SecureSocketService& GetSecureSockets();
     WiiConnect24Service& GetWiiConnect24();
     PowerService& GetPower();
 
@@ -59,8 +63,10 @@ private:
     std::unique_ptr<SdCardService> sdCard;
     std::unique_ptr<WirelessService> wireless;
     std::unique_ptr<NetworkConfigService> networkConfig;
+    std::unique_ptr<SocketService> sockets;
     std::unique_ptr<WiiConnect24Service> wiiConnect24;
     std::unique_ptr<PowerService> power;
+    std::unique_ptr<SecureSocketService> secureSockets;
 };
 
 }

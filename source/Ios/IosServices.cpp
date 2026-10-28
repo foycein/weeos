@@ -51,12 +51,14 @@ Result<void> IosServices::Start(const IosFolders& folders)
     PutCardIntoSlot(*sdCard, folders);
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
     networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
+    sockets = std::make_unique<SocketService>(*networkConfig);
     wiiConnect24 = std::make_unique<WiiConnect24Service>(*fileSystem, clock);
     Result<void> filesPrepared = wiiConnect24->PrepareFiles();
     if (filesPrepared.Failed())
         return filesPrepared;
 
     power = std::make_unique<PowerService>();
+    secureSockets = std::make_unique<SecureSocketService>();
     isRunning = true;
     return Result<void>();
 }
@@ -75,8 +77,10 @@ void IosServices::Stop()
 // The services of an earlier start go first, the ones that use another service before that service.
 void IosServices::DestroyServices()
 {
+    secureSockets.reset();
     power.reset();
     wiiConnect24.reset();
+    sockets.reset();
     networkConfig.reset();
     wireless.reset();
     sdCard.reset();
@@ -117,6 +121,18 @@ NetworkConfigService& IosServices::GetNetworkConfig()
 {
     RequireRunning();
     return *networkConfig;
+}
+
+SocketService& IosServices::GetSockets()
+{
+    RequireRunning();
+    return *sockets;
+}
+
+SecureSocketService& IosServices::GetSecureSockets()
+{
+    RequireRunning();
+    return *secureSockets;
 }
 
 WiiConnect24Service& IosServices::GetWiiConnect24()

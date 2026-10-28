@@ -25,7 +25,7 @@ enum class LinkStatus : std::uint8_t
     // No connection of the chosen kind is enabled. The network cannot be used.
     NoInterface = 2,
 
-    // A wired connection is chosen. Whether the cable is plugged in shows only in the socket stack.
+    // A wired connection is chosen and its interface is ready. The module waits for a cable, which is never plugged in here.
     WiredInterfaceReady = 3,
 
     // An interface is chosen but the link is not up: the module is connecting, or the link went down.
