@@ -61,6 +61,8 @@ public:
 
 private:
     void NoteModifierKey(int virtualKeyCode, bool isPressed);
+    void HandleChordKeyDown(int virtualKeyCode, HostCommand command);
+    void HandleChordKeyUp(int virtualKeyCode);
     bool AChordIsActive() const;
 
     WindowListener& nextListener;

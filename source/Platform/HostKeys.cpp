@@ -70,27 +70,34 @@ void HostKeys::OnKey(int virtualKeyCode, bool isPressed)
         return;
     }
 
-    bool isReleasing = !isPressed;
-    if (isReleasing)
-    {
-        bool wentDownAsChord = chordKeysDown.erase(virtualKeyCode) > 0;
-        if (!wentDownAsChord)
-            nextListener.OnKey(virtualKeyCode, isPressed);
-        return;
-    }
+    if (isPressed)
+        HandleChordKeyDown(virtualKeyCode, *command);
+    else
+        HandleChordKeyUp(virtualKeyCode);
+}
 
+// A key of a chord that goes down while a control key is down gives the command. Otherwise it is an ordinary key.
+void HostKeys::HandleChordKeyDown(int virtualKeyCode, HostCommand command)
+{
     bool isHeldAlready = chordKeysDown.contains(virtualKeyCode);
     if (isHeldAlready)
         return;
 
     if (!AChordIsActive())
     {
-        nextListener.OnKey(virtualKeyCode, isPressed);
+        nextListener.OnKey(virtualKeyCode, true);
         return;
     }
 
     chordKeysDown.insert(virtualKeyCode);
-    commandListener.OnHostCommand(*command);
+    commandListener.OnHostCommand(command);
+}
+
+void HostKeys::HandleChordKeyUp(int virtualKeyCode)
+{
+    bool wentDownAsChord = chordKeysDown.erase(virtualKeyCode) > 0;
+    if (!wentDownAsChord)
+        nextListener.OnKey(virtualKeyCode, false);
 }
 
 void HostKeys::OnFocusLost()
