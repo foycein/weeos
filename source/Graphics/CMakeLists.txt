@@ -6,6 +6,7 @@ find_package(Vulkan REQUIRED COMPONENTS glslc)
 
 add_library(Graphics STATIC
     CanvasMapping.cpp
+    ConsoleVideo.cpp
     DrawData.cpp
     FramePacer.cpp
     FrameResources.cpp
@@ -14,6 +15,7 @@ add_library(Graphics STATIC
     MaterialCheck.cpp
     OneTimeCommands.cpp
     QuadPipeline.cpp
+    RangeAllocator.cpp
     StageList.cpp
     Swapchain.cpp
     TextureStore.cpp
