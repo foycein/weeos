@@ -1,19 +1,28 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    BootMiiKeyBlock.cpp
     ByteReader.cpp
     Certificate.cpp
+    ConsoleKeys.cpp
+    DeviceCertificate.cpp
     DolExecutable.cpp
     FileBytes.cpp
     Font.cpp
+    HexText.cpp
     Huffman.cpp
     Layout.cpp
     LayoutAnimation.cpp
     LayoutMaterial.cpp
     Lz77.cpp
     MessageFile.cpp
+    NandFileSystem.cpp
+    NandImage.cpp
+    NandTitles.cpp
+    OneTimeProgrammable.cpp
     RgbaImage.cpp
     SectionedFile.cpp
+    SerialEeprom.cpp
     SettingTextFile.cpp
     Sha1.cpp
     Signature.cpp

@@ -28,6 +28,16 @@ std::string DecryptText(ByteView encryptedBytes)
     return text;
 }
 
+// The console fills the file up with zero bytes that it never encrypted. They would decrypt to junk behind the text,
+// so they are cut off first. A file that was encrypted up to its end has no zeros there, and nothing is cut.
+ByteView WithoutTrailingZeros(ByteView bytes)
+{
+    while (!bytes.empty() && bytes.back() == 0)
+        bytes = bytes.first(bytes.size() - 1);
+
+    return bytes;
+}
+
 // The text ends at the first zero. The lines end with a carriage return and a line feed.
 std::vector<std::string> SplitIntoLines(const std::string& text)
 {
@@ -72,7 +82,7 @@ SettingTextFile ReadSettingTextFile(ByteView encryptedBytes)
     }
 
     SettingTextFile file;
-    for (const std::string& line : SplitIntoLines(DecryptText(encryptedBytes)))
+    for (const std::string& line : SplitIntoLines(DecryptText(WithoutTrailingZeros(encryptedBytes))))
         file.entries.push_back(ParseLine(line));
 
     return file;
