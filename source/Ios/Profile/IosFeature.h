@@ -34,14 +34,19 @@ enum class Feature
     // A FileSystemFlavor.
     FileSystemFlavor,
 
+    // Flag: a name of 13 characters or more finds nothing when a path is looked up.
+    // The other IOS compare the first 12 characters of the name only.
+    FileSystemChecksNameLengthInLookUp,
+
+    // Flag: the file system deletes /tmp and makes it again at every start, also when it is empty.
+    // The other IOS do it only when /tmp holds something or is missing.
+    FileSystemRecreatesTmpAtEveryStart,
+
     // Flag: the disc drive answers the commands 0x90 to 0x94, the ones that work with no disc.
     DiscDriveHasNoDiscCommands,
 
     // Flag: the SD card driver probes for cards with more than 2 GB.
     SdSupportsHighCapacityCards,
-
-    // Flag: the power service has the Wakeup command (0x2005).
-    PowerHasWakeupCommand,
 
     // A UsbHostGeneration.
     UsbHostGeneration,
