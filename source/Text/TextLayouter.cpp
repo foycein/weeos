@@ -3,6 +3,8 @@
 #include "Text/TextError.h"
 
 #include <algorithm>
+#include <array>
+#include <optional>
 
 namespace Text
 {
@@ -11,15 +13,29 @@ namespace
 {
 
 constexpr char16_t LineFeed = 0x000A;
+constexpr char16_t Tab = 0x0009;
 
-// The characters before the space are control codes. They have no glyph and take no room.
+// The character that opens a mark and the character that closes it.
+constexpr char16_t MarkCharacter = 0x001A;
+
+// The characters before the space are control codes. They have no glyph and take no room, apart from the line feed and the tab.
 constexpr char16_t FirstPrintableCharacter = 0x0020;
+
+// A tab moves the pen to the next multiple of four character widths, counted from the start of the line. A character width is the
+// horizontal size of the font. The text writer of the original starts with the count four (0x81519e94).
+constexpr float TabStopCharacterCount = 4;
 
 constexpr unsigned int FullAlpha = 255;
 
 bool IsControlCode(char16_t character)
 {
     return character < FirstPrintableCharacter;
+}
+
+// A line feed ends the line, and a tab and a glyph take room. Every other control code is skipped.
+bool TakesNoRoom(char16_t character)
+{
+    return IsControlCode(character) && character != Tab;
 }
 
 // The part of the free space that lies before the text: none for left and top, half for the middle, all of it for right and bottom.
@@ -51,11 +67,39 @@ Formats::Rgba8Color ScaleAlpha(Formats::Rgba8Color color, std::uint8_t paneAlpha
     return color;
 }
 
-// The characters of one line without the line feed that ends it, and the width of the line.
+std::vector<CharacterRange> FindMarks(std::u16string_view text)
+{
+    std::vector<CharacterRange> marks;
+    std::optional<std::size_t> openMarkStart;
+
+    for (std::size_t index = 0; index < text.size(); ++index)
+    {
+        if (text[index] != MarkCharacter)
+            continue;
+
+        if (!openMarkStart)
+        {
+            openMarkStart = index + 1;
+            continue;
+        }
+
+        marks.push_back({*openMarkStart, index});
+        openMarkStart.reset();
+    }
+
+    if (openMarkStart)
+        marks.push_back({*openMarkStart, text.size()});
+
+    return marks;
+}
+
+// The characters of one line, without the line feed that ends it, and the width of the line.
 struct Line
 {
-    std::u16string_view characters;
+    std::size_t firstCharacter;
+    std::size_t endCharacter;
     float width;
+    bool endsWithLineFeed;
 };
 
 // A line and the place in the text where the next line starts.
@@ -66,16 +110,32 @@ struct TakenLine
     bool isLastLine;
 };
 
+// Where a line is: its number, where its pen starts and where its baseline lies.
+struct LinePlace
+{
+    std::size_t lineNumber;
+    float left;
+    float baselineY;
+};
+
+// The pen that moves along a line, and whether the character in front of it was a glyph (then the character space comes first).
+struct Pen
+{
+    float x;
+    bool followsGlyph;
+};
+
 // One run of the layout: it splits the text into lines, places the block of lines in the area and makes a quad for every character.
 class LayoutJob
 {
 public:
     LayoutJob(const Formats::Font& fontToUse, const GlyphLookup& lookupToUse, const TextStyle& styleToUse, const TextArea& areaToFill,
-        std::uint8_t paneAlpha)
+        std::uint8_t paneAlpha, std::u16string_view textToLayOut)
         : font(fontToUse)
         , glyphLookup(lookupToUse)
         , style(styleToUse)
         , area(areaToFill)
+        , text(textToLayOut)
         , topColor(ScaleAlpha(styleToUse.topColor, paneAlpha))
         , bottomColor(ScaleAlpha(styleToUse.bottomColor, paneAlpha))
     {
@@ -85,9 +145,9 @@ public:
         fontHeight = font.height * scaleY;
     }
 
-    LaidOutText Run(std::u16string_view text) const
+    LaidOutText Run() const
     {
-        std::vector<Line> lines = SplitIntoLines(text);
+        std::vector<Line> lines = SplitIntoLines();
 
         LaidOutText laidOutText;
         TextArea block = PlaceBlock(lines);
@@ -95,21 +155,22 @@ public:
         laidOutText.blankColor = style.blankColor;
         laidOutText.inkColor = style.inkColor;
         for (std::size_t lineNumber = 0; lineNumber < lines.size(); ++lineNumber)
-            AddGlyphsOfLine(lines[lineNumber], lineNumber, block, laidOutText);
+            AddLine(lines[lineNumber], lineNumber, block, laidOutText);
 
+        laidOutText.marks = FindMarks(text);
         return laidOutText;
     }
 
 private:
     // A text that ends with a line feed has an empty last line.
-    std::vector<Line> SplitIntoLines(std::u16string_view text) const
+    std::vector<Line> SplitIntoLines() const
     {
         std::vector<Line> lines;
         std::size_t lineStart = 0;
 
         while (true)
         {
-            TakenLine taken = TakeLine(text, lineStart);
+            TakenLine taken = TakeLine(lineStart);
             lines.push_back(taken.line);
             if (taken.isLastLine)
                 return lines;
@@ -119,34 +180,56 @@ private:
     }
 
     // Reads one line. It ends at a line feed, or before the character that would reach beyond the right edge of the area.
-    // A line always keeps its first character, even when that one alone is wider than the area.
-    TakenLine TakeLine(std::u16string_view text, std::size_t lineStart) const
+    // The first character of a line stays, even when it alone is wider than the area, and the line ends right behind it.
+    TakenLine TakeLine(std::size_t lineStart) const
     {
         float lineWidth = 0;
-        bool lineHasGlyph = false;
+        bool followsGlyph = false;
 
         for (std::size_t index = lineStart; index < text.size(); ++index)
         {
             char16_t character = text[index];
             if (character == LineFeed)
-                return {{text.substr(lineStart, index - lineStart), lineWidth}, index + 1, false};
+                return {{lineStart, index, lineWidth, true}, index + 1, false};
 
-            if (IsControlCode(character))
+            if (TakesNoRoom(character))
                 continue;
 
-            float widthWithCharacter = lineWidth + AdvanceOf(character);
-            if (lineHasGlyph)
-                widthWithCharacter += style.characterSpace;
-
+            float widthWithCharacter = WidthAfter(character, lineWidth, followsGlyph);
             bool reachesBeyondTheArea = widthWithCharacter > area.width;
-            if (lineHasGlyph && reachesBeyondTheArea)
-                return {{text.substr(lineStart, index - lineStart), lineWidth}, index, false};
+            bool isFirstCharacter = index == lineStart;
+            if (reachesBeyondTheArea && !isFirstCharacter)
+                return {{lineStart, index, lineWidth, false}, index, false};
 
             lineWidth = widthWithCharacter;
-            lineHasGlyph = true;
+            followsGlyph = character != Tab;
+            if (reachesBeyondTheArea)
+                return {{lineStart, index + 1, lineWidth, false}, index + 1, false};
         }
 
-        return {{text.substr(lineStart), lineWidth}, text.size(), true};
+        return {{lineStart, text.size(), lineWidth, false}, text.size(), true};
+    }
+
+    // How far a line reaches after the character. A tab goes to the next tab stop. A glyph adds its advance, and the character space
+    // when another glyph came before it.
+    float WidthAfter(char16_t character, float widthBefore, bool followsGlyph) const
+    {
+        if (character == Tab)
+            return NextTabStop(widthBefore);
+
+        float characterSpace = followsGlyph ? style.characterSpace : 0.0f;
+        return widthBefore + characterSpace + AdvanceOf(character);
+    }
+
+    // The distance from the start of the line to the first tab stop after the given distance.
+    float NextTabStop(float distanceFromLineStart) const
+    {
+        float stopDistance = TabStopCharacterCount * style.fontSize.x;
+        if (stopDistance <= 0)
+            return distanceFromLineStart;
+
+        int stopsBefore = static_cast<int>(distanceFromLineStart / stopDistance);
+        return stopDistance * static_cast<float>(stopsBefore + 1);
     }
 
     // A text without line breaks is one line high. The menu measures a text with line breaks as one line height for each
@@ -174,32 +257,65 @@ private:
     }
 
     // The baseline of a line lies one ascent of the font below the top of the line.
-    void AddGlyphsOfLine(const Line& line, std::size_t lineNumber, const TextArea& block, LaidOutText& laidOutText) const
+    void AddLine(const Line& line, std::size_t lineNumber, const TextArea& block, LaidOutText& laidOutText) const
     {
         float freeWidth = block.width - line.width;
-        float lineLeft = block.left + freeWidth * FreeSpaceBefore(style.alignment.horizontal);
         float lineTop = block.top - static_cast<float>(lineNumber) * lineHeight;
-        float baselineY = lineTop - font.ascent * scaleY;
 
-        float penX = lineLeft;
-        bool followsGlyph = false;
-        for (char16_t character : line.characters)
+        LinePlace place;
+        place.lineNumber = lineNumber;
+        place.left = block.left + freeWidth * FreeSpaceBefore(style.alignment.horizontal);
+        place.baselineY = lineTop - font.ascent * scaleY;
+        laidOutText.lines.push_back({line.firstCharacter, line.endCharacter, place.left, line.width, lineTop, lineHeight});
+
+        Pen pen = {place.left, false};
+        for (std::size_t index = line.firstCharacter; index < line.endCharacter; ++index)
+            AddCharacter(index, place, pen, laidOutText);
+
+        if (line.endsWithLineFeed)
+            laidOutText.characters.push_back({lineNumber, pen.x, 0});
+    }
+
+    void AddCharacter(std::size_t index, const LinePlace& place, Pen& pen, LaidOutText& laidOutText) const
+    {
+        char16_t character = text[index];
+
+        PlacedCharacter placed;
+        placed.lineNumber = place.lineNumber;
+        placed.left = pen.x;
+        placed.advance = 0;
+
+        if (character == Tab)
         {
-            if (IsControlCode(character))
-                continue;
-
-            if (followsGlyph)
-                penX += style.characterSpace;
-
-            laidOutText.glyphs.push_back(MakeGlyph(character, penX, baselineY));
-            penX += AdvanceOf(character);
-            followsGlyph = true;
+            float tabEnd = place.left + NextTabStop(pen.x - place.left);
+            placed.advance = tabEnd - pen.x;
+            pen.x = tabEnd;
+            pen.followsGlyph = false;
+            laidOutText.characters.push_back(placed);
+            return;
         }
+
+        if (IsControlCode(character))
+        {
+            laidOutText.characters.push_back(placed);
+            return;
+        }
+
+        if (pen.followsGlyph)
+            pen.x += style.characterSpace;
+
+        placed.left = pen.x;
+        placed.advance = AdvanceOf(character);
+        laidOutText.glyphs.push_back(MakeGlyph(character, index, pen.x, place.baselineY));
+        laidOutText.characters.push_back(placed);
+
+        pen.x += placed.advance;
+        pen.followsGlyph = true;
     }
 
     // The quad starts the left spacing of the glyph after the pen and is as wide as the glyph. It reaches from the baseline position
     // of the font above the baseline down to the bottom of the cell. The texture coordinates cut out exactly that part of the sheet.
-    PlacedGlyph MakeGlyph(char16_t character, float penX, float baselineY) const
+    PlacedGlyph MakeGlyph(char16_t character, std::size_t characterIndex, float penX, float baselineY) const
     {
         std::uint16_t glyphIndex = glyphLookup.FindGlyphIndex(character);
         Formats::GlyphWidths widths = font.WidthsOf(glyphIndex);
@@ -217,6 +333,7 @@ private:
 
         PlacedGlyph glyph{};
         glyph.sheetIndex = cell.sheetIndex;
+        glyph.characterIndex = characterIndex;
 
         Graphics::Quad& quad = glyph.quad;
         quad.positions[LeftTopCorner] = {left, top};
@@ -237,17 +354,19 @@ private:
         return glyph;
     }
 
-    // How far the pen moves after the character.
+    // How far the pen moves after the character. The font stores the advance as a signed byte.
     float AdvanceOf(char16_t character) const
     {
         std::uint16_t glyphIndex = glyphLookup.FindGlyphIndex(character);
-        return font.WidthsOf(glyphIndex).characterWidth * scaleX;
+        std::int8_t advance = static_cast<std::int8_t>(font.WidthsOf(glyphIndex).characterWidth);
+        return advance * scaleX;
     }
 
     const Formats::Font& font;
     const GlyphLookup& glyphLookup;
     const TextStyle& style;
     const TextArea& area;
+    std::u16string_view text;
 
     // The size of the font units in layout units.
     float scaleX = 1;
@@ -273,8 +392,8 @@ TextLayouter::TextLayouter(const Formats::Font& fontToLayOut)
 
 LaidOutText TextLayouter::LayOut(std::u16string_view text, const TextStyle& style, const TextArea& area, std::uint8_t paneAlpha) const
 {
-    LayoutJob job(font, glyphLookup, style, area, paneAlpha);
-    return job.Run(text);
+    LayoutJob job(font, glyphLookup, style, area, paneAlpha, text);
+    return job.Run();
 }
 
 }

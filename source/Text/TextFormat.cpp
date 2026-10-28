@@ -11,6 +11,15 @@ namespace
 {
 
 constexpr char16_t FormatMarker = u'%';
+constexpr char16_t ZeroFlag = u'0';
+constexpr char16_t SignedNumber = u'd';
+constexpr char16_t UnsignedNumber = u'u';
+constexpr std::u16string_view PercentSign = u"%";
+constexpr std::u16string_view TextConversion = u"ls";
+constexpr std::u16string_view LongNumberMark = u"ll";
+
+// A number of digits above this is a mistake in the format.
+constexpr int MostMinimumDigits = 99;
 
 enum class ConversionKind
 {
@@ -27,6 +36,12 @@ struct Conversion
     // Only for numbers: the zeros in front fill the number up to this many digits.
     int minimumDigits;
 
+    // Only for numbers: the number is given as a std::int64_t, not as an int.
+    bool isLong;
+
+    // Only for numbers: the number must not be negative.
+    bool isUnsigned;
+
     // The characters after the percent sign that belong to the conversion.
     std::size_t length;
 };
@@ -36,26 +51,61 @@ bool IsDigit(char16_t character)
     return character >= u'0' && character <= u'9';
 }
 
+// Reads the zero and the digits after it, if there are any, and moves the length of the conversion behind them.
+void ReadMinimumDigits(std::u16string_view afterMarker, Conversion& conversion)
+{
+    if (!afterMarker.starts_with(ZeroFlag))
+        return;
+
+    conversion.length = 1;
+    while (conversion.length < afterMarker.size() && IsDigit(afterMarker[conversion.length]))
+    {
+        conversion.minimumDigits = conversion.minimumDigits * 10 + (afterMarker[conversion.length] - u'0');
+        if (conversion.minimumDigits > MostMinimumDigits)
+            throw TextError("a place for a number in the format asks for too many digits");
+
+        ++conversion.length;
+    }
+
+    if (conversion.length == 1)
+        throw TextError("a zero in the format is not followed by the number of digits");
+}
+
+Conversion ReadNumberConversion(std::u16string_view afterMarker)
+{
+    Conversion conversion = {ConversionKind::Number, 0, false, false, 0};
+    ReadMinimumDigits(afterMarker, conversion);
+
+    if (afterMarker.substr(conversion.length).starts_with(LongNumberMark))
+    {
+        conversion.isLong = true;
+        conversion.length += LongNumberMark.size();
+    }
+
+    std::u16string_view afterOptions = afterMarker.substr(conversion.length);
+    bool isSigned = afterOptions.starts_with(SignedNumber);
+    bool isUnsigned = afterOptions.starts_with(UnsignedNumber);
+    if (!isSigned && !isUnsigned)
+        throw TextError("a percent sign in the format is not followed by ls, d, u, a zero and digits, ll or another percent sign");
+
+    conversion.isUnsigned = isUnsigned;
+    conversion.length += 1;
+    return conversion;
+}
+
 Conversion ReadConversion(std::u16string_view afterMarker)
 {
-    if (afterMarker.starts_with(u"%"))
-        return {ConversionKind::Percent, 0, 1};
+    if (afterMarker.starts_with(PercentSign))
+        return {ConversionKind::Percent, 0, false, false, PercentSign.size()};
 
-    if (afterMarker.starts_with(u"ls"))
-        return {ConversionKind::Text, 0, 2};
+    if (afterMarker.starts_with(TextConversion))
+        return {ConversionKind::Text, 0, false, false, TextConversion.size()};
 
-    if (afterMarker.starts_with(u"d"))
-        return {ConversionKind::Number, 0, 1};
-
-    bool isNumberWithZeros = afterMarker.size() >= 3 && afterMarker[0] == u'0' && IsDigit(afterMarker[1]) && afterMarker[2] == u'd';
-    if (isNumberWithZeros)
-        return {ConversionKind::Number, afterMarker[1] - u'0', 3};
-
-    throw TextError("a percent sign in the format is not followed by ls, d, a zero and a digit and d, or another percent sign");
+    return ReadNumberConversion(afterMarker);
 }
 
 // Like the C formats, the zeros go behind the minus sign and the minus sign counts as a digit of the width.
-void AppendNumber(std::u16string& text, int number, int minimumDigits)
+void AppendNumber(std::u16string& text, std::int64_t number, int minimumDigits)
 {
     std::string digits = std::to_string(number);
     std::size_t signLength = number < 0 ? 1 : 0;
@@ -65,15 +115,33 @@ void AppendNumber(std::u16string& text, int number, int minimumDigits)
     text.append(digits.begin(), digits.end());
 }
 
+std::int64_t ReadNumberArgument(const TextArgument& argument, const Conversion& conversion)
+{
+    if (conversion.isLong)
+    {
+        const std::int64_t* longNumber = std::get_if<std::int64_t>(&argument);
+        if (longNumber == nullptr)
+            throw TextError("a place for a number of 64 bits in the format got another kind of argument");
+
+        return *longNumber;
+    }
+
+    const int* number = std::get_if<int>(&argument);
+    if (number == nullptr)
+        throw TextError("a place for a number in the format got another kind of argument");
+
+    return *number;
+}
+
 void AppendArgument(std::u16string& text, const TextArgument& argument, const Conversion& conversion)
 {
     if (conversion.kind == ConversionKind::Number)
     {
-        const int* number = std::get_if<int>(&argument);
-        if (number == nullptr)
-            throw TextError("a place for a number in the format got a text");
+        std::int64_t number = ReadNumberArgument(argument, conversion);
+        if (conversion.isUnsigned && number < 0)
+            throw TextError("a place for a number that is not negative got a negative number");
 
-        AppendNumber(text, *number, conversion.minimumDigits);
+        AppendNumber(text, number, conversion.minimumDigits);
         return;
     }
 
@@ -125,12 +193,24 @@ std::u16string FormatText(std::u16string_view format, std::initializer_list<Text
 
 std::u16string ReplacePlaceholder(std::u16string_view text, std::u16string_view placeholder, std::u16string_view replacement)
 {
+    if (placeholder.empty())
+        throw TextError("the placeholder is empty");
+
     std::size_t position = text.find(placeholder);
     if (position == std::u16string_view::npos)
         throw TextError("the text does not hold the placeholder");
 
-    std::u16string replacedText(text);
-    replacedText.replace(position, placeholder.size(), replacement);
+    std::u16string replacedText;
+    std::size_t copiedUpTo = 0;
+    while (position != std::u16string_view::npos)
+    {
+        replacedText.append(text.substr(copiedUpTo, position - copiedUpTo));
+        replacedText.append(replacement);
+        copiedUpTo = position + placeholder.size();
+        position = text.find(placeholder, copiedUpTo);
+    }
+
+    replacedText.append(text.substr(copiedUpTo));
     return replacedText;
 }
 
