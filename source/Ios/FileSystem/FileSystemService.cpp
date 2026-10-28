@@ -120,17 +120,9 @@ Result<void> CheckReplacedEntry(const FileSystemState& state, const NandPath& fr
     return Result<void>();
 }
 
-Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandPath& to, const Caller& caller)
+// Both directories must exist, and the caller must have the right to write in both.
+Result<void> RequireWritableDirectories(const FileSystemState& state, const NandPath& from, const NandPath& to, const Caller& caller)
 {
-    if (state.isShutDown)
-        return IosError::ShutDown;
-
-    if (from.IsRoot() || to.IsRoot())
-        return IosError::InvalidArgument;
-
-    if (IsNameTooLong(from) || IsNameTooLong(to))
-        return IosError::InvalidArgument;
-
     Result<const EntryRecord*> oldParent = FindEntry(state, from.Parent());
     if (oldParent.Failed())
         return oldParent.Error();
@@ -143,9 +135,23 @@ Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandP
     if (mayChangeOldParent.Failed())
         return mayChangeOldParent;
 
-    Result<void> mayChangeNewParent = RequireRights(*newParent.Value(), caller, AccessRights::Write);
-    if (mayChangeNewParent.Failed())
-        return mayChangeNewParent;
+    return RequireRights(*newParent.Value(), caller, AccessRights::Write);
+}
+
+Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandPath& to, const Caller& caller)
+{
+    if (state.isShutDown)
+        return IosError::ShutDown;
+
+    if (from.IsRoot() || to.IsRoot())
+        return IosError::InvalidArgument;
+
+    if (IsNameTooLong(from) || IsNameTooLong(to))
+        return IosError::InvalidArgument;
+
+    Result<void> directoriesAllowIt = RequireWritableDirectories(state, from, to, caller);
+    if (directoriesAllowIt.Failed())
+        return directoriesAllowIt;
 
     Result<const EntryRecord*> source = FindEntry(state, from);
     if (source.Failed())
@@ -159,7 +165,7 @@ Result<void> MoveEntry(FileSystemState& state, const NandPath& from, const NandP
     if (state.IsAnyOpenInside(from))
         return IosError::FileInUse;
 
-    if (newParent.Value()->kind != EntryKind::Directory)
+    if (state.storage.Find(to.Parent())->kind != EntryKind::Directory)
         return IosError::InvalidArgument;
 
     Result<void> replacedEntryAllowsIt = CheckReplacedEntry(state, from, *source.Value(), to);

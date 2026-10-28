@@ -54,7 +54,8 @@ struct FileStatistics
 // The position is never behind the end of the file: a seek there is refused.
 //
 // Every call gives back ShutDown after the file system was shut down. A call on a file that was closed gives back InvalidArgument.
-// Several threads may use their own open files at the same time. A single open file is protected too, but its position is shared by the calls.
+// Several threads may use their own open files at the same time. One open file may be used by several threads too, but then its position
+// is shared by their calls. Closing a file while another thread still uses it is a mistake in the program.
 class OpenFile
 {
 public:
