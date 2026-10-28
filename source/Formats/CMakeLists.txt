@@ -1,12 +1,24 @@
 add_library(Formats STATIC
     Aes128.cpp
+    Ash0.cpp
     ByteReader.cpp
     Certificate.cpp
+    DolExecutable.cpp
     FileBytes.cpp
+    Layout.cpp
+    LayoutAnimation.cpp
+    LayoutMaterial.cpp
+    Lz77.cpp
+    SectionedFile.cpp
     Sha1.cpp
     Signature.cpp
+    TextureDecoder.cpp
+    TextureFormat.cpp
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    TplTexture.cpp
+    U8Archive.cpp
+    Vectors.cpp
     WadFile.cpp
 )
