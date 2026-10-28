@@ -65,11 +65,18 @@ Certificate ReadCertificate(ByteReader& reader)
 {
     Certificate certificate;
     certificate.signature = ReadSignature(reader);
+
+    std::size_t signedStart = reader.Position();
     certificate.issuer = reader.ReadText(NameFieldSize);
     certificate.keyType = ReadPublicKeyType(reader);
     certificate.name = reader.ReadText(NameFieldSize);
     certificate.keyId = reader.ReadUint32();
     ReadPublicKey(reader, certificate);
+
+    std::size_t signedEnd = reader.Position();
+    reader.MoveTo(signedStart);
+    ByteView signedBytes = reader.ReadBytes(signedEnd - signedStart);
+    certificate.signedBytes.assign(signedBytes.begin(), signedBytes.end());
     return certificate;
 }
 
