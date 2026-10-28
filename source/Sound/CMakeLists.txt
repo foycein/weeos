@@ -1,4 +1,5 @@
 add_library(Sound STATIC
+    AudioOutput.cpp
     BankFile.cpp
     Envelope.cpp
     LoadedFiles.cpp
@@ -11,6 +12,7 @@ add_library(Sound STATIC
     SoundCommandQueue.cpp
     SoundFileHeader.cpp
     SoundSystem.cpp
+    StereoPlacement.cpp
     Voice.cpp
     VoicePool.cpp
     WaveDecoder.cpp
@@ -19,3 +21,4 @@ add_library(Sound STATIC
     WaveSoundFile.cpp
 )
 target_link_libraries(Sound PUBLIC Formats)
+target_link_libraries(Sound PRIVATE ole32)
