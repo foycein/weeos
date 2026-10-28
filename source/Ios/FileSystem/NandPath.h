@@ -37,6 +37,9 @@ public:
 
     Result<NandPath> Child(std::string_view name) const;
 
+    // The same path with every name cut to at most this many characters.
+    NandPath WithNamesCutAt(std::size_t characterCount) const;
+
     // True when this path is the directory itself or lies anywhere below it.
     bool IsInside(const NandPath& directory) const;
 

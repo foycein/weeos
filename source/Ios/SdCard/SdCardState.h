@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Ios/SdCard/SdCardKind.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
@@ -14,6 +16,7 @@ struct SdCardState
 
     bool isInserted = false;
     bool isWriteProtected = false;
+    SdCardKind cardKind = SdCardKind::Standard;
 
     // The folder on the PC that is the card.
     std::filesystem::path cardFolder;

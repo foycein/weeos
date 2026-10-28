@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ios/EventQueue.h"
+#include "Ios/Profile/ProfileChoice.h"
 
 #include <array>
 #include <cstdint>
@@ -59,7 +60,7 @@ struct KeyboardEvent
 // The codes of the keys are the usage ids of USB (UsbKeyCodes.h). The layout, which letter a code makes, is the job of the program.
 //
 // The platform attaches a keyboard and reports its keys, as a keyboard reports them over USB. The programs wait for the events.
-// Thread safe.
+// Thread safe. An IOS that has no keyboard driver (the profile says KeyboardDriver::None) sees no keyboard: it never gets an event.
 //
 // Like the module of the original, the service
 //   * tells every change in one event that holds all the keys that are down, and tells nothing when a report equals the one before,
@@ -71,6 +72,9 @@ struct KeyboardEvent
 class KeyboardService
 {
 public:
+    // Without a profile this is the keyboard driver of IOS80.
+    explicit KeyboardService(const IosProfile& iosProfile = SystemMenuProfile());
+
     // ---- The platform
 
     // A keyboard is there. Nothing happens when the keyboard is attached already. A new keyboard has no key down and no light on.
@@ -113,6 +117,7 @@ private:
         std::uint8_t lightBits = 0;
     };
 
+    const IosProfile profile;
     mutable std::mutex mutex;
     std::map<std::uint32_t, KeyboardState> keyboards;
     EventQueue<KeyboardEvent> events;

@@ -14,8 +14,8 @@
 //   IPL.SADR   the address: only the country stays, the region, the city and the coordinates are cleared
 //   IPL.CB     the difference between the clock chip and the local time: none, the clock of the product is the PC's
 //   IPL.TID    the title of a channel installed from the SD card for a moment: none
-//   IPL.INC    the number of channels in the channel grid, IPL.FRC the number of free slots: the five channels the import keeps
-//              (5 and 43 of the 48 slots), because the downloaded channels of the owner are left out
+//   IPL.INC    the number of tiles in the channel grid, IPL.FRC the number of free slots: the Disc Channel and the six channels the
+//              import keeps (7 and 41 of the 48 slots), because the downloaded channels of the owner are left out
 //   NET.PROF   the network profile (addresses, proxy, PPPoE user and password) and NET.CNF: removed
 //
 // A setting that is not in the configuration is not added. Throws a FormatError when IPL.NIK or IPL.PC has another size

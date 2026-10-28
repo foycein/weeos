@@ -2,7 +2,9 @@
 
 #include "Ios/EventQueue.h"
 #include "Ios/FileSystem/EntryAttributes.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
+#include "Ios/SdCard/SdCardKind.h"
 #include "Ios/SdCard/SdFile.h"
 #include "Ios/SdCard/SdPath.h"
 
@@ -49,14 +51,19 @@ struct SdEntry
 //
 // All calls are thread safe. Every call that needs the card gives back NoCardInserted while the slot is empty.
 // A card that is write protected gives back AccessDenied to every call that would change it.
+// A high capacity card in the slot of an IOS that cannot start it gives back StorageFailure to every call that needs the card.
 class SdCardService
 {
 public:
-    SdCardService();
+    // Without a profile this is the card driver of IOS80.
+    explicit SdCardService(const IosProfile& iosProfile = SystemMenuProfile());
 
     // The platform puts a card into the slot. The card is the folder on the PC. AlreadyExists when a card is in the slot,
-    // NotFound when the folder does not exist.
+    // NotFound when the folder does not exist. The card is a high capacity card when the volume that holds the folder is bigger than 2 GiB.
     Result<void> InsertCard(const std::filesystem::path& cardFolder, bool isWriteProtected);
+
+    // The same for a card of a given kind.
+    Result<void> InsertCard(const std::filesystem::path& cardFolder, bool isWriteProtected, SdCardKind kind);
 
     // The platform takes the card out. Does nothing when the slot is empty.
     void RemoveCard();
@@ -96,6 +103,10 @@ public:
     void Close();
 
 private:
+    // The caller holds the lock.
+    Result<void> CheckCardCanBeUsed() const;
+
+    const IosProfile profile;
     std::shared_ptr<SdCardState> state;
     EventQueue<SdCardChange> changes;
 };

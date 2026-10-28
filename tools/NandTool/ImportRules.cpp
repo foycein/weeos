@@ -67,8 +67,6 @@ std::vector<ImportRule> FixedImportRules()
         SkipEverythingInside("/shared2/wc24", "Message Board mail and WiiConnect24 data: personal data"),
         SkipEverythingInside("/shared2/sys/net", "network configuration: the names, passwords and addresses of the owner's networks"),
         SkipEverythingInside("/title/00010000", "save data of disc games: personal data"),
-        SkipEverythingInside("/title/00010001", "downloaded, Virtual Console, WiiWare and homebrew channels with their save data: not the system"),
-        SkipEverythingInside("/ticket/00010001", "tickets of those channels"),
 
         SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
         SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
@@ -77,6 +75,14 @@ std::vector<ImportRule> FixedImportRules()
 
         ImportOnlyThisEntry("/title/00000001/00000002/data/setting.txt", "the facts about the console: serial number, model, region, video mode"),
         SkipEverythingInside("/title/*/*/data/*", "what a title keeps in its data folder: save data, caches, logs, played-game history, downloads"),
+
+        // The Internet Channel belongs to the system the owner wants (docs/DECISIONS.md). The other downloaded channels do not.
+        ImportOnlyThisEntry("/title/00010001", "the folder of the downloaded channels, which holds the Internet Channel"),
+        ImportOnlyThisEntry("/ticket/00010001", "the folder of the tickets of the downloaded channels"),
+        ImportEverythingInside("/title/00010001/48414445", "the Internet Channel, without its data (the rule above skips it)"),
+        ImportOnlyThisEntry("/ticket/00010001/48414445.tik", "the tickets of the Internet Channel"),
+        SkipEverythingInside("/title/00010001", "downloaded, Virtual Console, WiiWare and homebrew channels with their save data: not the system"),
+        SkipEverythingInside("/ticket/00010001", "tickets of those channels"),
 
         ImportOnlyThisEntry("/shared2", "the folder of the files that all titles share"),
         ImportOnlyThisEntry("/shared2/sys", "the folder of the system files"),
