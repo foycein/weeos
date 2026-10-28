@@ -6,9 +6,12 @@ add_library(Formats STATIC
     FileBytes.cpp
     Sha1.cpp
     Signature.cpp
+    TextureDecoder.cpp
+    TextureFormat.cpp
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    TplTexture.cpp
     U8Archive.cpp
     WadFile.cpp
 )

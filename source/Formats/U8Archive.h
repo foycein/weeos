@@ -39,6 +39,9 @@ struct U8Archive
     ByteView FileData(const U8Entry& entry) const&& = delete;
 };
 
+// True when the data starts with the tag of a U8 archive.
+bool IsU8Archive(ByteView bytes);
+
 U8Archive ReadU8Archive(ByteView bytes);
 
 }

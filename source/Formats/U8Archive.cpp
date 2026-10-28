@@ -205,6 +205,15 @@ ByteView U8Archive::FileData(const U8Entry& entry) const&
     return ByteView(bytes).subspan(entry.dataOffset, entry.dataSize);
 }
 
+bool IsU8Archive(ByteView bytes)
+{
+    if (bytes.size() < sizeof(ArchiveTag))
+        return false;
+
+    ByteReader reader(bytes, "U8 archive");
+    return reader.ReadUint32() == ArchiveTag;
+}
+
 U8Archive ReadU8Archive(ByteView bytes)
 {
     ByteReader reader(bytes, "U8 archive");
