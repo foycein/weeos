@@ -287,6 +287,11 @@ std::string VulkanGraphicsDevice::DeviceName() const
     return context.DeviceName();
 }
 
+bool VulkanGraphicsDevice::IsValidationActive() const
+{
+    return context.IsValidationActive();
+}
+
 int VulkanGraphicsDevice::ValidationMessageCount() const
 {
     return context.ValidationMessageCount();

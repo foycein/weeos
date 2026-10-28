@@ -39,6 +39,9 @@ public:
 
     std::string DeviceName() const;
 
+    // The validation layer is used in debug builds when it is installed.
+    bool IsValidationActive() const;
+
     // How many warnings and errors the validation layer has reported so far. Always zero when there is no layer.
     int ValidationMessageCount() const;
 

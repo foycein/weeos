@@ -210,6 +210,11 @@ std::string VulkanContext::DeviceName() const
     return deviceProperties.deviceName;
 }
 
+bool VulkanContext::IsValidationActive() const
+{
+    return isValidationActive;
+}
+
 int VulkanContext::ValidationMessageCount() const
 {
     return validationMessageCount;

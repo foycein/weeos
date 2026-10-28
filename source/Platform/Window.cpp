@@ -58,7 +58,8 @@ WindowListener* NobodyListening()
 Window::Window(std::wstring_view title, WindowSize clientSize)
     : listener(NobodyListening())
 {
-    // Without this Windows stretches the picture of a window on a scaled monitor. It fails harmlessly when already set.
+    // Without this Windows stretches the picture of a window on a scaled monitor, so the client area would not have
+    // the pixels asked for. It fails harmlessly when the program has already chosen.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     RegisterWindowClass();
 
@@ -178,10 +179,6 @@ LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM second
             return 0;
         break;
 
-    case WM_DPICHANGED:
-        MoveToSuggestedRectangle(*reinterpret_cast<const RECT*>(secondParameter));
-        return 0;
-
     case WM_MOUSEMOVE:
         HandleMouseMove(secondParameter);
         return 0;
@@ -265,16 +262,6 @@ void Window::HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPres
         return;
 
     listener->OnKey(static_cast<int>(virtualKeyCode), isPressed);
-}
-
-void Window::MoveToSuggestedRectangle(const RECT& suggestedRectangle)
-{
-    if (isFullscreen)
-        return;
-
-    SetWindowPos(handle, nullptr, suggestedRectangle.left, suggestedRectangle.top,
-        suggestedRectangle.right - suggestedRectangle.left, suggestedRectangle.bottom - suggestedRectangle.top,
-        SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void Window::EnterFullscreen()

@@ -47,7 +47,6 @@ private:
     LRESULT HandleMessage(UINT message, WPARAM firstParameter, LPARAM secondParameter);
     void HandleMouseMove(LPARAM mousePosition);
     void HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPressed);
-    void MoveToSuggestedRectangle(const RECT& suggestedRectangle);
     void EnterFullscreen();
     void LeaveFullscreen();
 

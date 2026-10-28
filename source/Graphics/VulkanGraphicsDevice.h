@@ -47,7 +47,10 @@ public:
 
     std::string DeviceName() const;
 
-    // How many warnings and errors the Vulkan validation layer has printed. Always zero in builds without the layer.
+    // The Vulkan validation layer is used in debug builds when it is installed.
+    bool IsValidationActive() const;
+
+    // How many warnings and errors the validation layer has printed. Always zero when there is no layer.
     int ValidationMessageCount() const;
 
 private:
