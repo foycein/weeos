@@ -2,8 +2,9 @@
 
 #include "Input/RemoteButtons.h"
 
+#include "Platform/WindowListener.h"
+
 #include <array>
-#include <cstdint>
 
 namespace Input
 {
@@ -28,13 +29,6 @@ constexpr int MinusSign = 0xBD;
 
 }
 
-enum class MouseButton : std::uint8_t
-{
-    Left,
-    Middle,
-    Right,
-};
-
 // While the key is down, the button of the virtual remote is down.
 struct KeyBinding
 {
@@ -45,7 +39,7 @@ struct KeyBinding
 // While the mouse button is down, the button of the virtual remote is down.
 struct MouseBinding
 {
-    MouseButton mouseButton;
+    Platform::MouseButton mouseButton;
     ButtonMask button;
 };
 
@@ -66,8 +60,8 @@ inline constexpr auto DefaultKeyMap = std::to_array<KeyBinding>({
 });
 
 inline constexpr auto DefaultMouseMap = std::to_array<MouseBinding>({
-    {MouseButton::Left, RemoteButtons::A},
-    {MouseButton::Right, RemoteButtons::B},
+    {Platform::MouseButton::Left, RemoteButtons::A},
+    {Platform::MouseButton::Right, RemoteButtons::B},
 });
 
 }

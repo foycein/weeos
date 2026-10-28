@@ -5,7 +5,7 @@
 namespace Input
 {
 
-VirtualRemote::VirtualRemote(WindowSize initialWindowSize, ScreenShape initialScreenShape)
+VirtualRemote::VirtualRemote(Platform::WindowSize initialWindowSize, ScreenShape initialScreenShape)
     : keyMap(DefaultKeyMap.begin(), DefaultKeyMap.end())
     , mouseMap(DefaultMouseMap.begin(), DefaultMouseMap.end())
     , windowSize(initialWindowSize)
@@ -25,7 +25,7 @@ void VirtualRemote::OnMouseLeft()
     heldMouseButtons.clear();
 }
 
-void VirtualRemote::OnMouseButton(MouseButton button, bool isPressed)
+void VirtualRemote::OnMouseButton(Platform::MouseButton button, bool isPressed)
 {
     if (!isPressed)
     {
@@ -55,7 +55,7 @@ void VirtualRemote::OnFocusLost()
     heldMouseButtons.clear();
 }
 
-void VirtualRemote::SetWindowSize(WindowSize newWindowSize)
+void VirtualRemote::SetWindowSize(Platform::WindowSize newWindowSize)
 {
     windowSize = newWindowSize;
 }
@@ -162,7 +162,7 @@ ButtonMask VirtualRemote::ButtonsOfKey(int virtualKeyCode) const
     return buttons;
 }
 
-ButtonMask VirtualRemote::ButtonsOfMouseButton(MouseButton mouseButton) const
+ButtonMask VirtualRemote::ButtonsOfMouseButton(Platform::MouseButton mouseButton) const
 {
     ButtonMask buttons = 0;
     for (const MouseBinding& binding : mouseMap)
@@ -179,7 +179,7 @@ ButtonMask VirtualRemote::HeldButtons() const
     for (int virtualKeyCode : heldKeys)
         buttons |= ButtonsOfKey(virtualKeyCode);
 
-    for (MouseButton mouseButton : heldMouseButtons)
+    for (Platform::MouseButton mouseButton : heldMouseButtons)
         buttons |= ButtonsOfMouseButton(mouseButton);
 
     return buttons;

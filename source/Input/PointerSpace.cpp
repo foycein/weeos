@@ -40,7 +40,7 @@ double SizeOfFirstBar(double windowLength, double pictureLength)
 
 }
 
-PictureArea FitPicture(WindowSize windowSize, ScreenShape screenShape)
+PictureArea FitPicture(Platform::WindowSize windowSize, ScreenShape screenShape)
 {
     ShapeProportions shape = ProportionsOf(screenShape);
     double windowWidth = windowSize.width;

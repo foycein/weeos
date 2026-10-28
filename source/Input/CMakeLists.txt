@@ -4,4 +4,4 @@ add_library(Input STATIC
     VirtualRemote.cpp
 )
 
-target_link_libraries(Input PUBLIC Formats)
+target_link_libraries(Input PUBLIC Formats Platform)

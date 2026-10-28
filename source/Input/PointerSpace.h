@@ -1,21 +1,13 @@
 #pragma once
 
 #include "Formats/Vectors.h"
+#include "Platform/WindowSize.h"
 
 #include <cstdint>
 #include <optional>
 
 namespace Input
 {
-
-// A size in pixels.
-struct WindowSize
-{
-    std::uint32_t width = 0;
-    std::uint32_t height = 0;
-
-    bool operator==(const WindowSize& other) const = default;
-};
 
 // The shape the picture has on the screen. The window shows it in this shape, with black bars where the window is wider or taller.
 enum class ScreenShape : std::uint8_t
@@ -41,7 +33,7 @@ struct PictureArea
 
 // The largest area with the shape of the screen that fits in the window, in the middle of the window.
 // The graphics part draws the picture in the same area.
-PictureArea FitPicture(WindowSize windowSize, ScreenShape screenShape);
+PictureArea FitPicture(Platform::WindowSize windowSize, ScreenShape screenShape);
 
 // Turns a pixel of the window into a place in the picture. This is the pointer space of the menu, the same for every
 // window size and for both screen shapes: the middle of the picture is (0, 0), the left edge has x = -1,

@@ -4,6 +4,9 @@
 #include "Input/PointerSpace.h"
 #include "Input/RemoteSource.h"
 
+#include "Platform/WindowListener.h"
+#include "Platform/WindowSize.h"
+
 #include <set>
 #include <span>
 #include <vector>
@@ -13,33 +16,33 @@ namespace Input
 
 // Virtual Wii Remote 1. The mouse is the pointer, the mouse buttons and the keys press the buttons of the remote.
 // It is connected from the start and has new data at every read, so the menu never loses it.
-// The events of the window and the reads of the menu must come from the same thread.
-class VirtualRemote : public RemoteSource
+// It is the listener of the window: give it to Window::SetListener. The events of the window and the reads of the menu
+// must come from the same thread.
+class VirtualRemote : public RemoteSource, public Platform::WindowListener
 {
 public:
     // The window size and the screen shape tell where the picture is in the window, which the pointer needs.
-    VirtualRemote(WindowSize initialWindowSize, ScreenShape initialScreenShape);
+    VirtualRemote(Platform::WindowSize initialWindowSize, ScreenShape initialScreenShape);
 
-    // ---- The events of the window, in the order they happen. They are the five events of the window listener of the platform part.
+    // ---- The events of the window, in the order they happen
 
-    // The mouse moved over the window. The position is in pixels from the top left corner of the area inside the window.
-    void OnMouseMoved(int pixelX, int pixelY);
+    // The position is in pixels from the top left corner of the area inside the window.
+    void OnMouseMoved(int pixelX, int pixelY) override;
 
-    // The mouse left the window. The mouse buttons count as released, because the window does not see them being released.
-    void OnMouseLeft();
+    // The mouse buttons count as released, because the window does not see them being released outside of it.
+    void OnMouseLeft() override;
 
-    void OnMouseButton(MouseButton button, bool isPressed);
+    void OnMouseButton(Platform::MouseButton button, bool isPressed) override;
 
-    // The code is the Windows virtual key code.
-    void OnKey(int virtualKeyCode, bool isPressed);
+    void OnKey(int virtualKeyCode, bool isPressed) override;
 
-    // The window lost the keyboard focus. Every key and every mouse button counts as released.
-    void OnFocusLost();
+    // Every key and every mouse button counts as released.
+    void OnFocusLost() override;
 
     // ---- What changes while the program runs
 
     // The program tells the remote when the window is resized and when the screen shape setting changes.
-    void SetWindowSize(WindowSize newWindowSize);
+    void SetWindowSize(Platform::WindowSize newWindowSize);
     void SetScreenShape(ScreenShape newScreenShape);
 
     // Gives other keys and mouse buttons to the buttons of the remote. A key that is down gets the meaning it has in the new table.
@@ -73,7 +76,7 @@ public:
 
 private:
     ButtonMask ButtonsOfKey(int virtualKeyCode) const;
-    ButtonMask ButtonsOfMouseButton(MouseButton mouseButton) const;
+    ButtonMask ButtonsOfMouseButton(Platform::MouseButton mouseButton) const;
     ButtonMask HeldButtons() const;
     void HandleButtonsPressed(ButtonMask buttons);
     std::optional<Formats::Vector2> PointerOfTheMouse() const;
@@ -82,11 +85,11 @@ private:
     std::vector<MouseBinding> mouseMap;
 
     std::set<int> heldKeys;
-    std::set<MouseButton> heldMouseButtons;
+    std::set<Platform::MouseButton> heldMouseButtons;
 
     bool mouseIsOverWindow = false;
     Formats::Vector2 mousePixel = {0, 0};
-    WindowSize windowSize;
+    Platform::WindowSize windowSize;
     ScreenShape screenShape;
 
     bool isConnected = true;
