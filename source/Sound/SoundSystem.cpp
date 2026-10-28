@@ -35,20 +35,37 @@ SoundSystem::SoundSystem(SoundArchiveFile archiveToPlay, std::uint32_t deviceSam
 {
     for (const SoundInfo& sound : archive.sounds)
     {
-        if (sound.kind != SoundKind::WaveSound || waveSoundFiles.contains(sound.fileId))
-            continue;
-
-        LoadedWaveSoundFile loaded = LoadWaveSoundFile(archive, sound.fileId);
-        if (sound.waveSound.soundNumber >= loaded.file.sounds.size())
-        {
-            throw Formats::FormatError(std::format("Sound system: the sound {} is the sound {} of the file {}, which has {} sounds", sound.name,
-                sound.waveSound.soundNumber, sound.fileId, loaded.file.sounds.size()));
-        }
-        waveSoundFiles.emplace(sound.fileId, std::move(loaded));
+        if (sound.kind == SoundKind::WaveSound)
+            LoadWaveSoundFileOf(sound);
+        else
+            LoadSequenceFilesOf(sound);
     }
 
     leftSamples.resize(LongestFrameLength(deviceSampleRate));
     rightSamples.resize(LongestFrameLength(deviceSampleRate));
+}
+
+void SoundSystem::LoadWaveSoundFileOf(const SoundInfo& sound)
+{
+    if (!waveSoundFiles.contains(sound.fileId))
+        waveSoundFiles.emplace(sound.fileId, LoadWaveSoundFile(archive, sound.fileId));
+
+    const LoadedWaveSoundFile& loaded = waveSoundFiles.at(sound.fileId);
+    if (sound.waveSound.soundNumber >= loaded.file.sounds.size())
+    {
+        throw Formats::FormatError(std::format("Sound system: the sound {} is the sound {} of the file {}, which has {} sounds", sound.name,
+            sound.waveSound.soundNumber, sound.fileId, loaded.file.sounds.size()));
+    }
+}
+
+void SoundSystem::LoadSequenceFilesOf(const SoundInfo& sound)
+{
+    if (!sequenceFiles.contains(sound.fileId))
+        sequenceFiles.emplace(sound.fileId, LoadSequenceFile(archive, sound.fileId));
+
+    std::uint32_t bankFileId = archive.banks[sound.sequence.bankNumber].fileId;
+    if (!banks.contains(bankFileId))
+        banks.emplace(bankFileId, LoadBank(archive, bankFileId));
 }
 
 const SoundArchiveFile& SoundSystem::Archive() const
@@ -98,6 +115,15 @@ std::size_t SoundSystem::RunningSoundCount() const
     return runningSounds.size();
 }
 
+std::size_t SoundSystem::SequenceErrorCount() const
+{
+    std::size_t errorCount = sequenceErrorCount;
+    for (const RunningSound& sound : runningSounds)
+        errorCount += sound.sequence ? sound.sequence->ErrorCount() : 0;
+
+    return errorCount;
+}
+
 void SoundSystem::ProcessCommands()
 {
     SoundCommand command;
@@ -120,10 +146,23 @@ void SoundSystem::ProcessCommands()
 void SoundSystem::StartSound(const SoundCommand& command)
 {
     const SoundInfo& info = archive.sounds[command.soundNumber];
-    if (info.kind != SoundKind::WaveSound || !MakeRoomInPlayer(info))
+    if (!MakeRoomInPlayer(info))
         return;
 
-    StartWaveSound(command, info);
+    if (info.kind == SoundKind::WaveSound)
+        StartWaveSound(command, info);
+    else
+        StartSequenceSound(command, info);
+}
+
+void SoundSystem::StartSequenceSound(const SoundCommand& command, const SoundInfo& info)
+{
+    const SequenceFile& sequenceFile = sequenceFiles.at(info.fileId);
+    const LoadedBank& bank = banks.at(archive.banks[info.sequence.bankNumber].fileId);
+
+    RunningSound sound{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, VoiceHandle{}, nullptr};
+    sound.sequence = std::make_unique<SequencePlayer>(sequenceFile, bank, info.sequence, float(info.volume) / HighestNumber, voices, sequenceGlobals);
+    runningSounds.push_back(std::move(sound));
 }
 
 void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& info)
@@ -145,7 +184,7 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
     if (!voice)
         return;
 
-    runningSounds.push_back({SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, *voice});
+    runningSounds.push_back({SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, *voice, nullptr});
 }
 
 // A player plays only so many of its sounds at once. When it is full, the sound with the lowest priority (the oldest of
@@ -175,15 +214,32 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
 
     std::uint32_t weakestHandleNumber = weakestSound->handle.number;
     StopRunningSound(*weakestSound);
+    if (weakestSound->sequence)
+        sequenceErrorCount += weakestSound->sequence->ErrorCount();
     std::erase_if(runningSounds, [&](const RunningSound& sound) { return sound.handle.number == weakestHandleNumber; });
     return true;
 }
 
 void SoundSystem::StopRunningSound(RunningSound& sound)
 {
+    if (sound.sequence)
+    {
+        sound.sequence->Stop();
+        return;
+    }
+
     Voice* voice = voices.Find(sound.voice);
     if (voice != nullptr)
         voice->Release();
+}
+
+// A wave sound has ended when its voice has. A sequence has ended when its tracks have ended, while its last voices may still fade out.
+bool SoundSystem::HasEnded(const RunningSound& sound)
+{
+    if (sound.sequence)
+        return sound.sequence->HasEnded();
+
+    return voices.Find(sound.voice) == nullptr;
 }
 
 void SoundSystem::StartNextFrame()
@@ -199,7 +255,19 @@ void SoundSystem::StartNextFrame()
 
 void SoundSystem::RunSoundFrame()
 {
-    std::erase_if(runningSounds, [&](const RunningSound& sound) { return voices.Find(sound.voice) == nullptr; });
+    for (RunningSound& sound : runningSounds)
+    {
+        if (sound.sequence)
+            sound.sequence->Update();
+    }
+
+    for (const RunningSound& sound : runningSounds)
+    {
+        if (sound.sequence && HasEnded(sound))
+            sequenceErrorCount += sound.sequence->ErrorCount();
+    }
+    std::erase_if(runningSounds, [&](const RunningSound& sound) { return HasEnded(sound); });
+
     voices.BeginFrame();
 }
 

@@ -2,6 +2,7 @@
 
 #include "Sound/LoadedFiles.h"
 #include "Sound/Mixer.h"
+#include "Sound/SequencePlayer.h"
 #include "Sound/SoundArchiveFile.h"
 #include "Sound/SoundCommandQueue.h"
 #include "Sound/VoicePool.h"
@@ -9,6 +10,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -61,18 +63,28 @@ public:
     std::size_t ActiveVoiceCount() const;
     std::size_t RunningSoundCount() const;
 
+    // The number of times a track of a sequence had to be ended because of a command that is not supported (or that went wrong),
+    // among all the sequences that have been played. The sequences of the menu never do.
+    std::size_t SequenceErrorCount() const;
+
 private:
+    // A sound that plays: either a single voice (a wave sound) or a sequence that starts voices.
     struct RunningSound
     {
         SoundHandle handle;
         std::size_t soundNumber;
         std::uint64_t startNumber;
         VoiceHandle voice;
+        std::unique_ptr<SequencePlayer> sequence;
     };
 
+    void LoadWaveSoundFileOf(const SoundInfo& sound);
+    void LoadSequenceFilesOf(const SoundInfo& sound);
     void ProcessCommands();
     void StartSound(const SoundCommand& command);
     void StartWaveSound(const SoundCommand& command, const SoundInfo& info);
+    void StartSequenceSound(const SoundCommand& command, const SoundInfo& info);
+    bool HasEnded(const RunningSound& sound);
     bool MakeRoomInPlayer(const SoundInfo& info);
     void StopRunningSound(RunningSound& sound);
     void RunSoundFrame();
@@ -80,6 +92,10 @@ private:
 
     SoundArchiveFile archive;
     std::map<std::uint32_t, LoadedWaveSoundFile> waveSoundFiles;
+    std::map<std::uint32_t, LoadedBank> banks;
+    std::map<std::uint32_t, SequenceFile> sequenceFiles;
+    SequenceGlobals sequenceGlobals;
+    std::size_t sequenceErrorCount = 0;
     VoicePool voices;
     Mixer mixer;
     SoundCommandQueue commands;

@@ -8,6 +8,7 @@ add_library(Sound STATIC
     Reference.cpp
     Resampler.cpp
     SequenceFile.cpp
+    SequencePlayer.cpp
     SoundArchiveFile.cpp
     SoundCommandQueue.cpp
     SoundFileHeader.cpp
