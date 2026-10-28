@@ -9,6 +9,7 @@ include_directories(source tests)
 
 add_subdirectory(source/Formats)
 add_subdirectory(source/Platform)
+add_subdirectory(source/Graphics)
 add_subdirectory(tools/TextureDump)
 
 enable_testing()
