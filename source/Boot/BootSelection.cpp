@@ -38,26 +38,18 @@ Formats::Bytes ReadNandFile(const std::filesystem::path& file, std::string_view 
 }
 
 // A ticket file holds one or more tickets. boot2 starts the title with the first one.
-void RequireTicketOfTitle(const std::filesystem::path& nandFolder, std::uint64_t titleId)
+void RequireTicketOfTitle(const Ios::TicketView& firstTicketView, std::uint64_t titleId)
 {
-    Formats::Bytes ticketFile = ReadNandFile(TicketFilePath(nandFolder, titleId), "ticket");
-    Formats::Ticket ticket = Formats::ReadTicket(ticketFile);
-
-    if (ticket.titleId != titleId)
+    if (firstTicketView.titleId.ToValue() != titleId)
     {
         throw BootError(std::format("The ticket for title {:016x} belongs to title {:016x}",
-            titleId, ticket.titleId));
+            titleId, firstTicketView.titleId.ToValue()));
     }
 }
 
-}
-
-BootSelection SelectBootTitle(const std::filesystem::path& nandFolder)
+BootSelection DecideBootTitle(const Ios::TicketView& firstTicketView, const Formats::TitleMetadata& titleMetadata)
 {
-    RequireTicketOfTitle(nandFolder, SystemMenuTitleId);
-
-    Formats::Bytes titleMetadataFile = ReadNandFile(TitleMetadataFilePath(nandFolder, SystemMenuTitleId), "title metadata");
-    Formats::TitleMetadata titleMetadata = Formats::ReadTitleMetadata(titleMetadataFile);
+    RequireTicketOfTitle(firstTicketView, SystemMenuTitleId);
 
     if (!IsIosTitleId(titleMetadata.requiredSystemVersion))
     {
@@ -69,7 +61,39 @@ BootSelection SelectBootTitle(const std::filesystem::path& nandFolder)
     selection.titleId = SystemMenuTitleId;
     selection.titleVersion = titleMetadata.titleVersion;
     selection.iosTitleId = titleMetadata.requiredSystemVersion;
+    selection.ticketView = firstTicketView;
     return selection;
+}
+
+}
+
+BootSelection SelectBootTitle(const std::filesystem::path& nandFolder)
+{
+    Formats::Bytes ticketFile = ReadNandFile(TicketFilePath(nandFolder, SystemMenuTitleId), "ticket");
+    Formats::Ticket firstTicket = Formats::ReadTicket(ticketFile);
+
+    Formats::Bytes titleMetadataFile = ReadNandFile(TitleMetadataFilePath(nandFolder, SystemMenuTitleId), "title metadata");
+    Formats::TitleMetadata titleMetadata = Formats::ReadTitleMetadata(titleMetadataFile);
+
+    return DecideBootTitle(Ios::MakeTicketView(firstTicket), titleMetadata);
+}
+
+BootSelection SelectBootTitle(Ios::TitleService& titles)
+{
+    Ios::TitleId systemMenu = Ios::TitleId::FromValue(SystemMenuTitleId);
+
+    Ios::Result<std::vector<Ios::TicketView>> ticketViews = titles.ListTicketViews(systemMenu);
+    if (ticketViews.Failed())
+        throw BootError("The ticket file of the System Menu cannot be read", ticketViews.Error());
+
+    if (ticketViews.Value().empty())
+        throw BootError("The NAND has no ticket for the System Menu");
+
+    Ios::Result<Formats::TitleMetadata> titleMetadata = titles.ReadTitleMetadata(systemMenu);
+    if (titleMetadata.Failed())
+        throw BootError("The NAND has no title metadata for the System Menu", titleMetadata.Error());
+
+    return DecideBootTitle(ticketViews.Value().front(), titleMetadata.Value());
 }
 
 }
