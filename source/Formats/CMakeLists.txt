@@ -1,13 +1,16 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    BigNumber.cpp
     Boot2Image.cpp
     BootMiiKeyBlock.cpp
     ByteReader.cpp
+    ByteWriter.cpp
     Certificate.cpp
     ConsoleKeys.cpp
     DeviceCertificate.cpp
     DolExecutable.cpp
+    EllipticCurve.cpp
     FileBytes.cpp
     Font.cpp
     HexText.cpp
@@ -22,11 +25,13 @@ add_library(Formats STATIC
     NandTitles.cpp
     OneTimeProgrammable.cpp
     RgbaImage.cpp
+    RsaSignature.cpp
     SectionedFile.cpp
     SerialEeprom.cpp
     SettingTextFile.cpp
     Sha1.cpp
     Signature.cpp
+    SignatureVerification.cpp
     SystemConfiguration.cpp
     TextureDecoder.cpp
     TextureFormat.cpp

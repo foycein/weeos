@@ -13,8 +13,6 @@ namespace
 constexpr std::size_t IssuerSize = 64;
 constexpr std::size_t UnusedAfterFormatVersionSize = 2;
 constexpr std::size_t UnusedAfterTitleKeySize = 1;
-constexpr std::size_t UnusedAfterTitleIdSize = 2;
-constexpr std::size_t UnusedAfterCommonKeyIndexSize = 48;
 constexpr std::size_t UnusedAfterContentAccessSize = 2;
 
 constexpr std::uint8_t SupportedFormatVersion = 0;
@@ -47,13 +45,13 @@ Ticket ReadTicket(ByteView bytes)
     ticket.ticketId = reader.ReadUint64();
     ticket.consoleId = reader.ReadUint32();
     ticket.titleId = reader.ReadUint64();
-    reader.Skip(UnusedAfterTitleIdSize);
+    ticket.accessMask = reader.ReadUint16();
     ticket.titleVersion = reader.ReadUint16();
     ticket.permittedTitlesMask = reader.ReadUint32();
     ticket.permitMask = reader.ReadUint32();
     ticket.isTitleExportAllowed = reader.ReadByte() != 0;
     ticket.commonKeyIndex = reader.ReadByte();
-    reader.Skip(UnusedAfterCommonKeyIndexSize);
+    ticket.reserved = reader.ReadByteArray<TicketReservedSize>();
     ticket.contentAccess = reader.ReadByteArray<TicketContentAccessSize>();
     reader.Skip(UnusedAfterContentAccessSize);
 

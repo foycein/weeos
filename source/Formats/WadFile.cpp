@@ -58,15 +58,14 @@ ByteView ReadSection(ByteReader& reader, std::uint64_t sectionSize)
     return reader.ReadBytes(static_cast<std::size_t>(sectionSize));
 }
 
-std::vector<Bytes> ReadEncryptedContents(ByteReader& reader, const TitleMetadata& titleMetadata)
+std::vector<ByteView> ReadEncryptedContents(ByteReader& reader, const TitleMetadata& titleMetadata)
 {
-    std::vector<Bytes> encryptedContents;
+    std::vector<ByteView> encryptedContents;
 
     for (const ContentRecord& record : titleMetadata.contents)
     {
         std::uint64_t encryptedSize = RoundUpToMultiple(record.size, AesBlockSize);
-        ByteView encryptedContent = ReadSection(reader, encryptedSize);
-        encryptedContents.emplace_back(encryptedContent.begin(), encryptedContent.end());
+        encryptedContents.push_back(ReadSection(reader, encryptedSize));
     }
 
     return encryptedContents;
@@ -74,16 +73,30 @@ std::vector<Bytes> ReadEncryptedContents(ByteReader& reader, const TitleMetadata
 
 }
 
-WadFile ReadWadFile(ByteView bytes)
+WadSections ReadWadSections(ByteView bytes)
 {
     ByteReader reader(bytes, "WAD file");
     WadHeader header = ReadWadHeader(reader);
 
+    WadSections sections;
+    sections.certificateChain = ReadSection(reader, header.certificateChainSize);
+    sections.ticket = ReadSection(reader, header.ticketSize);
+    sections.titleMetadata = ReadSection(reader, header.titleMetadataSize);
+    sections.encryptedContents = ReadEncryptedContents(reader, ReadTitleMetadata(sections.titleMetadata));
+    return sections;
+}
+
+WadFile ReadWadFile(ByteView bytes)
+{
+    WadSections sections = ReadWadSections(bytes);
+
     WadFile wad;
-    wad.certificates = ReadCertificateChain(ReadSection(reader, header.certificateChainSize));
-    wad.ticket = ReadTicket(ReadSection(reader, header.ticketSize));
-    wad.titleMetadata = ReadTitleMetadata(ReadSection(reader, header.titleMetadataSize));
-    wad.encryptedContents = ReadEncryptedContents(reader, wad.titleMetadata);
+    wad.certificates = ReadCertificateChain(sections.certificateChain);
+    wad.ticket = ReadTicket(sections.ticket);
+    wad.titleMetadata = ReadTitleMetadata(sections.titleMetadata);
+    for (ByteView encryptedContent : sections.encryptedContents)
+        wad.encryptedContents.emplace_back(encryptedContent.begin(), encryptedContent.end());
+
     return wad;
 }
 
