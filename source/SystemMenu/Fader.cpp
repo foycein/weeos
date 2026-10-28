@@ -1,12 +1,14 @@
 #include "SystemMenu/Fader.h"
 
+#include <algorithm>
+
 namespace SystemMenu
 {
 
 namespace
 {
 
-// A fade takes this many steps from the first step to the last one at which the black is not all there or all gone.
+// A fade changes the black by a twentieth of the full black in each step.
 constexpr std::uint32_t FadeStepCount = 20;
 
 // A fade out holds the full black for one more step before the status becomes Covered.
@@ -17,9 +19,10 @@ constexpr std::uint8_t FullBlack = 255;
 
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 0};
 
-std::uint8_t BlackAfterStepsOfFadeOut(std::uint32_t stepsDone)
+// How much black a fade out has made after this many steps. A fade in is the same the other way round.
+std::uint8_t BlackAfterSteps(std::uint32_t steps)
 {
-    return static_cast<std::uint8_t>(stepsDone * FullBlack / FadeStepCount);
+    return static_cast<std::uint8_t>(steps * FullBlack / FadeStepCount);
 }
 
 }
@@ -68,40 +71,49 @@ bool Fader::StartFadeOut()
 
 void Fader::Calculate()
 {
-    if (status == FaderStatus::Clear)
+    switch (status)
     {
+    case FaderStatus::Clear:
         blackAlpha = NoBlack;
         return;
-    }
 
-    if (status == FaderStatus::Covered)
-    {
+    case FaderStatus::Covered:
         blackAlpha = FullBlack;
         return;
-    }
 
-    std::uint32_t stepsDone = stepsInFade;
-    ++stepsInFade;
+    case FaderStatus::FadingIn:
+        CalculateFadeIn();
+        return;
 
-    if (status == FaderStatus::FadingIn)
-    {
-        if (stepsDone > FadeStepCount)
-        {
-            status = FaderStatus::Clear;
-            stepsDone = FadeStepCount;
-        }
-        blackAlpha = FullBlack - BlackAfterStepsOfFadeOut(stepsDone);
+    case FaderStatus::FadingOut:
+        CalculateFadeOut();
         return;
     }
+}
 
+std::uint32_t Fader::TakeStepOfFade()
+{
+    std::uint32_t stepsDone = stepsInFade;
+    ++stepsInFade;
+    return stepsDone;
+}
+
+void Fader::CalculateFadeIn()
+{
+    std::uint32_t stepsDone = TakeStepOfFade();
     if (stepsDone > FadeStepCount)
-    {
-        if (stepsDone > FadeStepCount + StepsOfFullBlackBeforeCovered)
-            status = FaderStatus::Covered;
+        status = FaderStatus::Clear;
 
-        stepsDone = FadeStepCount;
-    }
-    blackAlpha = BlackAfterStepsOfFadeOut(stepsDone);
+    blackAlpha = FullBlack - BlackAfterSteps(std::min(stepsDone, FadeStepCount));
+}
+
+void Fader::CalculateFadeOut()
+{
+    std::uint32_t stepsDone = TakeStepOfFade();
+    if (stepsDone > FadeStepCount + StepsOfFullBlackBeforeCovered)
+        status = FaderStatus::Covered;
+
+    blackAlpha = BlackAfterSteps(std::min(stepsDone, FadeStepCount));
 }
 
 void Fader::Draw()

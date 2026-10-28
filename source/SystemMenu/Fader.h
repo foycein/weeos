@@ -49,6 +49,12 @@ public:
     void Draw();
 
 private:
+    // Counts a step of the fade that runs and gives the number of steps that were done before it.
+    std::uint32_t TakeStepOfFade();
+
+    void CalculateFadeIn();
+    void CalculateFadeOut();
+
     Display& display;
     FaderStatus status = FaderStatus::Covered;
     std::uint32_t stepsInFade = 0;

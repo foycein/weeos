@@ -130,6 +130,7 @@ void CursorManager::Draw()
     if (!isVisible)
         return;
 
+    // Player 1 is drawn last, so that its hand lies on top of the others.
     for (int playerIndex = PlayerCount - 1; playerIndex >= 0; --playerIndex)
     {
         const Hand& hand = hands[playerIndex];

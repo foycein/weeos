@@ -41,6 +41,7 @@ private:
     const Layout::PictureSource& PicturesOfTheScreen() const;
 
     void ShowOnlyTheEnglishWarning();
+    void NoteWhenTheWarningHasFadedIn();
     void StartNotice();
     bool DoesTheUserWantToGoOn();
 

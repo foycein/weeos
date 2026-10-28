@@ -100,19 +100,24 @@ bool HealthAndSafetyScreen::DrawsWithChildren() const
 
 bool HealthAndSafetyScreen::IsReady()
 {
-    if (!hasWarningFadedIn && !layout->IsAnimationPlaying(seenInSlot))
-    {
-        hasWarningFadedIn = true;
-        noticeWaitBeganSeconds = services.clock.Seconds();
-    }
+    NoteWhenTheWarningHasFadedIn();
 
     // The original also waits here until the fonts, the sounds and the other shared files have arrived. WeeOS has none to wait for yet.
-    bool isReady = hasWarningFadedIn && services.clock.Seconds() - noticeWaitBeganSeconds > SecondsBeforeNotice;
-    if (isReady)
+    bool hasWaitedForTheNotice = hasWarningFadedIn && services.clock.Seconds() - noticeWaitBeganSeconds > SecondsBeforeNotice;
+    if (hasWaitedForTheNotice)
         StartNotice();
 
     layout->Calculate();
-    return isReady;
+    return hasWaitedForTheNotice;
+}
+
+void HealthAndSafetyScreen::NoteWhenTheWarningHasFadedIn()
+{
+    if (hasWarningFadedIn || layout->IsAnimationPlaying(seenInSlot))
+        return;
+
+    hasWarningFadedIn = true;
+    noticeWaitBeganSeconds = services.clock.Seconds();
 }
 
 void HealthAndSafetyScreen::StartNotice()
