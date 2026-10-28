@@ -21,8 +21,9 @@ constexpr float PictureTop = 12;
 
 // The seven coefficients of the vertical filter of the copy, out of 64, as the menu sets them for each scan.
 // The first two belong to the line above, the next three to the line itself and the last two to the line below.
-constexpr std::array<std::uint8_t, 7> ProgressiveCoefficients = {0, 0, 21, 22, 21, 0, 0};
-constexpr std::array<std::uint8_t, 7> InterlacedCoefficients = {7, 7, 12, 12, 12, 7, 7};
+constexpr std::size_t CoefficientCount = 7;
+constexpr std::array<std::uint8_t, CoefficientCount> ProgressiveCoefficients = {0, 0, 21, 22, 21, 0, 0};
+constexpr std::array<std::uint8_t, CoefficientCount> InterlacedCoefficients = {7, 7, 12, 12, 12, 7, 7};
 constexpr double CoefficientTotal = 64;
 constexpr double FullWeight = 255;
 
@@ -41,7 +42,7 @@ float PictureWidthOf(Platform::ScreenShape screenShape)
     return SixteenByNinePictureWidth;
 }
 
-int AddCoefficients(const std::array<std::uint8_t, 7>& coefficients, std::size_t firstCoefficient, std::size_t count)
+int AddCoefficients(const std::array<std::uint8_t, CoefficientCount>& coefficients, std::size_t firstCoefficient, std::size_t count)
 {
     int total = 0;
     for (std::size_t coefficientNumber = firstCoefficient; coefficientNumber < firstCoefficient + count; ++coefficientNumber)
@@ -122,7 +123,8 @@ Quad MakeConsolePictureQuad(Platform::ScreenShape screenShape)
 
 ConsoleFilterWeights FindConsoleFilterWeights(ConsoleScan consoleScan)
 {
-    const std::array<std::uint8_t, 7>& coefficients = consoleScan == ConsoleScan::Progressive ? ProgressiveCoefficients : InterlacedCoefficients;
+    bool isProgressive = consoleScan == ConsoleScan::Progressive;
+    const std::array<std::uint8_t, CoefficientCount>& coefficients = isProgressive ? ProgressiveCoefficients : InterlacedCoefficients;
 
     ConsoleFilterWeights weights;
     weights.lineAbove = ToWeight(AddCoefficients(coefficients, FirstCoefficientOfLineAbove, CoefficientCountOfOutsideLine));
