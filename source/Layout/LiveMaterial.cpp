@@ -27,7 +27,10 @@ constexpr std::uint8_t OneFactor = 1;
 constexpr std::uint8_t SourceAlphaFactor = 4;
 constexpr std::uint8_t InverseSourceAlphaFactor = 5;
 
+// In the plain swap table every channel reads the channel of its own name.
 constexpr Formats::TevSwapTable PlainSwapTable = {0xE4, 0xE4, 0xE4, 0xE4};
+
+constexpr float TextureMiddle = 0.5f;
 
 [[noreturn]] void FailMaterial(const Formats::Material& material, const std::string& problem)
 {
@@ -149,8 +152,7 @@ std::vector<Graphics::TevStage> ConvertStages(const Formats::Material& material)
     return stages;
 }
 
-// The texture matrix of the graphics chip moves the center of the texture, so the turn and the scale
-// happen around the middle (0.5, 0.5) of the texture, and then the texture is shifted.
+// The turn and the scale happen around the middle of the texture, and then the texture is shifted.
 Graphics::TextureMatrix MakeTextureMatrix(const Formats::TextureTransform& transform)
 {
     float radians = RadiansPerDegree * transform.rotation;
@@ -162,11 +164,12 @@ Graphics::TextureMatrix MakeTextureMatrix(const Formats::TextureTransform& trans
     float verticalFromHorizontal = sine * transform.scale.x;
     float verticalFromVertical = cosine * transform.scale.y;
 
+    float horizontalShift = transform.translation.x + TextureMiddle - TextureMiddle * (horizontalFromHorizontal + horizontalFromVertical);
+    float verticalShift = transform.translation.y + TextureMiddle - TextureMiddle * (verticalFromHorizontal + verticalFromVertical);
+
     Graphics::TextureMatrix matrix;
-    matrix.rows[0] = {horizontalFromHorizontal, horizontalFromVertical,
-        transform.translation.x + 0.5f - 0.5f * (horizontalFromHorizontal + horizontalFromVertical)};
-    matrix.rows[1] = {verticalFromHorizontal, verticalFromVertical,
-        transform.translation.y + 0.5f - 0.5f * (verticalFromHorizontal + verticalFromVertical)};
+    matrix.rows[0] = {horizontalFromHorizontal, horizontalFromVertical, horizontalShift};
+    matrix.rows[1] = {verticalFromHorizontal, verticalFromVertical, verticalShift};
     return matrix;
 }
 

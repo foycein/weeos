@@ -23,6 +23,9 @@ constexpr float HighestColorByte = 255.0f;
 constexpr float LowestRegisterValue = -1024.0f;
 constexpr float HighestRegisterValue = 1023.0f;
 
+// The only property of a texture pattern animation: which texture of the animation's list a texture map shows.
+constexpr unsigned TextureImageProperty = 0;
+
 std::uint8_t ToColorByte(float value)
 {
     return static_cast<std::uint8_t>(std::clamp(value + RoundingOffset, LowestColorByte, HighestColorByte));
@@ -107,7 +110,7 @@ void ApplyPaneTag(Formats::Pane& pane, const Formats::AnimationTag& tag, float f
 // The animation lists texture files, and the curve says which of them a texture map of the material shows.
 void ShowTextureOfPattern(LiveMaterial& material, const Formats::LayoutAnimation& animation, const Formats::AnimationTarget& target, float frame)
 {
-    bool isTextureOfMaterial = target.index < material.textureNames.size() && target.target == 0;
+    bool isTextureOfMaterial = target.index < material.textureNames.size() && target.target == TextureImageProperty;
     if (!isTextureOfMaterial)
         return;
 

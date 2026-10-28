@@ -43,6 +43,12 @@ enum ColorChannel : unsigned
     Alpha,
 };
 
+enum ColorRegisterNumber : unsigned
+{
+    FirstRegister,
+    SecondRegister,
+};
+
 constexpr unsigned ColorChannelCount = 4;
 constexpr unsigned PaneAlphaElement = 16;
 constexpr unsigned TopCornerCount = 2;
@@ -54,26 +60,8 @@ constexpr unsigned LastMaterialColorElement = 31;
 constexpr int LowestByte = 0;
 constexpr int HighestByte = 255;
 
-void SetChannel(Formats::Rgba8Color& color, unsigned channel, std::uint8_t value)
-{
-    switch (channel)
-    {
-    case Red:
-        color.red = value;
-        return;
-    case Green:
-        color.green = value;
-        return;
-    case Blue:
-        color.blue = value;
-        return;
-    default:
-        color.alpha = value;
-        return;
-    }
-}
-
-void SetChannel(Formats::SignedColor& color, unsigned channel, std::int16_t value)
+template <typename Color, typename Value>
+void SetChannel(Color& color, unsigned channel, Value value)
 {
     switch (channel)
     {
@@ -101,9 +89,9 @@ Formats::SignedColor& RegisterOf(Formats::Material& material, unsigned registerI
 {
     switch (registerIndex)
     {
-    case 0:
+    case FirstRegister:
         return material.foreColor;
-    case 1:
+    case SecondRegister:
         return material.backColor;
     default:
         return material.colorRegister3;

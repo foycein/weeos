@@ -5,6 +5,7 @@
 #include "Graphics/GraphicsDevice.h"
 
 #include <array>
+#include <cstdint>
 #include <format>
 
 namespace Layout
@@ -16,6 +17,10 @@ namespace
 using Graphics::TevAlphaInput;
 using Graphics::TevColorInput;
 using Graphics::TevConstant;
+
+constexpr std::uint8_t FirstTexture = 0;
+constexpr std::uint8_t SecondTexture = 1;
+constexpr std::size_t TwoTextures = 2;
 
 // Each texture of a material with three or more textures is weighted by one channel of the constant colors 3 and 2.
 constexpr std::array<TevConstant, 8> TextureWeights = {
@@ -60,7 +65,7 @@ Graphics::TevStage MakeRegister1TimesRasterStage()
 // the texture, going from register 0 where the texture is 0 to register 1 where the texture is 1
 Graphics::TevStage MakeTintedTextureStage()
 {
-    Graphics::TevStage stage = MakeStage(0, false);
+    Graphics::TevStage stage = MakeStage(FirstTexture, false);
     SetColorInputs(stage, TevColorInput::Register0Color, TevColorInput::Register1Color, TevColorInput::TextureColor, TevColorInput::Zero);
     SetAlphaInputs(stage, TevAlphaInput::Register0Alpha, TevAlphaInput::Register1Alpha, TevAlphaInput::TextureAlpha, TevAlphaInput::Zero);
     return stage;
@@ -89,8 +94,8 @@ Graphics::TevStage MakeBlendWithPreviousStage(std::uint8_t textureIndex, TevCons
 // the previous result, plus the texture times the constant
 Graphics::TevStage MakeWeightedTextureStage(std::uint8_t textureIndex, TevConstant weight)
 {
-    TevColorInput previousColor = textureIndex == 0 ? TevColorInput::Zero : TevColorInput::PreviousColor;
-    TevAlphaInput previousAlpha = textureIndex == 0 ? TevAlphaInput::Zero : TevAlphaInput::PreviousAlpha;
+    TevColorInput previousColor = textureIndex == FirstTexture ? TevColorInput::Zero : TevColorInput::PreviousColor;
+    TevAlphaInput previousAlpha = textureIndex == FirstTexture ? TevAlphaInput::Zero : TevAlphaInput::PreviousAlpha;
 
     Graphics::TevStage stage = MakeStage(textureIndex, false);
     SetColorInputs(stage, TevColorInput::Zero, TevColorInput::TextureColor, TevColorInput::ConstantColor, previousColor);
@@ -120,10 +125,10 @@ Graphics::TevStage MakePreviousTimesRasterStage()
 
 void AddStagesForSeveralTextures(std::vector<Graphics::TevStage>& stages, std::size_t textureCount)
 {
-    if (textureCount == 2)
+    if (textureCount == TwoTextures)
     {
-        stages.push_back(MakeTextureOnlyStage(0));
-        stages.push_back(MakeBlendWithPreviousStage(1, TextureWeights[0]));
+        stages.push_back(MakeTextureOnlyStage(FirstTexture));
+        stages.push_back(MakeBlendWithPreviousStage(SecondTexture, TextureWeights[FirstTexture]));
         return;
     }
 

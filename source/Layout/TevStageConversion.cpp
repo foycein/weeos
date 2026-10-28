@@ -31,7 +31,10 @@ constexpr std::size_t FirstIndirectByte = 12;
 constexpr Formats::Byte NoneNumber = 0xFF;
 constexpr Formats::Byte RasterColorChannel = 4;
 
+constexpr int SingleBitCount = 1;
+
 // Two inputs share a byte: the first one in the low half and the second one in the high half.
+constexpr int LowHalfBit = 0;
 constexpr int HighHalfBit = 4;
 constexpr int HalfByteBitCount = 4;
 
@@ -41,6 +44,7 @@ constexpr int SwapTablesBit = 1;
 constexpr int SwapTablesBitCount = 4;
 
 // The bits of the operation byte.
+constexpr int OperationBit = 0;
 constexpr int OperationBitCount = 4;
 constexpr int BiasBit = 4;
 constexpr int BiasBitCount = 2;
@@ -67,7 +71,7 @@ constexpr unsigned FirstConstantChannel = 16;
 
 unsigned LowHalf(Formats::Byte byte)
 {
-    return Formats::ExtractBits(byte, 0, HalfByteBitCount);
+    return Formats::ExtractBits(byte, LowHalfBit, HalfByteBitCount);
 }
 
 unsigned HighHalf(Formats::Byte byte)
@@ -93,7 +97,7 @@ void RequireNoSwapTable(const Formats::TevStage& record)
 // The stage reads the texture with the same number as its texture map, and the quad supplies the coordinates with that number too.
 std::uint8_t ReadTextureIndex(const Formats::TevStage& record)
 {
-    bool hasHighBit = Formats::ExtractBits(record[TextureMapAndSwapByte], TextureMapHighBit, 1) != 0;
+    bool hasHighBit = Formats::ExtractBits(record[TextureMapAndSwapByte], TextureMapHighBit, SingleBitCount) != 0;
     if (record[TextureMapByte] == NoneNumber && !hasHighBit)
         return Graphics::NoTexture;
 
@@ -166,10 +170,10 @@ Graphics::TevColorCalculation ReadColorCalculation(const Formats::TevStage& reco
     color.inputB = ReadColorInput(HighHalf(record[ColorInputsABByte]));
     color.inputC = ReadColorInput(LowHalf(record[ColorInputsCDByte]));
     color.inputD = ReadColorInput(HighHalf(record[ColorInputsCDByte]));
-    color.operation = ReadOperation(Formats::ExtractBits(operationByte, 0, OperationBitCount), false);
+    color.operation = ReadOperation(Formats::ExtractBits(operationByte, OperationBit, OperationBitCount), false);
     color.bias = ReadBias(Formats::ExtractBits(operationByte, BiasBit, BiasBitCount));
     color.scale = static_cast<Graphics::TevScale>(Formats::ExtractBits(operationByte, ScaleBit, ScaleBitCount));
-    color.clamp = Formats::ExtractBits(outputByte, ClampBit, 1) != 0;
+    color.clamp = Formats::ExtractBits(outputByte, ClampBit, SingleBitCount) != 0;
     color.output = static_cast<Graphics::TevRegister>(Formats::ExtractBits(outputByte, OutputRegisterBit, OutputRegisterBitCount));
     return color;
 }
@@ -184,10 +188,10 @@ Graphics::TevAlphaCalculation ReadAlphaCalculation(const Formats::TevStage& reco
     alpha.inputB = ReadAlphaInput(HighHalf(record[AlphaInputsABByte]));
     alpha.inputC = ReadAlphaInput(LowHalf(record[AlphaInputsCDByte]));
     alpha.inputD = ReadAlphaInput(HighHalf(record[AlphaInputsCDByte]));
-    alpha.operation = ReadOperation(Formats::ExtractBits(operationByte, 0, OperationBitCount), true);
+    alpha.operation = ReadOperation(Formats::ExtractBits(operationByte, OperationBit, OperationBitCount), true);
     alpha.bias = ReadBias(Formats::ExtractBits(operationByte, BiasBit, BiasBitCount));
     alpha.scale = static_cast<Graphics::TevScale>(Formats::ExtractBits(operationByte, ScaleBit, ScaleBitCount));
-    alpha.clamp = Formats::ExtractBits(outputByte, ClampBit, 1) != 0;
+    alpha.clamp = Formats::ExtractBits(outputByte, ClampBit, SingleBitCount) != 0;
     alpha.output = static_cast<Graphics::TevRegister>(Formats::ExtractBits(outputByte, OutputRegisterBit, OutputRegisterBitCount));
     return alpha;
 }

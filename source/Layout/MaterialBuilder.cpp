@@ -27,6 +27,12 @@ bool IsRegisterColor(const Formats::SignedColor& color, std::int16_t red, std::i
     return color.red == red && color.green == green && color.blue == blue && color.alpha == alpha;
 }
 
+// The usual tint of a texture goes from transparent black in register 0 to opaque white in register 1.
+bool HasUsualTintRegisters(const Formats::Material& description)
+{
+    return IsRegisterColor(description.foreColor, 0, 0, 0, 0) && IsRegisterColor(description.backColor, 255, 255, 255, 255);
+}
+
 Graphics::WrapMode ToWrapMode(Formats::TextureWrap wrap)
 {
     switch (wrap)
@@ -120,8 +126,7 @@ std::vector<Graphics::TevStage> ChooseStages(const LiveMaterial& liveMaterial, c
         return liveMaterial.stages;
 
     const Formats::Material& description = liveMaterial.description;
-    bool tintsTextures = !IsRegisterColor(description.foreColor, 0, 0, 0, 0)
-        || !IsRegisterColor(description.backColor, 255, 255, 255, 255);
+    bool tintsTextures = !HasUsualTintRegisters(description);
     bool multipliesByRasterColor = NeedsRasterColorMultiplication(channel, materialColor, paneAlpha, vertexColors);
     return MakeDefaultTevStages(description.textures.size(), tintsTextures, multipliesByRasterColor);
 }

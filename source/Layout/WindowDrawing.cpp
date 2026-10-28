@@ -6,6 +6,7 @@
 #include "Layout/RectangleDrawing.h"
 
 #include <array>
+#include <cstdint>
 #include <format>
 #include <optional>
 #include <vector>
@@ -40,14 +41,24 @@ constexpr std::size_t RightEdgeFrame = 5;
 constexpr std::size_t TopEdgeFrame = 6;
 constexpr std::size_t BottomEdgeFrame = 7;
 
+// The ways that the layout file turns the texture of a frame. The numbers are the positions in CoordinatesOfTurnedTextures.
+enum TextureTurn : std::uint8_t
+{
+    NotTurned,
+    FlippedHorizontally,
+    FlippedVertically,
+    TurnedBy90Degrees,
+    TurnedBy180Degrees,
+    TurnedBy270Degrees,
+};
+
 // A window with one frame turns its one texture for each of the four sides: not at all for the top, flipped horizontally
 // for the right side, flipped vertically for the left side, and turned by 180 degrees for the bottom.
-constexpr std::array<std::uint8_t, FourFrames> TurnsOfTheOneFrame = {0, 1, 2, 4};
+constexpr std::array<std::uint8_t, FourFrames> TurnsOfTheOneFrame = {NotTurned, FlippedHorizontally, FlippedVertically, TurnedBy180Degrees};
 
 using CornerCoordinates = std::array<Formats::Vector2, Formats::CornerCount>;
 
-// The texture coordinates of the corners of a frame texture, for each of the ways that the layout file turns a texture:
-// not turned, flipped horizontally, flipped vertically, turned by 90, 180 and 270 degrees.
+// The texture coordinates of the corners of a frame texture, for each way that a texture can be turned.
 constexpr std::array<CornerCoordinates, 6> CoordinatesOfTurnedTextures = {{
     {{{0, 0}, {1, 0}, {0, 1}, {1, 1}}},
     {{{1, 0}, {0, 0}, {1, 1}, {0, 1}}},
@@ -57,9 +68,10 @@ constexpr std::array<CornerCoordinates, 6> CoordinatesOfTurnedTextures = {{
     {{{1, 0}, {1, 1}, {0, 0}, {0, 1}}},
 }};
 
-constexpr std::array<Formats::Rgba8Color, Formats::CornerCount> WhiteVertexColors = {{
-    {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255},
-}};
+constexpr Formats::Rgba8Color OpaqueWhite = {255, 255, 255, 255};
+constexpr std::array<Formats::Rgba8Color, Formats::CornerCount> WhiteVertexColors = {{OpaqueWhite, OpaqueWhite, OpaqueWhite, OpaqueWhite}};
+
+constexpr std::size_t FirstTextureMap = 0;
 
 struct TextureSize
 {
@@ -96,7 +108,7 @@ std::optional<TextureSize> FirstTextureSizeOf(LiveLayout& layout, std::uint16_t 
     if (material.description.textures.empty())
         return std::nullopt;
 
-    LoadedTexture texture = ObtainTextureOfMap(layout, material, 0);
+    LoadedTexture texture = ObtainTextureOfMap(layout, material, FirstTextureMap);
     return TextureSize{static_cast<float>(texture.width), static_cast<float>(texture.height)};
 }
 
