@@ -1,5 +1,6 @@
 #include "NandImporter.h"
 
+#include "NandFolderLayout.h"
 #include "WindowsNames.h"
 
 #include "Formats/NandTitles.h"
@@ -14,7 +15,6 @@ namespace
 {
 
 constexpr std::string_view RootPath = "/";
-constexpr std::string_view IndexFileName = ".attributes";
 constexpr std::string_view FileKindText = "file";
 constexpr std::string_view DirectoryKindText = "directory";
 

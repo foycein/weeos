@@ -32,6 +32,11 @@ std::uint32_t LowWordOf(std::uint64_t titleId)
     return static_cast<std::uint32_t>(titleId);
 }
 
+std::uint64_t MakeTitleId(std::uint32_t highWord, std::uint32_t lowWord)
+{
+    return (std::uint64_t(highWord) << BitsPerWord) | lowWord;
+}
+
 std::string MetadataPath(std::uint64_t titleId)
 {
     return TitleFolderPath(titleId) + "/content/title.tmd";
@@ -84,7 +89,7 @@ std::uint64_t ParseTitleId(std::string_view text)
     if (!highWord || !lowWord)
         throw FormatError(std::format("Title id: \"{}\" is not two numbers of 8 hexadecimal digits like 00000001-00000002", text));
 
-    return (std::uint64_t(*highWord) << BitsPerWord) | *lowWord;
+    return MakeTitleId(*highWord, *lowWord);
 }
 
 NandTitles::NandTitles(NandFileSystem& nandFileSystem)
@@ -111,7 +116,7 @@ std::vector<std::uint64_t> NandTitles::ListTitleIds() const
             if (!lowWord)
                 continue;
 
-            std::uint64_t titleId = (std::uint64_t(*highWord) << BitsPerWord) | *lowWord;
+            std::uint64_t titleId = MakeTitleId(*highWord, *lowWord);
             if (fileSystem.Find(MetadataPath(titleId)) != nullptr)
                 titleIds.push_back(titleId);
         }

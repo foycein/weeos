@@ -1,5 +1,7 @@
 #include "WindowsNames.h"
 
+#include "NandFolderLayout.h"
+
 #include <algorithm>
 #include <cctype>
 #include <string>
@@ -10,10 +12,6 @@ namespace
 constexpr std::string_view CharactersWindowsRejects = "<>:\"/\\|?*";
 constexpr char FirstPrintableCharacter = ' ';
 constexpr char LastPrintableCharacter = '~';
-
-// The files of the NAND folder layout: the index of owners and permissions, and its temporary copy.
-constexpr std::string_view IndexFileName = ".attributes";
-constexpr std::string_view IndexTemporaryFileName = ".attributes.new";
 
 constexpr std::string_view ReservedDeviceNames[] =
 {

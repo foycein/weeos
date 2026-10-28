@@ -124,7 +124,7 @@ std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles)
 
 std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homebrewChannelIds)
 {
-    constexpr std::string_view homebrewReason = "homebrew channel: its title metadata is signed with zeros";
+    constexpr std::string_view homebrewReason = "installed with homebrew tools: its title metadata is signed with zeros";
 
     std::vector<ImportRule> rules;
     for (std::uint64_t titleId : homebrewChannelIds)
