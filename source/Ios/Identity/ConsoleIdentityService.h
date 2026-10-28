@@ -47,6 +47,7 @@ public:
     const Formats::Bytes& GetDeviceCertificate() const;
 
     // Signs the SHA-1 hash of the data with the private key of the console. The certificate in the answer checks the signature.
+    // (The console makes a new key and a certificate of its own for every signature; this one signs with its device key, docs/audit/OpenPoints/Ios.md 6.)
     SignedData Sign(Formats::ByteView data) const;
 
     // Checks a signature that the last certificate of the chain has made over the SHA-1 hash of the data. The certificates are given
