@@ -2,8 +2,10 @@
 
 #include "Ios/FileSystem/NandPreparation.h"
 #include "Ios/FileSystem/NandStorage.h"
+#include "Ios/Network/WirelessMacAddress.h"
 
 #include <stdexcept>
+#include <system_error>
 #include <utility>
 
 namespace Ios
@@ -38,10 +40,17 @@ Result<void> IosServices::Start(const IosFolders& folders)
     if (prepared.Failed())
         return prepared;
 
+    Result<MacAddress> wirelessMacAddress = ReadWirelessMacAddress(folders.identityFolder);
+    if (wirelessMacAddress.Failed())
+        return wirelessMacAddress.Error();
+
+    DestroyServices();
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
     discDrive = std::make_unique<DiscDriveService>();
     sdCard = std::make_unique<SdCardService>();
     PutCardIntoSlot(*sdCard, folders);
+    wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
+    networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
     power = std::make_unique<PowerService>();
     isRunning = true;
     return Result<void>();
@@ -56,6 +65,17 @@ void IosServices::Stop()
     sdCard->Close();
     fileSystem->Shutdown();
     isRunning = false;
+}
+
+// The services of an earlier start go first, the ones that use another service before that service.
+void IosServices::DestroyServices()
+{
+    power.reset();
+    networkConfig.reset();
+    wireless.reset();
+    sdCard.reset();
+    discDrive.reset();
+    fileSystem.reset();
 }
 
 bool IosServices::IsRunning() const
@@ -79,6 +99,18 @@ SdCardService& IosServices::GetSdCard()
 {
     RequireRunning();
     return *sdCard;
+}
+
+WirelessService& IosServices::GetWireless()
+{
+    RequireRunning();
+    return *wireless;
+}
+
+NetworkConfigService& IosServices::GetNetworkConfig()
+{
+    RequireRunning();
+    return *networkConfig;
 }
 
 PowerService& IosServices::GetPower()

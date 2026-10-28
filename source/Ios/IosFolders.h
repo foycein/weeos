@@ -13,6 +13,10 @@ struct IosFolders
 
     // The SD card in the slot. Leave it empty, or name a folder that does not exist, for an empty slot.
     std::filesystem::path sdCardFolder;
+
+    // The private data of the console, never shipped. It holds keys.txt as the console dump has it.
+    // Leave it empty to run without: the wireless card then has the address 00:00:00:00:00:00.
+    std::filesystem::path identityFolder;
 };
 
 }
