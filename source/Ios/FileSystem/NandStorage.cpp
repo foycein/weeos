@@ -98,12 +98,15 @@ Result<void> CreateOnHost(const std::filesystem::path& hostPath, EntryKind kind)
     return Result<void>();
 }
 
-// Moves the file or folder of an entry on the PC. A new name that only differs in case from the old one is the same file or folder.
+// Moves the file or folder of an entry on the PC. A file that is there already is replaced in one step.
+// A folder that is there already is removed first, because Windows cannot replace a folder.
+// A new name that only differs in case from the old one is the same file or folder.
 Result<void> MoveOnHost(const std::filesystem::path& oldHostPath, const std::filesystem::path& newHostPath)
 {
     std::error_code error;
     bool isSameHostEntry = std::filesystem::equivalent(oldHostPath, newHostPath, error);
-    if (!isSameHostEntry)
+    bool replacesFolder = !isSameHostEntry && std::filesystem::is_directory(newHostPath, error);
+    if (replacesFolder)
     {
         std::filesystem::remove_all(newHostPath, error);
         if (error)
@@ -235,11 +238,9 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
     if (from.IsRoot())
         return IosError::InvalidArgument;
 
-    if (Find(from) == nullptr)
+    const EntryRecord* source = Find(from);
+    if (source == nullptr)
         return IosError::NotFound;
-
-    if (Find(to) != nullptr)
-        return IosError::AlreadyExists;
 
     const EntryRecord* newParent = Find(to.Parent());
     if (newParent == nullptr)
@@ -252,10 +253,18 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
     if (movesIntoItself)
         return IosError::InvalidArgument;
 
-    std::string newHostName = ChooseHostName(to.Name(), HostNamesInside(to.Parent(), from));
+    const EntryRecord* replacedEntry = Find(to);
+    if (replacedEntry != nullptr && replacedEntry->kind != source->kind)
+        return IosError::AlreadyExists;
+
+    // An entry that is replaced hands its host name on, so that the file on the PC can be replaced in one step.
+    std::string newHostName = replacedEntry != nullptr ? replacedEntry->hostName : ChooseHostName(to.Name(), HostNamesInside(to.Parent(), from));
     Result<void> movedOnHost = MoveOnHost(HostPath(from), HostPath(to.Parent()) / newHostName);
     if (movedOnHost.Failed())
         return movedOnHost;
+
+    if (replacedEntry != nullptr)
+        EraseSubtree(to);
 
     std::vector<std::pair<NandPath, EntryRecord>> movedEntries = EraseSubtree(from);
     for (auto& [oldPath, record] : movedEntries)

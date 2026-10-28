@@ -22,8 +22,14 @@ constexpr std::size_t MaximumOpenFiles = 15;
 // Space is counted in whole clusters.
 constexpr std::uint32_t ClusterSize = 0x4000;
 
-// The sizes of the console's NAND: 0x7EC0 clusters for data and 0x17FF entries in the file system tree.
-constexpr std::uint32_t ConsoleClusterCount = 0x7EC0;
-constexpr std::uint32_t ConsoleInodeCount = 0x17FF;
+// How much a NAND can hold: clusters for the data of the files, and inodes. Every file and every directory, the root included, takes one inode.
+struct VolumeCapacity
+{
+    std::uint32_t clusterCount;
+    std::uint32_t inodeCount;
+};
+
+// The console's NAND has 0x7EC0 clusters for data and 0x17FF inodes in its file system tree.
+constexpr VolumeCapacity ConsoleVolumeCapacity = {0x7EC0, 0x17FF};
 
 }

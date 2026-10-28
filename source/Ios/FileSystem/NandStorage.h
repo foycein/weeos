@@ -52,7 +52,7 @@ public:
     // Deletes an entry and everything inside it.
     Result<void> Remove(const NandPath& path);
 
-    // Moves an entry, with everything inside it, to a path where nothing exists yet.
+    // Moves an entry, with everything inside it, to another path. An entry of the same kind that is at the new path is replaced.
     // The moved entry becomes the newest one in its new directory.
     Result<void> Move(const NandPath& from, const NandPath& to);
 
