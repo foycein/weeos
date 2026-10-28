@@ -11,6 +11,16 @@ namespace
 {
 
 constexpr char16_t FormatMarker = u'%';
+constexpr char16_t ZeroFlag = u'0';
+constexpr char16_t NumberLetter = u'd';
+constexpr std::size_t ZeroFlagLength = 1;
+constexpr std::size_t NumberLetterLength = 1;
+
+// A number of digits above this is a mistake in the format.
+constexpr int MostMinimumDigits = 99;
+
+constexpr const char* UnknownConversionMessage =
+    "a percent sign in the format is not followed by ls, d, a zero and digits and d, or another percent sign";
 
 enum class ConversionKind
 {
@@ -36,6 +46,31 @@ bool IsDigit(char16_t character)
     return character >= u'0' && character <= u'9';
 }
 
+// A zero, the number of digits and the letter d, for example 02d.
+Conversion ReadNumberWithZeros(std::u16string_view afterMarker)
+{
+    if (!afterMarker.starts_with(ZeroFlag))
+        throw TextError(UnknownConversionMessage);
+
+    std::size_t length = ZeroFlagLength;
+    int minimumDigits = 0;
+    while (length < afterMarker.size() && IsDigit(afterMarker[length]))
+    {
+        minimumDigits = minimumDigits * 10 + (afterMarker[length] - u'0');
+        if (minimumDigits > MostMinimumDigits)
+            throw TextError("a place for a number in the format asks for too many digits");
+
+        ++length;
+    }
+
+    bool hasDigits = length > ZeroFlagLength;
+    bool endsWithNumberLetter = length < afterMarker.size() && afterMarker[length] == NumberLetter;
+    if (!hasDigits || !endsWithNumberLetter)
+        throw TextError(UnknownConversionMessage);
+
+    return {ConversionKind::Number, minimumDigits, length + NumberLetterLength};
+}
+
 Conversion ReadConversion(std::u16string_view afterMarker)
 {
     if (afterMarker.starts_with(u"%"))
@@ -44,14 +79,10 @@ Conversion ReadConversion(std::u16string_view afterMarker)
     if (afterMarker.starts_with(u"ls"))
         return {ConversionKind::Text, 0, 2};
 
-    if (afterMarker.starts_with(u"d"))
-        return {ConversionKind::Number, 0, 1};
+    if (afterMarker.starts_with(NumberLetter))
+        return {ConversionKind::Number, 0, NumberLetterLength};
 
-    bool isNumberWithZeros = afterMarker.size() >= 3 && afterMarker[0] == u'0' && IsDigit(afterMarker[1]) && afterMarker[2] == u'd';
-    if (isNumberWithZeros)
-        return {ConversionKind::Number, afterMarker[1] - u'0', 3};
-
-    throw TextError("a percent sign in the format is not followed by ls, d, a zero and a digit and d, or another percent sign");
+    return ReadNumberWithZeros(afterMarker);
 }
 
 // Like the C formats, the zeros go behind the minus sign and the minus sign counts as a digit of the width.

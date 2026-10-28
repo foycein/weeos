@@ -13,7 +13,7 @@ enum class IosError : int
     // A malformed path, a name that is too long, or an entry of the wrong kind.
     InvalidArgument = -101,
 
-    // The caller has no permission for the call.
+    // The caller has no permission for the call. On the SD card: the card is write protected.
     AccessDenied = -102,
 
     // The NAND is not a usable file system. The console formats it. We report it.
@@ -62,6 +62,43 @@ enum class IosError : int
 
     // A signature did not verify.
     SignatureInvalid = -2011,
+
+    // The SD card. Code of /dev/sdio/slot0.
+
+    // The slot is empty, or the card was taken out. The card driver gives this answer to every command when no card is there.
+    NoCardInserted = -10,
+
+    // The sockets of the network family. Codes of /dev/net/ip/top.
+    // The sockets number their errors in the alphabetical order of the POSIX names: 1 is E2BIG, 6 is EAGAIN, 8 is EBADF, and so on.
+
+    // The host name is not known. The original gives the same number to a request whose parameters are wrong.
+    HostNotFound = -4,
+
+    // Every call that needs a socket fails like this until the socket stack was set up with a network. It is the code of ENETRESET.
+    StackNotStarted = -39,
+
+    // The interface option is not known, or the buffer for it is too small. It is the code of ENOPROTOOPT.
+    InterfaceOptionNotSupported = -51,
+
+    // The address lookup failed. The original reports it as EAI_AGAIN (-0x12E).
+    NameLookupFailed = -302,
+
+    // The secure sockets. Codes of /dev/net/ssl. The module has four contexts and numbers its errors like OpenSSL does:
+    // the code is minus the answer of SSL_get_error. A few numbers are the module's own.
+
+    // The SSL library failed, or a limit was reached: no free context, a name or a certificate that is too long,
+    // a connection that was never set up. It is SSL_ERROR_SSL.
+    SecureLibraryFailure = -1,
+
+    // The socket under the secure connection failed (SSL_ERROR_SYSCALL).
+    SecureConnectionFailed = -5,
+
+    // The number is not a context of the module.
+    InvalidSecureContext = -8,
+
+    // The module has four root certificates built in and one client certificate.
+    BuiltinRootCertificateNotFound = -14,
+    BuiltinClientCertificateNotFound = -15,
 };
 
 // The result code the original IOS returns for this error.

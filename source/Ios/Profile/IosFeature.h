@@ -49,7 +49,7 @@ enum class Feature
     // A KeyboardDriver.
     KeyboardDriver,
 
-    // A NetworkConfiguration.
+    // A NetworkConfigurationKind.
     NetworkConfiguration,
 };
 
@@ -131,7 +131,7 @@ enum class KeyboardDriver
 };
 
 // Where the network configuration module NCD keeps the settings, and what it checks in them.
-enum class NetworkConfiguration
+enum class NetworkConfigurationKind
 {
     // IOS9: /shared2/sys/net/config.dat. The proxy settings are not checked.
     Original,

@@ -1,6 +1,7 @@
 add_library(Text STATIC
     GlyphLookup.cpp
     GlyphSheetTextures.cpp
+    LaidOutText.cpp
     MessageCatalog.cpp
     TextDrawer.cpp
     TextFormat.cpp
