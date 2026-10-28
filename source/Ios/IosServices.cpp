@@ -11,7 +11,7 @@ namespace Ios
 
 Result<void> IosServices::Start(const IosFolders& folders)
 {
-    if (IsRunning())
+    if (isRunning)
         return IosError::AlreadyExists;
 
     Result<NandStorage> storage = NandStorage::Open(folders.nandFolder);
@@ -23,29 +23,49 @@ Result<void> IosServices::Start(const IosFolders& folders)
         return prepared;
 
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
+    discDrive = std::make_unique<DiscDriveService>();
+    power = std::make_unique<PowerService>();
+    isRunning = true;
     return Result<void>();
 }
 
 void IosServices::Stop()
 {
-    if (!IsRunning())
+    if (!isRunning)
         return;
 
+    power->Close();
     fileSystem->Shutdown();
-    fileSystem.reset();
+    isRunning = false;
 }
 
 bool IosServices::IsRunning() const
 {
-    return fileSystem != nullptr;
+    return isRunning;
 }
 
 FileSystemService& IosServices::GetFileSystem()
 {
-    if (!IsRunning())
-        throw std::logic_error("IosServices::GetFileSystem was called while IOS is not running");
-
+    RequireRunning();
     return *fileSystem;
+}
+
+DiscDriveService& IosServices::GetDiscDrive()
+{
+    RequireRunning();
+    return *discDrive;
+}
+
+PowerService& IosServices::GetPower()
+{
+    RequireRunning();
+    return *power;
+}
+
+void IosServices::RequireRunning() const
+{
+    if (!isRunning)
+        throw std::logic_error("A service of IOS was asked for while IOS is not running");
 }
 
 }
