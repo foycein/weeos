@@ -18,6 +18,11 @@ constexpr std::uint32_t ConsoleFrameHeight = 456;
 // The picture of the video chip. The screen shape decides how wide the part with the menu is.
 constexpr Canvas ConsoleRasterCanvas = {720, 480};
 
+// Assumed (docs/audit/OpenPoints/Graphics.md): how the pixels in between are made when the frame buffer is stretched to the screen.
+// The video chip scales with a filter of its own, and bilinear filtering gives the same smooth edges. The edges of the frame buffer
+// repeat their outermost pixels.
+constexpr FilterMode ConsoleScalingFilter = FilterMode::Linear;
+
 // The units of the layouts of the menu: 608 x 456 in 4:3 and 832 x 456 in 16:9. The menu draws one unit as one pixel in the
 // height of its frame buffer, and it stretches the width of the canvas over the 640 pixels.
 Canvas ConsoleCanvas(ScreenShape screenShape);

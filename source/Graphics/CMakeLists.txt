@@ -12,6 +12,7 @@ add_library(Graphics STATIC
     FrameResources.cpp
     GraphicsBuffer.cpp
     GraphicsImage.cpp
+    ImageMemoryPool.cpp
     MaterialCheck.cpp
     OneTimeCommands.cpp
     QuadPipeline.cpp

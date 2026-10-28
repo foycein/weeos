@@ -194,10 +194,16 @@ std::uint32_t VulkanContext::MaximumPictureSize() const
 
 VkDeviceMemory VulkanContext::AllocateMemory(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags wantedProperties) const
 {
+    std::uint32_t memoryTypeIndex = FindMemoryType(requirements.memoryTypeBits, wantedProperties);
+    return AllocateMemoryOfType(memoryTypeIndex, requirements.size);
+}
+
+VkDeviceMemory VulkanContext::AllocateMemoryOfType(std::uint32_t memoryTypeIndex, VkDeviceSize size) const
+{
     VkMemoryAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = requirements.size,
-        .memoryTypeIndex = FindMemoryType(requirements.memoryTypeBits, wantedProperties),
+        .allocationSize = size,
+        .memoryTypeIndex = memoryTypeIndex,
     };
 
     VkDeviceMemory memory = VK_NULL_HANDLE;
