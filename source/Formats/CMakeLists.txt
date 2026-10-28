@@ -6,6 +6,7 @@ add_library(Formats STATIC
     DolExecutable.cpp
     FileBytes.cpp
     Layout.cpp
+    LayoutAnimation.cpp
     LayoutMaterial.cpp
     Lz77.cpp
     SectionedFile.cpp
