@@ -43,7 +43,7 @@ private:
     VkDescriptorSetLayout drawDataSetLayout = VK_NULL_HANDLE;
     VkDescriptorSetLayout textureSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout layout = VK_NULL_HANDLE;
-    std::array<VkPipeline, 2> pipelines = {};
+    std::array<VkPipeline, BlendModeCount> pipelines = {};
 };
 
 }

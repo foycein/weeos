@@ -34,16 +34,19 @@ VkShaderModule LoadShader(const VulkanContext& context, const char* fileName)
 }
 
 // Standard alpha blending: result = source * source alpha + destination * (1 - source alpha), for the alpha too.
-// The other blend mode lets the source replace what was there.
+// Adding blending: result = source * source alpha + destination, for the alpha too.
+// The remaining blend mode lets the source replace what was there.
 VkPipelineColorBlendAttachmentState MakeBlendAttachment(BlendMode blendMode)
 {
+    VkBlendFactor destinationFactor = blendMode == BlendMode::AddSourceAlpha ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
     return {
-        .blendEnable = blendMode == BlendMode::StandardAlpha ? VK_TRUE : VK_FALSE,
+        .blendEnable = blendMode == BlendMode::Replace ? VK_FALSE : VK_TRUE,
         .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .dstColorBlendFactor = destinationFactor,
         .colorBlendOp = VK_BLEND_OP_ADD,
         .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .dstAlphaBlendFactor = destinationFactor,
         .alphaBlendOp = VK_BLEND_OP_ADD,
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
@@ -111,6 +114,7 @@ QuadPipeline::QuadPipeline(const VulkanContext& graphicsContext)
 
     pipelines[static_cast<std::size_t>(BlendMode::StandardAlpha)] = MakePipeline(BlendMode::StandardAlpha, vertexShader, fragmentShader);
     pipelines[static_cast<std::size_t>(BlendMode::Replace)] = MakePipeline(BlendMode::Replace, vertexShader, fragmentShader);
+    pipelines[static_cast<std::size_t>(BlendMode::AddSourceAlpha)] = MakePipeline(BlendMode::AddSourceAlpha, vertexShader, fragmentShader);
 
     vkDestroyShaderModule(context.Device(), vertexShader, nullptr);
     vkDestroyShaderModule(context.Device(), fragmentShader, nullptr);

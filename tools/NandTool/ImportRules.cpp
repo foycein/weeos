@@ -44,6 +44,11 @@ ImportRule SkipEverythingInside(std::string pattern, std::string reason)
     return {std::move(pattern), ImportScope::EverythingInside, ImportAction::Skip, std::move(reason)};
 }
 
+ImportRule SkipOnlyThisEntry(std::string pattern, std::string reason)
+{
+    return {std::move(pattern), ImportScope::OnlyThisEntry, ImportAction::Skip, std::move(reason)};
+}
+
 ImportRule ImportEverythingInside(std::string pattern, std::string reason)
 {
     return {std::move(pattern), ImportScope::EverythingInside, ImportAction::Import, std::move(reason)};
@@ -65,12 +70,18 @@ std::vector<ImportRule> FixedImportRules()
         SkipEverythingInside("/title/00010001", "downloaded, Virtual Console, WiiWare and homebrew channels with their save data: not the system"),
         SkipEverythingInside("/ticket/00010001", "tickets of those channels"),
 
+        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
+        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000101.tik", "ticket of MIOS"),
+
         ImportOnlyThisEntry("/title/00000001/00000002/data/setting.txt", "the facts about the console: serial number, model, region, video mode"),
         SkipEverythingInside("/title/*/*/data/*", "what a title keeps in its data folder: save data, caches, logs, played-game history, downloads"),
 
         ImportOnlyThisEntry("/shared2", "the folder of the files that all titles share"),
         ImportOnlyThisEntry("/shared2/sys", "the folder of the system files"),
-        ImportOnlyThisEntry("/shared2/sys/SYSCONF", "the system settings of the console"),
+        {"/shared2/sys/SYSCONF", ImportScope::OnlyThisEntry, ImportAction::ImportWithPersonalSettingsReset,
+            "the system settings of the console, without the nickname, parental controls, Wii Remotes, address and clock bias of the owner"},
         SkipEverythingInside("/shared2", "state, logs and shop data of the owner's console: not clear what they hold"),
 
         ImportEverythingInside("/sys", "state of the title service: users, certificates, space record"),
@@ -130,7 +141,7 @@ std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homeb
     for (std::uint64_t titleId : homebrewChannelIds)
     {
         rules.push_back(SkipEverythingInside(Formats::TitleFolderPath(titleId), std::string(homebrewReason)));
-        rules.push_back({Formats::TicketFilePath(titleId), ImportScope::OnlyThisEntry, ImportAction::Skip, std::string(homebrewReason)});
+        rules.push_back(SkipOnlyThisEntry(Formats::TicketFilePath(titleId), std::string(homebrewReason)));
     }
 
     std::vector<ImportRule> fixedRules = FixedImportRules();
