@@ -36,7 +36,7 @@ Formats::Vector2 TransformPoint(const TransformMatrix& matrix, Formats::Vector2 
 Formats::Vector2 TransformDirection(const TransformMatrix& matrix, Formats::Vector2 direction);
 
 // The opposite of TransformPoint: finds the point of the flat layout that the matrix moves to the given point.
-// There is none when the matrix squeezes the plane into a line, for example a pane that is turned edge on.
+// There is none when the matrix squeezes the plane into a line, for example a pane with the scale 0.
 std::optional<Formats::Vector2> FindPointMovedTo(const TransformMatrix& matrix, Formats::Vector2 target);
 
 }
