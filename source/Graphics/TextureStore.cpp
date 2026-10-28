@@ -17,6 +17,10 @@ namespace
 
 constexpr VkFormat PixelFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
+// Assumed (docs/audit/OpenPoints/Graphics.md): outside of a picture that was drawn the outermost pixels repeat.
+// The copy of the console reads the line above the first and the line below the last line of its frame buffer.
+constexpr WrapMode DrawTargetEdgeWrap = WrapMode::Clamp;
+
 VkSamplerAddressMode ToAddressMode(WrapMode wrapMode)
 {
     switch (wrapMode)
@@ -111,7 +115,7 @@ TextureHandle TextureStore::CreateDrawTarget(std::uint32_t width, std::uint32_t 
     if (idleTexture)
         return Add(std::move(*idleTexture));
 
-    VkSampler sampler = FindSampler(WrapMode::Clamp, WrapMode::Clamp, filter);
+    VkSampler sampler = FindSampler(DrawTargetEdgeWrap, DrawTargetEdgeWrap, filter);
 
     VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     Texture texture = MakeTexture(MakeImage(width, height, PictureFormat, usage), sampler);

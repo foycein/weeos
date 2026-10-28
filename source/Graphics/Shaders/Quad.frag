@@ -22,7 +22,7 @@ layout(location = 0) out vec4 pictureColor;
 //     Add:       result = (D + (1 - C) * A + C * B + bias) * scale
 //     Subtract:  result = (D - ((1 - C) * A + C * B) + bias) * scale
 // The compare operations give D + (A is greater than B, or equal to B ? C : 0) and ignore bias and scale.
-// The inputs A, B and C are limited to the range 0 to 1, as they are on the Wii. D can be any value.
+// The inputs A, B and C are limited to the range 0 to 1 and D can be any value (assumed, see SaturateInput below).
 
 // The registers a stage can read and write. Number 0 is the previous result, 1 to 3 are REG0 to REG2.
 // They hold the colors in the range 0 to 1, where 1 is the 255 of the material, and they can go below 0 and above 1.
@@ -34,6 +34,21 @@ const float LowestRegisterValue = -1024.0 / MaximumByteValue;
 const float HighestRegisterValue = 1023.0 / MaximumByteValue;
 
 const uint EighthsInOne = 8u;
+
+// Assumed (docs/audit/OpenPoints/Graphics.md): the inputs A, B and C of a stage are limited to black and white, input D is not.
+// The registers hold more than that, and no public document says what the Wii does with such a value in A, B or C.
+const float LowestSaturatedInput = 0.0;
+const float HighestSaturatedInput = 1.0;
+
+vec3 SaturateInput(vec3 value)
+{
+    return clamp(value, LowestSaturatedInput, HighestSaturatedInput);
+}
+
+float SaturateInput(float value)
+{
+    return clamp(value, LowestSaturatedInput, HighestSaturatedInput);
+}
 
 // What a stage can read besides the registers.
 struct StageSources
@@ -232,9 +247,9 @@ float CompareAlphas(uint operation, float a, float b, float c, float d)
 
 vec3 CalculateColor(Stage stage, StageSources sources)
 {
-    vec3 a = clamp(ColorInputValue(stage.colorInputA, sources), 0.0, 1.0);
-    vec3 b = clamp(ColorInputValue(stage.colorInputB, sources), 0.0, 1.0);
-    vec3 c = clamp(ColorInputValue(stage.colorInputC, sources), 0.0, 1.0);
+    vec3 a = SaturateInput(ColorInputValue(stage.colorInputA, sources));
+    vec3 b = SaturateInput(ColorInputValue(stage.colorInputB, sources));
+    vec3 c = SaturateInput(ColorInputValue(stage.colorInputC, sources));
     vec3 d = ColorInputValue(stage.colorInputD, sources);
 
     vec3 result;
@@ -253,9 +268,9 @@ vec3 CalculateColor(Stage stage, StageSources sources)
 
 float CalculateAlpha(Stage stage, StageSources sources)
 {
-    float a = clamp(AlphaInputValue(stage.alphaInputA, sources), 0.0, 1.0);
-    float b = clamp(AlphaInputValue(stage.alphaInputB, sources), 0.0, 1.0);
-    float c = clamp(AlphaInputValue(stage.alphaInputC, sources), 0.0, 1.0);
+    float a = SaturateInput(AlphaInputValue(stage.alphaInputA, sources));
+    float b = SaturateInput(AlphaInputValue(stage.alphaInputB, sources));
+    float c = SaturateInput(AlphaInputValue(stage.alphaInputC, sources));
     float d = AlphaInputValue(stage.alphaInputD, sources);
 
     float result;

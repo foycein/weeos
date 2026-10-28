@@ -52,8 +52,8 @@ public:
     // Uploads the pixels and waits until they are on the graphics card.
     TextureHandle Create(const TextureDescription& description);
 
-    // Makes a texture that a picture can be drawn into. It has clamped edges. It is a picture that was kept from before when there
-    // is one of the same size and filter.
+    // Makes a texture that a picture can be drawn into. The edges repeat their outermost pixels. It is a picture that was kept
+    // from before when there is one of the same size and filter.
     TextureHandle CreateDrawTarget(std::uint32_t width, std::uint32_t height, FilterMode filter);
 
     // Throws a GraphicsError when there is no such texture.
