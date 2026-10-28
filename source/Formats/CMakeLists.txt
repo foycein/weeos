@@ -8,5 +8,6 @@ add_library(Formats STATIC
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    U8Archive.cpp
     WadFile.cpp
 )
