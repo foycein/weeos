@@ -5,6 +5,7 @@
 #include "Ios/IosFolders.h"
 #include "Ios/Power/PowerService.h"
 #include "Ios/Result.h"
+#include "Ios/SdCard/SdCardService.h"
 
 #include <memory>
 
@@ -34,6 +35,7 @@ public:
     // The services exist while IOS is running. Asking for one at any other time is a mistake in the program and throws.
     FileSystemService& GetFileSystem();
     DiscDriveService& GetDiscDrive();
+    SdCardService& GetSdCard();
     PowerService& GetPower();
 
 private:
@@ -42,6 +44,7 @@ private:
     bool isRunning = false;
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
+    std::unique_ptr<SdCardService> sdCard;
     std::unique_ptr<PowerService> power;
 };
 

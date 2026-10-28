@@ -13,7 +13,7 @@ enum class IosError : int
     // A malformed path, a name that is too long, or an entry of the wrong kind.
     InvalidArgument = -101,
 
-    // The caller has no permission for the call.
+    // The caller has no permission for the call. On the SD card: the card is write protected.
     AccessDenied = -102,
 
     // The NAND is not a usable file system. The console formats it. We report it.
@@ -56,6 +56,49 @@ enum class IosError : int
 
     // A signature did not verify.
     SignatureInvalid = -2011,
+
+    // The SD card. Code of /dev/sdio/slot0.
+
+    // The slot is empty, or the card was taken out. The card driver gives this answer to every command when no card is there.
+    NoCardInserted = -10,
+
+    // The time and the sockets of the network family. Codes of /dev/net/kd/time and /dev/net/ip/top.
+    // The sockets number their errors in the alphabetical order of the POSIX names: 1 is E2BIG, 6 is EAGAIN, 8 is EBADF, and so on.
+
+    // The value is not ready yet. The WiiConnect24 clock has no time difference before the first time it was set.
+    NotReady = -30,
+
+    AddressInUse = -3,
+    AddressNotAvailable = -4,
+
+    // A socket has nothing to receive. The original calls this EAGAIN.
+    WouldBlock = -6,
+
+    // The number is not an open socket (or, for the secure sockets, not a context).
+    BadDescriptor = -8,
+
+    InvalidSocketArgument = -28,
+    TooManySockets = -33,
+
+    // Every call fails like this until the socket stack was started. It is the code of ENETRESET.
+    StackNotStarted = -39,
+
+    // There is no route to the address: the network cable is not plugged in.
+    NetworkUnreachable = -40,
+
+    SocketNotConnected = -56,
+    ProtocolNotSupported = -68,
+    SocketTypeNotSupported = -69,
+
+    // The address lookup failed. The original reports it as EAI_AGAIN (-0x12E).
+    NameLookupFailed = -302,
+
+    // The secure sockets. Codes of /dev/net/ssl. The module has four contexts and numbers its errors like OpenSSL does:
+    // the code is minus the answer of SSL_get_error.
+    TooManySecureContexts = -1,
+
+    // The socket under the secure connection failed (SSL_ERROR_SYSCALL).
+    SecureConnectionFailed = -5,
 };
 
 // The result code the original IOS returns for this error.
