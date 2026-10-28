@@ -37,7 +37,8 @@ const ByteTable SubstitutionBox = {
     0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16,
 };
 
-constexpr std::size_t LastWordOffset = 12;
+constexpr std::size_t WordSize = 4;
+constexpr std::size_t LastWordOffset = AesBlockSize - WordSize;
 
 // The round constants are used while the key is expanded. Each one is the previous one doubled in the field.
 constexpr std::array<Byte, Aes128RoundCount> RoundConstants = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
@@ -160,8 +161,8 @@ Aes128Decryptor::Aes128Decryptor(const AesKey& key)
         current[2] = previous[2] ^ SubstitutionBox[previous[LastWordOffset + 3]];
         current[3] = previous[3] ^ SubstitutionBox[previous[LastWordOffset]];
 
-        for (std::size_t index = 4; index < AesBlockSize; ++index)
-            current[index] = previous[index] ^ current[index - 4];
+        for (std::size_t index = WordSize; index < AesBlockSize; ++index)
+            current[index] = previous[index] ^ current[index - WordSize];
     }
 }
 

@@ -15,6 +15,7 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Font";
+constexpr std::size_t TagSize = 4;
 constexpr std::uint16_t SupportedVersion = 0x0104;
 constexpr std::uint16_t CompressedSheetsFlag = 0x8000;
 constexpr std::uint16_t NoGlyph = 0xFFFF;
@@ -177,7 +178,7 @@ CharacterMap ReadCharacterMap(const Section& section)
 std::string_view FindFontTag(ByteView bytes)
 {
     ByteReader reader(bytes, DataDescription);
-    std::string tag = reader.ReadText(4);
+    std::string tag = reader.ReadText(TagSize);
     return tag == "RFNA" ? "RFNA" : "RFNT";
 }
 
@@ -256,10 +257,13 @@ GlyphCell Font::LocateGlyph(std::uint16_t glyphIndex) const
     std::size_t glyphsPerSheet = std::size_t(cellsPerRow) * cellsPerColumn;
     std::size_t indexOnSheet = glyphIndex % glyphsPerSheet;
 
+    std::uint32_t column = static_cast<std::uint32_t>(indexOnSheet % cellsPerRow);
+    std::uint32_t row = static_cast<std::uint32_t>(indexOnSheet / cellsPerRow);
+
     GlyphCell cell;
     cell.sheetIndex = glyphIndex / glyphsPerSheet;
-    cell.left = static_cast<std::uint32_t>(indexOnSheet % cellsPerRow) * (cellWidth + CellGap);
-    cell.top = static_cast<std::uint32_t>(indexOnSheet / cellsPerRow) * (cellHeight + CellGap);
+    cell.left = column * (cellWidth + CellGap) + CellGap;
+    cell.top = row * (cellHeight + CellGap) + CellGap;
     cell.width = cellWidth;
     cell.height = cellHeight;
     return cell;
