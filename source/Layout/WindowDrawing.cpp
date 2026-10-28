@@ -1,0 +1,287 @@
+#include "Layout/WindowDrawing.h"
+
+#include "Layout/LayoutError.h"
+#include "Layout/MaterialBuilder.h"
+#include "Layout/PaneRectangle.h"
+#include "Layout/RectangleDrawing.h"
+
+#include <array>
+#include <format>
+#include <optional>
+#include <vector>
+
+namespace Layout
+{
+
+namespace
+{
+
+constexpr std::size_t NoFrames = 0;
+constexpr std::size_t OneFrame = 1;
+constexpr std::size_t FourFrames = 4;
+constexpr std::size_t EightFrames = 8;
+
+// The corners of a rectangle are counted like in the layout file: left top, right top, left bottom, right bottom.
+// In the number of a corner, bit 0 tells the right side and bit 1 tells the bottom side.
+constexpr std::size_t LeftTopCorner = 0;
+constexpr std::size_t RightTopCorner = 1;
+constexpr std::size_t LeftBottomCorner = 2;
+constexpr std::size_t RightBottomCorner = 3;
+constexpr std::size_t RightSideBit = 1;
+constexpr std::size_t BottomSideBit = 2;
+
+// The frames of a window with four frames are the four corners. A window with eight frames has the edges after the corners.
+constexpr std::size_t LeftTopFrame = 0;
+constexpr std::size_t RightTopFrame = 1;
+constexpr std::size_t LeftBottomFrame = 2;
+constexpr std::size_t RightBottomFrame = 3;
+constexpr std::size_t LeftEdgeFrame = 4;
+constexpr std::size_t RightEdgeFrame = 5;
+constexpr std::size_t TopEdgeFrame = 6;
+constexpr std::size_t BottomEdgeFrame = 7;
+
+// A window with one frame turns its one texture for each of the four sides: not at all for the top, flipped horizontally
+// for the right side, flipped vertically for the left side, and turned by 180 degrees for the bottom.
+constexpr std::array<std::uint8_t, FourFrames> TurnsOfTheOneFrame = {0, 1, 2, 4};
+
+using CornerCoordinates = std::array<Formats::Vector2, Formats::CornerCount>;
+
+// The texture coordinates of the corners of a frame texture, for each of the ways that the layout file turns a texture:
+// not turned, flipped horizontally, flipped vertically, turned by 90, 180 and 270 degrees.
+constexpr std::array<CornerCoordinates, 6> CoordinatesOfTurnedTextures = {{
+    {{{0, 0}, {1, 0}, {0, 1}, {1, 1}}},
+    {{{1, 0}, {0, 0}, {1, 1}, {0, 1}}},
+    {{{0, 1}, {1, 1}, {0, 0}, {1, 0}}},
+    {{{0, 1}, {0, 0}, {1, 1}, {1, 0}}},
+    {{{1, 1}, {0, 1}, {1, 0}, {0, 0}}},
+    {{{1, 0}, {1, 1}, {0, 0}, {0, 1}}},
+}};
+
+constexpr std::array<Formats::Rgba8Color, Formats::CornerCount> WhiteVertexColors = {{
+    {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255},
+}};
+
+struct TextureSize
+{
+    float width = 0;
+    float height = 0;
+};
+
+// How thick the frame is on each side of the window.
+struct FrameThickness
+{
+    float left = 0;
+    float right = 0;
+    float top = 0;
+    float bottom = 0;
+};
+
+// One rectangle of the frame. It is measured from the left top corner of the window rectangle, with y growing downward.
+struct FramePiece
+{
+    std::size_t frameIndex;
+
+    // The corner of the piece where the texture starts. The texture repeats from there along the sides of the piece.
+    std::size_t startCorner;
+
+    float distanceFromLeft;
+    float distanceFromTop;
+    float width;
+    float height;
+};
+
+std::optional<TextureSize> FirstTextureSizeOf(LiveLayout& layout, std::uint16_t materialIndex)
+{
+    const LiveMaterial& material = layout.MaterialAt(materialIndex);
+    if (material.description.textures.empty())
+        return std::nullopt;
+
+    LoadedTexture texture = ObtainTextureOfMap(layout, material, 0);
+    return TextureSize{static_cast<float>(texture.width), static_cast<float>(texture.height)};
+}
+
+void RequireSupportedFrameCount(const Formats::Window& window, const Formats::Pane& pane)
+{
+    std::size_t frameCount = window.frames.size();
+    bool isSupported = frameCount == NoFrames || frameCount == OneFrame || frameCount == FourFrames || frameCount == EightFrames;
+    if (!isSupported)
+        throw LayoutError(std::format("The window {} has {} frames, but only 0, 1, 4 and 8 are supported", pane.name, frameCount));
+}
+
+// A window with one frame is drawn like a window with four frames that use the one texture.
+std::vector<Formats::WindowFrame> FourFramesInsteadOfOne(const std::vector<Formats::WindowFrame>& frames)
+{
+    if (frames.size() != OneFrame)
+        return frames;
+
+    std::vector<Formats::WindowFrame> fourFrames;
+    for (std::uint8_t turn : TurnsOfTheOneFrame)
+        fourFrames.push_back({frames.front().materialIndex, turn});
+
+    return fourFrames;
+}
+
+// The thickness on the left and at the top is the size of the texture of the left top frame,
+// and the thickness on the right and at the bottom is the size of the texture of the right bottom frame.
+FrameThickness MeasureFrameThickness(LiveLayout& layout, const std::vector<Formats::WindowFrame>& frames)
+{
+    FrameThickness thickness;
+    if (frames.size() == NoFrames)
+        return thickness;
+
+    TextureSize leftTop = FirstTextureSizeOf(layout, frames[LeftTopFrame].materialIndex).value_or(TextureSize());
+    TextureSize rightBottom = FirstTextureSizeOf(layout, frames[RightBottomFrame].materialIndex).value_or(TextureSize());
+    thickness.left = leftTop.width;
+    thickness.top = leftTop.height;
+    thickness.right = rightBottom.width;
+    thickness.bottom = rightBottom.height;
+    return thickness;
+}
+
+// Four bands, going around clockwise from the top: a band is as long as the window without the thickness of the frame
+// at the end where the next band starts, so the bands do not overlap.
+std::vector<FramePiece> MakeBandPieces(const FrameThickness& thickness, float windowWidth, float windowHeight)
+{
+    return {
+        {LeftTopFrame, LeftTopCorner, 0, 0, windowWidth - thickness.right, thickness.top},
+        {RightTopFrame, RightTopCorner, windowWidth - thickness.right, 0, thickness.right, windowHeight - thickness.bottom},
+        {RightBottomFrame, RightBottomCorner, thickness.left, windowHeight - thickness.bottom, windowWidth - thickness.left, thickness.bottom},
+        {LeftBottomFrame, LeftBottomCorner, 0, thickness.top, thickness.left, windowHeight - thickness.top},
+    };
+}
+
+// Four corners and four edges between them, going around clockwise from the left top corner.
+std::vector<FramePiece> MakeCornerAndEdgePieces(const FrameThickness& thickness, float windowWidth, float windowHeight)
+{
+    float widthBetweenCorners = windowWidth - thickness.left - thickness.right;
+    float heightBetweenCorners = windowHeight - thickness.top - thickness.bottom;
+
+    return {
+        {LeftTopFrame, LeftTopCorner, 0, 0, thickness.left, thickness.top},
+        {TopEdgeFrame, LeftTopCorner, thickness.left, 0, widthBetweenCorners, thickness.top},
+        {RightTopFrame, RightTopCorner, windowWidth - thickness.right, 0, thickness.right, thickness.top},
+        {RightEdgeFrame, RightTopCorner, windowWidth - thickness.right, thickness.top, thickness.right, heightBetweenCorners},
+        {RightBottomFrame, RightBottomCorner, windowWidth - thickness.right, windowHeight - thickness.bottom, thickness.right, thickness.bottom},
+        {BottomEdgeFrame, RightBottomCorner, thickness.left, windowHeight - thickness.bottom, widthBetweenCorners, thickness.bottom},
+        {LeftBottomFrame, LeftBottomCorner, 0, windowHeight - thickness.bottom, thickness.left, thickness.bottom},
+        {LeftEdgeFrame, LeftBottomCorner, 0, thickness.top, thickness.left, heightBetweenCorners},
+    };
+}
+
+// The texture coordinates change by one whole texture when they move across one texture. This is how much they change
+// when they move from one corner to another corner of the turned texture, over a side of the given length:
+// one of the two numbers is positive or negative, depending on which way the texture runs, and the other is zero.
+Formats::Vector2 CoordinateChangeAlongSide(Formats::Vector2 from, Formats::Vector2 to, float sideLength, const TextureSize& textureSize)
+{
+    Formats::Vector2 direction = {to.x - from.x, to.y - from.y};
+    float textureLength = direction.x != 0 ? textureSize.width : textureSize.height;
+    float textureCount = sideLength / textureLength;
+    return {direction.x * textureCount, direction.y * textureCount};
+}
+
+// The corner of the turned texture that belongs to the start corner of the piece gets its own coordinates.
+// Across the piece, the coordinates go on along the sides of the texture for as many textures as fit the side.
+Formats::TextureCoordinateSet MakePieceCoordinates(const CornerCoordinates& turnedTexture, const FramePiece& piece, const TextureSize& textureSize)
+{
+    Formats::Vector2 start = turnedTexture[piece.startCorner];
+    Formats::Vector2 alongWidth = CoordinateChangeAlongSide(start, turnedTexture[piece.startCorner ^ RightSideBit], piece.width, textureSize);
+    Formats::Vector2 alongHeight = CoordinateChangeAlongSide(start, turnedTexture[piece.startCorner ^ BottomSideBit], piece.height, textureSize);
+
+    Formats::TextureCoordinateSet set;
+    for (std::size_t corner = 0; corner < Formats::CornerCount; ++corner)
+    {
+        std::size_t differentSides = corner ^ piece.startCorner;
+
+        Formats::Vector2 coordinates = start;
+        if ((differentSides & RightSideBit) != 0)
+        {
+            coordinates.x += alongWidth.x;
+            coordinates.y += alongWidth.y;
+        }
+        if ((differentSides & BottomSideBit) != 0)
+        {
+            coordinates.x += alongHeight.x;
+            coordinates.y += alongHeight.y;
+        }
+        set.corners[corner] = coordinates;
+    }
+    return set;
+}
+
+void DrawFramePiece(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement,
+    const PaneRectangle& windowRectangle, const std::vector<Formats::WindowFrame>& frames, const FramePiece& piece)
+{
+    const Formats::WindowFrame& frame = frames[piece.frameIndex];
+    std::optional<TextureSize> textureSize = FirstTextureSizeOf(layout, frame.materialIndex);
+    if (!textureSize)
+        return;
+
+    if (frame.textureFlip >= CoordinatesOfTurnedTextures.size())
+        throw LayoutError(std::format("The window {} turns a frame texture in the way {}, which is not known", placement.pane->name, frame.textureFlip));
+
+    std::array<Formats::TextureCoordinateSet, 1> coordinateSets = {
+        MakePieceCoordinates(CoordinatesOfTurnedTextures[frame.textureFlip], piece, *textureSize),
+    };
+
+    PaneRectangle pieceRectangle;
+    pieceRectangle.left = windowRectangle.left + piece.distanceFromLeft;
+    pieceRectangle.top = windowRectangle.top - piece.distanceFromTop;
+    pieceRectangle.width = piece.width;
+    pieceRectangle.height = piece.height;
+
+    RectangleAppearance appearance;
+    appearance.materialIndex = frame.materialIndex;
+    appearance.vertexColors = WhiteVertexColors;
+    appearance.textureCoordinateSets = coordinateSets;
+    DrawRectangle(device, layout, placement, pieceRectangle, appearance);
+}
+
+void DrawFrames(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement,
+    const PaneRectangle& windowRectangle, const std::vector<Formats::WindowFrame>& frames, const FrameThickness& thickness)
+{
+    if (frames.size() == NoFrames)
+        return;
+
+    std::vector<FramePiece> pieces = frames.size() == EightFrames
+        ? MakeCornerAndEdgePieces(thickness, windowRectangle.width, windowRectangle.height)
+        : MakeBandPieces(thickness, windowRectangle.width, windowRectangle.height);
+
+    for (const FramePiece& piece : pieces)
+        DrawFramePiece(device, layout, placement, windowRectangle, frames, piece);
+}
+
+// The content lies inside the frame. The magnification of the window makes it bigger, over the inner edge of the frame.
+void DrawContent(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement,
+    const PaneRectangle& windowRectangle, const FrameThickness& thickness)
+{
+    const Formats::Window& window = *placement.pane->window;
+
+    PaneRectangle contentRectangle;
+    contentRectangle.left = windowRectangle.left + thickness.left - window.magnificationLeft;
+    contentRectangle.top = windowRectangle.top - thickness.top + window.magnificationUp;
+    contentRectangle.width = windowRectangle.width - thickness.left - thickness.right + window.magnificationLeft + window.magnificationRight;
+    contentRectangle.height = windowRectangle.height - thickness.top - thickness.bottom + window.magnificationUp + window.magnificationDown;
+
+    RectangleAppearance appearance;
+    appearance.materialIndex = window.content.materialIndex;
+    appearance.vertexColors = window.content.vertexColors;
+    appearance.textureCoordinateSets = window.content.textureCoordinateSets;
+    DrawRectangle(device, layout, placement, contentRectangle, appearance);
+}
+
+}
+
+void DrawWindow(Graphics::GraphicsDevice& device, LiveLayout& layout, const PanePlacement& placement)
+{
+    const Formats::Pane& pane = *placement.pane;
+    RequireSupportedFrameCount(*pane.window, pane);
+
+    PaneRectangle windowRectangle = RectangleOfPane(pane);
+    std::vector<Formats::WindowFrame> frames = FourFramesInsteadOfOne(pane.window->frames);
+    FrameThickness thickness = MeasureFrameThickness(layout, frames);
+
+    DrawContent(device, layout, placement, windowRectangle, thickness);
+    DrawFrames(device, layout, placement, windowRectangle, frames, thickness);
+}
+
+}

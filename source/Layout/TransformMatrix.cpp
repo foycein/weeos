@@ -8,7 +8,6 @@ namespace Layout
 namespace
 {
 
-constexpr float RadiansPerDegree = 0.017453292f;
 constexpr std::size_t RowCount = 3;
 constexpr std::size_t ColumnCount = 4;
 constexpr std::size_t MovementColumn = 3;
@@ -101,6 +100,26 @@ Formats::Vector2 TransformPoint(const TransformMatrix& matrix, Formats::Vector2 
     moved.x = matrix.rows[0][0] * point.x + matrix.rows[0][1] * point.y + matrix.rows[0][MovementColumn];
     moved.y = matrix.rows[1][0] * point.x + matrix.rows[1][1] * point.y + matrix.rows[1][MovementColumn];
     return moved;
+}
+
+std::optional<Formats::Vector2> FindPointMovedTo(const TransformMatrix& matrix, Formats::Vector2 target)
+{
+    float xFromX = matrix.rows[0][0];
+    float xFromY = matrix.rows[0][1];
+    float yFromX = matrix.rows[1][0];
+    float yFromY = matrix.rows[1][1];
+
+    float determinant = xFromX * yFromY - xFromY * yFromX;
+    if (determinant == 0.0f)
+        return std::nullopt;
+
+    float xToCover = target.x - matrix.rows[0][MovementColumn];
+    float yToCover = target.y - matrix.rows[1][MovementColumn];
+
+    Formats::Vector2 point;
+    point.x = (yFromY * xToCover - xFromY * yToCover) / determinant;
+    point.y = (xFromX * yToCover - yFromX * xToCover) / determinant;
+    return point;
 }
 
 }
