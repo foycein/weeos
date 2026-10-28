@@ -34,7 +34,7 @@ constexpr std::string_view UsageText =
     "                              SYSCONF comes without the nickname, parental controls, Wii Remotes, address and clock bias;\n"
     "                              BC and MIOS (the GameCube) are left out\n"
     "  identity <folder>           keys.txt, device.cert and seeprom.bin into <folder>, the identity folder of the IOS part\n"
-    "  verify                     the error correction of all pages, the HMAC of all clusters and the signatures of all titles\n"
+    "  verify                     the error correction of all pages, the HMAC of all clusters, the contents and the signatures of all titles\n"
     "\n"
     "The dump is the folder with nand.bin and keys.txt. Without --dump it is assets/console-dump, searched from here upwards.\n"
     "The NAND keeps the contents of titles already decrypted, so title and extract write them as they are stored;\n"
@@ -382,6 +382,14 @@ void PrintHmacReport(Dump& dump)
         report.checkedClusterCount, report.wrongClusterCount, report.superblockIsCorrect ? "is right" : "is wrong");
 }
 
+void PrintContentReport(Formats::NandFileSystem& fileSystem)
+{
+    std::vector<std::uint64_t> titleIds = Formats::NandTitles(fileSystem).ListTitleIds();
+    ContentReport report = CheckContentsOfTitles(fileSystem, titleIds);
+    std::cout << std::format("Contents of the titles against their title metadata: {} checked, {} missing, {} wrong\n", report.checkedCount,
+        report.missingCount, report.wrongCount);
+}
+
 void PrintSignatureReport(Formats::NandFileSystem& fileSystem)
 {
     std::vector<std::uint64_t> titleIds = Formats::NandTitles(fileSystem).ListTitleIds();
@@ -427,6 +435,7 @@ void VerifyCommand(Dump& dump, const Arguments& arguments)
 
     PrintErrorCorrectionReport(dump.image);
     PrintHmacReport(dump);
+    PrintContentReport(dump.fileSystem);
     PrintSignatureReport(dump.fileSystem);
 }
 

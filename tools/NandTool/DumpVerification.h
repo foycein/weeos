@@ -41,6 +41,20 @@ struct HmacReport
 // Checks the HMAC of every cluster of every file that is not bigger than the limit, and the HMAC of the superblock.
 HmacReport CheckHmacs(Formats::NandFileSystem& fileSystem, Formats::ByteView hmacKey, std::uint32_t largestFileSize);
 
+struct ContentReport
+{
+    // Contents that titles share are counted once.
+    std::uint32_t checkedCount = 0;
+    std::uint32_t missingCount = 0;
+
+    // Contents whose size or SHA-1 hash differs from the title metadata.
+    std::uint32_t wrongCount = 0;
+};
+
+// Reads every content of the titles and checks its size and SHA-1 hash against the title metadata. The NAND keeps contents decrypted,
+// so this decrypts every cluster and takes a while without optimization.
+ContentReport CheckContentsOfTitles(Formats::NandFileSystem& fileSystem, std::span<const std::uint64_t> titleIds);
+
 // What the certificates of the NAND (/sys/cert.sys) say about the signatures of one title.
 struct TitleSignatureReport
 {

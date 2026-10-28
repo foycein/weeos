@@ -1,10 +1,13 @@
 #include "DumpVerification.h"
 
 #include "Formats/Certificate.h"
+#include "Formats/FormatError.h"
 #include "Formats/NandTitles.h"
 
 #include <optional>
+#include <set>
 #include <span>
+#include <string>
 
 namespace
 {
@@ -25,6 +28,40 @@ std::vector<Formats::SignatureCheck> CheckTickets(const Formats::Bytes& ticketFi
     return results;
 }
 
+}
+
+ContentReport CheckContentsOfTitles(Formats::NandFileSystem& fileSystem, std::span<const std::uint64_t> titleIds)
+{
+    Formats::NandTitles titles(fileSystem);
+
+    ContentReport report;
+    std::set<std::string> checkedPaths;
+    for (std::uint64_t titleId : titleIds)
+    {
+        for (const Formats::ContentRecord& record : titles.ReadMetadata(titleId).contents)
+        {
+            std::optional<std::string> path = titles.FindContentPath(titleId, record);
+            if (!path)
+            {
+                ++report.missingCount;
+                continue;
+            }
+
+            if (!checkedPaths.insert(*path).second)
+                continue;
+
+            ++report.checkedCount;
+            try
+            {
+                titles.ReadContent(titleId, record);
+            }
+            catch (const Formats::FormatError&)
+            {
+                ++report.wrongCount;
+            }
+        }
+    }
+    return report;
 }
 
 ErrorCorrectionReport CheckErrorCorrection(Formats::NandImage& image, std::uint32_t step)

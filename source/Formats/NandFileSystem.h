@@ -92,6 +92,10 @@ public:
     Bytes ReadFile(const NandEntry& file);
     Bytes ReadFile(std::string_view path);
 
+    // Some bytes of a file: only the clusters that hold them are decrypted. Throws a FormatError when the entry is no file, when the range
+    // ends behind the end of the file or when the chain of its clusters is damaged.
+    Bytes ReadFileRange(const NandEntry& file, std::uint64_t offset, std::size_t size);
+
     // An optional check of the HMAC that guards every cluster of a file against changes. The HMAC (SHA-1, made with the HMAC key of
     // the console) covers 64 bytes and then the decrypted data of the cluster. The 64 bytes are the owner and the name of the file,
     // the place of the cluster in the file, the number of the tree record and its unknown field. The spare bytes of the cluster hold
@@ -104,6 +108,7 @@ public:
 
 private:
     Bytes ReadDecryptedCluster(std::uint32_t clusterNumber);
+    void RequireDataCluster(const NandEntry& file, std::uint32_t clusterNumber, std::uint64_t bytesBefore) const;
     bool StoredHmacMatches(std::uint32_t clusterNumber, const Sha1Digest& hmac);
 
     NandImage& image;

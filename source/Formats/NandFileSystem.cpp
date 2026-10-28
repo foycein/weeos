@@ -387,29 +387,52 @@ std::vector<const NandEntry*> NandFileSystem::ListDirectory(std::string_view dir
 
 Bytes NandFileSystem::ReadFile(const NandEntry& file)
 {
+    return ReadFileRange(file, 0, file.size);
+}
+
+Bytes NandFileSystem::ReadFileRange(const NandEntry& file, std::uint64_t offset, std::size_t size)
+{
     if (file.kind != NandEntryKind::File)
         throw FormatError(std::format("NAND file system: {} is a directory, not a file", file.path));
 
-    Bytes content;
-    content.reserve(file.size);
+    if (offset > file.size || size > file.size - offset)
+    {
+        throw FormatError(std::format("NAND file system: the {} bytes at {} are not inside {}, which has {} bytes",
+            size, offset, file.path, file.size));
+    }
 
     // The chain of a file starts at its first cluster. Each entry of the table names the next cluster.
     std::uint32_t cluster = file.firstCluster;
-    while (content.size() < file.size)
+    for (std::uint64_t skippedClusterCount = 0; skippedClusterCount < offset / NandClusterSize; ++skippedClusterCount)
     {
-        if (cluster < FirstDataCluster || cluster >= DataClusterLimit)
-        {
-            throw FormatError(std::format("NAND file system: the clusters of {} end after {} of {} bytes, at the cluster {:#x}",
-                file.path, content.size(), file.size, cluster));
-        }
+        RequireDataCluster(file, cluster, skippedClusterCount * NandClusterSize);
+        cluster = clusterChains[cluster];
+    }
+
+    Bytes content;
+    content.reserve(size);
+    std::size_t startInCluster = static_cast<std::size_t>(offset % NandClusterSize);
+    while (content.size() < size)
+    {
+        RequireDataCluster(file, cluster, offset + content.size());
 
         Bytes clusterData = ReadDecryptedCluster(cluster);
-        std::size_t usedSize = std::min<std::size_t>(clusterData.size(), file.size - content.size());
-        content.insert(content.end(), clusterData.begin(), clusterData.begin() + usedSize);
+        std::size_t usedSize = std::min(NandClusterSize - startInCluster, size - content.size());
+        content.insert(content.end(), clusterData.begin() + startInCluster, clusterData.begin() + startInCluster + usedSize);
 
+        startInCluster = 0;
         cluster = clusterChains[cluster];
     }
     return content;
+}
+
+void NandFileSystem::RequireDataCluster(const NandEntry& file, std::uint32_t clusterNumber, std::uint64_t bytesBefore) const
+{
+    if (clusterNumber >= FirstDataCluster && clusterNumber < DataClusterLimit)
+        return;
+
+    throw FormatError(std::format("NAND file system: the clusters of {} end after {} of {} bytes, at the cluster {:#x}",
+        file.path, bytesBefore, file.size, clusterNumber));
 }
 
 Bytes NandFileSystem::ReadFile(std::string_view path)
