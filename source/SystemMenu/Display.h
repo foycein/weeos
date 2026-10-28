@@ -2,6 +2,7 @@
 
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Platform/ScreenShape.h"
 
 namespace SystemMenu
 {
@@ -15,12 +16,12 @@ constexpr Graphics::Canvas WideCanvas = {832, 456};
 class Display
 {
 public:
-    Display(Graphics::GraphicsDevice& graphicsDevice, Graphics::ScreenShape initialScreenShape);
+    Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape);
 
     Graphics::GraphicsDevice& Device();
 
-    Graphics::ScreenShape GetScreenShape() const;
-    void SetScreenShape(Graphics::ScreenShape newScreenShape);
+    Platform::ScreenShape GetScreenShape() const;
+    void SetScreenShape(Platform::ScreenShape newScreenShape);
 
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
@@ -42,7 +43,7 @@ public:
 
 private:
     Graphics::GraphicsDevice& device;
-    Graphics::ScreenShape screenShape;
+    Platform::ScreenShape screenShape;
 };
 
 }

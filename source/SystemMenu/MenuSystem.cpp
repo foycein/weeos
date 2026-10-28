@@ -7,7 +7,7 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-    Graphics::ScreenShape screenShape)
+    Platform::ScreenShape screenShape)
     : display(device, screenShape)
     , files(titleContents)
     , messages(files.OpenEnglishMessages())

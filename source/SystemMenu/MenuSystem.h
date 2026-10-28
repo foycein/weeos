@@ -24,7 +24,7 @@ public:
     // Reads the resources of the menu from the contents of the System Menu title and starts the first screen.
     // The device, the contents and the remote service must outlive the menu.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-        Graphics::ScreenShape screenShape);
+        Platform::ScreenShape screenShape);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
     void Update();

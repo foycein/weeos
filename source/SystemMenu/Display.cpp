@@ -10,7 +10,7 @@ constexpr float Half = 0.5f;
 
 }
 
-Display::Display(Graphics::GraphicsDevice& graphicsDevice, Graphics::ScreenShape initialScreenShape)
+Display::Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape)
     : device(graphicsDevice)
     , screenShape(initialScreenShape)
 {
@@ -21,19 +21,19 @@ Graphics::GraphicsDevice& Display::Device()
     return device;
 }
 
-Graphics::ScreenShape Display::GetScreenShape() const
+Platform::ScreenShape Display::GetScreenShape() const
 {
     return screenShape;
 }
 
-void Display::SetScreenShape(Graphics::ScreenShape newScreenShape)
+void Display::SetScreenShape(Platform::ScreenShape newScreenShape)
 {
     screenShape = newScreenShape;
 }
 
 Graphics::Canvas Display::GetCanvas() const
 {
-    if (screenShape == Graphics::ScreenShape::SixteenByNine)
+    if (screenShape == Platform::ScreenShape::SixteenByNine)
         return WideCanvas;
 
     return StandardCanvas;
