@@ -627,7 +627,10 @@ void SequencePlayer::StartNote(SequenceTrack& track, int key, int velocity, int 
 {
     std::optional<NoteParameters> foundNote = bank.file.FindNote(track.program, key, velocity);
     if (!foundNote)
+    {
+        ++errorCount;
         return;
+    }
 
     const NoteParameters& note = *foundNote;
     std::uint8_t attack = EnvelopeNumber(track.attack, note.attack);

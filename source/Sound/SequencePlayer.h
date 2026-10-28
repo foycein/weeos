@@ -53,8 +53,8 @@ public:
     // The number of sounding notes.
     std::size_t NoteCount() const;
 
-    // The number of times a track was ended because it ran a command that is not supported, ran out of commands,
-    // or ran too long without waiting.
+    // The number of times something went wrong: a track was ended because it ran a command that is not supported, ran out of
+    // commands, or ran too long without waiting; or a note had no sound in the bank for its instrument, key and velocity.
     std::size_t ErrorCount() const;
 
 private:

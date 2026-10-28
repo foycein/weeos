@@ -75,8 +75,8 @@ public:
     std::size_t ActiveVoiceCount() const;
     std::size_t RunningSoundCount() const;
 
-    // The number of times a track of a sequence had to be ended because of a command that is not supported (or that went wrong),
-    // among all the sequences that have been played. The sequences of the menu never do.
+    // The number of times something went wrong in a sequence (see SequencePlayer::ErrorCount), among all the sequences that have
+    // been played. The sequences of the menu never do: every note they play has a sound in its bank.
     std::size_t SequenceErrorCount() const;
 
 private:

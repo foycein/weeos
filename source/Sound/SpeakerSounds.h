@@ -10,9 +10,9 @@
 namespace Sound
 {
 
-// The sample rate of the sounds that the menu plays on the speaker of a Wii Remote. The files do not hold it. In its standard mode the
-// speaker of the remote plays 4 bit ADPCM at 3000 Hz (WiiBrew: the rate is 6 000 000 divided by the number 0x07D0), and the highest
-// tone of the five sounds is a few percent below half of that rate, where a sound made for this speaker would put it.
+// The sample rate of the sounds that the menu plays on the speaker of a Wii Remote. The files do not hold it. The remote library of the
+// menu sets the speaker to 4 bit ADPCM with the number 0x07D0 (the bytes at 0x81695840), which is 3000 Hz (WiiBrew: the rate is
+// 6 000 000 divided by the number). The highest tone of the five sounds is a few percent below half of that rate.
 constexpr std::uint32_t SpeakerSoundSampleRate = 3000;
 
 struct SpeakerSound
