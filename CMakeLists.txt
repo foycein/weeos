@@ -9,11 +9,13 @@ include_directories(source tests)
 
 add_subdirectory(source/Formats)
 add_subdirectory(source/Boot)
+add_subdirectory(source/Input)
 add_subdirectory(source/Ios)
 add_subdirectory(source/Platform)
 add_subdirectory(source/Graphics)
 add_subdirectory(source/Text)
 add_subdirectory(source/Layout)
+add_subdirectory(tools/NandTool)
 add_subdirectory(tools/TextureDump)
 add_subdirectory(tools/GraphicsDemo)
 
