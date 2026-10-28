@@ -9,6 +9,7 @@ include_directories(source tests)
 
 add_subdirectory(source/Formats)
 add_subdirectory(source/Sound)
+add_subdirectory(tools/SoundCheck)
 add_subdirectory(tools/TextureDump)
 
 enable_testing()

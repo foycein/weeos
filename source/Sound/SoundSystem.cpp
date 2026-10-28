@@ -1,5 +1,7 @@
 #include "Sound/SoundSystem.h"
 
+#include "Sound/StereoPlacement.h"
+
 #include "Formats/FormatError.h"
 
 #include <algorithm>
@@ -283,7 +285,7 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
     }
 
     float volume = masterVolume.load();
-    std::size_t totalSampleCount = interleavedStereo.size() / 2;
+    std::size_t totalSampleCount = interleavedStereo.size() / StereoChannelCount;
     std::size_t doneSampleCount = 0;
 
     while (doneSampleCount < totalSampleCount)
@@ -301,8 +303,9 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
 
         for (std::size_t sampleNumber = 0; sampleNumber < count; ++sampleNumber)
         {
-            interleavedStereo[2 * (doneSampleCount + sampleNumber)] = left[sampleNumber] * volume;
-            interleavedStereo[2 * (doneSampleCount + sampleNumber) + 1] = right[sampleNumber] * volume;
+            std::size_t firstChannelIndex = StereoChannelCount * (doneSampleCount + sampleNumber);
+            interleavedStereo[firstChannelIndex] = left[sampleNumber] * volume;
+            interleavedStereo[firstChannelIndex + 1] = right[sampleNumber] * volume;
         }
 
         doneSampleCount += count;
