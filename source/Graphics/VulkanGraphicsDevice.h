@@ -34,7 +34,7 @@ public:
 
     TextureHandle CreateTexture(const TextureDescription& description) override;
     void DestroyTexture(TextureHandle texture) override;
-    void BeginFrame(const Canvas& canvas, ScreenShape screenShape) override;
+    void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) override;
     void SetScissor(const ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
@@ -87,7 +87,7 @@ private:
     struct ConsoleFrame
     {
         TextureHandle frameBuffer;
-        ScreenShape screenShape;
+        Platform::ScreenShape screenShape;
         Material copyMaterial;
         std::uint32_t copyDrawIndex;
     };
@@ -102,9 +102,9 @@ private:
     void WaitUntilFinished(FrameResources& resources);
 
     // Where the canvas of the next picture of the screen lands: in the window, or in the frame buffer of the console.
-    CanvasMapping MapScreenPicture(const Canvas& canvas, ScreenShape screenShape) const;
+    CanvasMapping MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const;
     void StartWindowPicture(const CanvasMapping& mapping);
-    void StartConsolePicture(const CanvasMapping& mapping, ScreenShape screenShape);
+    void StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape);
     void StartRecording(std::optional<Recording>& recording, FrameResources& resources);
     void BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor);
     void EndPass();

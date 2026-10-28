@@ -25,7 +25,7 @@ constexpr FilterMode ConsoleScalingFilter = FilterMode::Linear;
 
 // The units of the layouts of the menu: 608 x 456 in 4:3 and 832 x 456 in 16:9. The menu draws one unit as one pixel in the
 // height of its frame buffer, and it stretches the width of the canvas over the 640 pixels.
-Canvas ConsoleCanvas(ScreenShape screenShape);
+Canvas ConsoleCanvas(Platform::ScreenShape screenShape);
 
 // Which way the console sends its picture to the television. The vertical filter of the copy depends on it.
 // The console of the dump has no setting for the progressive mode, so it sends 480i.
@@ -56,10 +56,10 @@ struct PictureSettings
 
 // The pixels of the window that show the frame buffer of the console, when the screen shape fills screenArea.
 // The pointer has to be converted with this area while the picture is made in the console way.
-PixelRectangle ConsolePictureArea(const PixelRectangle& screenArea, ScreenShape screenShape);
+Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape);
 
 // The corners of the frame buffer in the units of ConsoleRasterCanvas, with the texture coordinates of the whole frame buffer.
-Quad MakeConsolePictureQuad(ScreenShape screenShape);
+Quad MakeConsolePictureQuad(Platform::ScreenShape screenShape);
 
 // How much of the line above, of the line itself and of the line below make a line of the copy. The numbers are out of 255
 // and add up to exactly 255, as the constants of a stage hold them.

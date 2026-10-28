@@ -5,6 +5,7 @@
 #include "Input/RemoteSource.h"
 
 #include "Platform/WindowListener.h"
+#include "Platform/ScreenShape.h"
 #include "Platform/WindowSize.h"
 
 #include <set>
@@ -22,7 +23,7 @@ class VirtualRemote : public RemoteSource, public Platform::WindowListener
 {
 public:
     // The window size and the screen shape tell where the picture is in the window, which the pointer needs.
-    VirtualRemote(Platform::WindowSize initialWindowSize, ScreenShape initialScreenShape);
+    VirtualRemote(Platform::WindowSize initialWindowSize, Platform::ScreenShape initialScreenShape);
 
     // ---- The events of the window, in the order they happen
 
@@ -43,7 +44,7 @@ public:
 
     // The program tells the remote when the window is resized and when the screen shape setting changes.
     void SetWindowSize(Platform::WindowSize newWindowSize);
-    void SetScreenShape(ScreenShape newScreenShape);
+    void SetScreenShape(Platform::ScreenShape newScreenShape);
 
     // Gives other keys and mouse buttons to the buttons of the remote. A key that is down gets the meaning it has in the new table.
     void SetKeyMap(std::span<const KeyBinding> newKeyMap);
@@ -90,7 +91,7 @@ private:
     bool mouseIsOverWindow = false;
     Formats::Vector2 mousePixel = {0, 0};
     Platform::WindowSize windowSize;
-    ScreenShape screenShape;
+    Platform::ScreenShape screenShape;
 
     bool isConnected = true;
     ButtonMask buttonsPressedSinceLastRead = 0;

@@ -7,6 +7,7 @@
 #include "Graphics/OneTimeCommands.h"
 #include "Graphics/StageList.h"
 #include "Graphics/VulkanSupport.h"
+#include "Platform/FitPicture.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -53,7 +54,7 @@ constexpr ImageTransition FinishReadingBack = {VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTI
     VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
     VK_ACCESS_2_SHADER_SAMPLED_READ_BIT};
 
-VkRect2D ToVulkanRectangle(const PixelRectangle& rectangle)
+VkRect2D ToVulkanRectangle(const Platform::PixelRectangle& rectangle)
 {
     VkOffset2D offset = {static_cast<std::int32_t>(rectangle.left), static_cast<std::int32_t>(rectangle.top)};
     VkExtent2D size = {static_cast<std::uint32_t>(rectangle.width), static_cast<std::uint32_t>(rectangle.height)};
@@ -91,7 +92,7 @@ void VulkanGraphicsDevice::DestroyTexture(TextureHandle texture)
     textures.Retire(texture, lastFrameNumber);
 }
 
-void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, ScreenShape screenShape)
+void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape)
 {
     if (isFrameActive)
         throw GraphicsError("BeginFrame was called before Present ended the picture before");
@@ -348,13 +349,13 @@ void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
     textures.ReleaseFinished(finishedFrameNumber);
 }
 
-CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, ScreenShape screenShape) const
+CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const
 {
     if (pictureSettings.resolution == PictureResolution::Console)
         return CanvasMapping(canvas, {0, 0, static_cast<float>(ConsoleFrameWidth), static_cast<float>(ConsoleFrameHeight)});
 
     VkExtent2D size = swapchain.Extent();
-    return CanvasMapping(canvas, FitPicture({size.width, size.height}, screenShape));
+    return CanvasMapping(canvas, Platform::FitPicture({size.width, size.height}, screenShape));
 }
 
 void VulkanGraphicsDevice::StartWindowPicture(const CanvasMapping& mapping)
@@ -366,7 +367,7 @@ void VulkanGraphicsDevice::StartWindowPicture(const CanvasMapping& mapping)
     BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
 }
 
-void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, ScreenShape screenShape)
+void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape)
 {
     TextureHandle frameBuffer = textures.CreateDrawTarget(ConsoleFrameWidth, ConsoleFrameHeight, ConsoleScalingFilter);
     Texture& texture = textures.Get(frameBuffer);
@@ -429,12 +430,12 @@ void VulkanGraphicsDevice::EndPass()
 void VulkanGraphicsDevice::ApplyTargetState(const Target& target)
 {
     VkCommandBuffer commandBuffer = CurrentCommandBuffer();
-    const PixelRectangle& pictureArea = target.mapping.PictureArea();
+    const Platform::PixelRectangle& pictureArea = target.mapping.PictureArea();
 
     VkViewport viewport = {pictureArea.left, pictureArea.top, pictureArea.width, pictureArea.height, 0.0f, 1.0f};
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    PixelRectangle coveredArea = pictureArea;
+    Platform::PixelRectangle coveredArea = pictureArea;
     if (target.scissor)
         coveredArea = target.mapping.ScissorToPixels(*target.scissor);
 
@@ -502,7 +503,7 @@ void VulkanGraphicsDevice::CopyConsoleFrameToScreen()
     frameBuffer.isBeingDrawn = false;
 
     VkExtent2D size = swapchain.Extent();
-    PixelRectangle screenArea = FitPicture({size.width, size.height}, consoleFrame->screenShape);
+    Platform::PixelRectangle screenArea = Platform::FitPicture({size.width, size.height}, consoleFrame->screenShape);
     VkImage image = swapchain.AcquiredImage();
     TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
 

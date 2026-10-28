@@ -33,9 +33,9 @@ constexpr std::size_t CoefficientCountOfOutsideLine = 2;
 // The three weights are the red, green and blue number of this constant color of the material.
 constexpr std::size_t WeightColorIndex = 3;
 
-float PictureWidthOf(ScreenShape screenShape)
+float PictureWidthOf(Platform::ScreenShape screenShape)
 {
-    if (screenShape == ScreenShape::FourByThree)
+    if (screenShape == Platform::ScreenShape::FourByThree)
         return FourByThreePictureWidth;
 
     return SixteenByNinePictureWidth;
@@ -85,15 +85,15 @@ void AddWeightedLine(Material& material, TextureHandle frameBuffer, int lineOffs
 
 }
 
-Canvas ConsoleCanvas(ScreenShape screenShape)
+Canvas ConsoleCanvas(Platform::ScreenShape screenShape)
 {
-    if (screenShape == ScreenShape::FourByThree)
+    if (screenShape == Platform::ScreenShape::FourByThree)
         return FourByThreeCanvas;
 
     return SixteenByNineCanvas;
 }
 
-PixelRectangle ConsolePictureArea(const PixelRectangle& screenArea, ScreenShape screenShape)
+Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape)
 {
     float pictureWidth = PictureWidthOf(screenShape);
     float pictureLeft = (ConsoleRasterCanvas.width - pictureWidth) / 2;
@@ -105,7 +105,7 @@ PixelRectangle ConsolePictureArea(const PixelRectangle& screenArea, ScreenShape 
         pictureWidth * pixelsPerRasterColumn, ConsoleFrameHeight * pixelsPerRasterLine};
 }
 
-Quad MakeConsolePictureQuad(ScreenShape screenShape)
+Quad MakeConsolePictureQuad(Platform::ScreenShape screenShape)
 {
     float halfWidth = PictureWidthOf(screenShape) / 2;
     float halfHeight = ConsoleFrameHeight / 2.0f;
