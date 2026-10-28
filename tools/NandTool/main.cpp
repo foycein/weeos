@@ -98,6 +98,18 @@ std::string NormalizePath(std::string path)
     return path;
 }
 
+// The path a command works on: its one optional argument, or the root when there is none.
+std::string PathArgumentOrRoot(const Arguments& arguments)
+{
+    if (arguments.size() > 1)
+        throw UsageError();
+
+    if (arguments.empty())
+        return std::string(RootPath);
+
+    return NormalizePath(arguments[0]);
+}
+
 const Formats::NandEntry& FindEntryOrFail(const Formats::NandFileSystem& fileSystem, const std::string& path)
 {
     const Formats::NandEntry* entry = fileSystem.Find(path);
@@ -135,10 +147,7 @@ bool IsInside(const std::string& path, const std::string& directoryPath)
 
 void ListCommand(Dump& dump, const Arguments& arguments)
 {
-    if (arguments.size() > 1)
-        throw UsageError();
-
-    std::string path = arguments.empty() ? std::string(RootPath) : NormalizePath(arguments[0]);
+    std::string path = PathArgumentOrRoot(arguments);
     const Formats::NandEntry& entry = FindEntryOrFail(dump.fileSystem, path);
     if (entry.kind == Formats::NandEntryKind::File)
     {
@@ -152,10 +161,7 @@ void ListCommand(Dump& dump, const Arguments& arguments)
 
 void TreeCommand(Dump& dump, const Arguments& arguments)
 {
-    if (arguments.size() > 1)
-        throw UsageError();
-
-    std::string path = arguments.empty() ? std::string(RootPath) : NormalizePath(arguments[0]);
+    std::string path = PathArgumentOrRoot(arguments);
     FindEntryOrFail(dump.fileSystem, path);
 
     for (const Formats::NandEntry& entry : dump.fileSystem.Entries())
