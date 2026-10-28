@@ -115,7 +115,8 @@ struct Font
     // The widths of a glyph. A glyph that the font gives no widths for has the default widths.
     GlyphWidths WidthsOf(std::uint16_t glyphIndex) const;
 
-    // The place of a glyph on the sheets. There is a gap of one pixel between the cells of a sheet.
+    // The place of a glyph on the sheets. Every cell has one more pixel in width and in height than the glyph needs,
+    // which lies above and to the left of the glyph.
     GlyphCell LocateGlyph(std::uint16_t glyphIndex) const;
 
     RgbaImage DecodeSheet(std::size_t sheetIndex) const;

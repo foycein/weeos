@@ -257,10 +257,13 @@ GlyphCell Font::LocateGlyph(std::uint16_t glyphIndex) const
     std::size_t glyphsPerSheet = std::size_t(cellsPerRow) * cellsPerColumn;
     std::size_t indexOnSheet = glyphIndex % glyphsPerSheet;
 
+    std::uint32_t column = static_cast<std::uint32_t>(indexOnSheet % cellsPerRow);
+    std::uint32_t row = static_cast<std::uint32_t>(indexOnSheet / cellsPerRow);
+
     GlyphCell cell;
     cell.sheetIndex = glyphIndex / glyphsPerSheet;
-    cell.left = static_cast<std::uint32_t>(indexOnSheet % cellsPerRow) * (cellWidth + CellGap);
-    cell.top = static_cast<std::uint32_t>(indexOnSheet / cellsPerRow) * (cellHeight + CellGap);
+    cell.left = column * (cellWidth + CellGap) + CellGap;
+    cell.top = row * (cellHeight + CellGap) + CellGap;
     cell.width = cellWidth;
     cell.height = cellHeight;
     return cell;
