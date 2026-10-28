@@ -1,5 +1,7 @@
 add_library(Settings STATIC
     ConsoleClock.cpp
+    Countries.cpp
+    SystemMemoryFormatter.cpp
     SystemSettings.cpp
 )
 
