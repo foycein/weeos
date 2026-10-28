@@ -11,6 +11,9 @@ namespace
 
 constexpr Ipv4Address NoAddress = 0;
 
+// The address of the adapter of a wired connection is not known here (docs/audit/OpenPoints/Ios.md, SO2), so it is all zero.
+constexpr MacAddress UnknownAdapterAddress = {};
+
 // The stack of the console keeps two addresses: the loopback address and the address of the interface.
 constexpr std::uint32_t AddressCount = 2;
 
@@ -21,14 +24,13 @@ Formats::Bytes MakeBytesOfNumber(std::uint32_t number)
     return bytes;
 }
 
-// The MAC address of the network card of the interface. The wireless card has the address of the console. The adapter of a
-// wired connection is not known here, so it has the address zero.
+// The MAC address of the network card of the interface. The wireless card has the address of the console.
 MacAddress MacAddressOf(NetworkInterface interface, const NetworkConfigService& networkConfig)
 {
     if (interface == NetworkInterface::Wireless)
         return networkConfig.GetWirelessMacAddress();
 
-    return MacAddress{};
+    return UnknownAdapterAddress;
 }
 
 // What the interface answers to the option. Nothing when the option is not one of those that are rebuilt.

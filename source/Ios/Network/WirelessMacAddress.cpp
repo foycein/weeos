@@ -18,9 +18,6 @@ constexpr std::string_view KeysFileName = "keys.txt";
 
 Result<MacAddress> ReadWirelessMacAddress(const std::filesystem::path& identityFolder)
 {
-    if (identityFolder.empty())
-        return MacAddress{};
-
     std::filesystem::path keysFile = identityFolder / KeysFileName;
     std::error_code error;
     if (!std::filesystem::is_regular_file(keysFile, error))

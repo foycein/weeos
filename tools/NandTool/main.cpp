@@ -26,7 +26,9 @@ constexpr std::string_view UsageText =
     "  extract <path> <folder>     a file, or a directory with everything in it, decrypted, into <folder>\n"
     "  titles                      every title with its version, number of contents and required IOS\n"
     "  title <id> <folder>         title.tmd, ticket.tik and all contents of a title into <folder>, like 00000001-00000002\n"
-    "  import <folder>             the system part of the NAND into <folder>, as the NAND folder of the IOS part keeps it\n"
+    "  import <folder>             the system part of the NAND into <folder>, as the NAND folder of the IOS part keeps it;\n"
+    "                              SYSCONF comes without the nickname, parental controls, Wii Remotes, address and clock bias;\n"
+    "                              BC and MIOS (the GameCube) are left out\n"
     "\n"
     "The dump is the folder with nand.bin and keys.txt. Without --dump it is assets/console-dump, searched from here upwards.\n"
     "The NAND keeps the contents of titles already decrypted, so title and extract write them as they are stored;\n"
@@ -290,12 +292,13 @@ void TitleCommand(Dump& dump, const Arguments& arguments)
         throw std::runtime_error(std::format("{} contents of the title are not on the NAND", missingCount));
 }
 
+// The totals of the rules that import (any kind of import) or of the rules that skip.
 RuleTotals AddUpRules(const ImportPlan& plan, ImportAction action)
 {
     RuleTotals sum;
     for (std::size_t ruleNumber = 0; ruleNumber < plan.rules.size(); ++ruleNumber)
     {
-        if (plan.rules[ruleNumber].action != action)
+        if (IsImported(plan.rules[ruleNumber].action) != IsImported(action))
             continue;
 
         sum.directoryCount += plan.totals[ruleNumber].directoryCount;
@@ -305,16 +308,24 @@ RuleTotals AddUpRules(const ImportPlan& plan, ImportAction action)
     return sum;
 }
 
+std::string_view ActionText(ImportAction action)
+{
+    if (action == ImportAction::ImportWithPersonalSettingsReset)
+        return "cleaned";
+
+    return IsImported(action) ? "import" : "skip";
+}
+
 void PrintImportReport(const ImportPlan& plan)
 {
-    std::cout << " rule  action  directories   files        bytes  pattern: reason\n";
+    std::cout << " rule  action   directories   files        bytes  pattern: reason\n";
     for (std::size_t ruleNumber = 0; ruleNumber < plan.rules.size(); ++ruleNumber)
     {
         const ImportRule& rule = plan.rules[ruleNumber];
         const RuleTotals& totals = plan.totals[ruleNumber];
-        std::string_view actionText = rule.action == ImportAction::Import ? "import" : "skip";
+        std::string_view actionText = ActionText(rule.action);
         std::string_view scopeText = rule.scope == ImportScope::OnlyThisEntry ? "" : " and everything inside";
-        std::cout << std::format("{:>5}  {:<6}  {:>11}  {:>6}  {:>11}  {}{}: {}\n", ruleNumber + 1, actionText, totals.directoryCount,
+        std::cout << std::format("{:>5}  {:<7}  {:>11}  {:>6}  {:>11}  {}{}: {}\n", ruleNumber + 1, actionText, totals.directoryCount,
             totals.fileCount, totals.byteCount, rule.pattern, scopeText, rule.reason);
     }
 

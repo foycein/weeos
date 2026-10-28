@@ -27,10 +27,14 @@ void PutCardIntoSlot(SdCardService& sdCard, const IosFolders& folders)
 
 }
 
-Result<void> IosServices::Start(const IosFolders& folders)
+Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& startProfile)
 {
     if (isRunning)
         return IosError::AlreadyExists;
+
+    Result<ConsoleIdentityService> consoleIdentity = ConsoleIdentityService::Open(folders.identityFolder);
+    if (consoleIdentity.Failed())
+        return consoleIdentity.Error();
 
     Result<NandStorage> storage = NandStorage::Open(folders.nandFolder);
     if (storage.Failed())
@@ -45,20 +49,25 @@ Result<void> IosServices::Start(const IosFolders& folders)
         return wirelessMacAddress.Error();
 
     DestroyServices();
+    identity = std::make_unique<ConsoleIdentityService>(std::move(consoleIdentity.Value()));
+
+    // The order of the modules of IOS80: file system, DIP (disc drive), OH1 (the Bluetooth device of the remotes), SDI (SD card),
+    // WD (wireless), NCD (network configuration), SO (sockets), KD (WiiConnect24), STM (power), KBD (keyboard), SSL (secure sockets).
+    // The sockets use the network configuration, so they start after it.
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
+    titles = std::make_unique<TitleService>(*fileSystem, *identity);
     discDrive = std::make_unique<DiscDriveService>();
+    remote = std::make_unique<RemoteService>();
     sdCard = std::make_unique<SdCardService>();
     PutCardIntoSlot(*sdCard, folders);
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
     networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
     sockets = std::make_unique<SocketService>(*networkConfig);
     wiiConnect24 = std::make_unique<WiiConnect24Service>(*fileSystem, clock);
-    Result<void> filesPrepared = wiiConnect24->PrepareFiles();
-    if (filesPrepared.Failed())
-        return filesPrepared;
-
     power = std::make_unique<PowerService>();
+    keyboard = std::make_unique<KeyboardService>();
     secureSockets = std::make_unique<SecureSocketService>();
+    profile = startProfile;
     isRunning = true;
     return Result<void>();
 }
@@ -68,7 +77,9 @@ void IosServices::Stop()
     if (!isRunning)
         return;
 
+    keyboard->Close();
     power->Close();
+    remote->Close();
     sdCard->Close();
     fileSystem->Shutdown();
     isRunning = false;
@@ -78,14 +89,18 @@ void IosServices::Stop()
 void IosServices::DestroyServices()
 {
     secureSockets.reset();
+    keyboard.reset();
     power.reset();
     wiiConnect24.reset();
     sockets.reset();
     networkConfig.reset();
     wireless.reset();
     sdCard.reset();
+    remote.reset();
     discDrive.reset();
+    titles.reset();
     fileSystem.reset();
+    identity.reset();
 }
 
 bool IosServices::IsRunning() const
@@ -141,10 +156,40 @@ WiiConnect24Service& IosServices::GetWiiConnect24()
     return *wiiConnect24;
 }
 
+KeyboardService& IosServices::GetKeyboard()
+{
+    RequireRunning();
+    return *keyboard;
+}
+
+RemoteService& IosServices::GetRemote()
+{
+    RequireRunning();
+    return *remote;
+}
+
 PowerService& IosServices::GetPower()
 {
     RequireRunning();
     return *power;
+}
+
+ConsoleIdentityService& IosServices::GetConsoleIdentity()
+{
+    RequireRunning();
+    return *identity;
+}
+
+TitleService& IosServices::GetTitles()
+{
+    RequireRunning();
+    return *titles;
+}
+
+const IosProfile& IosServices::GetProfile() const
+{
+    RequireRunning();
+    return profile;
 }
 
 void IosServices::RequireRunning() const

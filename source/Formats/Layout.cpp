@@ -166,8 +166,8 @@ Pane ReadTextBoxPane(const Section& section)
     Pane pane = ReadPaneBase(reader, PaneKind::TextBox);
 
     TextBox textBox;
-    std::uint16_t textSize = reader.ReadUint16();
     textBox.maximumTextSize = reader.ReadUint16();
+    std::uint16_t textSize = reader.ReadUint16();
     textBox.materialIndex = reader.ReadUint16();
     textBox.fontIndex = reader.ReadUint16();
     textBox.textOrigin = reader.ReadByte();

@@ -38,7 +38,8 @@ public:
     // Loads the time difference that the daemon stored in misc.bin, if there is one.
     WiiConnect24Service(FileSystemService& fileSystem, const Clock& clock);
 
-    // Makes the folders and files of the WiiConnect24 programs, see PrepareWiiConnect24Files.
+    // Makes the folders and files of the WiiConnect24 programs, see PrepareWiiConnect24Files. The System Menu does this when it starts,
+    // as its NWC24 library does, so IOS does not do it when it starts. The NAND needs about 9 MiB of room for them.
     Result<void> PrepareFiles();
 
     // A program asks the scheduler to stand still. Each request has to be paid back with a ResumeScheduler.
