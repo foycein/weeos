@@ -9,6 +9,7 @@ include_directories(source tests)
 
 add_subdirectory(source/Formats)
 add_subdirectory(source/Boot)
+add_subdirectory(source/Input)
 add_subdirectory(source/Ios)
 add_subdirectory(source/Platform)
 add_subdirectory(source/Graphics)
