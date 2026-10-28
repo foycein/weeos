@@ -20,7 +20,7 @@ constexpr std::uint16_t SupportedVersion = 0x0102;
 constexpr std::size_t HeaderSize = 0x20;
 constexpr std::size_t SectionStartSize = 8;
 constexpr std::size_t UnusedAfterSendsSize = 2;
-constexpr std::size_t EffectSendCount = 3;
+constexpr std::size_t SendsToOtherBusesSize = 2;
 constexpr std::size_t TablesAfterSendsSize = 20;
 
 // The three parts that make up a wave sound: its description, the list of its tracks and the list of its notes.
@@ -45,7 +45,8 @@ void ReadInfo(Formats::ByteReader& reader, WaveSound& sound)
     sound.pitch = reader.ReadFloat();
     sound.pan = reader.ReadByte();
     sound.surroundPan = reader.ReadByte();
-    reader.Skip(EffectSendCount);
+    sound.effectSendA = reader.ReadByte();
+    reader.Skip(SendsToOtherBusesSize);
     sound.mainSend = reader.ReadByte();
     reader.Skip(UnusedAfterSendsSize);
 

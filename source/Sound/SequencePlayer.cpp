@@ -14,7 +14,7 @@ constexpr int MostCommandsInOneTick = 10000;
 
 constexpr int BitsInOneByte = 8;
 
-constexpr std::uint8_t HighestVolume = 127;
+constexpr std::uint8_t HighestSetting = 127;
 constexpr float HighestNumber = 127.0f;
 constexpr float BendRangeInSemitones = 2.0f;
 constexpr float BendNumbersForTheRange = 128.0f;
@@ -104,6 +104,7 @@ VoiceSettings SettingsOfNote(const SequenceTrack& track, const PlayingNote& note
     settings.pan = note.startPan + track.pan;
     settings.surroundPan = track.surroundPan;
     settings.mainSend = float(track.mainSend) / HighestNumber;
+    settings.effectSend = float(track.effectSendA) / HighestNumber;
     settings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.note.tune;
     return settings;
 }
@@ -517,7 +518,7 @@ bool SequencePlayer::RunSettingCommand(SequenceTrack& track, std::uint8_t comman
     switch (command)
     {
     case PanCommand: track.pan = PanFromNumber(unsignedNumber); break;
-    case VolumeCommand: track.volume = std::min<std::uint8_t>(unsignedNumber, HighestVolume); break;
+    case VolumeCommand: track.volume = std::min<std::uint8_t>(unsignedNumber, HighestSetting); break;
     case TransposeCommand: track.transpose = signedNumber; break;
     case BendCommand: track.bend = signedNumber; break;
     case NoteWaitCommand: track.noteWait = unsignedNumber != 0; break;
@@ -527,8 +528,9 @@ bool SequencePlayer::RunSettingCommand(SequenceTrack& track, std::uint8_t comman
     case ReleaseCommand: track.release = unsignedNumber; break;
     case SurroundPanCommand: track.surroundPan = SurroundPanFromNumber(unsignedNumber); break;
 
-    // The sends to the effect buses are read and dropped, because the effects of the menu are not built (docs/audit/OpenPoints/Sound.md).
-    case EffectSendACommand:
+    case EffectSendACommand: track.effectSendA = std::min<std::uint8_t>(unsignedNumber, HighestSetting); break;
+
+    // The menu gives the effect bus B no effect, so a send to it is heard as nothing.
     case EffectSendBCommand: break;
     }
     return false;

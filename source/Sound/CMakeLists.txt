@@ -7,11 +7,13 @@ add_library(Sound STATIC
     NoteParameters.cpp
     Reference.cpp
     Resampler.cpp
+    Reverb.cpp
     SequenceFile.cpp
     SequencePlayer.cpp
     SoundArchiveFile.cpp
     SoundCommandQueue.cpp
     SoundFileHeader.cpp
+    SoundMode.cpp
     SoundSystem.cpp
     StereoPlacement.cpp
     Voice.cpp

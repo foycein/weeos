@@ -2,6 +2,7 @@
 
 #include "Sound/Envelope.h"
 #include "Sound/Resampler.h"
+#include "Sound/SoundMode.h"
 #include "Sound/WaveDecoder.h"
 
 #include <array>
@@ -25,11 +26,14 @@ struct VoiceSettings
     // -1 is the left, 0 the middle and 1 the right.
     float pan = 0.0f;
 
-    // 0 is in front. 2 is behind. A stereo output plays what is behind with the front speakers.
+    // 0 is in front. 2 is behind. Only the sound mode Surround uses it.
     float surroundPan = 0.0f;
 
     // How much of the voice goes to the speakers, from 0 to 1.
     float mainSend = 1.0f;
+
+    // How much of the voice goes to the reverb, from 0 to 1.
+    float effectSend = 0.0f;
 
     // How much faster the wave is played than at its own rate. 2 is an octave up.
     float pitch = 1.0f;
@@ -46,6 +50,22 @@ struct ChannelGains
 {
     float left = 0.0f;
     float right = 0.0f;
+};
+
+// What one channel of the wave adds to the speakers and to the input of the reverb.
+struct MixGains
+{
+    ChannelGains speakers;
+    ChannelGains reverb;
+};
+
+// The buffers a voice adds its samples to.
+struct MixBuffers
+{
+    std::span<float> left;
+    std::span<float> right;
+    std::span<float> reverbLeft;
+    std::span<float> reverbRight;
 };
 
 // A voice plays one wave. It reads the wave at the pitch of the voice and at the rate of the device, and adds it to the
@@ -70,17 +90,17 @@ public:
     // Stops the voice at once.
     void Stop();
 
-    // Decides the gains for the coming sound frame, from the settings and the envelope, and moves the envelope on.
+    // Decides the gains for the coming sound frame, from the settings, the sound mode and the envelope, and moves the envelope on.
     // The gains of the last frame are the gains at the start of this one, so that the change is smooth.
-    void BeginFrame();
+    void BeginFrame(SoundMode mode);
 
-    // Adds count samples of the voice to the outputs, which start at the sample in the frame given.
+    // Adds count samples of the voice to the buffers, which start at the sample in the frame given.
     // frameLength is the number of samples of the whole frame.
-    void Mix(const Resampler& resampler, double deviceSampleRate, std::span<float> left, std::span<float> right,
-        std::size_t firstSampleInFrame, std::size_t frameLength);
+    void Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
+        std::size_t frameLength);
 
 private:
-    std::array<ChannelGains, MaximumChannelCount> ComputeGains() const;
+    std::array<MixGains, MaximumChannelCount> ComputeGains(SoundMode mode) const;
 
     std::shared_ptr<const DecodedWave> wave;
     Envelope envelope{0, 0, 0, 0};
@@ -90,8 +110,8 @@ private:
     bool atTheFirstFrame = true;
     bool endsAfterThisFrame = false;
     double position = 0.0;
-    std::array<ChannelGains, MaximumChannelCount> gainsAtFrameStart{};
-    std::array<ChannelGains, MaximumChannelCount> gainsAtFrameEnd{};
+    std::array<MixGains, MaximumChannelCount> gainsAtFrameStart{};
+    std::array<MixGains, MaximumChannelCount> gainsAtFrameEnd{};
 };
 
 }

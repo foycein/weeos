@@ -76,6 +76,9 @@ struct SequenceTrack
     std::uint8_t priority = StartTrackPriority;
     std::uint8_t mainSend = StartMainSend;
 
+    // How much of the notes goes to the reverb of the effect bus A, 0 to 127.
+    std::uint8_t effectSendA = 0;
+
     std::uint8_t attack = EnvelopeNumberNotSet;
     std::uint8_t decay = EnvelopeNumberNotSet;
     std::uint8_t sustain = EnvelopeNumberNotSet;

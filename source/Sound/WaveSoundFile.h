@@ -21,6 +21,10 @@ struct WaveSound
     std::uint8_t pan;
     std::uint8_t surroundPan;
 
+    // How much of the sound goes to the reverb of the effect bus A, 0 to 127. The sends to the buses B and C are not kept,
+    // because the menu gives those buses no effect.
+    std::uint8_t effectSendA;
+
     // How much of the sound goes to the speakers, 0 to 127.
     std::uint8_t mainSend;
 

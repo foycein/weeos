@@ -9,7 +9,7 @@
 namespace Sound
 {
 
-// Adds the output of all voices into one stereo picture, at the sample rate of the audio device.
+// Adds the output of all voices into one stereo picture and into the input of the reverb, at the sample rate of the audio device.
 // Everything is calculated in 32 bit floating point numbers. Nothing is limited or rounded here, so the sum of many loud
 // voices may be louder than the device can play. That is left to the output, which is the last step.
 class Mixer
@@ -18,10 +18,11 @@ public:
     explicit Mixer(std::uint32_t deviceSampleRate);
 
     std::uint32_t DeviceSampleRate() const;
+    void SetDeviceSampleRate(std::uint32_t sampleRateOfDevice);
 
-    // Adds the voices to the samples in left and right, which the caller has cleared to zero. They are the part of
+    // Adds the voices to the buffers, which the caller has cleared to zero. They are the part of
     // a sound frame that starts at firstSampleInFrame; frameLength is the length of the whole frame in samples.
-    void Mix(VoicePool& voices, std::span<float> left, std::span<float> right, std::size_t firstSampleInFrame, std::size_t frameLength);
+    void Mix(VoicePool& voices, const MixBuffers& buffers, std::size_t firstSampleInFrame, std::size_t frameLength);
 
 private:
     Resampler resampler;
