@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/CanvasMapping.h"
+#include "Graphics/ConsoleVideo.h"
 #include "Graphics/FrameResources.h"
 #include "Graphics/GraphicsDevice.h"
 #include "Graphics/QuadPipeline.h"
@@ -33,13 +34,17 @@ public:
 
     TextureHandle CreateTexture(const TextureDescription& description) override;
     void DestroyTexture(TextureHandle texture) override;
-    void BeginFrame(const Canvas& canvas, ScreenShape screenShape) override;
+    void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) override;
     void SetScissor(const ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
     TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;
+
+    // How the pictures of the screen are made from the next BeginFrame on. The default is the resolution of the window. Throws while a
+    // picture is being drawn.
+    void SetPictureSettings(const PictureSettings& settings);
 
     // Reads the pixels of a texture back from the graphics card, for tests and for screenshots of offscreen pictures.
     // The texture must not be drawn into at that time. An offscreen picture that was drawn between BeginFrame and
@@ -53,6 +58,10 @@ public:
 
     // How many warnings and errors the validation layer has printed. Always zero when there is no layer.
     int ValidationMessageCount() const;
+
+    // For tests: how many pictures the device has made on the graphics card so far, and how many blocks of memory they live in now.
+    std::size_t ImagesMade() const;
+    std::size_t MemoryBlockCount() const;
 
 private:
     // Where the commands of a picture go, and how much of the draw buffers they have used.
@@ -74,6 +83,15 @@ private:
         VkExtent2D size;
     };
 
+    // The picture that the frame buffer of the console is drawn into. It is copied to the screen when the picture is finished.
+    struct ConsoleFrame
+    {
+        TextureHandle frameBuffer;
+        Platform::ScreenShape screenShape;
+        Material copyMaterial;
+        std::uint32_t copyDrawIndex;
+    };
+
     void RequireActivePicture(const char* functionName) const;
     Target* ActiveTarget();
     Recording* CurrentRecording();
@@ -83,6 +101,10 @@ private:
     void PrepareFrame();
     void WaitUntilFinished(FrameResources& resources);
 
+    // Where the canvas of the next picture of the screen lands: in the window, or in the frame buffer of the console.
+    CanvasMapping MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const;
+    void StartWindowPicture(const CanvasMapping& mapping);
+    void StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape);
     void StartRecording(std::optional<Recording>& recording, FrameResources& resources);
     void BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor);
     void EndPass();
@@ -91,6 +113,7 @@ private:
     void ResumeScreenPass();
     void FinishStandaloneRecording();
     void FinishScreenPicture();
+    void CopyConsoleFrameToScreen();
     void Submit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence fence);
 
     void CheckTextures(const Material& material);
@@ -115,12 +138,14 @@ private:
     std::uint64_t lastFrameNumber = 0;
     std::uint64_t finishedFrameNumber = 0;
 
+    PictureSettings pictureSettings;
     bool isFrameActive = false;
     std::optional<Recording> frameRecording;
     std::optional<Recording> standaloneRecording;
     std::optional<Target> screenTarget;
     std::optional<Target> offscreenTarget;
     TextureHandle offscreenTexture;
+    std::optional<ConsoleFrame> consoleFrame;
 };
 
 }

@@ -16,7 +16,7 @@ struct DriveInformation
 };
 
 // Whether a disc is in the slot. On the console the cover register tells: its first bit is set while no disc is inside.
-// The System Menu counts the cover as not closed then, and shows "No Disk".
+// The SDK reads that as a cover that is not closed, and the System Menu shows "No Disk".
 enum class CoverState
 {
     DiscPresent,
@@ -54,14 +54,16 @@ enum class DriveReply : std::uint8_t
 class DiscDriveService
 {
 public:
-    // The drive's description. The dump does not record the numbers of the console's own drive,
-    // and the System Menu never looks at them, so they are zero.
+    // The drive's description. These are the numbers of the drive of the reference console, which the System Menu keeps in its cache file.
     DriveInformation Inquire() const;
 
     // Resets the drive. The drive forgets its last error.
     void Reset();
 
     CoverState GetCoverState() const;
+
+    // Clears the cover interrupt of the drive. There is no interrupt here, and the drive module answers Success whatever the state is.
+    DriveReply ClearCoverInterrupt();
 
     // Reads the id of the disc. Always fails with an empty slot: DriveError, and RequestError gives MediumNotPresent.
     DriveReply ReadDiscId();

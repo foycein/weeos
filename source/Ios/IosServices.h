@@ -1,15 +1,22 @@
 #pragma once
 
+#include "Ios/Clock.h"
 #include "Ios/DiscDrive/DiscDriveService.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Identity/ConsoleIdentityService.h"
 #include "Ios/IosFolders.h"
 #include "Ios/Keyboard/KeyboardService.h"
+#include "Ios/Network/NetworkConfigService.h"
+#include "Ios/Network/WirelessService.h"
 #include "Ios/Power/PowerService.h"
 #include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Ios/Result.h"
+#include "Ios/SdCard/SdCardService.h"
+#include "Ios/Sockets/SecureSocketService.h"
+#include "Ios/Sockets/SocketService.h"
 #include "Ios/Title/TitleService.h"
+#include "Ios/WiiConnect24/WiiConnect24Service.h"
 
 #include <memory>
 
@@ -18,6 +25,7 @@ namespace Ios
 
 // The services of the Wii's operating system IOS, rebuilt as plain classes that the System Menu calls directly.
 // This class starts them in the order the console starts its modules and stops them in the opposite order.
+// A service that uses another service starts after it.
 //
 // Not thread safe: the program starts and stops the services from one thread.
 class IosServices
@@ -41,6 +49,12 @@ public:
     // The services exist while IOS is running. Asking for one at any other time is a mistake in the program and throws.
     FileSystemService& GetFileSystem();
     DiscDriveService& GetDiscDrive();
+    SdCardService& GetSdCard();
+    WirelessService& GetWireless();
+    NetworkConfigService& GetNetworkConfig();
+    SocketService& GetSockets();
+    SecureSocketService& GetSecureSockets();
+    WiiConnect24Service& GetWiiConnect24();
     KeyboardService& GetKeyboard();
     RemoteService& GetRemote();
     PowerService& GetPower();
@@ -52,16 +66,24 @@ public:
 
 private:
     void RequireRunning() const;
+    void DestroyServices();
 
     bool isRunning = false;
     IosProfile profile = SystemMenuProfile();
+    SystemClock clock;
     std::unique_ptr<ConsoleIdentityService> identity;
     std::unique_ptr<FileSystemService> fileSystem;
+    std::unique_ptr<TitleService> titles;
     std::unique_ptr<DiscDriveService> discDrive;
     std::unique_ptr<RemoteService> remote;
+    std::unique_ptr<SdCardService> sdCard;
+    std::unique_ptr<WirelessService> wireless;
+    std::unique_ptr<NetworkConfigService> networkConfig;
+    std::unique_ptr<SocketService> sockets;
+    std::unique_ptr<WiiConnect24Service> wiiConnect24;
     std::unique_ptr<PowerService> power;
     std::unique_ptr<KeyboardService> keyboard;
-    std::unique_ptr<TitleService> titles;
+    std::unique_ptr<SecureSocketService> secureSockets;
 };
 
 }

@@ -129,7 +129,7 @@ IosProfile MakeProfile(const IosVersion& version, const IosFeatureTable& feature
     profile.usbHostGeneration = features.KindOf<UsbHostGeneration>(Feature::UsbHostGeneration, ios);
     profile.keyboardDriver = features.KindOf<KeyboardDriver>(Feature::KeyboardDriver, ios);
 
-    profile.networkConfiguration = features.KindOf<NetworkConfiguration>(Feature::NetworkConfiguration, ios);
+    profile.networkConfiguration = features.KindOf<NetworkConfigurationKind>(Feature::NetworkConfiguration, ios);
     return profile;
 }
 

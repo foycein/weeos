@@ -83,7 +83,7 @@ struct IosProfile
     KeyboardDriver keyboardDriver = KeyboardDriver::None;
 
     // The network.
-    NetworkConfiguration networkConfiguration = NetworkConfiguration::Original;
+    NetworkConfigurationKind networkConfiguration = NetworkConfigurationKind::Original;
 
     // The word the kernel reports as the version of IOS (0x80003140): the number in the upper half, the title version in the lower.
     std::uint32_t VersionWord() const;
