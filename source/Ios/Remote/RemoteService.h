@@ -72,6 +72,11 @@ public:
     // The sensor bar is one for the whole console. Every device is told, also a device that is attached later.
     void SetSensorBarPosition(Input::SensorBarPosition position);
 
+    // The vibration setting of the console (BT.MOT). While it is off, a start of the rumble is dropped and a stop goes through.
+    // It starts on.
+    void SetRumbleEnabled(bool isEnabled);
+    bool IsRumbleEnabled();
+
     // What is on the channel now: no device, a remote, or a remote with a Nunchuk or a Classic Controller.
     Input::DeviceKind Probe(int channel);
 

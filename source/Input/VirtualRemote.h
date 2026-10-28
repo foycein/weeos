@@ -4,8 +4,9 @@
 #include "Input/PointerSpace.h"
 #include "Input/RemoteSource.h"
 
-#include "Platform/WindowListener.h"
+#include "Platform/PixelRectangle.h"
 #include "Platform/ScreenShape.h"
+#include "Platform/WindowListener.h"
 #include "Platform/WindowSize.h"
 
 #include <set>
@@ -14,6 +15,11 @@
 
 namespace Input
 {
+
+// Says which part of the screen area shows the picture, for the pointer. The rule gets the screen area, which is what
+// Platform::FitPicture gives for the window, and the screen shape, and returns the area in which the pointer is measured.
+// Graphics::ConsolePictureArea is the rule of the picture that is made the way the console makes it.
+using PictureAreaRule = Platform::PixelRectangle (*)(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape);
 
 // Virtual Wii Remote 1. The mouse is the pointer, the mouse buttons and the keys press the buttons of the remote.
 // It is connected from the start and has new data at every read, so the menu never loses it.
@@ -45,6 +51,11 @@ public:
     // The program tells the remote when the window is resized and when the screen shape setting changes.
     void SetWindowSize(Platform::WindowSize newWindowSize);
     void SetScreenShape(Platform::ScreenShape newScreenShape);
+
+    // The pointer is measured in the whole screen area until the program gives a rule, for example when it switches the graphics
+    // to the picture of the console. The rule is used for every read, so it follows the window size and the screen shape.
+    // A null rule goes back to the whole screen area.
+    void SetPictureAreaRule(PictureAreaRule newPictureAreaRule);
 
     // Gives other keys and mouse buttons to the buttons of the remote. A key that is down gets the meaning it has in the new table.
     void SetKeyMap(std::span<const KeyBinding> newKeyMap);
@@ -92,6 +103,7 @@ private:
     Formats::Vector2 mousePixel = {0, 0};
     Platform::WindowSize windowSize;
     Platform::ScreenShape screenShape;
+    PictureAreaRule pictureAreaRule = nullptr;
 
     bool isConnected = true;
     ButtonMask buttonsPressedSinceLastRead = 0;
