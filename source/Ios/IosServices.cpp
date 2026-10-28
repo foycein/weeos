@@ -14,6 +14,10 @@ Result<void> IosServices::Start(const IosFolders& folders)
     if (isRunning)
         return IosError::AlreadyExists;
 
+    Result<ConsoleIdentityService> consoleIdentity = ConsoleIdentityService::Open(folders.identityFolder);
+    if (consoleIdentity.Failed())
+        return consoleIdentity.Error();
+
     Result<NandStorage> storage = NandStorage::Open(folders.nandFolder);
     if (storage.Failed())
         return storage.Error();
@@ -22,6 +26,7 @@ Result<void> IosServices::Start(const IosFolders& folders)
     if (prepared.Failed())
         return prepared;
 
+    identity = std::make_unique<ConsoleIdentityService>(std::move(consoleIdentity.Value()));
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
     titles = std::make_unique<TitleService>(*fileSystem);
     discDrive = std::make_unique<DiscDriveService>();
@@ -61,6 +66,12 @@ PowerService& IosServices::GetPower()
 {
     RequireRunning();
     return *power;
+}
+
+ConsoleIdentityService& IosServices::GetConsoleIdentity()
+{
+    RequireRunning();
+    return *identity;
 }
 
 TitleService& IosServices::GetTitles()

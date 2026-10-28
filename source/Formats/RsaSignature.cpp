@@ -2,7 +2,6 @@
 
 #include "Formats/BigNumber.h"
 
-
 namespace Formats
 {
 

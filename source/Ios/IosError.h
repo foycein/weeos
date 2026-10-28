@@ -40,6 +40,9 @@ enum class IosError : int
 
     // The title service. Codes of /dev/es.
 
+    // A certificate holds a kind of public key that cannot check the signature.
+    PublicKeyTypeInvalid = -1005,
+
     // A file of the title service holds less than it must, or something that is not what it should be.
     ShortRead = -1009,
 
