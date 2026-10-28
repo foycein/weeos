@@ -249,8 +249,10 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
     if (newParent->kind != EntryKind::Directory)
         return IosError::InvalidArgument;
 
+    // An entry cannot move into itself. It cannot replace itself or a directory that it lies in either: that would delete the entry that moves.
     bool movesIntoItself = to.IsInside(from);
-    if (movesIntoItself)
+    bool replacesItsOwnDirectory = from.IsInside(to);
+    if (movesIntoItself || replacesItsOwnDirectory)
         return IosError::InvalidArgument;
 
     const EntryRecord* replacedEntry = Find(to);

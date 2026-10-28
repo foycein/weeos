@@ -64,4 +64,8 @@ inline int OriginalResultCode(IosError error)
     return static_cast<int>(error);
 }
 
+// The result code the SDK's NAND library gives a program when the file system fails with this error.
+// The library translates the codes of /dev/fs with a table. A code that is not in the table becomes -64.
+int NandLibraryResultCode(IosError error);
+
 }

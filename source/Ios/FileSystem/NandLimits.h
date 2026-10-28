@@ -22,14 +22,32 @@ constexpr std::size_t MaximumOpenFiles = 15;
 // Space is counted in whole clusters.
 constexpr std::uint32_t ClusterSize = 0x4000;
 
-// How much a NAND can hold: clusters for the data of the files, and inodes. Every file and every directory, the root included, takes one inode.
+// How much a NAND can hold. Every file and every directory, the root included, takes one inode.
 struct VolumeCapacity
 {
-    std::uint32_t clusterCount;
+    // The clusters that can hold the data of files.
+    std::uint32_t dataClusterCount;
+
+    // Clusters the file system cannot use. The statistics report them, but they never hold data.
+    std::uint32_t badClusterCount;
+    std::uint32_t reservedClusterCount;
+
     std::uint32_t inodeCount;
 };
 
-// The console's NAND has 0x7EC0 clusters for data and 0x17FF inodes in its file system tree.
-constexpr VolumeCapacity ConsoleVolumeCapacity = {0x7EC0, 0x17FF};
+// The reference console's NAND. The file system area has 0x7EC0 clusters (0x40 to 0x7EFF) and the file system tree has 0x17FF entries.
+// The newest superblock of the dump marks 16 of the clusters as bad and 752 as reserved, which leaves 31680 clusters for data.
+constexpr std::uint32_t ConsoleClusterCount = 0x7EC0;
+constexpr std::uint32_t ConsoleBadClusterCount = 16;
+constexpr std::uint32_t ConsoleReservedClusterCount = 752;
+constexpr std::uint32_t ConsoleInodeCount = 0x17FF;
+
+constexpr VolumeCapacity ConsoleVolumeCapacity =
+{
+    ConsoleClusterCount - ConsoleBadClusterCount - ConsoleReservedClusterCount,
+    ConsoleBadClusterCount,
+    ConsoleReservedClusterCount,
+    ConsoleInodeCount,
+};
 
 }

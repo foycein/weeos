@@ -1,4 +1,5 @@
 add_library(Ios STATIC
+    IosError.cpp
     IosServices.cpp
 )
 target_link_libraries(Ios PUBLIC Formats)

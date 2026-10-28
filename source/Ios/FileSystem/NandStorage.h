@@ -54,6 +54,7 @@ public:
 
     // Moves an entry, with everything inside it, to another path. An entry of the same kind that is at the new path is replaced.
     // The moved entry becomes the newest one in its new directory.
+    // InvalidArgument when the entry would move into itself or onto a directory that it lies in. AlreadyExists when the entry at the new path is of another kind.
     Result<void> Move(const NandPath& from, const NandPath& to);
 
     Result<void> SetAttributes(const NandPath& path, const EntryAttributes& attributes);
