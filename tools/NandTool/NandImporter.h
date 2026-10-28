@@ -38,5 +38,6 @@ ImportPlan PlanSystemImport(Formats::NandFileSystem& source);
 
 // Writes the planned entries into a folder as the NAND folder of Ios::NandStorage keeps them: one file or folder for each
 // NAND entry, and the file ".attributes" with the owner, group, permissions and flags of each entry.
+// A system configuration is written with the personal settings of the owner reset (see PersonalSettings.h).
 // The folder must be empty or not exist yet. Nothing in it is ever deleted.
 void WriteImport(Formats::NandFileSystem& source, const ImportPlan& plan, const std::filesystem::path& targetFolder);
