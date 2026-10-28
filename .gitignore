@@ -1,0 +1,9 @@
+assets/
+data/
+tools/.venv/
+build/
+build*/
+out/
+dist/
+__pycache__/
+*.pyc
