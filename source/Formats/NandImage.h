@@ -2,6 +2,7 @@
 
 #include "Formats/Bytes.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -27,6 +28,40 @@ constexpr std::size_t NandBlockSize = NandPagesPerBlock * NandPageDataSize;
 constexpr std::size_t NandKeyBlockSize = 1024;
 constexpr std::uint64_t NandImageFileSize = std::uint64_t(NandPageCount) * NandPageStoredSize + NandKeyBlockSize;
 
+// The NAND guards a page against flipped bits. The data of a page is four sectors of 512 bytes, and four bytes of the spare bytes
+// belong to each sector. They are the last 16 spare bytes. The ones before them hold the mark of a bad block and the HMAC.
+constexpr std::size_t NandSectorSize = 512;
+constexpr std::size_t NandSectorsPerPage = NandPageDataSize / NandSectorSize;
+constexpr std::size_t NandErrorCorrectionOffset = 0x30;
+constexpr std::size_t NandErrorCorrectionBytesPerSector = 4;
+constexpr std::size_t NandErrorCorrectionSize = NandSectorsPerPage * NandErrorCorrectionBytesPerSector;
+
+using NandErrorCorrection = std::array<Byte, NandErrorCorrectionSize>;
+
+// The error correction bytes that belong to the 2048 data bytes of a page. For each sector they are two numbers of 12 bits,
+// each written as 16 bits with the low byte first.
+//   The second number is the exclusive or of the positions of all bits that are set in the sector (0 to 4095, counting from the
+//   least significant bit of the first byte). The first number is the same, except that it is turned around (exclusive or 0xFFF)
+//   when the sector has an odd number of bits set. A single flipped bit changes the second number by its position.
+// Throws a FormatError when the data is not exactly one page.
+NandErrorCorrection ComputeErrorCorrection(ByteView pageData);
+
+enum class NandPageCheck
+{
+    // Data and spare bytes are all 0xFF: the page was never written.
+    Erased,
+
+    // The error correction bytes in the spare bytes belong to the data.
+    Correct,
+
+    // The page has data, but its error correction bytes are all 0xFF: they were never written. The last page of each copy of boot2
+    // is like this in the reference console.
+    Unprotected,
+
+    // The data or the error correction bytes were changed.
+    Wrong,
+};
+
 // Block 0 holds boot1. Blocks 1 to 7 hold boot2, as two copies with their block maps. The file system starts behind them.
 constexpr std::uint32_t Boot1Block = 0;
 constexpr std::uint32_t FirstBoot2Block = 1;
@@ -45,6 +80,9 @@ public:
 
     // The 64 spare bytes of a page: the mark of a bad block, the error correction and, in file system clusters, the HMAC.
     Bytes ReadPageSpare(std::uint32_t pageNumber);
+
+    // An optional check of one page: do its error correction bytes belong to its data?
+    NandPageCheck CheckPageErrorCorrection(std::uint32_t pageNumber);
 
     // The 16 KiB of data of a cluster.
     Bytes ReadClusterData(std::uint32_t clusterNumber);

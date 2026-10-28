@@ -3,6 +3,8 @@
 #include "Ios/FileSystem/NewEntryDefaults.h"
 
 #include <algorithm>
+#include <span>
+#include <string_view>
 
 namespace Ios
 {
@@ -13,6 +15,9 @@ namespace
 // The folders in front of the file, from the outside to the inside. The module makes the ones that are missing.
 constexpr std::string_view FolderPaths[] = {"/shared2/sys", "/shared2/sys/net", "/shared2/sys/net/02"};
 constexpr std::string_view NewFilePath = "/shared2/sys/net/02/config.dat";
+
+// The place of the file in the module of IOS9 and in the older consoles.
+constexpr std::string_view OldFolderPaths[] = {"/shared2/sys", "/shared2/sys/net"};
 constexpr std::string_view OldFilePath = "/shared2/sys/net/config.dat";
 
 NandPath PathOf(std::string_view text)
@@ -25,9 +30,9 @@ bool Exists(const FileSystemService& fileSystem, const NandPath& path)
     return fileSystem.GetAttributes(path, NetworkConfigCaller).Succeeded();
 }
 
-Result<void> MakeMissingFolders(FileSystemService& fileSystem)
+Result<void> MakeMissingFolders(FileSystemService& fileSystem, std::span<const std::string_view> folderPaths)
 {
-    for (std::string_view folderPath : FolderPaths)
+    for (std::string_view folderPath : folderPaths)
     {
         NandPath folder = PathOf(folderPath);
         if (Exists(fileSystem, folder))
@@ -52,7 +57,7 @@ NandPath MoveOldFileIntoPlace(FileSystemService& fileSystem)
     if (Exists(fileSystem, newFile))
         fileSystem.DeleteEntry(newFile, NetworkConfigCaller);
 
-    if (MakeMissingFolders(fileSystem).Failed())
+    if (MakeMissingFolders(fileSystem, FolderPaths).Failed())
         return oldFile;
 
     if (fileSystem.RenameEntry(oldFile, newFile, NetworkConfigCaller).Failed())
@@ -76,20 +81,43 @@ bool IsUsableConnection(const ConnectionProfile& profile, bool wired)
     return profile.isEnabled && profile.isWired == wired;
 }
 
+std::span<const std::string_view> FolderPathsOf(NetworkConfigurationKind kind)
+{
+    if (kind == NetworkConfigurationKind::Original)
+        return OldFolderPaths;
+
+    return FolderPaths;
 }
 
-NetworkConfigService::NetworkConfigService(FileSystemService& fileSystemToUse, const MacAddress& macAddress)
+}
+
+NetworkConfigService::NetworkConfigService(FileSystemService& fileSystemToUse, const MacAddress& macAddress, const IosProfile& iosProfile)
     : fileSystem(fileSystemToUse)
     , wirelessMacAddress(macAddress)
+    , profile(iosProfile)
 {
     Result<NetworkConfiguration> stored = ReadConfiguration();
     if (stored.Succeeded())
         currentConfiguration = stored.Value();
 }
 
+NandPath NetworkConfigService::FindConfigurationFile()
+{
+    if (profile.networkConfiguration == NetworkConfigurationKind::Original)
+        return PathOf(OldFilePath);
+
+    return MoveOldFileIntoPlace(fileSystem);
+}
+
+std::vector<std::string> NetworkConfigService::FindProblems(const NetworkConfiguration& configuration) const
+{
+    bool checksProxies = profile.networkConfiguration == NetworkConfigurationKind::WithProxyChecks;
+    return FindConfigurationProblems(configuration, checksProxies);
+}
+
 Result<NetworkConfiguration> NetworkConfigService::ReadConfiguration()
 {
-    NandPath file = MoveOldFileIntoPlace(fileSystem);
+    NandPath file = FindConfigurationFile();
 
     Result<Formats::Bytes> bytes = ReadWholeFile(fileSystem, file);
     if (bytes.Failed())
@@ -100,13 +128,13 @@ Result<NetworkConfiguration> NetworkConfigService::ReadConfiguration()
 
 Result<void> NetworkConfigService::WriteConfiguration(const NetworkConfiguration& configuration)
 {
-    if (!FindConfigurationProblems(configuration).empty())
+    if (!FindProblems(configuration).empty())
         return IosError::InvalidArgument;
 
-    NandPath file = MoveOldFileIntoPlace(fileSystem);
+    NandPath file = FindConfigurationFile();
     if (!Exists(fileSystem, file))
     {
-        Result<void> madeFolders = MakeMissingFolders(fileSystem);
+        Result<void> madeFolders = MakeMissingFolders(fileSystem, FolderPathsOf(profile.networkConfiguration));
         if (madeFolders.Failed())
             return madeFolders;
 
@@ -134,7 +162,7 @@ NetworkConfiguration NetworkConfigService::GetCurrentConfiguration() const
 
 Result<void> NetworkConfigService::ApplyConfiguration(const NetworkConfiguration& configuration)
 {
-    if (!FindConfigurationProblems(configuration).empty())
+    if (!FindProblems(configuration).empty())
         return IosError::InvalidArgument;
 
     std::lock_guard<std::mutex> lock(mutex);

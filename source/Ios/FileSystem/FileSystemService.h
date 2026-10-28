@@ -6,6 +6,7 @@
 #include "Ios/FileSystem/NandPath.h"
 #include "Ios/FileSystem/NandStorage.h"
 #include "Ios/FileSystem/OpenFile.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
 
 #include <cstdint>
@@ -42,7 +43,11 @@ struct VolumeStatistics
 class FileSystemService
 {
 public:
+    // The file system of the System Menu's IOS (IOS80).
     explicit FileSystemService(NandStorage storage, const VolumeCapacity& capacity = ConsoleVolumeCapacity);
+
+    // The file system of another IOS. The profile says how the look-up treats a name of 13 characters or more.
+    FileSystemService(NandStorage storage, const IosProfile& profile, const VolumeCapacity& capacity = ConsoleVolumeCapacity);
 
     // The space that is used and free on the NAND.
     Result<VolumeStatistics> GetVolumeStatistics() const;

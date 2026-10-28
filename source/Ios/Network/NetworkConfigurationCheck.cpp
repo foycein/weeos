@@ -173,7 +173,7 @@ void CheckWireless(const WirelessSettings& wireless, int connectionNumber, Probl
         AddProblem(problems, connectionNumber, std::format("the config method {} is not known", wireless.configMethod));
 }
 
-void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumber, Problems& problems)
+void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumber, bool checksProxies, Problems& problems)
 {
     if (profile.usesPppoe)
         AddProblem(problems, connectionNumber, "PPPoE is not supported");
@@ -188,7 +188,7 @@ void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumb
     if (profile.mtu != 0 && (profile.mtu < LowestMtu || profile.mtu > HighestMtu))
         AddProblem(problems, connectionNumber, std::format("the MTU {} is not 0 or {} to {}", profile.mtu, LowestMtu, HighestMtu));
 
-    if (profile.usesProxy)
+    if (checksProxies && profile.usesProxy)
     {
         CheckProxy(profile.httpProxy, "http proxy", connectionNumber, problems);
         CheckProxy(profile.secureProxy, "ssl proxy", connectionNumber, problems);
@@ -197,7 +197,7 @@ void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumb
 
 }
 
-std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& configuration)
+std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& configuration, bool checksProxies)
 {
     Problems problems;
 
@@ -219,7 +219,7 @@ std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& c
 
         CheckTextsFitTheirFields(profile, connectionNumber, problems);
         if (profile.isEnabled)
-            CheckEnabledConnection(profile, connectionNumber, problems);
+            CheckEnabledConnection(profile, connectionNumber, checksProxies, problems);
 
         if (IsUsableWirelessConnection(profile))
         {

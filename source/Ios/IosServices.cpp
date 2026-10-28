@@ -40,7 +40,7 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     if (storage.Failed())
         return storage.Error();
 
-    Result<void> prepared = PrepareNandFolder(storage.Value());
+    Result<void> prepared = PrepareNandFolder(storage.Value(), startProfile);
     if (prepared.Failed())
         return prepared;
 
@@ -54,17 +54,17 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     // The order of the modules of IOS80: file system, DIP (disc drive), OH1 (the Bluetooth device of the remotes), SDI (SD card),
     // WD (wireless), NCD (network configuration), SO (sockets), STM (power), KBD (keyboard), SSL (secure sockets).
     // The sockets use the network configuration, so they start after it.
-    fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
-    titles = std::make_unique<TitleService>(*fileSystem, *identity);
+    fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()), startProfile);
+    titles = std::make_unique<TitleService>(*fileSystem, *identity, startProfile);
     discDrive = std::make_unique<DiscDriveService>();
     remote = std::make_unique<RemoteService>();
-    sdCard = std::make_unique<SdCardService>();
+    sdCard = std::make_unique<SdCardService>(startProfile);
     PutCardIntoSlot(*sdCard, folders);
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
-    networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
+    networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value(), startProfile);
     sockets = std::make_unique<SocketService>(*networkConfig);
     power = std::make_unique<PowerService>();
-    keyboard = std::make_unique<KeyboardService>();
+    keyboard = std::make_unique<KeyboardService>(startProfile);
     secureSockets = std::make_unique<SecureSocketService>();
     profile = startProfile;
     isRunning = true;

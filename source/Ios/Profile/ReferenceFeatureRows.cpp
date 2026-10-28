@@ -28,7 +28,7 @@ std::vector<FeatureRow> MakeReferenceRows()
     const std::vector<IosNumberRange> modularIos =
         {28, 31, Through(33, 38), 41, 43, 45, 46, 48, 53, Through(55, 58), 61, 62, 80};
 
-    // The IOS versions with the newest title service, from 2009 on.
+    // The IOS versions from 2009 on: the newest title service and the newest file system look-up.
     const std::vector<IosNumberRange> newestIos = {Through(56, 58), 61, 62, 80};
 
     return
@@ -63,12 +63,12 @@ std::vector<FeatureRow> MakeReferenceRows()
         {Feature::FileSystemFlavor, FileSystemFlavor::Ffs, {31, Through(33, 36), 38}},
         {Feature::FileSystemFlavor, FileSystemFlavor::Ffsp, {37, 41, 43, 45, 46, 48, 53, Through(55, 58), 61, 62}},
         {Feature::FileSystemFlavor, FileSystemFlavor::Fsp, {80}},
+        {Feature::FileSystemChecksNameLengthInLookUp, newestIos},
+        {Feature::FileSystemRecreatesTmpAtEveryStart, {9}},
 
-        // The disc drive, the SD card and the power service.
+        // The disc drive and the SD card.
         {Feature::DiscDriveHasNoDiscCommands, modularIos},
         {Feature::SdSupportsHighCapacityCards, {48, Through(56, 58), 61, 62, 80}},
-        {Feature::PowerHasWakeupCommand,
-            {Through(12, 15), 17, 21, 22, 28, 31, Through(33, 38), 41, 43, 45, 46, 48, 53, Through(55, 58), 61, 62, 80}},
 
         // USB and the keyboard.
         {Feature::UsbHostGeneration, UsbHostGeneration::RootPortsOnly, {9}},

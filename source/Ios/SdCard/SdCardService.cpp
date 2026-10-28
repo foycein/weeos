@@ -15,6 +15,26 @@ namespace Ios
 namespace
 {
 
+constexpr std::uintmax_t BytesPerGibibyte = 1024ull * 1024 * 1024;
+constexpr std::uintmax_t StandardCardCapacityLimit = 2 * BytesPerGibibyte;
+
+// What a high capacity card gives back in a slot whose driver cannot start it (docs/audit/OpenPoints/Ios.md, SD2). Assumed.
+constexpr IosError UnstartedCardError = IosError::StorageFailure;
+
+// The card is as big as the volume that holds its folder. When the volume cannot be measured the insert reports the folder.
+SdCardKind KindOfCardAt(const std::filesystem::path& cardFolder)
+{
+    std::error_code error;
+    std::filesystem::space_info space = std::filesystem::space(cardFolder, error);
+    if (error)
+        return SdCardKind::Standard;
+
+    if (space.capacity > StandardCardCapacityLimit)
+        return SdCardKind::HighCapacity;
+
+    return SdCardKind::Standard;
+}
+
 IosError ErrorFromHost(const std::error_code& error)
 {
     if (error == std::errc::no_such_file_or_directory)
@@ -82,12 +102,30 @@ Result<void> CheckNewEntryCanBeMade(const std::filesystem::path& hostPath)
 
 }
 
-SdCardService::SdCardService()
-    : state(std::make_shared<SdCardState>())
+SdCardService::SdCardService(const IosProfile& iosProfile)
+    : profile(iosProfile)
+    , state(std::make_shared<SdCardState>())
 {
 }
 
+Result<void> SdCardService::CheckCardCanBeUsed() const
+{
+    if (!state->isInserted)
+        return IosError::NoCardInserted;
+
+    bool isCardThatDoesNotStart = state->cardKind == SdCardKind::HighCapacity && !profile.sdSupportsHighCapacityCards;
+    if (isCardThatDoesNotStart)
+        return UnstartedCardError;
+
+    return Result<void>();
+}
+
 Result<void> SdCardService::InsertCard(const std::filesystem::path& cardFolder, bool isWriteProtected)
+{
+    return InsertCard(cardFolder, isWriteProtected, KindOfCardAt(cardFolder));
+}
+
+Result<void> SdCardService::InsertCard(const std::filesystem::path& cardFolder, bool isWriteProtected, SdCardKind kind)
 {
     {
         std::lock_guard<std::mutex> lock(state->mutex);
@@ -100,6 +138,7 @@ Result<void> SdCardService::InsertCard(const std::filesystem::path& cardFolder, 
 
         state->isInserted = true;
         state->isWriteProtected = isWriteProtected;
+        state->cardKind = kind;
         state->cardFolder = cardFolder;
         ++state->cardNumber;
     }
@@ -116,6 +155,7 @@ void SdCardService::RemoveCard()
         wasInserted = state->isInserted;
         state->isInserted = false;
         state->isWriteProtected = false;
+        state->cardKind = SdCardKind::Standard;
         state->cardFolder.clear();
     }
 
@@ -137,8 +177,9 @@ EventQueue<SdCardChange>& SdCardService::Changes()
 Result<SdFile> SdCardService::Open(const SdPath& path, OpenMode mode)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (mode != OpenMode::Read && state->isWriteProtected)
         return IosError::AccessDenied;
@@ -169,8 +210,9 @@ Result<SdFile> SdCardService::Open(const SdPath& path, OpenMode mode)
 Result<void> SdCardService::CreateFile(const SdPath& path)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (state->isWriteProtected)
         return IosError::AccessDenied;
@@ -193,8 +235,9 @@ Result<void> SdCardService::CreateFile(const SdPath& path)
 Result<void> SdCardService::CreateDirectory(const SdPath& path)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (state->isWriteProtected)
         return IosError::AccessDenied;
@@ -218,8 +261,9 @@ Result<void> SdCardService::CreateDirectory(const SdPath& path)
 Result<void> SdCardService::DeleteEntry(const SdPath& path)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (state->isWriteProtected)
         return IosError::AccessDenied;
@@ -250,8 +294,9 @@ Result<void> SdCardService::DeleteEntry(const SdPath& path)
 Result<void> SdCardService::RenameEntry(const SdPath& from, const SdPath& to)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (state->isWriteProtected)
         return IosError::AccessDenied;
@@ -283,8 +328,9 @@ Result<void> SdCardService::RenameEntry(const SdPath& from, const SdPath& to)
 Result<std::vector<SdEntry>> SdCardService::ListDirectory(const SdPath& path) const
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     std::filesystem::path hostPath = path.ToHostPath(state->cardFolder);
     std::error_code error;
@@ -315,8 +361,9 @@ Result<std::vector<SdEntry>> SdCardService::ListDirectory(const SdPath& path) co
 Result<SdEntry> SdCardService::GetEntryStatus(const SdPath& path) const
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     std::filesystem::path hostPath = path.ToHostPath(state->cardFolder);
     std::error_code error;
@@ -338,8 +385,9 @@ Result<SdEntry> SdCardService::GetEntryStatus(const SdPath& path) const
 Result<std::uint64_t> SdCardService::GetFreeBytes() const
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     std::error_code error;
     std::filesystem::space_info space = std::filesystem::space(state->cardFolder, error);
@@ -352,8 +400,9 @@ Result<std::uint64_t> SdCardService::GetFreeBytes() const
 Result<void> SdCardService::Format()
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    if (!state->isInserted)
-        return IosError::NoCardInserted;
+    Result<void> cardCanBeUsed = CheckCardCanBeUsed();
+    if (cardCanBeUsed.Failed())
+        return cardCanBeUsed.Error();
 
     if (state->isWriteProtected)
         return IosError::AccessDenied;
