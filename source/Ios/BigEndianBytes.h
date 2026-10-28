@@ -33,14 +33,6 @@ inline void PutUint32(Formats::Bytes& bytes, std::size_t offset, std::uint32_t v
     PutUint16(bytes, offset + sizeof(std::uint16_t), static_cast<std::uint16_t>(value));
 }
 
-inline void PutUint64(Formats::Bytes& bytes, std::size_t offset, std::uint64_t value)
-{
-    constexpr int bitsPerUpperHalf = 4 * Formats::BitsPerByte;
-
-    PutUint32(bytes, offset, static_cast<std::uint32_t>(value >> bitsPerUpperHalf));
-    PutUint32(bytes, offset + sizeof(std::uint32_t), static_cast<std::uint32_t>(value));
-}
-
 inline void PutBytes(Formats::Bytes& bytes, std::size_t offset, Formats::ByteView data)
 {
     if (offset + data.size() > bytes.size())
