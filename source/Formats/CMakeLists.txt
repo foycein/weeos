@@ -21,6 +21,7 @@ add_library(Formats STATIC
     LayoutMaterial.cpp
     Lz77.cpp
     MessageFile.cpp
+    NandBootInfoFile.cpp
     NandFileSystem.cpp
     NandImage.cpp
     NandTitles.cpp
@@ -33,6 +34,7 @@ add_library(Formats STATIC
     Sha1.cpp
     Signature.cpp
     SignatureVerification.cpp
+    StateFile.cpp
     SystemConfiguration.cpp
     TextureDecoder.cpp
     TextureFormat.cpp

@@ -37,7 +37,9 @@ constexpr std::size_t Rgba8GreenBlueOffset = 32;
 using BlockPixels = std::array<Rgba8Pixel, LargestBlockPixelCount>;
 using Color16Decoder = Rgba8Pixel (*)(std::uint16_t);
 
-// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255.
+// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255. The documents do not say how the
+// console widens a color; rounding to the nearest value instead would change 4 of the 32 five-bit and 10 of the 64 six-bit values, by one level
+// of 255 (FMT-04 in docs/audit/OpenPoints/Formats.md).
 Byte ExpandToEightBits(unsigned value, int bitCount)
 {
     unsigned expanded = 0;
@@ -248,17 +250,31 @@ void DecodePalette14Block(ByteView block, std::size_t pixelCount, const std::vec
         pixels[pixelIndex] = LookUpColor(paletteColors, reader.ReadUint16() & PaletteIndexMask14Bits);
 }
 
-Byte MixChannel(Byte first, Byte second, unsigned firstWeight, unsigned secondWeight)
+// How the colors in between are made from the two colors of a sub block: the weights of the first and of the second color.
+// Yet Another Gamecube Documentation (17.14.1) gives thirds and the middle, and says nothing about rounding. Assumed: the division drops
+// the rest. A round-to-nearest division would change 29% of the pixels of the 143 compressed textures of the channels by one level of 255;
+// weights of eighths instead of thirds would change 38% of them by up to 11 levels. See docs/audit/OpenPoints/Formats.md (FMT-04).
+struct MixWeights
 {
-    return static_cast<Byte>((first * firstWeight + second * secondWeight) / (firstWeight + secondWeight));
+    unsigned first;
+    unsigned second;
+};
+
+constexpr MixWeights TwoThirdsFirst = {2, 1};
+constexpr MixWeights TwoThirdsSecond = {1, 2};
+constexpr MixWeights HalfAndHalf = {1, 1};
+
+Byte MixChannel(Byte first, Byte second, MixWeights weights)
+{
+    return static_cast<Byte>((first * weights.first + second * weights.second) / (weights.first + weights.second));
 }
 
-Rgba8Pixel MixColors(const Rgba8Pixel& first, const Rgba8Pixel& second, unsigned firstWeight, unsigned secondWeight)
+Rgba8Pixel MixColors(const Rgba8Pixel& first, const Rgba8Pixel& second, MixWeights weights)
 {
     Rgba8Pixel mixed;
-    mixed.red = MixChannel(first.red, second.red, firstWeight, secondWeight);
-    mixed.green = MixChannel(first.green, second.green, firstWeight, secondWeight);
-    mixed.blue = MixChannel(first.blue, second.blue, firstWeight, secondWeight);
+    mixed.red = MixChannel(first.red, second.red, weights);
+    mixed.green = MixChannel(first.green, second.green, weights);
+    mixed.blue = MixChannel(first.blue, second.blue, weights);
     mixed.alpha = OpaqueAlpha;
     return mixed;
 }
@@ -274,9 +290,9 @@ std::array<Rgba8Pixel, CompressedColorCount> ReadCompressedColors(ByteReader& re
     Rgba8Pixel second = DecodeRgb565Color(secondColor);
 
     if (firstColor > secondColor)
-        return {first, second, MixColors(first, second, 2, 1), MixColors(first, second, 1, 2)};
+        return {first, second, MixColors(first, second, TwoThirdsFirst), MixColors(first, second, TwoThirdsSecond)};
 
-    return {first, second, MixColors(first, second, 1, 1), Rgba8Pixel{0, 0, 0, 0}};
+    return {first, second, MixColors(first, second, HalfAndHalf), Rgba8Pixel{0, 0, 0, 0}};
 }
 
 // A block is four sub blocks of 4 by 4 pixels: top left, top right, bottom left, bottom right.
