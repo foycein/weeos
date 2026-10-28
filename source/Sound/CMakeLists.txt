@@ -5,6 +5,7 @@ add_library(Sound STATIC
     SequenceFile.cpp
     SoundArchiveFile.cpp
     SoundFileHeader.cpp
+    WaveDecoder.cpp
     WaveInfo.cpp
     WaveSoundFile.cpp
 )
