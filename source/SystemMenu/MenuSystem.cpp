@@ -10,19 +10,23 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     Platform::ScreenShape screenShape)
     : display(device, screenShape)
     , files(titleContents)
+    , fonts(device, titleContents, files)
     , messages(files.OpenEnglishMessages())
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
-    , services{display, files, messages, clock, fader, input, cursors, screens}
+    , services{display, files, messages, clock, fader, input, cursors, screens, sounds}
 {
+    display.SetTextFonts(fonts.Fonts());
+
     FirstScreen firstScreen = ChooseFirstScreen();
     screens.Start(firstScreen.screen, firstScreen.argument);
 }
 
 void MenuSystem::Update()
 {
+    sounds.StartNextStep();
     clock.Advance();
     input.Poll();
     screens.Update();

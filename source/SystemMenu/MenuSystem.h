@@ -6,8 +6,10 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 
 #include "Ios/Remote/RemoteService.h"
@@ -40,12 +42,14 @@ public:
 private:
     Display display;
     MenuFiles files;
+    MenuFonts fonts;
     Text::MessageCatalog messages;
     MenuClock clock;
     Fader fader;
     InputManager input;
     CursorManager cursors;
     ScreenManager screens;
+    SoundRequests sounds;
     MenuServices services;
 };
 

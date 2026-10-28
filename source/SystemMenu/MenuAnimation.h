@@ -23,6 +23,10 @@ public:
     // Plays from the first frame. An animation that plays already starts again.
     void Start();
 
+    // Shows the first or the last frame at once and stands still. The animation is not playing then.
+    void ShowFirstFrame();
+    void ShowLastFrame();
+
     bool IsPlaying() const;
 
     // One frame further, if the animation is playing.

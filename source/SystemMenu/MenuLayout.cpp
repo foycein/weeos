@@ -2,6 +2,7 @@
 
 #include "SystemMenu/MenuError.h"
 
+#include "Layout/HitTest.h"
 #include "Layout/LayoutDrawer.h"
 
 #include <format>
@@ -33,9 +34,25 @@ Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
     return *pane;
 }
 
+void MenuLayout::SetText(std::string_view paneName, std::u16string_view text)
+{
+    Formats::Pane& pane = PaneNamed(paneName);
+    if (!pane.textBox)
+        throw MenuError(std::format("The pane {} of the layout {} is not a text box", paneName, layoutName));
+
+    pane.textBox->text = text;
+}
+
 std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::string_view groupName, Layout::PlaybackMode mode)
 {
     animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, layout.PanesOfGroup(groupName)));
+    return animations.size() - 1;
+}
+
+std::size_t MenuLayout::BindAnimationToPane(const std::string& animationName, std::string_view paneName, Layout::PlaybackMode mode)
+{
+    std::vector<Formats::Pane*> panes = Layout::PaneWithDescendants(PaneNamed(paneName));
+    animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, panes));
     return animations.size() - 1;
 }
 
@@ -49,6 +66,16 @@ bool MenuLayout::IsAnimationPlaying(std::size_t slot) const
     return animations.at(slot)->IsPlaying();
 }
 
+void MenuLayout::ShowFirstFrameOfAnimation(std::size_t slot)
+{
+    animations.at(slot)->ShowFirstFrame();
+}
+
+void MenuLayout::ShowLastFrameOfAnimation(std::size_t slot)
+{
+    animations.at(slot)->ShowLastFrame();
+}
+
 void MenuLayout::Calculate()
 {
     FitToScreenShape();
@@ -57,9 +84,14 @@ void MenuLayout::Calculate()
         animation->Step();
 }
 
+std::vector<const Formats::Pane*> MenuLayout::BoundingPanesAt(Formats::Vector2 point) const
+{
+    return Layout::FindBoundingPanesAt(layout.RootPane(), point, placementSettings);
+}
+
 void MenuLayout::Draw()
 {
-    Layout::DrawLayout(display.Device(), layout, placementSettings);
+    Layout::DrawLayout(display.Device(), layout, placementSettings, display.TextFonts());
 }
 
 // On a wide screen the root pane stretches the whole layout to fill the picture, and the panes that adjust their location are
