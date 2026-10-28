@@ -60,16 +60,6 @@ SignedColor ReadSignedColor(ByteReader& reader)
     return color;
 }
 
-Rgba8Color ReadByteColor(ByteReader& reader)
-{
-    Rgba8Color color;
-    color.red = reader.ReadByte();
-    color.green = reader.ReadByte();
-    color.blue = reader.ReadByte();
-    color.alpha = reader.ReadByte();
-    return color;
-}
-
 TextureWrap ToTextureWrap(ByteReader& reader, unsigned number)
 {
     if (number > HighestWrapNumber)
@@ -181,7 +171,7 @@ Material ReadMaterial(ByteReader& reader)
     material.backColor = ReadSignedColor(reader);
     material.colorRegister3 = ReadSignedColor(reader);
     for (Rgba8Color& color : material.constantColors)
-        color = ReadByteColor(reader);
+        color = ReadRgba8Color(reader);
 
     std::uint32_t flags = reader.ReadUint32();
     RequireSupportedFlags(reader, flags, material.name);
@@ -199,7 +189,7 @@ Material ReadMaterial(ByteReader& reader)
         material.channelControl = ReadChannelControl(reader);
 
     if (IsSet(flags, HasMaterialColorBit))
-        material.materialColor = ReadByteColor(reader);
+        material.materialColor = ReadRgba8Color(reader);
 
     if (IsSet(flags, HasTevSwapTableBit))
         material.tevSwapTable = reader.ReadByteArray<TevSwapTableSize>();

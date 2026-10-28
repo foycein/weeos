@@ -38,16 +38,6 @@ constexpr std::size_t UnusedAfterTextAlignmentSize = 2;
 constexpr std::size_t UnusedAfterWindowFrameCountSize = 3;
 constexpr std::size_t UnusedAfterWindowFlipSize = 1;
 
-Rgba8Color ReadColor(ByteReader& reader)
-{
-    Rgba8Color color;
-    color.red = reader.ReadByte();
-    color.green = reader.ReadByte();
-    color.blue = reader.ReadByte();
-    color.alpha = reader.ReadByte();
-    return color;
-}
-
 void ReadLayoutProperties(const Section& section, Layout& layout)
 {
     ByteReader reader = OpenSection(section, DataDescription);
@@ -124,7 +114,7 @@ PaneContent ReadPaneContent(ByteReader& reader)
 {
     PaneContent content;
     for (Rgba8Color& color : content.vertexColors)
-        color = ReadColor(reader);
+        color = ReadRgba8Color(reader);
 
     content.materialIndex = reader.ReadUint16();
     Byte setCount = reader.ReadByte();
@@ -184,8 +174,8 @@ Pane ReadTextBoxPane(const Section& section)
     textBox.lineAlignment = reader.ReadByte();
     reader.Skip(UnusedAfterTextAlignmentSize);
     std::uint32_t textOffset = reader.ReadUint32();
-    textBox.topColor = ReadColor(reader);
-    textBox.bottomColor = ReadColor(reader);
+    textBox.topColor = ReadRgba8Color(reader);
+    textBox.bottomColor = ReadRgba8Color(reader);
     textBox.fontSize = ReadVector2(reader);
     textBox.characterSpace = reader.ReadFloat();
     textBox.lineSpace = reader.ReadFloat();

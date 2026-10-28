@@ -12,6 +12,7 @@ add_library(Formats STATIC
     LayoutMaterial.cpp
     Lz77.cpp
     MessageFile.cpp
+    RgbaImage.cpp
     SectionedFile.cpp
     SettingTextFile.cpp
     Sha1.cpp
