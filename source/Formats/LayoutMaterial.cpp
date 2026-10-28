@@ -14,6 +14,8 @@ namespace
 constexpr std::size_t NameSize = 20;
 constexpr std::size_t ConstantColorCount = 4;
 constexpr std::size_t MaterialListUnusedSize = 2;
+constexpr std::size_t UnusedAfterGeneratorSize = 1;
+constexpr std::size_t UnusedAfterChannelControlSize = 2;
 
 // The bits of the flags of a material.
 constexpr int TextureCountBit = 0;
@@ -105,7 +107,7 @@ TextureCoordinateGenerator ReadTextureCoordinateGenerator(ByteReader& reader)
     generator.matrixType = reader.ReadByte();
     generator.source = reader.ReadByte();
     generator.matrixSource = reader.ReadByte();
-    reader.Skip(1);
+    reader.Skip(UnusedAfterGeneratorSize);
     return generator;
 }
 
@@ -123,7 +125,7 @@ ChannelControl ReadChannelControl(ByteReader& reader)
     ChannelControl control;
     control.colorSource = ReadColorSource(reader);
     control.alphaSource = ReadColorSource(reader);
-    reader.Skip(2);
+    reader.Skip(UnusedAfterChannelControlSize);
     return control;
 }
 

@@ -1,5 +1,7 @@
 #include "Formats/Sha1.h"
 
+#include "Formats/ByteReader.h"
+
 #include <bit>
 #include <cstdint>
 
@@ -27,20 +29,15 @@ using Sha1State = std::array<std::uint32_t, 5>;
 
 constexpr Sha1State InitialState = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0};
 
-std::uint32_t ReadWord(ByteView block, std::size_t offset)
-{
-    std::uint32_t word = 0;
-    for (std::size_t index = 0; index < WordSize; ++index)
-        word = (word << BitsPerByte) | block[offset + index];
-    return word;
-}
-
+// The 16 words of the block come first. Each of the other words is made from four earlier ones.
+// The distances 3, 8, 14 and 16 and the turns by 1, 5 and 30 bits below are fixed by the SHA-1 standard.
 std::array<std::uint32_t, RoundCount> ExpandBlockIntoWords(ByteView block)
 {
     std::array<std::uint32_t, RoundCount> words;
 
+    ByteReader reader(block, "SHA-1 block");
     for (int index = 0; index < WordsPerBlock; ++index)
-        words[index] = ReadWord(block, index * WordSize);
+        words[index] = reader.ReadUint32();
 
     for (int index = WordsPerBlock; index < RoundCount; ++index)
         words[index] = std::rotl(words[index - 3] ^ words[index - 8] ^ words[index - 14] ^ words[index - 16], 1);
@@ -114,8 +111,8 @@ Bytes PadLastBytes(ByteView lastBytes, std::uint64_t totalByteCount)
         padded.push_back(0);
 
     std::uint64_t totalBitCount = totalByteCount * BitsPerByte;
-    for (int shift = 56; shift >= 0; shift -= BitsPerByte)
-        padded.push_back(static_cast<Byte>(totalBitCount >> shift));
+    for (std::size_t byteIndex = LengthFieldSize; byteIndex > 0; --byteIndex)
+        padded.push_back(static_cast<Byte>(totalBitCount >> ((byteIndex - 1) * BitsPerByte)));
 
     return padded;
 }

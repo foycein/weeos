@@ -19,6 +19,7 @@ constexpr std::size_t HeaderSize = 4;
 constexpr std::size_t BitsPerWord = 32;
 constexpr std::size_t BytesPerWord = 4;
 constexpr std::size_t RootNodeAddress = 1;
+constexpr std::size_t NodePairSize = 2;
 
 constexpr Byte ChildOffsetMask = 0x3F;
 constexpr Byte FirstChildIsSymbolFlag = 0x80;
@@ -77,7 +78,9 @@ public:
             Byte node = TableByte(nodeAddress);
             unsigned bit = stream.ReadBit();
 
-            std::size_t childAddress = (nodeAddress & ~std::size_t(1)) + (node & ChildOffsetMask) * 2 + 2 + bit;
+            std::size_t pairOffset = node & ChildOffsetMask;
+            std::size_t firstChildAddress = (nodeAddress & ~std::size_t(1)) + (pairOffset + 1) * NodePairSize;
+            std::size_t childAddress = firstChildAddress + bit;
             Byte childIsSymbolFlag = bit == 0 ? FirstChildIsSymbolFlag : SecondChildIsSymbolFlag;
             if ((node & childIsSymbolFlag) != 0)
                 return TableByte(childAddress);
@@ -118,7 +121,7 @@ Bytes DecompressHuffman(ByteView compressedBytes)
         outputSize |= std::size_t(reader.ReadByte()) << (BitsPerByte * byteIndex);
 
     std::size_t treeSizeInPairs = reader.ReadByte();
-    std::size_t tableSize = (treeSizeInPairs + 1) * 2;
+    std::size_t tableSize = (treeSizeInPairs + 1) * NodePairSize;
     reader.MoveTo(HeaderSize);
     ByteView table = reader.ReadBytes(tableSize);
 

@@ -18,16 +18,20 @@ constexpr Byte OpaqueAlpha = 255;
 
 constexpr int NibbleBitCount = 4;
 constexpr unsigned NibbleMask = 0x0F;
+constexpr std::size_t PixelsPerSharedByte = 2;
 constexpr std::uint16_t PaletteIndexMask14Bits = 0x3FFF;
 
 constexpr std::size_t SubBlockSide = 4;
 constexpr std::size_t SubBlockSize = 8;
 constexpr std::size_t SubBlocksPerBlock = 4;
+constexpr std::size_t SubBlocksPerRow = 2;
 constexpr std::size_t CompressedBlockSide = 8;
 constexpr std::size_t CompressedColorCount = 4;
 constexpr int BitsPerPixelIndex = 2;
 constexpr unsigned PixelIndexMask = 0x03;
 
+// The two bytes of a pixel that are stored together, alpha and red or green and blue.
+constexpr std::size_t Rgba8PairSize = 2;
 constexpr std::size_t Rgba8GreenBlueOffset = 32;
 
 using BlockPixels = std::array<Rgba8Pixel, LargestBlockPixelCount>;
@@ -66,36 +70,65 @@ Rgba8Pixel DecodeIntensityAlpha8Color(std::uint16_t color)
     return MakeIntensityAlphaPixel(intensity, alpha);
 }
 
-// The bits are RRRRRGGGGGGBBBBB.
+// Where a color channel lies inside a 16 bit color.
+struct ChannelBits
+{
+    int lowestBit;
+    int bitCount;
+};
+
+// RGB565 colors have the bits RRRRRGGGGGGBBBBB.
+constexpr ChannelBits Rgb565Red = {11, 5};
+constexpr ChannelBits Rgb565Green = {5, 6};
+constexpr ChannelBits Rgb565Blue = {0, 5};
+
+// RGB5A3 colors have one of two layouts. The top bit tells which.
+constexpr ChannelBits Rgb5A3OpaqueFlag = {15, 1};
+
+// The layout without alpha is 1RRRRRGGGGGBBBBB.
+constexpr ChannelBits Rgb555Red = {10, 5};
+constexpr ChannelBits Rgb555Green = {5, 5};
+constexpr ChannelBits Rgb555Blue = {0, 5};
+
+// The layout with alpha is 0AAARRRRGGGGBBBB.
+constexpr ChannelBits Rgb4A3Alpha = {12, 3};
+constexpr ChannelBits Rgb4A3Red = {8, 4};
+constexpr ChannelBits Rgb4A3Green = {4, 4};
+constexpr ChannelBits Rgb4A3Blue = {0, 4};
+
+Byte ExtractChannel(std::uint16_t color, ChannelBits channel)
+{
+    return ExpandToEightBits(ExtractBits(color, channel.lowestBit, channel.bitCount), channel.bitCount);
+}
+
 Rgba8Pixel DecodeRgb565Color(std::uint16_t color)
 {
     Rgba8Pixel pixel;
-    pixel.red = ExpandToEightBits(ExtractBits(color, 11, 5), 5);
-    pixel.green = ExpandToEightBits(ExtractBits(color, 5, 6), 6);
-    pixel.blue = ExpandToEightBits(ExtractBits(color, 0, 5), 5);
+    pixel.red = ExtractChannel(color, Rgb565Red);
+    pixel.green = ExtractChannel(color, Rgb565Green);
+    pixel.blue = ExtractChannel(color, Rgb565Blue);
     pixel.alpha = OpaqueAlpha;
     return pixel;
 }
 
-// The top bit tells which of two layouts the color has: 1RRRRRGGGGGBBBBB without alpha or 0AAARRRRGGGGBBBB with alpha.
 Rgba8Pixel DecodeRgb5A3Color(std::uint16_t color)
 {
-    bool hasAlpha = ExtractBits(color, 15, 1) == 0;
+    bool isOpaque = ExtractBits(color, Rgb5A3OpaqueFlag.lowestBit, Rgb5A3OpaqueFlag.bitCount) != 0;
 
     Rgba8Pixel pixel;
-    if (hasAlpha)
+    if (isOpaque)
     {
-        pixel.alpha = ExpandToEightBits(ExtractBits(color, 12, 3), 3);
-        pixel.red = ExpandToEightBits(ExtractBits(color, 8, 4), 4);
-        pixel.green = ExpandToEightBits(ExtractBits(color, 4, 4), 4);
-        pixel.blue = ExpandToEightBits(ExtractBits(color, 0, 4), 4);
+        pixel.alpha = OpaqueAlpha;
+        pixel.red = ExtractChannel(color, Rgb555Red);
+        pixel.green = ExtractChannel(color, Rgb555Green);
+        pixel.blue = ExtractChannel(color, Rgb555Blue);
         return pixel;
     }
 
-    pixel.alpha = OpaqueAlpha;
-    pixel.red = ExpandToEightBits(ExtractBits(color, 10, 5), 5);
-    pixel.green = ExpandToEightBits(ExtractBits(color, 5, 5), 5);
-    pixel.blue = ExpandToEightBits(ExtractBits(color, 0, 5), 5);
+    pixel.alpha = ExtractChannel(color, Rgb4A3Alpha);
+    pixel.red = ExtractChannel(color, Rgb4A3Red);
+    pixel.green = ExtractChannel(color, Rgb4A3Green);
+    pixel.blue = ExtractChannel(color, Rgb4A3Blue);
     return pixel;
 }
 
@@ -131,11 +164,12 @@ std::vector<Rgba8Pixel> DecodePalette(const TexturePalette& palette)
 // Two pixels share a byte. The first pixel is in the high bits.
 unsigned ReadNibble(ByteView block, std::size_t pixelIndex)
 {
-    Byte twoPixels = block[pixelIndex / 2];
-    if (pixelIndex % 2 == 0)
-        return twoPixels >> NibbleBitCount;
+    Byte sharedByte = block[pixelIndex / PixelsPerSharedByte];
+    bool isFirstPixel = pixelIndex % PixelsPerSharedByte == 0;
+    if (isFirstPixel)
+        return sharedByte >> NibbleBitCount;
 
-    return twoPixels & NibbleMask;
+    return sharedByte & NibbleMask;
 }
 
 const Rgba8Pixel& LookUpColor(const std::vector<Rgba8Pixel>& paletteColors, std::size_t paletteIndex)
@@ -184,10 +218,13 @@ void DecodeRgba8Block(ByteView block, std::size_t pixelCount, BlockPixels& pixel
 {
     for (std::size_t pixelIndex = 0; pixelIndex < pixelCount; ++pixelIndex)
     {
-        pixels[pixelIndex].alpha = block[pixelIndex * 2];
-        pixels[pixelIndex].red = block[pixelIndex * 2 + 1];
-        pixels[pixelIndex].green = block[Rgba8GreenBlueOffset + pixelIndex * 2];
-        pixels[pixelIndex].blue = block[Rgba8GreenBlueOffset + pixelIndex * 2 + 1];
+        std::size_t alphaRedOffset = pixelIndex * Rgba8PairSize;
+        std::size_t greenBlueOffset = Rgba8GreenBlueOffset + pixelIndex * Rgba8PairSize;
+
+        pixels[pixelIndex].alpha = block[alphaRedOffset];
+        pixels[pixelIndex].red = block[alphaRedOffset + 1];
+        pixels[pixelIndex].green = block[greenBlueOffset];
+        pixels[pixelIndex].blue = block[greenBlueOffset + 1];
     }
 }
 
@@ -252,8 +289,8 @@ void DecodeCompressedBlock(ByteView block, BlockPixels& pixels)
         ByteReader reader(block.subspan(subBlock * SubBlockSize, SubBlockSize), "Texture block");
         std::array<Rgba8Pixel, CompressedColorCount> colors = ReadCompressedColors(reader);
 
-        std::size_t left = (subBlock % 2) * SubBlockSide;
-        std::size_t top = (subBlock / 2) * SubBlockSide;
+        std::size_t left = (subBlock % SubBlocksPerRow) * SubBlockSide;
+        std::size_t top = (subBlock / SubBlocksPerRow) * SubBlockSide;
 
         for (std::size_t row = 0; row < SubBlockSide; ++row)
         {

@@ -15,6 +15,7 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Font";
+constexpr std::size_t TagSize = 4;
 constexpr std::uint16_t SupportedVersion = 0x0104;
 constexpr std::uint16_t CompressedSheetsFlag = 0x8000;
 constexpr std::uint16_t NoGlyph = 0xFFFF;
@@ -177,7 +178,7 @@ CharacterMap ReadCharacterMap(const Section& section)
 std::string_view FindFontTag(ByteView bytes)
 {
     ByteReader reader(bytes, DataDescription);
-    std::string tag = reader.ReadText(4);
+    std::string tag = reader.ReadText(TagSize);
     return tag == "RFNA" ? "RFNA" : "RFNT";
 }
 

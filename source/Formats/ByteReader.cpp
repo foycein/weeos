@@ -53,22 +53,22 @@ void ByteReader::Skip(std::size_t count)
 
 Byte ByteReader::ReadByte()
 {
-    return static_cast<Byte>(ReadBigEndianNumber(1));
+    return static_cast<Byte>(ReadBigEndianNumber(sizeof(Byte)));
 }
 
 std::uint16_t ByteReader::ReadUint16()
 {
-    return static_cast<std::uint16_t>(ReadBigEndianNumber(2));
+    return static_cast<std::uint16_t>(ReadBigEndianNumber(sizeof(std::uint16_t)));
 }
 
 std::uint32_t ByteReader::ReadUint32()
 {
-    return static_cast<std::uint32_t>(ReadBigEndianNumber(4));
+    return static_cast<std::uint32_t>(ReadBigEndianNumber(sizeof(std::uint32_t)));
 }
 
 std::uint64_t ByteReader::ReadUint64()
 {
-    return ReadBigEndianNumber(8);
+    return ReadBigEndianNumber(sizeof(std::uint64_t));
 }
 
 std::int16_t ByteReader::ReadInt16()
@@ -137,7 +137,7 @@ std::uint64_t ByteReader::ReadBigEndianNumber(std::size_t byteCount)
 
     std::uint64_t number = 0;
     for (Byte numberByte : numberBytes)
-        number = (number << 8) | numberByte;
+        number = (number << BitsPerByte) | numberByte;
     return number;
 }
 
