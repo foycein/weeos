@@ -1,0 +1,137 @@
+#include "Text/TextFormat.h"
+
+#include "Text/TextError.h"
+
+#include <cstddef>
+
+namespace Text
+{
+
+namespace
+{
+
+constexpr char16_t FormatMarker = u'%';
+
+enum class ConversionKind
+{
+    Percent,
+    Text,
+    Number,
+};
+
+// What stands after a percent sign.
+struct Conversion
+{
+    ConversionKind kind;
+
+    // Only for numbers: the zeros in front fill the number up to this many digits.
+    int minimumDigits;
+
+    // The characters after the percent sign that belong to the conversion.
+    std::size_t length;
+};
+
+bool IsDigit(char16_t character)
+{
+    return character >= u'0' && character <= u'9';
+}
+
+Conversion ReadConversion(std::u16string_view afterMarker)
+{
+    if (afterMarker.starts_with(u"%"))
+        return {ConversionKind::Percent, 0, 1};
+
+    if (afterMarker.starts_with(u"ls"))
+        return {ConversionKind::Text, 0, 2};
+
+    if (afterMarker.starts_with(u"d"))
+        return {ConversionKind::Number, 0, 1};
+
+    bool isNumberWithZeros = afterMarker.size() >= 3 && afterMarker[0] == u'0' && IsDigit(afterMarker[1]) && afterMarker[2] == u'd';
+    if (isNumberWithZeros)
+        return {ConversionKind::Number, afterMarker[1] - u'0', 3};
+
+    throw TextError("a percent sign in the format is not followed by ls, d, a zero and a digit and d, or another percent sign");
+}
+
+// Like the C formats, the zeros go behind the minus sign and the minus sign counts as a digit of the width.
+void AppendNumber(std::u16string& text, int number, int minimumDigits)
+{
+    std::string digits = std::to_string(number);
+    std::size_t signLength = number < 0 ? 1 : 0;
+    while (digits.size() < static_cast<std::size_t>(minimumDigits))
+        digits.insert(signLength, "0");
+
+    text.append(digits.begin(), digits.end());
+}
+
+void AppendArgument(std::u16string& text, const TextArgument& argument, const Conversion& conversion)
+{
+    if (conversion.kind == ConversionKind::Number)
+    {
+        const int* number = std::get_if<int>(&argument);
+        if (number == nullptr)
+            throw TextError("a place for a number in the format got a text");
+
+        AppendNumber(text, *number, conversion.minimumDigits);
+        return;
+    }
+
+    const std::u16string_view* argumentText = std::get_if<std::u16string_view>(&argument);
+    if (argumentText == nullptr)
+        throw TextError("a place for a text in the format got a number");
+
+    text.append(*argumentText);
+}
+
+}
+
+std::u16string FormatText(std::u16string_view format, std::initializer_list<TextArgument> arguments)
+{
+    std::u16string text;
+    const TextArgument* nextArgument = arguments.begin();
+    std::size_t position = 0;
+
+    while (position < format.size())
+    {
+        char16_t character = format[position];
+        ++position;
+        if (character != FormatMarker)
+        {
+            text.push_back(character);
+            continue;
+        }
+
+        Conversion conversion = ReadConversion(format.substr(position));
+        position += conversion.length;
+        if (conversion.kind == ConversionKind::Percent)
+        {
+            text.push_back(FormatMarker);
+            continue;
+        }
+
+        if (nextArgument == arguments.end())
+            throw TextError("the format has more places than arguments");
+
+        AppendArgument(text, *nextArgument, conversion);
+        ++nextArgument;
+    }
+
+    if (nextArgument != arguments.end())
+        throw TextError("there are more arguments than places in the format");
+
+    return text;
+}
+
+std::u16string ReplacePlaceholder(std::u16string_view text, std::u16string_view placeholder, std::u16string_view replacement)
+{
+    std::size_t position = text.find(placeholder);
+    if (position == std::u16string_view::npos)
+        throw TextError("the text does not hold the placeholder");
+
+    std::u16string replacedText(text);
+    replacedText.replace(position, placeholder.size(), replacement);
+    return replacedText;
+}
+
+}

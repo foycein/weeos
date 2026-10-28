@@ -149,6 +149,8 @@ enum class BlendMode : std::uint8_t
     AddSourceAlpha,
 };
 
+constexpr std::size_t BlendModeCount = 3;
+
 // A material says how a quad gets its colors.
 struct Material
 {
@@ -194,6 +196,8 @@ public:
     virtual void BeginFrame(const Canvas& canvas, ScreenShape screenShape) = 0;
 
     // The scissor holds until ClearScissor or until the next picture or offscreen picture starts.
+    // Every picture has a scissor of its own: an offscreen picture starts without one, and after EndOffscreen
+    // the screen picture goes on with the scissor it had before.
     virtual void SetScissor(const ScissorRectangle& scissor) = 0;
     virtual void ClearScissor() = 0;
 
@@ -204,6 +208,8 @@ public:
     // The returned texture holds the picture after EndOffscreen. It is an ordinary texture then:
     // use it in materials and destroy it with DestroyTexture. It must not be used while it is being drawn.
     // This may also be called between BeginFrame and Present: the screen picture goes on after EndOffscreen.
+    // Outside of BeginFrame and Present the picture is finished when EndOffscreen returns.
+    // An offscreen picture cannot be drawn inside another one.
     virtual TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) = 0;
     virtual void EndOffscreen() = 0;
 
