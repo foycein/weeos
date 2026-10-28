@@ -22,9 +22,12 @@ Result<void> IosServices::Start(const IosFolders& folders)
     if (prepared.Failed())
         return prepared;
 
+    // The order of the modules of IOS80: file system, DIP (disc drive), OH1 (the Bluetooth device of the remotes), STM (power), KBD (keyboard).
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
     discDrive = std::make_unique<DiscDriveService>();
+    remote = std::make_unique<RemoteService>();
     power = std::make_unique<PowerService>();
+    keyboard = std::make_unique<KeyboardService>();
     isRunning = true;
     return Result<void>();
 }
@@ -34,7 +37,9 @@ void IosServices::Stop()
     if (!isRunning)
         return;
 
+    keyboard->Close();
     power->Close();
+    remote->Close();
     fileSystem->Shutdown();
     isRunning = false;
 }
@@ -54,6 +59,18 @@ DiscDriveService& IosServices::GetDiscDrive()
 {
     RequireRunning();
     return *discDrive;
+}
+
+KeyboardService& IosServices::GetKeyboard()
+{
+    RequireRunning();
+    return *keyboard;
+}
+
+RemoteService& IosServices::GetRemote()
+{
+    RequireRunning();
+    return *remote;
 }
 
 PowerService& IosServices::GetPower()

@@ -3,7 +3,9 @@
 #include "Ios/DiscDrive/DiscDriveService.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/IosFolders.h"
+#include "Ios/Keyboard/KeyboardService.h"
 #include "Ios/Power/PowerService.h"
+#include "Ios/Remote/RemoteService.h"
 #include "Ios/Result.h"
 
 #include <memory>
@@ -34,6 +36,8 @@ public:
     // The services exist while IOS is running. Asking for one at any other time is a mistake in the program and throws.
     FileSystemService& GetFileSystem();
     DiscDriveService& GetDiscDrive();
+    KeyboardService& GetKeyboard();
+    RemoteService& GetRemote();
     PowerService& GetPower();
 
 private:
@@ -42,7 +46,9 @@ private:
     bool isRunning = false;
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
+    std::unique_ptr<RemoteService> remote;
     std::unique_ptr<PowerService> power;
+    std::unique_ptr<KeyboardService> keyboard;
 };
 
 }
