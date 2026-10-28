@@ -135,18 +135,52 @@ void InverseMixColumns(AesBlock& state)
     }
 }
 
-AesBlock CopyBlock(ByteView bytes, std::size_t offset)
+void ShiftRows(AesBlock& state)
 {
-    AesBlock block;
-    for (std::size_t index = 0; index < AesBlockSize; ++index)
-        block[index] = bytes[offset + index];
-    return block;
+    AesBlock shifted;
+    for (int row = 0; row < RowCount; ++row)
+    {
+        for (int column = 0; column < ColumnCount; ++column)
+        {
+            int shiftedColumn = (column + RowCount - row) % ColumnCount;
+            shifted[StateIndex(row, shiftedColumn)] = state[StateIndex(row, column)];
+        }
+    }
+    state = shifted;
 }
 
+void SubstituteBytes(AesBlock& state)
+{
+    for (Byte& value : state)
+        value = SubstitutionBox[value];
 }
 
-Aes128Decryptor::Aes128Decryptor(const AesKey& key)
+Byte TripleInField(Byte value)
 {
+    return DoubleInField(value) ^ value;
+}
+
+void MixColumns(AesBlock& state)
+{
+    for (int column = 0; column < ColumnCount; ++column)
+    {
+        Byte first = state[StateIndex(0, column)];
+        Byte second = state[StateIndex(1, column)];
+        Byte third = state[StateIndex(2, column)];
+        Byte fourth = state[StateIndex(3, column)];
+
+        state[StateIndex(0, column)] = DoubleInField(first) ^ TripleInField(second) ^ third ^ fourth;
+        state[StateIndex(1, column)] = first ^ DoubleInField(second) ^ TripleInField(third) ^ fourth;
+        state[StateIndex(2, column)] = first ^ second ^ DoubleInField(third) ^ TripleInField(fourth);
+        state[StateIndex(3, column)] = TripleInField(first) ^ second ^ third ^ DoubleInField(fourth);
+    }
+}
+
+using RoundKeys = std::array<AesBlock, Aes128RoundCount + 1>;
+
+RoundKeys ExpandKey(const AesKey& key)
+{
+    RoundKeys roundKeys;
     roundKeys[0] = key;
 
     for (int round = 1; round <= Aes128RoundCount; ++round)
@@ -164,6 +198,49 @@ Aes128Decryptor::Aes128Decryptor(const AesKey& key)
         for (std::size_t index = WordSize; index < AesBlockSize; ++index)
             current[index] = previous[index] ^ current[index - WordSize];
     }
+
+    return roundKeys;
+}
+
+AesBlock CopyBlock(ByteView bytes, std::size_t offset)
+{
+    AesBlock block;
+    for (std::size_t index = 0; index < AesBlockSize; ++index)
+        block[index] = bytes[offset + index];
+    return block;
+}
+
+}
+
+Aes128Decryptor::Aes128Decryptor(const AesKey& key)
+    : roundKeys(ExpandKey(key))
+{
+}
+
+Aes128Encryptor::Aes128Encryptor(const AesKey& key)
+    : roundKeys(ExpandKey(key))
+{
+}
+
+AesBlock Aes128Encryptor::EncryptBlock(const AesBlock& plainBlock) const
+{
+    AesBlock state = plainBlock;
+
+    AddRoundKey(state, roundKeys[0]);
+
+    for (int round = 1; round < Aes128RoundCount; ++round)
+    {
+        SubstituteBytes(state);
+        ShiftRows(state);
+        MixColumns(state);
+        AddRoundKey(state, roundKeys[round]);
+    }
+
+    SubstituteBytes(state);
+    ShiftRows(state);
+    AddRoundKey(state, roundKeys[Aes128RoundCount]);
+
+    return state;
 }
 
 AesBlock Aes128Decryptor::DecryptBlock(const AesBlock& encryptedBlock) const
@@ -211,6 +288,34 @@ Bytes DecryptAes128Cbc(ByteView encryptedBytes, const AesKey& key, const AesBloc
     }
 
     return decryptedBytes;
+}
+
+Bytes EncryptAes128Cbc(ByteView plainBytes, const AesKey& key, const AesBlock& initializationVector)
+{
+    if (plainBytes.size() % AesBlockSize != 0)
+    {
+        throw FormatError(std::format("AES data must be a multiple of {} bytes, but it has {} bytes",
+            AesBlockSize, plainBytes.size()));
+    }
+
+    Aes128Encryptor encryptor(key);
+    Bytes encryptedBytes(plainBytes.size());
+    AesBlock previousEncryptedBlock = initializationVector;
+
+    for (std::size_t offset = 0; offset < plainBytes.size(); offset += AesBlockSize)
+    {
+        AesBlock plainBlock = CopyBlock(plainBytes, offset);
+        for (std::size_t index = 0; index < AesBlockSize; ++index)
+            plainBlock[index] ^= previousEncryptedBlock[index];
+
+        AesBlock encryptedBlock = encryptor.EncryptBlock(plainBlock);
+        for (std::size_t index = 0; index < AesBlockSize; ++index)
+            encryptedBytes[offset + index] = encryptedBlock[index];
+
+        previousEncryptedBlock = encryptedBlock;
+    }
+
+    return encryptedBytes;
 }
 
 }

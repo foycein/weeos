@@ -30,6 +30,9 @@ struct Certificate
 
     // Only RSA keys have an exponent. It is zero for an elliptic curve key.
     std::uint32_t publicExponent;
+
+    // The bytes the signature covers: everything behind the signature, from the issuer to the end of the certificate.
+    Bytes signedBytes;
 };
 
 // The certificates a title is signed with, one after the other (the Wii uses three).

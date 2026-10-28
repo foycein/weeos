@@ -165,7 +165,7 @@ void CheckMaterial(const Material& material)
     for (std::size_t registerNumber = 0; registerNumber < material.colorRegisters.size(); ++registerNumber)
         CheckRegisterColor(material.colorRegisters[registerNumber], registerNumber);
 
-    bool blendModeExists = material.blendMode == BlendMode::StandardAlpha || material.blendMode == BlendMode::Replace;
+    bool blendModeExists = static_cast<std::size_t>(material.blendMode) < BlendModeCount;
     if (!blendModeExists)
         throw GraphicsError("A material has a blend mode that does not exist");
 }
