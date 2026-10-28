@@ -39,13 +39,6 @@ struct PlayingNote
     float startPan;
 };
 
-// Where a call (or a repeated part) returns to. A part that repeats 0 times repeats for ever.
-struct ReturnPoint
-{
-    std::size_t position;
-    int repeatCount;
-};
-
 // One track of a sequence: its place in the commands, its waiting time, its settings and its notes.
 // A sequence is up to 16 tracks that run at the same time.
 struct SequenceTrack
@@ -93,8 +86,9 @@ struct SequenceTrack
 
     std::array<std::int16_t, VariableCount> variables;
 
-    std::array<ReturnPoint, MaximumCallDepth> returnPoints{};
-    std::size_t returnPointCount = 0;
+    // The places the open calls return to.
+    std::array<std::size_t, MaximumCallDepth> returnPositions{};
+    std::size_t returnPositionCount = 0;
 
     std::vector<PlayingNote> notes;
 

@@ -85,17 +85,11 @@ float Square(float number)
     return number * number;
 }
 
-std::uint32_t NextRandomNumber(SequenceGlobals& globals)
-{
-    globals.randomSeed = globals.randomSeed * RandomMultiplier + RandomIncrement;
-    return globals.randomSeed >> RandomBitsToDrop;
-}
-
 // A number between the lowest and the highest, both included.
 std::int32_t RandomNumberBetween(SequenceGlobals& globals, std::int32_t lowest, std::int32_t highest)
 {
     std::int64_t choices = std::int64_t(highest) - lowest + 1;
-    return static_cast<std::int32_t>(((std::int64_t(NextRandomNumber(globals)) * choices) >> RandomBitsToDrop) + lowest);
+    return static_cast<std::int32_t>(((std::int64_t(globals.NextRandomNumber()) * choices) >> RandomBitsToDrop) + lowest);
 }
 
 // What a note needs from its track to be heard: loudness, place, pitch.
@@ -133,6 +127,12 @@ std::uint8_t EnvelopeNumber(std::uint8_t trackNumber, std::uint8_t instrumentNum
     return trackNumber == EnvelopeNumberNotSet ? instrumentNumber : trackNumber;
 }
 
+}
+
+std::uint32_t SequenceGlobals::NextRandomNumber()
+{
+    randomSeed = randomSeed * RandomMultiplier + RandomIncrement;
+    return randomSeed >> RandomBitsToDrop;
 }
 
 SequencePlayer::SequencePlayer(const SequenceFile& sequenceFile, const LoadedBank& loadedBank, const SequenceSettings& sequenceSettings,
@@ -465,9 +465,9 @@ bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t comman
     case CallCommand:
     {
         std::size_t position = ReadThreeBytes(track);
-        if (shouldRun && track.returnPointCount < MaximumCallDepth)
+        if (shouldRun && track.returnPositionCount < MaximumCallDepth)
         {
-            track.returnPoints[track.returnPointCount++] = {track.position, 0};
+            track.returnPositions[track.returnPositionCount++] = track.position;
             track.position = position;
         }
         return false;
@@ -577,7 +577,7 @@ void SequencePlayer::ChangeVariable(std::uint8_t command, std::int16_t& variable
     case RandomVariableCommand:
     {
         std::int32_t size = std::abs(number);
-        std::int32_t random = static_cast<std::int32_t>((std::int64_t(NextRandomNumber(globals)) * (size + 1)) >> RandomBitsToDrop);
+        std::int32_t random = static_cast<std::int32_t>((std::int64_t(globals.NextRandomNumber()) * (size + 1)) >> RandomBitsToDrop);
         result = number < 0 ? -random : random;
         break;
     }
@@ -609,11 +609,11 @@ void SequencePlayer::OpenTrack(std::size_t trackNumber, std::size_t position, co
 
 void SequencePlayer::ReturnFromCall(SequenceTrack& track)
 {
-    if (track.returnPointCount == 0)
+    if (track.returnPositionCount == 0)
         return;
 
-    --track.returnPointCount;
-    track.position = track.returnPoints[track.returnPointCount].position;
+    --track.returnPositionCount;
+    track.position = track.returnPositions[track.returnPositionCount];
 }
 
 // ---- Notes

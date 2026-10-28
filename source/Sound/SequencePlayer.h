@@ -14,13 +14,19 @@ namespace Sound
 // What every sequence that plays shares: the global variables, and the random numbers.
 struct SequenceGlobals
 {
+    // The generator of the original starts with this number.
+    static constexpr std::uint32_t StartRandomSeed = 0x12345678;
+
     std::array<std::int16_t, VariableCount> variables;
-    std::uint32_t randomSeed = 0;
+    std::uint32_t randomSeed = StartRandomSeed;
 
     SequenceGlobals()
     {
         variables.fill(-1);
     }
+
+    // The next random number, from 0 to 65535. The original takes one in every sound frame, also when no sequence asks for it.
+    std::uint32_t NextRandomNumber();
 };
 
 // Plays one sequence: it runs the commands of the tracks tick by tick, starts a voice for every note, and keeps the voices

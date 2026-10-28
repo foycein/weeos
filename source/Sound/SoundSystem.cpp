@@ -271,6 +271,7 @@ void SoundSystem::RunSoundFrame()
     }
     std::erase_if(runningSounds, [&](const RunningSound& sound) { return HasEnded(sound); });
 
+    sequenceGlobals.NextRandomNumber();
     voices.BeginFrame();
 }
 
