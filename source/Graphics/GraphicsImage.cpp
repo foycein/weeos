@@ -5,9 +5,10 @@
 namespace Graphics
 {
 
-GraphicsImage::GraphicsImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
-    VkImageUsageFlags usage)
+GraphicsImage::GraphicsImage(const VulkanContext& context, ImageMemoryPool& memoryPool, std::uint32_t imageWidth,
+    std::uint32_t imageHeight, VkFormat imageFormat, VkImageUsageFlags usage)
     : device(context.Device())
+    , pool(memoryPool)
     , width(imageWidth)
     , height(imageHeight)
     , format(imageFormat)
@@ -29,8 +30,8 @@ GraphicsImage::GraphicsImage(const VulkanContext& context, std::uint32_t imageWi
 
     VkMemoryRequirements requirements;
     vkGetImageMemoryRequirements(device, image, &requirements);
-    memory = context.AllocateMemory(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    CheckVulkan(vkBindImageMemory(device, image, memory, 0), "binding the memory of an image");
+    imageMemory = pool.Allocate(requirements);
+    CheckVulkan(vkBindImageMemory(device, image, imageMemory.block, imageMemory.offset), "binding the memory of an image");
 
     VkImageViewCreateInfo viewInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -46,7 +47,7 @@ GraphicsImage::~GraphicsImage()
 {
     vkDestroyImageView(device, view, nullptr);
     vkDestroyImage(device, image, nullptr);
-    vkFreeMemory(device, memory, nullptr);
+    pool.Free(imageMemory);
 }
 
 VkImage GraphicsImage::Handle() const

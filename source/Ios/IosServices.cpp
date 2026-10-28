@@ -9,7 +9,7 @@
 namespace Ios
 {
 
-Result<void> IosServices::Start(const IosFolders& folders)
+Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& startProfile)
 {
     if (isRunning)
         return IosError::AlreadyExists;
@@ -35,6 +35,7 @@ Result<void> IosServices::Start(const IosFolders& folders)
     remote = std::make_unique<RemoteService>();
     power = std::make_unique<PowerService>();
     keyboard = std::make_unique<KeyboardService>();
+    profile = startProfile;
     isRunning = true;
     return Result<void>();
 }
@@ -96,6 +97,12 @@ TitleService& IosServices::GetTitles()
 {
     RequireRunning();
     return *titles;
+}
+
+const IosProfile& IosServices::GetProfile() const
+{
+    RequireRunning();
+    return profile;
 }
 
 void IosServices::RequireRunning() const

@@ -1,11 +1,13 @@
 #include "Input/VirtualRemote.h"
 
+#include "Platform/FitPicture.h"
+
 #include <utility>
 
 namespace Input
 {
 
-VirtualRemote::VirtualRemote(Platform::WindowSize initialWindowSize, ScreenShape initialScreenShape)
+VirtualRemote::VirtualRemote(Platform::WindowSize initialWindowSize, Platform::ScreenShape initialScreenShape)
     : keyMap(DefaultKeyMap.begin(), DefaultKeyMap.end())
     , mouseMap(DefaultMouseMap.begin(), DefaultMouseMap.end())
     , windowSize(initialWindowSize)
@@ -60,7 +62,7 @@ void VirtualRemote::SetWindowSize(Platform::WindowSize newWindowSize)
     windowSize = newWindowSize;
 }
 
-void VirtualRemote::SetScreenShape(ScreenShape newScreenShape)
+void VirtualRemote::SetScreenShape(Platform::ScreenShape newScreenShape)
 {
     screenShape = newScreenShape;
 }
@@ -201,7 +203,7 @@ std::optional<Formats::Vector2> VirtualRemote::PointerOfTheMouse() const
     if (!mouseIsOverWindow)
         return std::nullopt;
 
-    return PixelToPointer(mousePixel, FitPicture(windowSize, screenShape));
+    return PixelToPointer(mousePixel, Platform::FitPicture(windowSize, screenShape));
 }
 
 }
