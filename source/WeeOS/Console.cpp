@@ -25,7 +25,11 @@ void StartIos(Ios::IosServices& services, const Ios::IosFolders& folders, std::u
     Ios::IosNumber iosNumber = static_cast<Ios::IosNumber>(Boot::TitleIdLowPart(iosTitleId));
     Ios::Result<void> started = services.Start(folders, Ios::ChooseProfile(iosNumber));
     if (started.Failed())
-        FailWith(std::format("IOS{} cannot start on the NAND folder {}", iosNumber, folders.nandFolder.string()), started.Error());
+    {
+        std::string problem = std::format("IOS{} cannot start on the NAND folder {} with the identity folder {}", iosNumber,
+            folders.nandFolder.string(), folders.identityFolder.string());
+        FailWith(problem, started.Error());
+    }
 }
 
 // boot2 starts the title with the first ticket of its ticket file.
