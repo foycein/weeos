@@ -526,7 +526,10 @@ bool SequencePlayer::RunSettingCommand(SequenceTrack& track, std::uint8_t comman
     case SustainCommand: track.sustain = unsignedNumber; break;
     case ReleaseCommand: track.release = unsignedNumber; break;
     case SurroundPanCommand: track.surroundPan = SurroundPanFromNumber(unsignedNumber); break;
-    default: break;
+
+    // The sends to the effect buses are read and dropped, because the effects of the menu are not built (docs/audit/OpenPoints/Sound.md).
+    case EffectSendACommand:
+    case EffectSendBCommand: break;
     }
     return false;
 }
