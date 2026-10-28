@@ -27,6 +27,9 @@ public:
     void ShowFirstFrame();
     void ShowLastFrame();
 
+    // The animation stops where it is. The panes keep what it did to them.
+    void Stop();
+
     bool IsPlaying() const;
 
     // One frame further, if the animation is playing.

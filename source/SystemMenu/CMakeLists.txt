@@ -6,6 +6,7 @@ add_library(SystemMenu STATIC
     FirstScreen.cpp
     HealthAndSafetyScreen.cpp
     InputManager.cpp
+    KeyboardView.cpp
     LauncherScreen.cpp
     MenuAnimation.cpp
     MenuFiles.cpp
@@ -13,9 +14,13 @@ add_library(SystemMenu STATIC
     MenuLayout.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
+    PhysicalKeyboard.cpp
     Screen.cpp
     ScreenFactory.cpp
     ScreenManager.cpp
+    SoftKeyboard.cpp
+    TextField.cpp
+    UsKeyboardLayout.cpp
     WiiOptionsBackgroundScreen.cpp
     WiiOptionsBarScreen.cpp
     WiiOptionsChoicesScreen.cpp

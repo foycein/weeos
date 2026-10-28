@@ -33,6 +33,11 @@ void MenuAnimation::ShowLastFrame()
     isPlaying = false;
 }
 
+void MenuAnimation::Stop()
+{
+    isPlaying = false;
+}
+
 bool MenuAnimation::IsPlaying() const
 {
     return isPlaying;

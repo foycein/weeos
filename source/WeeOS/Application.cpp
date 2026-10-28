@@ -29,6 +29,7 @@ Application::Application(const Ios::IosFolders& folders)
     , pacer(timer.ElapsedSeconds())
 {
     GetVirtualRemote().SetScreenShape(PictureShape);
+    menu.UsePhysicalKeyboard(console.Services().GetKeyboard());
     window.SetListener(&keyboard);
 }
 

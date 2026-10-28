@@ -16,7 +16,8 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , input(remoteService)
     , cursors(display, files)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
-    , services{display, files, messages, clock, fader, input, cursors, screens, sounds}
+    , keyboard(display, files, messages, clock, input, sounds)
+    , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -30,6 +31,7 @@ void MenuSystem::Update()
     clock.Advance();
     input.Poll();
     screens.Update();
+    keyboard.Update();
     cursors.Update(input);
     fader.Calculate();
 }
@@ -43,8 +45,14 @@ void MenuSystem::Draw()
 void MenuSystem::DrawScene()
 {
     screens.Draw();
+    keyboard.Draw();
     cursors.Draw();
     fader.Draw();
+}
+
+void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
+{
+    keyboard.UsePhysicalKeyboard(keyboardService);
 }
 
 MenuServices& MenuSystem::Services()

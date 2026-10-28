@@ -7,9 +7,11 @@
 #include "Layout/LayoutArchive.h"
 #include "Layout/LiveLayout.h"
 #include "Layout/PanePlacement.h"
+#include "Text/LaidOutText.h"
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -42,6 +44,10 @@ public:
     std::size_t BindAnimationToPane(const std::string& animationName, std::string_view paneName, Layout::PlaybackMode mode);
 
     void StartAnimation(std::size_t slot);
+
+    // The animation stops where it is. The panes keep what it did to them.
+    void StopAnimation(std::size_t slot);
+
     bool IsAnimationPlaying(std::size_t slot) const;
 
     // The animation shows its first frame at once and stands still, as if it had just started and not moved on yet.
@@ -52,6 +58,13 @@ public:
 
     // One step: fits the layout to the shape of the screen and moves every animation that plays one frame on.
     void Calculate();
+
+    // The text of the text box as it is laid out now, in the space of the pane: the lines, and the place of every character.
+    // Throws a MenuError when the layout has no such text box or the display has no fonts.
+    Text::LaidOutText LayOutText(std::string_view paneName);
+
+    // A point in the space of the pane as a point of the picture, in layout units. Nothing while the pane is not shown.
+    std::optional<Formats::Vector2> PointOfPaneInPicture(std::string_view paneName, Formats::Vector2 point);
 
     // The bounding panes (the panes named B_...) of the layout that the point lies in, the one in front first.
     // The point is in layout units of the picture: the middle is (0, 0), x grows to the right and y grows upward.

@@ -15,6 +15,7 @@ class InputManager;
 class MenuClock;
 class MenuFiles;
 class ScreenManager;
+class SoftKeyboard;
 class SoundRequests;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
@@ -30,6 +31,7 @@ struct MenuServices
     CursorManager& cursors;
     ScreenManager& screens;
     SoundRequests& sounds;
+    SoftKeyboard& keyboard;
 };
 
 }
