@@ -16,6 +16,9 @@ namespace
 
 constexpr std::uint64_t LargestFileLength = std::numeric_limits<std::uint32_t>::max();
 
+// The console writes a changed block to a new cluster before it lets go of the old one, so even a write that adds no length needs a free cluster.
+constexpr std::uint64_t ClustersEveryWriteNeeds = 1;
+
 bool CanRead(OpenMode mode)
 {
     return Includes(RightsNeededToOpen(mode), AccessRights::Read);
@@ -148,7 +151,8 @@ Result<std::size_t> OpenFile::Write(Formats::ByteView data)
         return IosError::NoFreeClusters;
 
     std::uint64_t newClusterCount = ClustersForLength(newLength) - ClustersForLength(length);
-    if (newClusterCount > state->FreeClusterCount())
+    std::uint64_t neededClusterCount = std::max(newClusterCount, ClustersEveryWriteNeeds);
+    if (neededClusterCount > state->FreeClusterCount())
         return IosError::NoFreeClusters;
 
     stream.clear();
