@@ -68,11 +68,8 @@ enum class IosError : int
     // The slot is empty, or the card was taken out. The card driver gives this answer to every command when no card is there.
     NoCardInserted = -10,
 
-    // The time and the sockets of the network family. Codes of /dev/net/kd/time and /dev/net/ip/top.
+    // The sockets of the network family. Codes of /dev/net/ip/top.
     // The sockets number their errors in the alphabetical order of the POSIX names: 1 is E2BIG, 6 is EAGAIN, 8 is EBADF, and so on.
-
-    // The value is not ready yet. The WiiConnect24 clock has no time difference before the first time it was set.
-    NotReady = -30,
 
     // The host name is not known. The original gives the same number to a request whose parameters are wrong.
     HostNotFound = -4,

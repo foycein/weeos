@@ -52,7 +52,7 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     identity = std::make_unique<ConsoleIdentityService>(std::move(consoleIdentity.Value()));
 
     // The order of the modules of IOS80: file system, DIP (disc drive), OH1 (the Bluetooth device of the remotes), SDI (SD card),
-    // WD (wireless), NCD (network configuration), SO (sockets), KD (WiiConnect24), STM (power), KBD (keyboard), SSL (secure sockets).
+    // WD (wireless), NCD (network configuration), SO (sockets), STM (power), KBD (keyboard), SSL (secure sockets).
     // The sockets use the network configuration, so they start after it.
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
     titles = std::make_unique<TitleService>(*fileSystem, *identity);
@@ -63,7 +63,6 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
     networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
     sockets = std::make_unique<SocketService>(*networkConfig);
-    wiiConnect24 = std::make_unique<WiiConnect24Service>(*fileSystem, clock);
     power = std::make_unique<PowerService>();
     keyboard = std::make_unique<KeyboardService>();
     secureSockets = std::make_unique<SecureSocketService>();
@@ -91,7 +90,6 @@ void IosServices::DestroyServices()
     secureSockets.reset();
     keyboard.reset();
     power.reset();
-    wiiConnect24.reset();
     sockets.reset();
     networkConfig.reset();
     wireless.reset();
@@ -148,12 +146,6 @@ SecureSocketService& IosServices::GetSecureSockets()
 {
     RequireRunning();
     return *secureSockets;
-}
-
-WiiConnect24Service& IosServices::GetWiiConnect24()
-{
-    RequireRunning();
-    return *wiiConnect24;
 }
 
 KeyboardService& IosServices::GetKeyboard()
