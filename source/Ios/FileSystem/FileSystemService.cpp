@@ -37,7 +37,8 @@ bool IsNameTooLong(const NandPath& path)
 }
 
 // The directory that holds the entry, when the caller has these rights on it.
-Result<const EntryRecord*> FindParentWithRights(const FileSystemState& state, const NandPath& path, const Caller& caller, AccessRights required)
+Result<const EntryRecord*> FindParentWithRights(const FileSystemState& state, const NandPath& path,
+    const Caller& caller, AccessRights required)
 {
     Result<const EntryRecord*> parent = FindEntry(state, path.Parent());
     if (parent.Failed())
@@ -50,7 +51,8 @@ Result<const EntryRecord*> FindParentWithRights(const FileSystemState& state, co
     return parent;
 }
 
-Result<void> CreateNewEntry(FileSystemState& state, const NandPath& path, EntryKind kind, const EntryPermissions& permissions, std::uint8_t flags, const Caller& caller)
+Result<void> CreateNewEntry(FileSystemState& state, const NandPath& path, EntryKind kind,
+    const EntryPermissions& permissions, std::uint8_t flags, const Caller& caller)
 {
     if (state.isShutDown)
         return IosError::ShutDown;
@@ -303,13 +305,15 @@ Result<DirectoryUsage> FileSystemService::GetDirectoryUsage(const NandPath& dire
     return MeasureDirectory(*state, directory);
 }
 
-Result<void> FileSystemService::CreateDirectory(const NandPath& path, const EntryPermissions& permissions, std::uint8_t flags, const Caller& caller)
+Result<void> FileSystemService::CreateDirectory(const NandPath& path, const EntryPermissions& permissions,
+    std::uint8_t flags, const Caller& caller)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
     return CreateNewEntry(*state, path, EntryKind::Directory, permissions, flags, caller);
 }
 
-Result<void> FileSystemService::CreateFile(const NandPath& path, const EntryPermissions& permissions, std::uint8_t flags, const Caller& caller)
+Result<void> FileSystemService::CreateFile(const NandPath& path, const EntryPermissions& permissions,
+    std::uint8_t flags, const Caller& caller)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
     return CreateNewEntry(*state, path, EntryKind::File, permissions, flags, caller);

@@ -19,12 +19,15 @@ namespace
 // A file length is stored in 32 bits.
 constexpr std::uintmax_t LargestFileLength = std::numeric_limits<std::uint32_t>::max();
 
+constexpr std::uint8_t NoFlags = 0;
+
 // The root of a new NAND: owned by the super user, who may do everything. The group and everybody else may only read.
 EntryRecord MakeRootRecord()
 {
     EntryRecord root;
     root.kind = EntryKind::Directory;
-    root.attributes = EntryAttributes{SuperUserId, SuperUserGroupId, EntryPermissions{AccessRights::None, AccessRights::Read, AccessRights::Read}, 0};
+    EntryPermissions permissions = {AccessRights::None, AccessRights::Read, AccessRights::Read};
+    root.attributes = EntryAttributes{SuperUserId, SuperUserGroupId, permissions, NoFlags};
     root.linkNumber = 0;
     root.length = 0;
     return root;
@@ -243,7 +246,8 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
     if (newParent->kind != EntryKind::Directory)
         return IosError::InvalidArgument;
 
-    // An entry cannot move into itself. It cannot replace itself or a directory that it lies in either: that would delete the entry that moves.
+    // An entry cannot move into itself. It cannot replace itself or a directory that it lies in either:
+    // that would delete the entry that moves.
     bool movesIntoItself = to.IsInside(from);
     bool replacesItsOwnDirectory = from.IsInside(to);
     if (movesIntoItself || replacesItsOwnDirectory)
@@ -254,7 +258,12 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
         return IosError::AlreadyExists;
 
     // An entry that is replaced hands its host name on, so that the file on the PC can be replaced in one step.
-    std::string newHostName = replacedEntry != nullptr ? replacedEntry->hostName : ChooseHostName(to.Name(), HostNamesInside(to.Parent(), from));
+    std::string newHostName;
+    if (replacedEntry != nullptr)
+        newHostName = replacedEntry->hostName;
+    else
+        newHostName = ChooseHostName(to.Name(), HostNamesInside(to.Parent(), from));
+
     Result<void> movedOnHost = MoveOnHost(HostPath(from), HostPath(to.Parent()) / newHostName);
     if (movedOnHost.Failed())
         return movedOnHost;
