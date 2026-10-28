@@ -22,6 +22,12 @@ constexpr std::size_t MaximumOpenFiles = 15;
 // Space is counted in whole clusters.
 constexpr std::uint32_t ClusterSize = 0x4000;
 
+// The number of clusters that hold a file of this length. An empty file holds none.
+constexpr std::uint64_t ClustersForLength(std::uint64_t length)
+{
+    return (length + ClusterSize - 1) / ClusterSize;
+}
+
 // How much a NAND can hold. Every file and every directory, the root included, takes one inode.
 struct VolumeCapacity
 {

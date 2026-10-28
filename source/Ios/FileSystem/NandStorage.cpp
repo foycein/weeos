@@ -68,12 +68,6 @@ std::uint64_t HighestLinkNumber(const EntryMap& entries)
     return highest;
 }
 
-// The number of clusters that hold a file of this length.
-std::uint64_t ClustersForLength(std::uint32_t length)
-{
-    return (std::uint64_t(length) + ClusterSize - 1) / ClusterSize;
-}
-
 Result<void> CreateOnHost(const std::filesystem::path& hostPath, EntryKind kind)
 {
     // The PC may still hold leftovers of an entry that the index does not know. They are replaced.

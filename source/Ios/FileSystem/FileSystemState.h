@@ -19,10 +19,11 @@ struct FileSystemState
 {
     FileSystemState(NandStorage nandStorage, const VolumeCapacity& volumeCapacity);
 
+    // The clusters and inodes that are left. The caller holds the mutex.
     std::uint32_t FreeClusterCount() const;
     std::uint32_t FreeInodeCount() const;
 
-    // True when a file is open at this path, or at a path inside it when the path is a directory.
+    // True when a file is open at this path, or at a path inside it when the path is a directory. The caller holds the mutex.
     bool IsAnyOpenInside(const NandPath& path) const;
 
     mutable std::mutex mutex;

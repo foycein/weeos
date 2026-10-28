@@ -16,10 +16,10 @@ FileSystemState::FileSystemState(NandStorage nandStorage, const VolumeCapacity& 
 std::uint32_t FileSystemState::FreeClusterCount() const
 {
     std::uint32_t usedClusters = storage.MeasureUsage(NandPath::Root()).usedClusters;
-    if (usedClusters >= capacity.clusterCount)
+    if (usedClusters >= capacity.dataClusterCount)
         return 0;
 
-    return capacity.clusterCount - usedClusters;
+    return capacity.dataClusterCount - usedClusters;
 }
 
 std::uint32_t FileSystemState::FreeInodeCount() const
