@@ -67,6 +67,11 @@ void VirtualRemote::SetScreenShape(Platform::ScreenShape newScreenShape)
     screenShape = newScreenShape;
 }
 
+void VirtualRemote::SetPictureAreaRule(PictureAreaRule newPictureAreaRule)
+{
+    pictureAreaRule = newPictureAreaRule;
+}
+
 void VirtualRemote::SetKeyMap(std::span<const KeyBinding> newKeyMap)
 {
     keyMap.assign(newKeyMap.begin(), newKeyMap.end());
@@ -203,7 +208,11 @@ std::optional<Formats::Vector2> VirtualRemote::PointerOfTheMouse() const
     if (!mouseIsOverWindow)
         return std::nullopt;
 
-    return PixelToPointer(mousePixel, Platform::FitPicture(windowSize, screenShape));
+    Platform::PixelRectangle pictureArea = Platform::FitPicture(windowSize, screenShape);
+    if (pictureAreaRule)
+        pictureArea = pictureAreaRule(pictureArea, screenShape);
+
+    return PixelToPointer(mousePixel, pictureArea);
 }
 
 }
