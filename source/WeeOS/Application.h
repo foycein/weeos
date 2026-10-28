@@ -1,7 +1,6 @@
 #pragma once
 
-#include "WeeOS/Console.h"
-
+#include "Boot/ConsoleStartup.h"
 #include "Graphics/FramePacer.h"
 #include "Graphics/VulkanGraphicsDevice.h"
 #include "Input/VirtualRemote.h"
@@ -21,7 +20,7 @@ namespace WeeOS
 class Application
 {
 public:
-    // Throws when the console cannot start or the window cannot open.
+    // Powers the console on. Throws when the console cannot start or the window cannot open.
     explicit Application(const Ios::IosFolders& folders);
     ~Application();
 
@@ -45,7 +44,11 @@ private:
     void RunDueSteps();
     void ReportUnbuiltScreen();
 
-    Console console;
+    Boot::ConsoleStartup console;
+
+    // The services of the IOS that runs the System Menu, taken after the power on. The menu is the only title that runs, so they stay.
+    Ios::IosServices& services;
+
     Platform::Window window;
     Ios::PcKeyboard keyboard;
     Graphics::VulkanGraphicsDevice device;

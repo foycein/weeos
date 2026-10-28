@@ -17,15 +17,22 @@ constexpr std::wstring_view WindowTitle = L"WeeOS";
 // The picture of the program has the shape of a 16:9 screen. The mouse points into this picture.
 constexpr Platform::ScreenShape PictureShape = Platform::ScreenShape::SixteenByNine;
 
+Ios::IosServices& PowerOn(Boot::ConsoleStartup& console)
+{
+    console.PowerOn();
+    return console.GetServices();
+}
+
 }
 
 Application::Application(const Ios::IosFolders& folders)
     : console(folders)
+    , services(PowerOn(console))
     , window(WindowTitle)
-    , keyboard(console.Services().GetKeyboard(), console.Services().GetRemote().GetVirtualRemote())
+    , keyboard(services.GetKeyboard(), services.GetRemote().GetVirtualRemote())
     , device(window)
-    , titleContents(console.Services().GetTitles())
-    , menu(device, titleContents, console.Services().GetRemote(), PictureShape)
+    , titleContents(services.GetTitles())
+    , menu(device, titleContents, services.GetRemote(), PictureShape)
     , pacer(timer.ElapsedSeconds())
 {
     GetVirtualRemote().SetScreenShape(PictureShape);
@@ -83,7 +90,7 @@ SystemMenu::MenuSystem& Application::GetMenu()
 
 Input::VirtualRemote& Application::GetVirtualRemote()
 {
-    return console.Services().GetRemote().GetVirtualRemote();
+    return services.GetRemote().GetVirtualRemote();
 }
 
 void Application::RunDueSteps()
