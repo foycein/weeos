@@ -11,6 +11,7 @@ namespace Formats
 {
 
 constexpr std::size_t SerialEepromSize = 256;
+constexpr std::size_t KoreanKeySize = 16;
 
 // The SEEPROM of the console (the file seeprom.bin) is a small memory that boot1 and IOS can change.
 // This reads only what makes up the identity of the console. Behind it the memory holds the counters that stop
@@ -26,6 +27,13 @@ struct SerialEeprom
     // The same values that keys.txt lists, see ConsoleKeys.
     std::uint32_t ngKeyId;                                 // 0x08
     std::array<Byte, NgSignatureSize> ngSignature;         // 0x0C
+
+    // The version of boot2 that is installed. The memory keeps it twice, as the first byte of a record of ten bytes at 0x48 and at 0x52.
+    // The second record is the version before the last update of boot2, so this is the first one.
+    std::uint8_t bootTwoVersion;                           // 0x48
+
+    // The key of Korean consoles. It is all zero in the consoles of every other region.
+    std::array<Byte, KoreanKeySize> koreanKey;             // 0x74
 };
 
 // Throws a FormatError when the data does not have exactly 256 bytes.

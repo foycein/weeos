@@ -16,6 +16,8 @@ add_subdirectory(source/Graphics)
 add_subdirectory(source/Text)
 add_subdirectory(source/Layout)
 add_subdirectory(tools/NandTool)
+add_subdirectory(source/Sound)
+add_subdirectory(tools/SoundCheck)
 add_subdirectory(tools/TextureDump)
 add_subdirectory(tools/GraphicsDemo)
 
