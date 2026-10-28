@@ -4,6 +4,7 @@ add_library(Formats STATIC
     Boot2Image.cpp
     BootMiiKeyBlock.cpp
     ByteReader.cpp
+    ByteWriter.cpp
     Certificate.cpp
     ConsoleKeys.cpp
     DeviceCertificate.cpp

@@ -5,6 +5,7 @@
 #include "Ios/IosFolders.h"
 #include "Ios/Power/PowerService.h"
 #include "Ios/Result.h"
+#include "Ios/Title/TitleService.h"
 
 #include <memory>
 
@@ -35,6 +36,7 @@ public:
     FileSystemService& GetFileSystem();
     DiscDriveService& GetDiscDrive();
     PowerService& GetPower();
+    TitleService& GetTitles();
 
 private:
     void RequireRunning() const;
@@ -43,6 +45,7 @@ private:
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
     std::unique_ptr<PowerService> power;
+    std::unique_ptr<TitleService> titles;
 };
 
 }

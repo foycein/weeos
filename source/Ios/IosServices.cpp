@@ -23,6 +23,7 @@ Result<void> IosServices::Start(const IosFolders& folders)
         return prepared;
 
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
+    titles = std::make_unique<TitleService>(*fileSystem);
     discDrive = std::make_unique<DiscDriveService>();
     power = std::make_unique<PowerService>();
     isRunning = true;
@@ -60,6 +61,12 @@ PowerService& IosServices::GetPower()
 {
     RequireRunning();
     return *power;
+}
+
+TitleService& IosServices::GetTitles()
+{
+    RequireRunning();
+    return *titles;
 }
 
 void IosServices::RequireRunning() const
