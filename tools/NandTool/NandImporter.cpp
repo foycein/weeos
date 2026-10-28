@@ -1,6 +1,7 @@
 #include "NandImporter.h"
 
 #include "NandFolderLayout.h"
+#include "PersonalSettings.h"
 #include "WindowsNames.h"
 
 #include "Formats/NandTitles.h"
@@ -142,6 +143,18 @@ void WriteBytesToFile(const std::filesystem::path& filePath, const Formats::Byte
         throw std::runtime_error(std::format("Cannot write the file {}", filePath.string()));
 }
 
+// What is written for a file: the bytes the NAND holds, except for a system configuration, which loses the settings of the owner.
+Formats::Bytes ContentToImport(Formats::NandFileSystem& source, const ImportPlan& plan, const Formats::NandEntry& file)
+{
+    Formats::Bytes content = source.ReadFile(file);
+
+    ImportAction action = plan.rules[FindRuleNumber(plan.rules, file.path)].action;
+    if (action != ImportAction::ImportWithPersonalSettingsReset)
+        return content;
+
+    return ResetPersonalSettingsOfFile(content);
+}
+
 }
 
 ImportPlan PlanSystemImport(Formats::NandFileSystem& source)
@@ -160,7 +173,7 @@ ImportPlan PlanSystemImport(Formats::NandFileSystem& source)
         std::size_t ruleNumber = FindRuleNumber(plan.rules, entry.path);
         CountEntry(plan.totals[ruleNumber], entry);
 
-        bool isImported = plan.rules[ruleNumber].action == ImportAction::Import;
+        bool isImported = IsImported(plan.rules[ruleNumber].action);
         if (isImported)
             plan.importedEntries.push_back(&entry);
 
@@ -182,7 +195,7 @@ void WriteImport(Formats::NandFileSystem& source, const ImportPlan& plan, const 
         if (entry->kind == Formats::NandEntryKind::Directory)
             std::filesystem::create_directory(hostPath);
         else
-            WriteBytesToFile(hostPath, source.ReadFile(*entry));
+            WriteBytesToFile(hostPath, ContentToImport(source, plan, *entry));
     }
 
     // The index comes last: a folder without an index is an empty NAND, so an import that stops half way leaves nothing half done.

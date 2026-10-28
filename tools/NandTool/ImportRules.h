@@ -11,8 +11,17 @@
 enum class ImportAction
 {
     Import,
+
+    // The entry is a system configuration (SYSCONF). It is imported with the settings of the owner set back to the factory values.
+    ImportWithPersonalSettingsReset,
+
     Skip,
 };
+
+inline bool IsImported(ImportAction action)
+{
+    return action != ImportAction::Skip;
+}
 
 // A rule covers either only the entry at its pattern, or that entry and everything inside it.
 enum class ImportScope

@@ -53,4 +53,10 @@ struct SystemConfiguration
 
 SystemConfiguration ReadSystemConfiguration(ByteView bytes);
 
+// Makes the file the way the console keeps it: the settings one after the other, the lookup table of the known settings
+// behind them, and the footer. Reading the result gives back the same settings, and writing what the console wrote gives
+// back the same bytes. Throws a FormatError when a setting cannot be stored (a name that is empty or longer than 32 characters,
+// an array that is empty or too long, a number that does not fit its type) or when the settings do not fit in the file.
+Bytes WriteSystemConfiguration(const SystemConfiguration& configuration);
+
 }
