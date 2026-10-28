@@ -24,6 +24,9 @@ struct LoadedTexture
     std::uint32_t height = 0;
 };
 
+// The pane and all the panes below it, in drawing order.
+std::vector<Formats::Pane*> PaneWithDescendants(Formats::Pane& pane);
+
 // A layout that lives: the panes and materials of the file, which the animations change while time goes by,
 // and the pictures that it has sent to the graphics device.
 //

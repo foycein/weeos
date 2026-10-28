@@ -152,6 +152,11 @@ void ApplyMaterialTag(LiveMaterial& material, const Formats::LayoutAnimation& an
 
 }
 
+PlaybackMode PlaybackModeOf(const Formats::LayoutAnimation& animation)
+{
+    return animation.isLooping ? PlaybackMode::Loop : PlaybackMode::PlayOnce;
+}
+
 AnimationPlayer::AnimationPlayer(LiveLayout& layoutToAnimate, Formats::LayoutAnimation animationToPlay, PlaybackMode playbackMode,
     const std::vector<Formats::Pane*>& panes)
     : layout(layoutToAnimate)
@@ -164,19 +169,26 @@ AnimationPlayer::AnimationPlayer(LiveLayout& layoutToAnimate, Formats::LayoutAni
 
 void AnimationPlayer::BindObjects(const std::vector<Formats::Pane*>& panes)
 {
+    std::vector<Formats::Pane*> panesToBind;
+    for (Formats::Pane* pane : panes)
+    {
+        std::vector<Formats::Pane*> paneAndDescendants = PaneWithDescendants(*pane);
+        panesToBind.insert(panesToBind.end(), paneAndDescendants.begin(), paneAndDescendants.end());
+    }
+
     for (std::size_t objectIndex = 0; objectIndex < animation.objects.size(); ++objectIndex)
     {
         const Formats::AnimatedObject& object = animation.objects[objectIndex];
 
         if (object.isMaterial)
         {
-            LiveMaterial* material = FindMaterialNamed(layout, panes, object.name);
+            LiveMaterial* material = FindMaterialNamed(layout, panesToBind, object.name);
             if (material)
                 materialBindings.push_back({material, objectIndex});
         }
         else
         {
-            Formats::Pane* pane = FindPaneNamed(panes, object.name);
+            Formats::Pane* pane = FindPaneNamed(panesToBind, object.name);
             if (pane)
                 paneBindings.push_back({pane, objectIndex});
         }

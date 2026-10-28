@@ -47,6 +47,13 @@ const Formats::Group* FindGroupInTree(const Formats::Group& group, std::string_v
 
 }
 
+std::vector<Formats::Pane*> PaneWithDescendants(Formats::Pane& pane)
+{
+    std::vector<Formats::Pane*> panes;
+    CollectPanes(pane, panes);
+    return panes;
+}
+
 LiveLayout::LiveLayout(Graphics::GraphicsDevice& graphicsDevice, const PictureSource& pictureSource, Formats::Layout fileLayout)
     : device(graphicsDevice)
     , pictures(pictureSource)
@@ -96,9 +103,7 @@ Formats::Pane* LiveLayout::FindPane(std::string_view paneName)
 
 std::vector<Formats::Pane*> LiveLayout::AllPanes()
 {
-    std::vector<Formats::Pane*> panes;
-    CollectPanes(rootPane, panes);
-    return panes;
+    return PaneWithDescendants(rootPane);
 }
 
 std::vector<Formats::Pane*> LiveLayout::PanesOfGroup(std::string_view groupName)
