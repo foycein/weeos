@@ -10,6 +10,8 @@
 namespace Layout
 {
 
+// The caller chooses the mode. The loop bit of an animation file does not tell: the System Menu files carry it
+// also on animations that play once (pushed, focus out, fade).
 enum class PlaybackMode
 {
     // Plays the frames once and stops after the last one. The panes keep the values of the last frame.
@@ -18,9 +20,6 @@ enum class PlaybackMode
     // Starts again with the first frame after the last one.
     Loop,
 };
-
-// The mode that the loop bit of the animation file asks for.
-PlaybackMode PlaybackModeOf(const Formats::LayoutAnimation& animation);
 
 // Plays an animation on the panes and the materials of a live layout.
 //

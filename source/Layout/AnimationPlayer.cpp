@@ -152,11 +152,6 @@ void ApplyMaterialTag(LiveMaterial& material, const Formats::LayoutAnimation& an
 
 }
 
-PlaybackMode PlaybackModeOf(const Formats::LayoutAnimation& animation)
-{
-    return animation.isLooping ? PlaybackMode::Loop : PlaybackMode::PlayOnce;
-}
-
 AnimationPlayer::AnimationPlayer(LiveLayout& layoutToAnimate, Formats::LayoutAnimation animationToPlay, PlaybackMode playbackMode,
     const std::vector<Formats::Pane*>& panes)
     : layout(layoutToAnimate)
