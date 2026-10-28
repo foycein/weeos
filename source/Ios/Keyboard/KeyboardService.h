@@ -28,18 +28,19 @@ enum class KeyboardEventKind
 
 // The number that the original keyboard device writes first in an event. The native code does not need it.
 // It is here so that a log line, or a result measured on the console, can be compared with ours.
+constexpr std::uint32_t ConnectedEventType = 0;
+constexpr std::uint32_t DisconnectedEventType = 1;
+constexpr std::uint32_t KeysEventType = 2;
+
 constexpr std::uint32_t OriginalEventType(KeyboardEventKind kind)
 {
-    switch (kind)
-    {
-    case KeyboardEventKind::Connected:
-        return 0;
-    case KeyboardEventKind::Disconnected:
-        return 1;
-    case KeyboardEventKind::KeysChanged:
-        return 2;
-    }
-    return 2;
+    if (kind == KeyboardEventKind::Connected)
+        return ConnectedEventType;
+
+    if (kind == KeyboardEventKind::Disconnected)
+        return DisconnectedEventType;
+
+    return KeysEventType;
 }
 
 // What the original device hands to a program: the kind, the id of the keyboard, the modifier byte and the six places for keys.

@@ -75,13 +75,14 @@ void PcKeyboard::ChangeModifier(std::uint8_t modifierBit, bool isPressed)
 
 void PcKeyboard::ChangePressedKey(std::uint8_t usbKey, bool isPressed)
 {
-    bool isDownAlready = std::find(pressedKeys.begin(), pressedKeys.end(), usbKey) != pressedKeys.end();
+    auto position = std::find(pressedKeys.begin(), pressedKeys.end(), usbKey);
+    bool isDownAlready = position != pressedKeys.end();
 
     if (isPressed && !isDownAlready)
         pressedKeys.push_back(usbKey);
 
     if (!isPressed && isDownAlready)
-        pressedKeys.erase(std::find(pressedKeys.begin(), pressedKeys.end(), usbKey));
+        pressedKeys.erase(position);
 
     ReportKeys();
 }
