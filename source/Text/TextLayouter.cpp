@@ -84,6 +84,8 @@ public:
         LaidOutText laidOutText;
         TextArea block = PlaceBlock(lines);
         laidOutText.block = block;
+        laidOutText.blankColor = style.blankColor;
+        laidOutText.inkColor = style.inkColor;
         for (std::size_t lineNumber = 0; lineNumber < lines.size(); ++lineNumber)
             AddGlyphsOfLine(lines[lineNumber], lineNumber, block, laidOutText);
 

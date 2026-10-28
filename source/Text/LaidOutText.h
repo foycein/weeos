@@ -31,6 +31,10 @@ struct LaidOutText
 
     // The place of all lines together inside the text area.
     TextArea block;
+
+    // The colors that the glyphs are drawn between, as the style says.
+    Formats::Rgba8Color blankColor;
+    Formats::Rgba8Color inkColor;
 };
 
 }

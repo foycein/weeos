@@ -3,6 +3,7 @@
 #include "Formats/Layout.h"
 #include "Text/TextError.h"
 
+#include <algorithm>
 #include <format>
 
 namespace Text
@@ -13,6 +14,16 @@ namespace
 
 constexpr int AlignmentColumnCount = 3;
 constexpr int AlignmentRowCount = 3;
+
+Formats::Byte CutToByte(std::int16_t value)
+{
+    return static_cast<Formats::Byte>(std::clamp<std::int16_t>(value, 0, 255));
+}
+
+Formats::Rgba8Color ColorOfRegister(const Formats::SignedColor& registerColor)
+{
+    return {CutToByte(registerColor.red), CutToByte(registerColor.green), CutToByte(registerColor.blue), CutToByte(registerColor.alpha)};
+}
 
 }
 
@@ -27,7 +38,7 @@ TextAlignment TextAlignmentFromNumber(std::uint8_t number)
     return alignment;
 }
 
-TextStyle MakeTextStyle(const Formats::TextBox& textBox)
+TextStyle MakeTextStyle(const Formats::TextBox& textBox, const Formats::Material& material)
 {
     TextStyle style;
     style.fontSize = textBox.fontSize;
@@ -35,6 +46,8 @@ TextStyle MakeTextStyle(const Formats::TextBox& textBox)
     style.lineSpace = textBox.lineSpace;
     style.topColor = textBox.topColor;
     style.bottomColor = textBox.bottomColor;
+    style.blankColor = ColorOfRegister(material.foreColor);
+    style.inkColor = ColorOfRegister(material.backColor);
     style.alignment = TextAlignmentFromNumber(textBox.textOrigin);
     return style;
 }

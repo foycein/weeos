@@ -7,6 +7,7 @@
 
 namespace Formats
 {
+struct Material;
 struct TextBox;
 }
 
@@ -49,6 +50,12 @@ struct TextStyle
     Formats::Rgba8Color topColor = {255, 255, 255, 255};
     Formats::Rgba8Color bottomColor = {255, 255, 255, 255};
 
+    // A glyph is drawn in a mix of two colors: where it has no ink it takes the blank color and where it has full ink the ink color.
+    // The result is then multiplied with the top and bottom colors. With the defaults, transparent black and opaque white,
+    // the glyph is drawn in the top and bottom colors alone.
+    Formats::Rgba8Color blankColor = {0, 0, 0, 0};
+    Formats::Rgba8Color inkColor = {255, 255, 255, 255};
+
     TextAlignment alignment;
 };
 
@@ -64,7 +71,8 @@ struct TextArea
 // The layout files store the alignment as one number: vertical * 3 + horizontal.
 TextAlignment TextAlignmentFromNumber(std::uint8_t number);
 
-// The style that a text box of a layout file asks for.
-TextStyle MakeTextStyle(const Formats::TextBox& textBox);
+// The style that a text box of a layout file asks for. The blank color and the ink color are the first two color registers of the
+// material of the text box, cut to the range of a color.
+TextStyle MakeTextStyle(const Formats::TextBox& textBox, const Formats::Material& material);
 
 }
