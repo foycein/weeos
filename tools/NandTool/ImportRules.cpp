@@ -70,7 +70,8 @@ std::vector<ImportRule> FixedImportRules()
 
         ImportOnlyThisEntry("/shared2", "the folder of the files that all titles share"),
         ImportOnlyThisEntry("/shared2/sys", "the folder of the system files"),
-        ImportOnlyThisEntry("/shared2/sys/SYSCONF", "the system settings of the console"),
+        {"/shared2/sys/SYSCONF", ImportScope::OnlyThisEntry, ImportAction::ImportWithPersonalSettingsReset,
+            "the system settings of the console, without the nickname, parental controls, Wii Remotes, address and clock bias of the owner"},
         SkipEverythingInside("/shared2", "state, logs and shop data of the owner's console: not clear what they hold"),
 
         ImportEverythingInside("/sys", "state of the title service: users, certificates, space record"),
