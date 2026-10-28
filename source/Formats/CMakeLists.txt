@@ -5,6 +5,8 @@ add_library(Formats STATIC
     Certificate.cpp
     DolExecutable.cpp
     FileBytes.cpp
+    Font.cpp
+    Huffman.cpp
     Layout.cpp
     LayoutAnimation.cpp
     LayoutMaterial.cpp
