@@ -7,5 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(/W4 /permissive- /utf-8 /EHsc)
 include_directories(source tests)
 
+add_subdirectory(source/Formats)
+
 enable_testing()
 add_subdirectory(tests)
