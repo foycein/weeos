@@ -34,8 +34,8 @@ constexpr std::string_view NoticeGroup = "G_Push";
 // The notice starts this long after the message has faded in.
 constexpr double SecondsBeforeNotice = 1;
 
-// The frame around the picture has pieces for a 4:3 and for a 16:9 screen. On a wide screen the pieces take the pictures of the
-// three pieces that lie outside of the layout: a corner, a side and an edge.
+// The frame around the picture is made for a 4:3 screen. On a wide screen its pieces take the texture of one of three pictures that
+// lie outside of the layout: a corner, a side and an edge, made for a 16:9 screen.
 struct FramePieceGroup
 {
     std::string_view donorPane;
@@ -80,11 +80,18 @@ void LimitOverScreen::Build()
 
 void LimitOverScreen::FitFramePicturesToWideScreen()
 {
+    constexpr std::size_t FirstTextureMap = 0;
+
     for (const FramePieceGroup& group : WideFramePieceGroups)
     {
-        const Formats::PaneContent& donor = *layout->PaneNamed(group.donorPane).picture;
+        const Layout::LiveMaterial& donor = layout->MaterialOf(layout->PaneNamed(group.donorPane));
+
         for (std::string_view pieceName : group.piecePanes)
-            layout->PaneNamed(pieceName).picture->textureCoordinateSets = donor.textureCoordinateSets;
+        {
+            Layout::LiveMaterial& piece = layout->MaterialOf(layout->PaneNamed(pieceName));
+            piece.textureNames.at(FirstTextureMap) = donor.textureNames.at(FirstTextureMap);
+            piece.description.textures.at(FirstTextureMap) = donor.description.textures.at(FirstTextureMap);
+        }
     }
 }
 

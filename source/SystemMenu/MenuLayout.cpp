@@ -34,6 +34,14 @@ Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
     return *pane;
 }
 
+Layout::LiveMaterial& MenuLayout::MaterialOf(const Formats::Pane& pane)
+{
+    if (!pane.picture)
+        throw MenuError(std::format("The pane {} of the layout {} has no picture", pane.name, layoutName));
+
+    return layout.MaterialAt(pane.picture->materialIndex);
+}
+
 void MenuLayout::SetText(std::string_view paneName, const std::u16string& text)
 {
     Formats::Pane& pane = PaneNamed(paneName);

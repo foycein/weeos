@@ -49,9 +49,6 @@ void KeyboardDigitEntry::Update()
         std::set<std::uint8_t> keysNowDown;
         for (std::uint8_t key : event->pressedKeys)
         {
-            if (key == 0)
-                continue;
-
             keysNowDown.insert(key);
             if (state == TextEntryState::Typing && !keysDown.contains(key))
                 HandleKey(key);

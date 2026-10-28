@@ -31,6 +31,9 @@ public:
     // The first pane with this name, anywhere in the tree. Throws a MenuError when the layout has none.
     Formats::Pane& PaneNamed(std::string_view paneName);
 
+    // The material of a picture pane. Throws a MenuError when the pane is not a picture.
+    Layout::LiveMaterial& MaterialOf(const Formats::Pane& pane);
+
     // Sets the text of a text box. Throws a MenuError when the pane is not a text box.
     void SetText(std::string_view paneName, const std::u16string& text);
 

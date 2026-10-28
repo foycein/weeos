@@ -2,7 +2,6 @@
 
 #include "Input/RemoteButtons.h"
 
-#include <cmath>
 #include <utility>
 
 namespace SystemMenu
@@ -10,11 +9,6 @@ namespace SystemMenu
 
 namespace
 {
-
-bool IsInsideThePicture(Formats::Vector2 pointer)
-{
-    return std::abs(pointer.x) <= 1 && std::abs(pointer.y) <= 1;
-}
 
 bool HasPressedA(const PlayerInput& player)
 {
@@ -59,7 +53,7 @@ void ButtonGroup::Reset()
 
 std::optional<std::size_t> ButtonGroup::ButtonUnderPointer(const std::optional<PlayerInput>& player)
 {
-    if (!player || !player->state.pointerIsValid || !IsInsideThePicture(player->state.pointer))
+    if (!player || !player->state.pointerIsValid)
         return std::nullopt;
 
     Formats::Vector2 canvasPoint = display.PointerToCanvas(player->state.pointer);
