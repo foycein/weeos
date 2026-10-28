@@ -143,6 +143,10 @@ enum class BlendMode : std::uint8_t
 
     // The source replaces what was there.
     Replace,
+
+    // result = source * sourceAlpha + destination, on the colors as they are. The source is added to what was there, as much as its
+    // alpha says. The banners of some channels use it to make a logo flash.
+    AddSourceAlpha,
 };
 
 // A material says how a quad gets its colors.

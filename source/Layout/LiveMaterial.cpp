@@ -23,6 +23,7 @@ constexpr std::uint8_t CompareAlways = 7;
 
 constexpr std::uint8_t BlendNone = 0;
 constexpr std::uint8_t BlendMixing = 1;
+constexpr std::uint8_t OneFactor = 1;
 constexpr std::uint8_t SourceAlphaFactor = 4;
 constexpr std::uint8_t InverseSourceAlphaFactor = 5;
 
@@ -110,12 +111,14 @@ Graphics::BlendMode ConvertBlendMode(const Formats::Material& material)
     if (mode.function == BlendNone)
         return Graphics::BlendMode::Replace;
 
-    bool isStandardAlpha = mode.function == BlendMixing && mode.sourceFactor == SourceAlphaFactor
-        && mode.destinationFactor == InverseSourceAlphaFactor;
-    if (!isStandardAlpha)
-        FailMaterial(material, "it blends in another way than with the alpha of the source");
+    bool isMixing = mode.function == BlendMixing && mode.sourceFactor == SourceAlphaFactor;
+    if (isMixing && mode.destinationFactor == InverseSourceAlphaFactor)
+        return Graphics::BlendMode::StandardAlpha;
 
-    return Graphics::BlendMode::StandardAlpha;
+    if (isMixing && mode.destinationFactor == OneFactor)
+        return Graphics::BlendMode::AddSourceAlpha;
+
+    FailMaterial(material, "it blends in a way that is not supported");
 }
 
 Graphics::TevStage ConvertStage(const Formats::Material& material, const Formats::TevStage& record)
