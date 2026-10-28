@@ -28,7 +28,7 @@ Result<void> IosServices::Start(const IosFolders& folders)
 
     identity = std::make_unique<ConsoleIdentityService>(std::move(consoleIdentity.Value()));
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()));
-    titles = std::make_unique<TitleService>(*fileSystem);
+    titles = std::make_unique<TitleService>(*fileSystem, *identity);
     discDrive = std::make_unique<DiscDriveService>();
     power = std::make_unique<PowerService>();
     isRunning = true;

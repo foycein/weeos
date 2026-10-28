@@ -114,4 +114,44 @@ NandPath CertificateFilePath()
     return ParseBuiltPath("/sys/cert.sys");
 }
 
+NandPath ImportFamilyPath(std::uint32_t highPart)
+{
+    return ParseBuiltPath(std::format("/import/{}", FormatNameNumber(highPart)));
+}
+
+NandPath ImportTitlePath(TitleId titleId)
+{
+    return ParseBuiltPath(std::format("/import/{}/{}", FormatNameNumber(titleId.highPart), FormatNameNumber(titleId.lowPart)));
+}
+
+NandPath ImportContentFolderPath(TitleId titleId)
+{
+    return ParseBuiltPath(std::format("{}/content", ImportTitlePath(titleId).ToString()));
+}
+
+NandPath ImportMetadataPath(TitleId titleId)
+{
+    return ParseBuiltPath(std::format("{}/content/title.tmd", ImportTitlePath(titleId).ToString()));
+}
+
+NandPath ImportContentPath(TitleId titleId, std::uint32_t contentId)
+{
+    return ParseBuiltPath(std::format("{}/content/{}.app", ImportTitlePath(titleId).ToString(), FormatNameNumber(contentId)));
+}
+
+NandPath TemporaryMetadataPath()
+{
+    return ParseBuiltPath("/tmp/title.tmd");
+}
+
+NandPath TemporaryContentPath(std::uint32_t contentId)
+{
+    return ParseBuiltPath(std::format("/tmp/{}.app", FormatNameNumber(contentId)));
+}
+
+NandPath TemporarySharedContentPath(std::string_view name)
+{
+    return ParseBuiltPath(std::format("/tmp/{}.app", name));
+}
+
 }

@@ -1,6 +1,7 @@
 #include "Ios/Title/SharedContentMap.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/ByteWriter.h"
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>
@@ -57,6 +58,28 @@ std::optional<std::string> SharedContentMap::FindName(const Formats::Sha1Digest&
         return std::nullopt;
 
     return found->name;
+}
+
+std::string SharedContentMap::MakeNextName() const
+{
+    return FormatNameNumber(static_cast<std::uint32_t>(entries.size()));
+}
+
+void SharedContentMap::Add(const SharedContentEntry& entry)
+{
+    entries.push_back(entry);
+}
+
+Result<void> SharedContentMap::Write(KernelFiles& files) const
+{
+    Formats::ByteWriter writer;
+    for (const SharedContentEntry& entry : entries)
+    {
+        writer.WriteBytes(Formats::ByteView(reinterpret_cast<const Formats::Byte*>(entry.name.data()), entry.name.size()));
+        writer.WriteBytes(entry.hash);
+    }
+
+    return files.WriteFile(SharedContentMapPath(), writer.GetBytes());
 }
 
 }

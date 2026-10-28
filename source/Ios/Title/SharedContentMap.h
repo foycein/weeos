@@ -32,6 +32,13 @@ public:
     // The name of the file that holds the content with this hash, or nothing when no title has installed it.
     std::optional<std::string> FindName(const Formats::Sha1Digest& hash) const;
 
+    // The name for the next content: the number of contents so far as eight hexadecimal digits.
+    std::string MakeNextName() const;
+
+    void Add(const SharedContentEntry& entry);
+
+    Result<void> Write(KernelFiles& files) const;
+
 private:
     std::vector<SharedContentEntry> entries;
 };

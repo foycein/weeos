@@ -28,4 +28,16 @@ constexpr std::uint32_t SystemTitleHighPart = 0x00000001;
 
 constexpr TitleId SystemMenuTitleId = {SystemTitleHighPart, 0x00000002};
 
+// boot2 is 00000001-00000001, the System Menu 00000001-00000002 and the IOS versions 00000001-00000003 to 00000001-000000FF.
+// The console does not let a program delete any of them.
+constexpr std::uint32_t FirstSystemSoftwareLowPart = 0x00000001;
+constexpr std::uint32_t LastSystemSoftwareLowPart = 0x000000FF;
+
+constexpr bool IsSystemSoftware(TitleId titleId)
+{
+    return titleId.highPart == SystemTitleHighPart
+        && titleId.lowPart >= FirstSystemSoftwareLowPart
+        && titleId.lowPart <= LastSystemSoftwareLowPart;
+}
+
 }

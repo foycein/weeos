@@ -1,12 +1,15 @@
 #pragma once
 
+#include "Formats/Aes128.h"
 #include "Formats/Bytes.h"
+#include "Formats/Certificate.h"
 #include "Formats/Sha1.h"
 #include "Formats/Ticket.h"
 #include "Formats/TitleMetadata.h"
 #include "Ios/Caller.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/FileSystem/NandPath.h"
+#include "Ios/Identity/ConsoleIdentityService.h"
 #include "Ios/Result.h"
 #include "Ios/Title/ContentStream.h"
 #include "Ios/Title/KernelFiles.h"
@@ -46,12 +49,14 @@ struct LaunchPlan
 // and the program that runs. It takes the place of /dev/es. It follows the ES module of IOS80 (docs/audit/Ios.md).
 //
 // It reads and writes the NAND as the kernel does, through the file system service, which must outlive it.
+// The identity of the console tells which tickets are for this console.
 // Errors of the file system come back unchanged. The codes of ES are the ones of IosError.
 // Calls from several threads are safe.
 class TitleService
 {
 public:
-    explicit TitleService(FileSystemService& fileSystem);
+    // The file system service and the identity must outlive this object.
+    TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity);
 
     // Every title that has a folder under /title, in the order of the file system. A title that is being installed is not there yet.
     Result<std::vector<TitleId>> ListInstalledTitles() const;
@@ -110,17 +115,93 @@ public:
     // The program of the plan runs from now on. Whoever starts it, the application host, does it after this call.
     void EnterTitle(const LaunchPlan& plan);
 
+    // Installing. A title is installed in four steps: the ticket, the start (with the title metadata), the contents one after the other
+    // and the end. The signature of the ticket and of the title metadata is checked against the certificates the caller gives
+    // and the ones the NAND has kept in /sys/cert.sys. Only one title is installed at a time.
+
+    // Puts the ticket with the other tickets of the title. A ticket with the same ticket id is replaced.
+    //  - IssuerNotFound, SignatureInvalid: the certificates do not vouch for the signature.
+    //  - DeviceIdMismatch: the ticket is for another console.
+    //  - TicketInvalid: the ticket cannot be read.
+    Result<void> ImportTicket(Formats::ByteView ticket, Formats::ByteView certificateChain);
+
+    // Starts the installation of a title. An installation that was started before and is not finished is cancelled.
+    //  - TitleInvalidArgument: the title metadata cannot be read.
+    //  - IssuerNotFound, SignatureInvalid: the certificates do not vouch for the signature.
+    //  - HigherVersionInstalled: a newer version of the title is installed.
+    //  - TicketNotFound: the NAND has no ticket for the title, which holds the key of its contents.
+    //  - TicketInvalid: the title key of the ticket cannot be decrypted. Tickets that belong to one console are not supported.
+    Result<void> BeginInstallation(Formats::ByteView titleMetadata, Formats::ByteView certificateChain);
+
+    // Decrypts a content as it is stored in a WAD file and keeps it. The hash is checked against the title metadata.
+    // A shared content that is on the NAND already is not stored again.
+    //  - TitleInvalidArgument: no installation was started, or the title metadata has no content with this id.
+    //  - ContentHashMismatch: the content is not the one of the title metadata.
+    Result<void> AddContent(std::uint32_t contentId, Formats::ByteView encryptedContent);
+
+    // Makes the title available. The system titles must have all their contents that are not optional (TitleInvalidArgument).
+    // Installing over an older version replaces the contents and keeps the data folder of the title.
+    Result<void> FinishInstallation();
+
+    // Throws away what was installed so far. The shared contents stay, as on the console.
+    void CancelInstallation();
+
+    // The four steps for a WAD file. Cancels the installation when a step fails.
+    Result<void> InstallWad(Formats::ByteView wadFile);
+
+    // Removing. The System Menu, boot2 and the IOS versions cannot be removed: TitleInvalidArgument.
+
+    // Deletes the folder of the title with its data. The family folder goes too when it is empty then. The tickets stay.
+    Result<void> DeleteTitle(TitleId titleId);
+
+    // Deletes all the files of contents of a title and keeps its title metadata.
+    Result<void> DeleteTitleContents(TitleId titleId);
+
+    // Deletes one content. TitleInvalidArgument for a shared content and for an id that the title does not have.
+    Result<void> DeleteContent(TitleId titleId, std::uint32_t contentId);
+
+    // Takes the ticket of the view out of the ticket file of its title. The file goes when it has no ticket left.
+    Result<void> DeleteTicket(const TicketView& view);
+
+    // Exporting. The content of an installed title as a WAD file keeps it: encrypted with the title key, padded to whole blocks.
+    // The title metadata is ReadTitleMetadataBytes. Installing the result again gives the same content.
+    Result<Formats::Bytes> ExportContent(TitleId titleId, std::uint32_t contentId) const;
+
 private:
+    // The title that is being installed: its title metadata and the key of its contents.
+    struct Installation
+    {
+        Formats::TitleMetadata metadata;
+        Formats::AesKey titleKey;
+    };
+
     Result<std::vector<Formats::Ticket>> ReadTickets(TitleId titleId) const;
     Result<Formats::Ticket> FindTicket(TitleId titleId, std::uint64_t ticketId) const;
+    Result<Formats::AesKey> ReadTitleKey(TitleId titleId) const;
     Result<ContentStream> OpenContentRecord(const Formats::TitleMetadata& metadata, std::uint16_t contentIndex) const;
     Result<std::uint32_t> FindOrAssignUserId(TitleId titleId);
 
+    Result<void> CheckSignature(Formats::ByteView signedFile, Formats::ByteView certificateChain) const;
+    Result<void> PrepareImportFolder(TitleId titleId, Formats::ByteView titleMetadataBytes);
+    void DiscardImport(TitleId titleId);
+    Result<void> StoreTicket(Formats::ByteView ticketBytes, const Formats::Ticket& ticket);
+    Result<void> StorePrivateContent(const Installation& currentInstallation, const Formats::ContentRecord& record, Formats::ByteView content);
+    Result<void> StoreSharedContent(const Formats::ContentRecord& record, Formats::ByteView content);
+    Result<void> CheckAllContentsAreThere(const Installation& currentInstallation) const;
+    Result<void> PublishInstallation(const Installation& currentInstallation);
+    Result<void> RemoveFolderIfEmpty(const NandPath& folder);
+    void CancelInstallationWhileLocked();
+
     KernelFiles files;
+    const ConsoleIdentityService& identity;
 
     mutable std::mutex mutex;
     std::optional<TitleId> runningTitleId;
     Caller caller = SuperUserCaller;
+
+    // Guards the installation, which takes many calls. A call that installs holds it until it ends. Take it before the other mutex.
+    std::mutex installationMutex;
+    std::optional<Installation> installation;
 };
 
 }

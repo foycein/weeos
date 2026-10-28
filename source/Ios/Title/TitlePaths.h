@@ -40,6 +40,17 @@ NandPath SharedContentPath(std::string_view name);
 NandPath UserIdFilePath();
 NandPath CertificateFilePath();
 
+NandPath ImportFamilyPath(std::uint32_t highPart);
+NandPath ImportTitlePath(TitleId titleId);
+NandPath ImportContentFolderPath(TitleId titleId);
+NandPath ImportMetadataPath(TitleId titleId);
+NandPath ImportContentPath(TitleId titleId, std::uint32_t contentId);
+
+// Where the title metadata and a content wait while they are written and checked, before they are moved to their place.
+NandPath TemporaryMetadataPath();
+NandPath TemporaryContentPath(std::uint32_t contentId);
+NandPath TemporarySharedContentPath(std::string_view name);
+
 // A folder or file name that is a number of eight hexadecimal digits: "00010002", "48414341".
 std::string FormatNameNumber(std::uint32_t number);
 

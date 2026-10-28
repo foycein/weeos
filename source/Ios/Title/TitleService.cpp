@@ -1,8 +1,8 @@
 #include "Ios/Title/TitleService.h"
 
-#include "Formats/FormatError.h"
 #include "Ios/Title/ContentTypes.h"
 #include "Ios/Title/SharedContentMap.h"
+#include "Ios/Title/StoredFiles.h"
 #include "Ios/Title/TitlePaths.h"
 #include "Ios/Title/UserIdTable.h"
 
@@ -17,34 +17,7 @@ namespace Ios
 namespace
 {
 
-// A ticket file holds the tickets one after the other, each 0x2A4 bytes long.
-constexpr std::size_t StoredTicketSize = 0x2A4;
-
 constexpr std::string_view TicketFileExtension = ".tik";
-
-Result<Formats::TitleMetadata> ParseTitleMetadata(Formats::ByteView bytes)
-{
-    try
-    {
-        return Formats::ReadTitleMetadata(bytes);
-    }
-    catch (const Formats::FormatError&)
-    {
-        return IosError::ShortRead;
-    }
-}
-
-Result<Formats::Ticket> ParseTicket(Formats::ByteView bytes)
-{
-    try
-    {
-        return Formats::ReadTicket(bytes);
-    }
-    catch (const Formats::FormatError&)
-    {
-        return IosError::TicketInvalid;
-    }
-}
 
 // The number in the name of a ticket file such as "48414341.tik".
 std::optional<std::uint32_t> ParseTicketFileName(std::string_view name)
@@ -78,8 +51,9 @@ const Formats::ContentRecord* FindContentByIndex(const Formats::TitleMetadata& m
 
 }
 
-TitleService::TitleService(FileSystemService& fileSystem)
+TitleService::TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity)
     : files(fileSystem)
+    , identity(consoleIdentity)
 {
 }
 
@@ -192,7 +166,7 @@ Result<Formats::TitleMetadata> TitleService::ReadTitleMetadata(TitleId titleId) 
     if (bytes.Failed())
         return bytes.Error();
 
-    return ParseTitleMetadata(bytes.Value());
+    return ParseTitleMetadata(bytes.Value(), IosError::ShortRead);
 }
 
 Result<TitleMetadataView> TitleService::ReadTitleMetadataView(TitleId titleId) const
@@ -219,7 +193,7 @@ Result<std::vector<Formats::Ticket>> TitleService::ReadTickets(TitleId titleId) 
     for (std::size_t ticketNumber = 0; ticketNumber < ticketCount; ++ticketNumber)
     {
         Formats::ByteView ticketBytes(bytes.Value().data() + ticketNumber * StoredTicketSize, StoredTicketSize);
-        Result<Formats::Ticket> ticket = ParseTicket(ticketBytes);
+        Result<Formats::Ticket> ticket = ParseTicket(ticketBytes, IosError::TicketInvalid);
         if (ticket.Failed())
             return ticket.Error();
 
