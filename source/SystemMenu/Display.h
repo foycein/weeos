@@ -2,6 +2,7 @@
 
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Layout/TextFonts.h"
 #include "Platform/ScreenShape.h"
 
 namespace SystemMenu
@@ -22,6 +23,10 @@ public:
 
     Platform::ScreenShape GetScreenShape() const;
     void SetScreenShape(Platform::ScreenShape newScreenShape);
+
+    // The fonts that the text boxes are drawn with. A text box draws nothing until the menu has set them.
+    const Layout::TextFonts* GetTextFonts() const;
+    void SetTextFonts(const Layout::TextFonts* newTextFonts);
 
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
@@ -44,6 +49,7 @@ public:
 private:
     Graphics::GraphicsDevice& device;
     Platform::ScreenShape screenShape;
+    const Layout::TextFonts* textFonts = nullptr;
 };
 
 }

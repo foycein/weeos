@@ -25,6 +25,9 @@ public:
 
     bool IsPlaying() const;
 
+    // Shows one frame and plays nothing, for an animation that a value drives, like a progress bar.
+    void ShowFrame(float frame);
+
     // One frame further, if the animation is playing.
     void Step();
 

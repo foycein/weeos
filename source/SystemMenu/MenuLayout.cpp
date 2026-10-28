@@ -2,6 +2,7 @@
 
 #include "SystemMenu/MenuError.h"
 
+#include "Layout/HitTest.h"
 #include "Layout/LayoutDrawer.h"
 
 #include <format>
@@ -33,10 +34,38 @@ Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
     return *pane;
 }
 
+void MenuLayout::SetText(std::string_view paneName, const std::u16string& text)
+{
+    Formats::Pane& pane = PaneNamed(paneName);
+    if (!pane.textBox)
+        throw MenuError(std::format("The pane {} of the layout {} is not a text box", paneName, layoutName));
+
+    pane.textBox->text = text;
+}
+
 std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::string_view groupName, Layout::PlaybackMode mode)
 {
     animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, layout.PanesOfGroup(groupName)));
     return animations.size() - 1;
+}
+
+std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::string_view groupName)
+{
+    Layout::PlaybackMode mode = ModeOfAnimationFile(animationName);
+    return BindAnimation(animationName, groupName, mode);
+}
+
+std::size_t MenuLayout::BindAnimationToAllPanes(const std::string& animationName)
+{
+    Layout::PlaybackMode mode = ModeOfAnimationFile(animationName);
+    animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, std::vector<Formats::Pane*>{&layout.RootPane()}));
+    return animations.size() - 1;
+}
+
+Layout::PlaybackMode MenuLayout::ModeOfAnimationFile(const std::string& animationName) const
+{
+    bool isLooping = archive.ReadAnimation(animationName).isLooping;
+    return isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
 }
 
 void MenuLayout::StartAnimation(std::size_t slot)
@@ -49,6 +78,16 @@ bool MenuLayout::IsAnimationPlaying(std::size_t slot) const
     return animations.at(slot)->IsPlaying();
 }
 
+void MenuLayout::ShowAnimationFrame(std::size_t slot, float frame)
+{
+    animations.at(slot)->ShowFrame(frame);
+}
+
+std::vector<const Formats::Pane*> MenuLayout::BoundingPanesAt(Formats::Vector2 canvasPoint)
+{
+    return Layout::FindBoundingPanesAt(layout.RootPane(), canvasPoint, placementSettings);
+}
+
 void MenuLayout::Calculate()
 {
     FitToScreenShape();
@@ -59,7 +98,7 @@ void MenuLayout::Calculate()
 
 void MenuLayout::Draw()
 {
-    Layout::DrawLayout(display.Device(), layout, placementSettings);
+    Layout::DrawLayout(display.Device(), layout, placementSettings, display.GetTextFonts());
 }
 
 // On a wide screen the root pane stretches the whole layout to fill the picture, and the panes that adjust their location are

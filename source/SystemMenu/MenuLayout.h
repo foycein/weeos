@@ -31,12 +31,27 @@ public:
     // The first pane with this name, anywhere in the tree. Throws a MenuError when the layout has none.
     Formats::Pane& PaneNamed(std::string_view paneName);
 
+    // Sets the text of a text box. Throws a MenuError when the pane is not a text box.
+    void SetText(std::string_view paneName, const std::u16string& text);
+
     // Binds the animation "<animationName>.brlan" of the archive to the panes of the group and the panes below them.
     // Gives back the slot of the animation: 0 for the first animation that was bound, then 1 and so on.
     std::size_t BindAnimation(const std::string& animationName, std::string_view groupName, Layout::PlaybackMode mode);
 
+    // The same with the mode that the loop bit of the animation file says: it plays once, or it plays again and again.
+    std::size_t BindAnimation(const std::string& animationName, std::string_view groupName);
+
+    // Binds the animation to every pane of the layout.
+    std::size_t BindAnimationToAllPanes(const std::string& animationName);
+
     void StartAnimation(std::size_t slot);
     bool IsAnimationPlaying(std::size_t slot) const;
+
+    // Shows a frame of the animation and plays nothing.
+    void ShowAnimationFrame(std::size_t slot, float frame);
+
+    // The bounding panes that lie under a place of the picture, in layout units of the picture, the one in front first.
+    std::vector<const Formats::Pane*> BoundingPanesAt(Formats::Vector2 canvasPoint);
 
     // One step: fits the layout to the shape of the screen and moves every animation that plays one frame on.
     void Calculate();
@@ -44,6 +59,7 @@ public:
     void Draw();
 
 private:
+    Layout::PlaybackMode ModeOfAnimationFile(const std::string& animationName) const;
     void FitToScreenShape();
 
     Display& display;

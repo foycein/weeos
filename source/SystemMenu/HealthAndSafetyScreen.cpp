@@ -35,17 +35,12 @@ constexpr std::string_view NoticeGroup = "G_Push";
 // The notice starts this long after the warning has faded in.
 constexpr double SecondsBeforeNotice = 1;
 
-// For this long after the notice has started, remotes may connect and disconnect without that ending the screen.
-constexpr double SecondsOfSettlingRemotes = 2;
-
-// The screen goes on by itself when nobody does anything for this long.
-constexpr double SecondsBeforeGoingOnAlone = 60;
-
 }
 
 HealthAndSafetyScreen::HealthAndSafetyScreen(MenuServices& menuServices)
     : Screen(ScreenId::HealthAndSafety)
     , services(menuServices)
+    , continueWatcher(menuServices.input, menuServices.clock)
 {
 }
 
@@ -124,38 +119,17 @@ void HealthAndSafetyScreen::StartNotice()
 {
     noticePicture->isVisible = true;
     layout->StartAnimation(noticeSlot);
-    noticeBeganSeconds = services.clock.Seconds();
-    rememberedPlayers = services.input.ConnectedPlayers();
+    continueWatcher.Begin();
 }
 
 bool HealthAndSafetyScreen::RunMain()
 {
-    bool isDone = DoesTheUserWantToGoOn();
+    bool isDone = continueWatcher.HasUserConfirmed();
     if (isDone)
         layout->StartAnimation(seenOutSlot);
 
     layout->Calculate();
     return isDone;
-}
-
-// A press of A or B goes on. So does a remote that connects (the user presses a button to connect it), and so does a long wait.
-bool HealthAndSafetyScreen::DoesTheUserWantToGoOn()
-{
-    std::bitset<PlayerCount> connectedPlayers = services.input.ConnectedPlayers();
-    double secondsSinceNotice = services.clock.Seconds() - noticeBeganSeconds;
-
-    if (secondsSinceNotice < SecondsOfSettlingRemotes)
-        rememberedPlayers = connectedPlayers;
-
-    bool hasNewRemote = (connectedPlayers & ~rememberedPlayers).any();
-
-    // A remote that went away is forgotten, so that it counts as new when it comes back.
-    if (!hasNewRemote)
-        rememberedPlayers = connectedPlayers;
-
-    bool isConfirmed = services.input.AnyPlayerPressed(ConfirmButtons);
-    bool hasWaitedTooLong = secondsSinceNotice > SecondsBeforeGoingOnAlone;
-    return isConfirmed || hasNewRemote || hasWaitedTooLong;
 }
 
 bool HealthAndSafetyScreen::RunClosing()

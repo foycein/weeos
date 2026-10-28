@@ -25,6 +25,13 @@ bool MenuAnimation::IsPlaying() const
     return isPlaying;
 }
 
+void MenuAnimation::ShowFrame(float frame)
+{
+    player.emplace(layout, animation, mode, panes);
+    player->Advance(frame);
+    isPlaying = false;
+}
+
 void MenuAnimation::Step()
 {
     if (!isPlaying)

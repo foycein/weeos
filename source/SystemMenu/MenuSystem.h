@@ -1,17 +1,31 @@
 #pragma once
 
 #include "SystemMenu/CursorManager.h"
+#include "SystemMenu/DialogManager.h"
 #include "SystemMenu/Display.h"
+#include "SystemMenu/ErrorScreen.h"
 #include "SystemMenu/Fader.h"
+#include "SystemMenu/FatalError.h"
+#include "SystemMenu/FrontPanel.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuServices.h"
+#include "SystemMenu/MenuSettings.h"
+#include "SystemMenu/NandFiles.h"
+#include "SystemMenu/ParentalAnswer.h"
+#include "SystemMenu/ProgramImage.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/TextEntry.h"
 #include "SystemMenu/TitleContents.h"
 
+#include "Ios/Power/PowerService.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Text/MessageCatalog.h"
+
+#include <optional>
+#include <string>
 
 namespace SystemMenu
 {
@@ -21,12 +35,13 @@ namespace SystemMenu
 class MenuSystem
 {
 public:
-    // Reads the resources of the menu from the contents of the System Menu title and starts the first screen.
-    // The device, the contents and the remote service must outlive the menu.
-    MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-        Platform::ScreenShape screenShape);
+    // Reads the resources of the menu from the contents of the System Menu title, chooses the first screen from the files of the NAND
+    // and starts it. The device, the contents, the files, the services and the text entry must outlive the menu.
+    MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles, Ios::RemoteService& remoteService,
+        Ios::PowerService& powerService, TextEntry& textEntryOfTheMenu, Platform::ScreenShape screenShape);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
+    // A MenuError that a screen throws ends the menu with the error screen.
     void Update();
 
     // Starts a new picture of the screen and draws it. The program shows it with Present.
@@ -35,9 +50,17 @@ public:
     // Draws the picture into the picture that is open, for example an offscreen picture.
     void DrawScene();
 
+    // The menu stops and shows the text of the reason, until the console is switched off or reset.
+    void ShowFatalError(FatalError reason);
+
+    // What went wrong, when an error ended the menu. For the log of the program.
+    const std::optional<std::string>& FatalErrorMessage() const;
+
     MenuServices& Services();
 
 private:
+    void RunStep();
+
     Display display;
     MenuFiles files;
     Text::MessageCatalog messages;
@@ -46,7 +69,17 @@ private:
     InputManager input;
     CursorManager cursors;
     ScreenManager screens;
+    ProgramImage program;
+    MenuSettings settings;
+    MenuFonts fonts;
+    DialogManager dialogs;
+    ErrorScreen errorScreen;
+    FrontPanel frontPanel;
+    NandFiles& nand;
+    TextEntry& textEntry;
+    ParentalAnswer parentalAnswer = ParentalAnswer::None;
     MenuServices services;
+    std::optional<std::string> fatalErrorMessage;
 };
 
 }

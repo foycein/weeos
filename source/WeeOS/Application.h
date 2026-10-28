@@ -3,13 +3,12 @@
 #include "Boot/ConsoleStartup.h"
 #include "Graphics/FramePacer.h"
 #include "Graphics/VulkanGraphicsDevice.h"
-#include "Input/VirtualRemote.h"
-#include "Ios/Keyboard/PcKeyboard.h"
+#include "Platform/HostKeys.h"
 #include "Platform/PreciseTimer.h"
 #include "Platform/Window.h"
 #include "SystemMenu/MenuSystem.h"
-#include "SystemMenu/OwnTitleContents.h"
 
+#include <memory>
 #include <optional>
 
 namespace WeeOS
@@ -17,7 +16,8 @@ namespace WeeOS
 
 // WeeOS.exe: the console starts, a window opens and the System Menu runs in it.
 // The mouse over the window is the hand of remote 1, the left mouse button is A and the right one is B.
-class Application
+// Ctrl+Q is the POWER button (and so is closing the window), Ctrl+R is the RESET button and Ctrl+S puts the SD card in or takes it out.
+class Application : private Platform::HostCommandListener
 {
 public:
     // Powers the console on. Throws when the console cannot start or the window cannot open.
@@ -27,35 +27,43 @@ public:
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
-    // Shows pictures until the user closes the window.
+    // Shows pictures until the console is powered off.
     void Run();
 
     // One picture: handles the events of the window, runs the steps of the menu that are due and shows the newest state.
     void ShowNextPicture();
 
-    bool IsCloseRequested() const;
+    bool IsPoweredOff() const;
 
     Platform::Window& GetWindow();
     Graphics::VulkanGraphicsDevice& GetDevice();
     SystemMenu::MenuSystem& GetMenu();
 
 private:
-    Input::VirtualRemote& GetVirtualRemote();
+    // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
+    class Session;
+
+    void OnHostCommand(Platform::HostCommand command) override;
+
+    void StartSession();
+    void ReportCloseOfTheWindowAsPowerButton();
     void RunDueSteps();
-    void ReportUnbuiltScreen();
+    void CarryOutPowerRequests();
+    void ResetConsole();
+    void ToggleSdCard();
+    void ReportProblems();
 
+    Ios::IosFolders folders;
     Boot::ConsoleStartup console;
-
-    // The services of the IOS that runs the System Menu, taken after the power on. The menu is the only title that runs, so they stay.
-    Ios::IosServices& services;
-
     Platform::Window window;
-    Ios::PcKeyboard keyboard;
     Graphics::VulkanGraphicsDevice device;
-    SystemMenu::OwnTitleContents titleContents;
-    SystemMenu::MenuSystem menu;
+    std::unique_ptr<Session> session;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;
+
+    bool isPoweredOff = false;
+    bool hasReportedClose = false;
+    bool hasReportedFatalError = false;
     std::optional<SystemMenu::ScreenId> reportedUnbuiltScreen;
 };
 

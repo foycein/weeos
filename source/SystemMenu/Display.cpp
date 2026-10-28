@@ -31,6 +31,16 @@ void Display::SetScreenShape(Platform::ScreenShape newScreenShape)
     screenShape = newScreenShape;
 }
 
+const Layout::TextFonts* Display::GetTextFonts() const
+{
+    return textFonts;
+}
+
+void Display::SetTextFonts(const Layout::TextFonts* newTextFonts)
+{
+    textFonts = newTextFonts;
+}
+
 Graphics::Canvas Display::GetCanvas() const
 {
     if (screenShape == Platform::ScreenShape::SixteenByNine)

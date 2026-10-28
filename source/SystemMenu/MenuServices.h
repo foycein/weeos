@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SystemMenu/ParentalAnswer.h"
+
 namespace Text
 {
 class MessageCatalog;
@@ -9,12 +11,17 @@ namespace SystemMenu
 {
 
 class CursorManager;
+class DialogManager;
 class Display;
 class Fader;
 class InputManager;
 class MenuClock;
 class MenuFiles;
+class MenuSettings;
+class NandFiles;
+class ProgramImage;
 class ScreenManager;
+class TextEntry;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -28,6 +35,14 @@ struct MenuServices
     InputManager& input;
     CursorManager& cursors;
     ScreenManager& screens;
+    ProgramImage& program;
+    NandFiles& nand;
+    MenuSettings& settings;
+    DialogManager& dialogs;
+    TextEntry& textEntry;
+
+    // Where the password dialog of the parental controls leaves its answer.
+    ParentalAnswer& parentalAnswer;
 };
 
 }
