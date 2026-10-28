@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Ios/Clock.h"
 #include "Ios/DiscDrive/DiscDriveService.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/IosFolders.h"
@@ -8,6 +9,7 @@
 #include "Ios/Power/PowerService.h"
 #include "Ios/Result.h"
 #include "Ios/SdCard/SdCardService.h"
+#include "Ios/WiiConnect24/WiiConnect24Service.h"
 
 #include <memory>
 
@@ -25,6 +27,7 @@ public:
     // Brings IOS up. First the NAND folder is made ready, as the console does every time IOS starts, then the services start.
     // Gives back NoFileSystem when the NAND folder cannot be used and AlreadyExists when the services are running already.
     // NotFound or InvalidArgument when the identity folder is named but its keys.txt is missing or cannot be read.
+    // The folders and files of WiiConnect24 are made on the way, so the NAND must have room for them (about 9 MiB).
     Result<void> Start(const IosFolders& folders);
 
     // Stops the services. The file system shuts down, so a file that is still open cannot be used any more,
@@ -42,6 +45,7 @@ public:
     SdCardService& GetSdCard();
     WirelessService& GetWireless();
     NetworkConfigService& GetNetworkConfig();
+    WiiConnect24Service& GetWiiConnect24();
     PowerService& GetPower();
 
 private:
@@ -49,11 +53,13 @@ private:
     void DestroyServices();
 
     bool isRunning = false;
+    SystemClock clock;
     std::unique_ptr<FileSystemService> fileSystem;
     std::unique_ptr<DiscDriveService> discDrive;
     std::unique_ptr<SdCardService> sdCard;
     std::unique_ptr<WirelessService> wireless;
     std::unique_ptr<NetworkConfigService> networkConfig;
+    std::unique_ptr<WiiConnect24Service> wiiConnect24;
     std::unique_ptr<PowerService> power;
 };
 

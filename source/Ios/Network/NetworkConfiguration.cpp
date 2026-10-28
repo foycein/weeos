@@ -1,9 +1,9 @@
 #include "Ios/Network/NetworkConfiguration.h"
 
 #include "Formats/ByteReader.h"
+#include "Ios/BigEndianBytes.h"
 
 #include <algorithm>
-#include <stdexcept>
 
 namespace Ios
 {
@@ -158,39 +158,6 @@ ConnectionProfile DecodeProfile(Formats::ByteReader& reader, std::size_t profile
 }
 
 // Writing
-
-void PutByte(Formats::Bytes& bytes, std::size_t offset, Formats::Byte value)
-{
-    bytes[offset] = value;
-}
-
-void PutUint16(Formats::Bytes& bytes, std::size_t offset, std::uint16_t value)
-{
-    bytes[offset] = static_cast<Formats::Byte>(value >> Formats::BitsPerByte);
-    bytes[offset + 1] = static_cast<Formats::Byte>(value);
-}
-
-void PutUint32(Formats::Bytes& bytes, std::size_t offset, std::uint32_t value)
-{
-    constexpr int bitsPerHalf = 2 * Formats::BitsPerByte;
-
-    PutUint16(bytes, offset, static_cast<std::uint16_t>(value >> bitsPerHalf));
-    PutUint16(bytes, offset + sizeof(std::uint16_t), static_cast<std::uint16_t>(value));
-}
-
-// Puts the text into a field. The rest of the field stays zero.
-void PutText(Formats::Bytes& bytes, std::size_t offset, const std::string& text, std::size_t fieldSize)
-{
-    if (text.size() > fieldSize)
-        throw std::invalid_argument("A text of the network configuration is longer than its field");
-
-    std::copy(text.begin(), text.end(), bytes.begin() + offset);
-}
-
-void PutBytes(Formats::Bytes& bytes, std::size_t offset, Formats::ByteView data)
-{
-    std::copy(data.begin(), data.end(), bytes.begin() + offset);
-}
 
 void EncodeProxy(Formats::Bytes& bytes, std::size_t proxyStart, const ProxySettings& proxy)
 {

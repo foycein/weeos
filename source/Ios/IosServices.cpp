@@ -51,6 +51,11 @@ Result<void> IosServices::Start(const IosFolders& folders)
     PutCardIntoSlot(*sdCard, folders);
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
     networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value());
+    wiiConnect24 = std::make_unique<WiiConnect24Service>(*fileSystem, clock);
+    Result<void> filesPrepared = wiiConnect24->PrepareFiles();
+    if (filesPrepared.Failed())
+        return filesPrepared;
+
     power = std::make_unique<PowerService>();
     isRunning = true;
     return Result<void>();
@@ -71,6 +76,7 @@ void IosServices::Stop()
 void IosServices::DestroyServices()
 {
     power.reset();
+    wiiConnect24.reset();
     networkConfig.reset();
     wireless.reset();
     sdCard.reset();
@@ -111,6 +117,12 @@ NetworkConfigService& IosServices::GetNetworkConfig()
 {
     RequireRunning();
     return *networkConfig;
+}
+
+WiiConnect24Service& IosServices::GetWiiConnect24()
+{
+    RequireRunning();
+    return *wiiConnect24;
 }
 
 PowerService& IosServices::GetPower()

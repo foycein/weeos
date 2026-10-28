@@ -1,5 +1,7 @@
 #include "Ios/Network/NetworkConfigService.h"
 
+#include "Ios/FileSystem/NewEntryDefaults.h"
+
 #include <algorithm>
 
 namespace Ios
@@ -12,9 +14,6 @@ namespace
 constexpr std::string_view FolderPaths[] = {"/shared2/sys", "/shared2/sys/net", "/shared2/sys/net/02"};
 constexpr std::string_view NewFilePath = "/shared2/sys/net/02/config.dat";
 constexpr std::string_view OldFilePath = "/shared2/sys/net/config.dat";
-
-constexpr EntryPermissions EveryoneReadWrite = {AccessRights::ReadWrite, AccessRights::ReadWrite, AccessRights::ReadWrite};
-constexpr std::uint8_t NoFlags = 0;
 
 NandPath PathOf(std::string_view text)
 {
@@ -34,7 +33,7 @@ Result<void> MakeMissingFolders(FileSystemService& fileSystem)
         if (Exists(fileSystem, folder))
             continue;
 
-        Result<void> made = fileSystem.CreateDirectory(folder, EveryoneReadWrite, NoFlags, NetworkConfigCaller);
+        Result<void> made = fileSystem.CreateDirectory(folder, ReadWriteForEveryone, NoEntryFlags, NetworkConfigCaller);
         if (made.Failed())
             return made;
     }
@@ -111,7 +110,7 @@ Result<void> NetworkConfigService::WriteConfiguration(const NetworkConfiguration
         if (madeFolders.Failed())
             return madeFolders;
 
-        Result<void> created = fileSystem.CreateFile(file, EveryoneReadWrite, NoFlags, NetworkConfigCaller);
+        Result<void> created = fileSystem.CreateFile(file, ReadWriteForEveryone, NoEntryFlags, NetworkConfigCaller);
         if (created.Failed())
             return created;
     }
