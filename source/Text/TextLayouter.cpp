@@ -18,7 +18,8 @@ constexpr char16_t Tab = 0x0009;
 // The character that opens a mark and the character that closes it.
 constexpr char16_t MarkCharacter = 0x001A;
 
-// The characters before the space are control codes. They have no glyph and take no room, apart from the line feed and the tab.
+// The characters before the space are control codes. They have no glyph and take no room; only the line feed (it ends the line)
+// and the tab (it moves the pen) do something.
 constexpr char16_t FirstPrintableCharacter = 0x0020;
 
 // A tab moves the pen to the next multiple of four character widths, counted from the start of the line. A character width is the
@@ -32,8 +33,8 @@ bool IsControlCode(char16_t character)
     return character < FirstPrintableCharacter;
 }
 
-// A line feed ends the line, and a tab and a glyph take room. Every other control code is skipped.
-bool TakesNoRoom(char16_t character)
+// The control codes that are skipped: all but the tab. (The line feed ends the line before this is asked.)
+bool IsSkippedControlCode(char16_t character)
 {
     return IsControlCode(character) && character != Tab;
 }
@@ -192,13 +193,13 @@ private:
             if (character == LineFeed)
                 return {{lineStart, index, lineWidth, true}, index + 1, false};
 
-            if (TakesNoRoom(character))
+            if (IsSkippedControlCode(character))
                 continue;
 
             float widthWithCharacter = WidthAfter(character, lineWidth, followsGlyph);
             bool reachesBeyondTheArea = widthWithCharacter > area.width;
-            bool isFirstCharacter = index == lineStart;
-            if (reachesBeyondTheArea && !isFirstCharacter)
+            bool isFirstCharacterOfTheLine = index == lineStart;
+            if (reachesBeyondTheArea && !isFirstCharacterOfTheLine)
                 return {{lineStart, index, lineWidth, false}, index, false};
 
             lineWidth = widthWithCharacter;
@@ -276,38 +277,39 @@ private:
             laidOutText.characters.push_back({lineNumber, pen.x, 0});
     }
 
+    // Every character of a line has a place. A control code takes no room, a tab takes the room up to its stop and a glyph its advance.
     void AddCharacter(std::size_t index, const LinePlace& place, Pen& pen, LaidOutText& laidOutText) const
     {
         char16_t character = text[index];
-
-        PlacedCharacter placed;
-        placed.lineNumber = place.lineNumber;
-        placed.left = pen.x;
-        placed.advance = 0;
+        PlacedCharacter placed = {place.lineNumber, pen.x, 0};
 
         if (character == Tab)
-        {
-            float tabEnd = place.left + NextTabStop(pen.x - place.left);
-            placed.advance = tabEnd - pen.x;
-            pen.x = tabEnd;
-            pen.followsGlyph = false;
-            laidOutText.characters.push_back(placed);
-            return;
-        }
+            MovePenToNextTabStop(place, pen, placed);
+        else if (!IsControlCode(character))
+            AddGlyph(index, place, pen, placed, laidOutText);
 
-        if (IsControlCode(character))
-        {
-            laidOutText.characters.push_back(placed);
-            return;
-        }
+        laidOutText.characters.push_back(placed);
+    }
 
+    // No character space comes after a tab.
+    void MovePenToNextTabStop(const LinePlace& place, Pen& pen, PlacedCharacter& placed) const
+    {
+        float tabEnd = place.left + NextTabStop(pen.x - place.left);
+        placed.advance = tabEnd - pen.x;
+        pen.x = tabEnd;
+        pen.followsGlyph = false;
+    }
+
+    // The character space comes first when a glyph stands in front of this one.
+    void AddGlyph(std::size_t index, const LinePlace& place, Pen& pen, PlacedCharacter& placed, LaidOutText& laidOutText) const
+    {
+        char16_t character = text[index];
         if (pen.followsGlyph)
             pen.x += style.characterSpace;
 
         placed.left = pen.x;
         placed.advance = AdvanceOf(character);
         laidOutText.glyphs.push_back(MakeGlyph(character, index, pen.x, place.baselineY));
-        laidOutText.characters.push_back(placed);
 
         pen.x += placed.advance;
         pen.followsGlyph = true;
