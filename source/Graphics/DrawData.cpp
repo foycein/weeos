@@ -22,12 +22,12 @@ std::uint32_t ToNumber(Enumeration enumeration)
     return static_cast<std::uint32_t>(enumeration);
 }
 
-GpuColor ToGpuColor(const RegisterColor& color)
+ShaderColor ToShaderColor(const RegisterColor& color)
 {
     return {color.red / FullIntensity, color.green / FullIntensity, color.blue / FullIntensity, color.alpha / FullIntensity};
 }
 
-GpuColor ToGpuColor(const Formats::Rgba8Color& color)
+ShaderColor ToShaderColor(const Formats::Rgba8Color& color)
 {
     return {color.red / FullIntensity, color.green / FullIntensity, color.blue / FullIntensity, color.alpha / FullIntensity};
 }
@@ -50,9 +50,9 @@ std::array<float, 6> FlattenTextureMatrix(const TextureMatrix& matrix)
 
 }
 
-GpuStage PackStage(const TevStage& stage)
+ShaderStage PackStage(const TevStage& stage)
 {
-    GpuStage packed = {};
+    ShaderStage packed = {};
 
     packed.textureIndex = stage.textureIndex;
     packed.usesRasterColor = stage.usesRasterColor ? 1 : 0;
@@ -82,15 +82,15 @@ GpuStage PackStage(const TevStage& stage)
     return packed;
 }
 
-GpuDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std::uint32_t firstStage, std::uint32_t stageCount)
+ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std::uint32_t firstStage, std::uint32_t stageCount)
 {
-    GpuDrawRecord record = {};
+    ShaderDrawRecord record = {};
 
     for (std::size_t registerNumber = 0; registerNumber < ColorRegisterCount; ++registerNumber)
-        record.colorRegisters[registerNumber] = ToGpuColor(material.colorRegisters[registerNumber]);
+        record.colorRegisters[registerNumber] = ToShaderColor(material.colorRegisters[registerNumber]);
 
     for (std::size_t constantNumber = 0; constantNumber < ConstantColorCount; ++constantNumber)
-        record.constantColors[constantNumber] = ToGpuColor(material.constantColors[constantNumber]);
+        record.constantColors[constantNumber] = ToShaderColor(material.constantColors[constantNumber]);
 
     record.cornerPositions = quad.positions;
     record.textureCoordinates = quad.textureCoordinates;

@@ -16,7 +16,7 @@ constexpr std::size_t MaximumStagesPerPicture = 32768;
 // The data of a draw as the shaders read it. The structures in this file have exactly the layout of the structures in
 // Shaders/DrawData.glsl: when one changes, the other has to change the same way.
 
-struct GpuColor
+struct ShaderColor
 {
     float red;
     float green;
@@ -25,7 +25,7 @@ struct GpuColor
 };
 
 // One stage. Every field of TevStage has a number of its own.
-struct GpuStage
+struct ShaderStage
 {
     std::uint32_t textureIndex;
     std::uint32_t usesRasterColor;
@@ -53,12 +53,12 @@ struct GpuStage
     std::uint32_t alphaOutput;
 };
 
-// One quad with its material. The stages of the draw are GpuStage structures in the stage buffer, starting at firstStage.
-struct GpuDrawRecord
+// One quad with its material. The stages of the draw are ShaderStage structures in the stage buffer, starting at firstStage.
+struct ShaderDrawRecord
 {
     // The registers and constants are colors in the range 0 to 1, where 1 is the 255 of the material.
-    std::array<GpuColor, ColorRegisterCount> colorRegisters;
-    std::array<GpuColor, ConstantColorCount> constantColors;
+    std::array<ShaderColor, ColorRegisterCount> colorRegisters;
+    std::array<ShaderColor, ConstantColorCount> constantColors;
 
     std::array<Formats::Vector2, QuadCornerCount> cornerPositions;
     std::array<std::array<Formats::Vector2, QuadCornerCount>, MaximumTextureCount> textureCoordinates;
@@ -73,14 +73,14 @@ struct GpuDrawRecord
     std::uint32_t stageCount;
 };
 
-static_assert(sizeof(GpuStage) == 22 * sizeof(std::uint32_t));
-static_assert(sizeof(GpuDrawRecord) == 336);
-static_assert(offsetof(GpuDrawRecord, constantColors) == 48);
-static_assert(offsetof(GpuDrawRecord, cornerPositions) == 112);
-static_assert(offsetof(GpuDrawRecord, cornerColors) == 312);
+static_assert(sizeof(ShaderStage) == 22 * sizeof(std::uint32_t));
+static_assert(sizeof(ShaderDrawRecord) == 336);
+static_assert(offsetof(ShaderDrawRecord, constantColors) == 48);
+static_assert(offsetof(ShaderDrawRecord, cornerPositions) == 112);
+static_assert(offsetof(ShaderDrawRecord, cornerColors) == 312);
 
-GpuStage PackStage(const TevStage& stage);
+ShaderStage PackStage(const TevStage& stage);
 
-GpuDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std::uint32_t firstStage, std::uint32_t stageCount);
+ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std::uint32_t firstStage, std::uint32_t stageCount);
 
 }

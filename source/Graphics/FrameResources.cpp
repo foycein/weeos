@@ -14,8 +14,8 @@ constexpr VkMemoryPropertyFlags ReachableByTheProgram = VK_MEMORY_PROPERTY_HOST_
 
 FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescriptorSetLayout drawDataSetLayout)
     : context(graphicsContext)
-    , drawRecordBuffer(context, MaximumDrawsPerPicture * sizeof(GpuDrawRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
-    , stageBuffer(context, MaximumStagesPerPicture * sizeof(GpuStage), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
+    , drawRecordBuffer(context, MaximumDrawsPerPicture * sizeof(ShaderDrawRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
+    , stageBuffer(context, MaximumStagesPerPicture * sizeof(ShaderStage), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
 {
     VkCommandBufferAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -35,7 +35,8 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
         .poolSizeCount = 1,
         .pPoolSizes = &poolSize,
     };
-    CheckVulkan(vkCreateDescriptorPool(context.Device(), &poolInfo, nullptr, &descriptorPool), "creating the descriptor pool of the draw data");
+    CheckVulkan(vkCreateDescriptorPool(context.Device(), &poolInfo, nullptr, &descriptorPool),
+        "creating the descriptor pool of the draw data");
 
     VkDescriptorSetAllocateInfo setInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -43,7 +44,8 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
         .descriptorSetCount = 1,
         .pSetLayouts = &drawDataSetLayout,
     };
-    CheckVulkan(vkAllocateDescriptorSets(context.Device(), &setInfo, &descriptorSet), "allocating the descriptor set of the draw data");
+    CheckVulkan(vkAllocateDescriptorSets(context.Device(), &setInfo, &descriptorSet),
+        "allocating the descriptor set of the draw data");
 
     VkDescriptorBufferInfo drawRecordInfo = {.buffer = drawRecordBuffer.Handle(), .offset = 0, .range = VK_WHOLE_SIZE};
     VkDescriptorBufferInfo stageInfo = {.buffer = stageBuffer.Handle(), .offset = 0, .range = VK_WHOLE_SIZE};
@@ -86,14 +88,14 @@ VkDescriptorSet FrameResources::DescriptorSet() const
     return descriptorSet;
 }
 
-GpuDrawRecord* FrameResources::DrawRecords() const
+ShaderDrawRecord* FrameResources::DrawRecords() const
 {
-    return static_cast<GpuDrawRecord*>(drawRecordBuffer.MappedBytes());
+    return static_cast<ShaderDrawRecord*>(drawRecordBuffer.MappedBytes());
 }
 
-GpuStage* FrameResources::Stages() const
+ShaderStage* FrameResources::Stages() const
 {
-    return static_cast<GpuStage*>(stageBuffer.MappedBytes());
+    return static_cast<ShaderStage*>(stageBuffer.MappedBytes());
 }
 
 std::uint64_t FrameResources::FrameNumber() const

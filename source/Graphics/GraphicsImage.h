@@ -6,15 +6,15 @@ namespace Graphics
 {
 
 // A picture on the graphics card, with its memory and a view to read it or to draw into it.
-class GpuImage
+class GraphicsImage
 {
 public:
-    GpuImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
+    GraphicsImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
         VkImageUsageFlags usage);
-    ~GpuImage();
+    ~GraphicsImage();
 
-    GpuImage(const GpuImage&) = delete;
-    GpuImage& operator=(const GpuImage&) = delete;
+    GraphicsImage(const GraphicsImage&) = delete;
+    GraphicsImage& operator=(const GraphicsImage&) = delete;
 
     VkImage Handle() const;
     VkImageView View() const;

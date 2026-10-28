@@ -33,6 +33,22 @@ VkShaderModule LoadShader(const VulkanContext& context, const char* fileName)
     return shader;
 }
 
+// Standard alpha blending: result = source * source alpha + destination * (1 - source alpha), for the alpha too.
+// The other blend mode lets the source replace what was there.
+VkPipelineColorBlendAttachmentState MakeBlendAttachment(BlendMode blendMode)
+{
+    return {
+        .blendEnable = blendMode == BlendMode::StandardAlpha ? VK_TRUE : VK_FALSE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .alphaBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    };
+}
+
 VkDescriptorSetLayout MakeDrawDataSetLayout(const VulkanContext& context)
 {
     VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -173,17 +189,7 @@ VkPipeline QuadPipeline::MakePipeline(BlendMode blendMode, VkShaderModule vertex
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
     };
 
-    // Standard alpha blending: result = source * source alpha + destination * (1 - source alpha), for the alpha too.
-    VkPipelineColorBlendAttachmentState blendAttachment = {
-        .blendEnable = blendMode == BlendMode::StandardAlpha ? VK_TRUE : VK_FALSE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .alphaBlendOp = VK_BLEND_OP_ADD,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-    };
+    VkPipelineColorBlendAttachmentState blendAttachment = MakeBlendAttachment(blendMode);
     VkPipelineColorBlendStateCreateInfo colorBlend = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .attachmentCount = 1,

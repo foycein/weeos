@@ -1,7 +1,7 @@
 #include "Graphics/VulkanGraphicsDevice.h"
 
 #include "Graphics/DrawData.h"
-#include "Graphics/GpuBuffer.h"
+#include "Graphics/GraphicsBuffer.h"
 #include "Graphics/GraphicsError.h"
 #include "Graphics/MaterialCheck.h"
 #include "Graphics/OneTimeCommands.h"
@@ -158,24 +158,7 @@ void VulkanGraphicsDevice::DrawQuad(const Quad& quad, const Material& material)
     if (recording == nullptr)
         return;
 
-    std::vector<TevStage> stages = ChooseStages(material);
-
-    if (recording->drawCount >= MaximumDrawsPerPicture)
-        throw GraphicsError(std::format("A picture holds at most {} quads", MaximumDrawsPerPicture));
-
-    if (recording->stageCount + stages.size() > MaximumStagesPerPicture)
-        throw GraphicsError(std::format("The quads of a picture have more than the {} stages that fit", MaximumStagesPerPicture));
-
-    std::uint32_t firstStage = recording->stageCount;
-    for (const TevStage& stage : stages)
-    {
-        recording->resources->Stages()[recording->stageCount] = PackStage(stage);
-        ++recording->stageCount;
-    }
-
-    std::uint32_t drawIndex = recording->drawCount;
-    ++recording->drawCount;
-    recording->resources->DrawRecords()[drawIndex] = MakeDrawRecord(quad, material, firstStage, static_cast<std::uint32_t>(stages.size()));
+    std::uint32_t drawIndex = WriteDrawData(*recording, quad, material);
 
     BindPipeline(*recording, material.blendMode);
     BindTextures(material);
@@ -247,9 +230,9 @@ Formats::RgbaImage VulkanGraphicsDevice::ReadTexturePixels(TextureHandle texture
     if (found.isBeingDrawn)
         throw GraphicsError("A texture cannot be read while a picture is drawn into it");
 
-    const GpuImage& image = *found.image;
+    const GraphicsImage& image = *found.image;
     std::size_t pixelCount = static_cast<std::size_t>(image.Width()) * image.Height();
-    GpuBuffer readBuffer(context, pixelCount * BytesPerPixel, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    GraphicsBuffer readBuffer(context, pixelCount * BytesPerPixel, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     OneTimeCommands commands(context);
@@ -442,7 +425,9 @@ void VulkanGraphicsDevice::FinishScreenPicture()
     TransitionImage(resources.CommandBuffer(), screenTarget->image, FinishDrawingScreen);
     CheckVulkan(vkEndCommandBuffer(resources.CommandBuffer()), "finishing the picture of the screen");
 
-    Submit(resources.CommandBuffer(), swapchain.ImageAvailableSemaphore(frameIndex), swapchain.RenderFinishedSemaphore(), resources.Fence());
+    VkSemaphore imageAvailable = swapchain.ImageAvailableSemaphore(frameIndex);
+    VkSemaphore renderFinished = swapchain.RenderFinishedSemaphore();
+    Submit(resources.CommandBuffer(), imageAvailable, renderFinished, resources.Fence());
     swapchain.PresentAcquiredImage();
 
     frameRecording.reset();
@@ -481,6 +466,31 @@ void VulkanGraphicsDevice::Submit(VkCommandBuffer commandBuffer, VkSemaphore wai
 
     CheckVulkan(vkResetFences(context.Device(), 1, &fence), "resetting a fence");
     CheckVulkan(vkQueueSubmit2(context.Queue(), 1, &submitInfo, fence), "submitting a picture");
+}
+
+std::uint32_t VulkanGraphicsDevice::WriteDrawData(Recording& recording, const Quad& quad, const Material& material)
+{
+    std::vector<TevStage> stages = ChooseStages(material);
+
+    if (recording.drawCount >= MaximumDrawsPerPicture)
+        throw GraphicsError(std::format("A picture holds at most {} quads", MaximumDrawsPerPicture));
+
+    if (recording.stageCount + stages.size() > MaximumStagesPerPicture)
+        throw GraphicsError(std::format("The quads of a picture have more than the {} stages that fit", MaximumStagesPerPicture));
+
+    std::uint32_t firstStage = recording.stageCount;
+    for (const TevStage& stage : stages)
+    {
+        recording.resources->Stages()[recording.stageCount] = PackStage(stage);
+        ++recording.stageCount;
+    }
+
+    std::uint32_t drawIndex = recording.drawCount;
+    ++recording.drawCount;
+
+    std::uint32_t stageCount = static_cast<std::uint32_t>(stages.size());
+    recording.resources->DrawRecords()[drawIndex] = MakeDrawRecord(quad, material, firstStage, stageCount);
+    return drawIndex;
 }
 
 void VulkanGraphicsDevice::CheckTextures(const Material& material)

@@ -1,11 +1,11 @@
-#include "Graphics/GpuImage.h"
+#include "Graphics/GraphicsImage.h"
 
 #include "Graphics/VulkanSupport.h"
 
 namespace Graphics
 {
 
-GpuImage::GpuImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
+GraphicsImage::GraphicsImage(const VulkanContext& context, std::uint32_t imageWidth, std::uint32_t imageHeight, VkFormat imageFormat,
     VkImageUsageFlags usage)
     : device(context.Device())
     , width(imageWidth)
@@ -42,34 +42,34 @@ GpuImage::GpuImage(const VulkanContext& context, std::uint32_t imageWidth, std::
     CheckVulkan(vkCreateImageView(device, &viewInfo, nullptr, &view), "creating the view of an image");
 }
 
-GpuImage::~GpuImage()
+GraphicsImage::~GraphicsImage()
 {
     vkDestroyImageView(device, view, nullptr);
     vkDestroyImage(device, image, nullptr);
     vkFreeMemory(device, memory, nullptr);
 }
 
-VkImage GpuImage::Handle() const
+VkImage GraphicsImage::Handle() const
 {
     return image;
 }
 
-VkImageView GpuImage::View() const
+VkImageView GraphicsImage::View() const
 {
     return view;
 }
 
-std::uint32_t GpuImage::Width() const
+std::uint32_t GraphicsImage::Width() const
 {
     return width;
 }
 
-std::uint32_t GpuImage::Height() const
+std::uint32_t GraphicsImage::Height() const
 {
     return height;
 }
 
-VkFormat GpuImage::Format() const
+VkFormat GraphicsImage::Format() const
 {
     return format;
 }

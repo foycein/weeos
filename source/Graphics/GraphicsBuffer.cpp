@@ -1,11 +1,12 @@
-#include "Graphics/GpuBuffer.h"
+#include "Graphics/GraphicsBuffer.h"
 
 #include "Graphics/VulkanSupport.h"
 
 namespace Graphics
 {
 
-GpuBuffer::GpuBuffer(const VulkanContext& context, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties)
+GraphicsBuffer::GraphicsBuffer(
+    const VulkanContext& context, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties)
     : device(context.Device())
     , size(bufferSize)
 {
@@ -27,7 +28,7 @@ GpuBuffer::GpuBuffer(const VulkanContext& context, VkDeviceSize bufferSize, VkBu
         CheckVulkan(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, &mappedBytes), "mapping the memory of a buffer");
 }
 
-GpuBuffer::~GpuBuffer()
+GraphicsBuffer::~GraphicsBuffer()
 {
     if (mappedBytes != nullptr)
         vkUnmapMemory(device, memory);
@@ -36,17 +37,17 @@ GpuBuffer::~GpuBuffer()
     vkFreeMemory(device, memory, nullptr);
 }
 
-VkBuffer GpuBuffer::Handle() const
+VkBuffer GraphicsBuffer::Handle() const
 {
     return buffer;
 }
 
-VkDeviceSize GpuBuffer::Size() const
+VkDeviceSize GraphicsBuffer::Size() const
 {
     return size;
 }
 
-void* GpuBuffer::MappedBytes() const
+void* GraphicsBuffer::MappedBytes() const
 {
     return mappedBytes;
 }

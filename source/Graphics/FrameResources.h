@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Graphics/DrawData.h"
-#include "Graphics/GpuBuffer.h"
+#include "Graphics/GraphicsBuffer.h"
 #include "Graphics/VulkanContext.h"
 
 #include <cstdint>
@@ -30,8 +30,8 @@ public:
     VkDescriptorSet DescriptorSet() const;
 
     // The memory the program fills while it records.
-    GpuDrawRecord* DrawRecords() const;
-    GpuStage* Stages() const;
+    ShaderDrawRecord* DrawRecords() const;
+    ShaderStage* Stages() const;
 
     // The number of the picture that was recorded with these resources last.
     std::uint64_t FrameNumber() const;
@@ -39,8 +39,8 @@ public:
 
 private:
     const VulkanContext& context;
-    GpuBuffer drawRecordBuffer;
-    GpuBuffer stageBuffer;
+    GraphicsBuffer drawRecordBuffer;
+    GraphicsBuffer stageBuffer;
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
     VkFence fence = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;

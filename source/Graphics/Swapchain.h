@@ -49,6 +49,10 @@ public:
 
 private:
     void CreateImages();
+    void CreateSwapchain(const VkSurfaceCapabilitiesKHR& capabilities);
+    void GetImages();
+    void CreateImageViews();
+    void CreateSemaphores();
     void DestroyImages();
     VkSurfaceCapabilitiesKHR SurfaceCapabilities() const;
     VkSemaphore MakeSemaphore() const;

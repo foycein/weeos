@@ -1,6 +1,6 @@
 #include "Graphics/TextureStore.h"
 
-#include "Graphics/GpuBuffer.h"
+#include "Graphics/GraphicsBuffer.h"
 #include "Graphics/GraphicsError.h"
 #include "Graphics/OneTimeCommands.h"
 #include "Graphics/VulkanSupport.h"
@@ -71,10 +71,11 @@ TextureStore::TextureStore(const VulkanContext& graphicsContext, VkDescriptorSet
         .poolSizeCount = 1,
         .pPoolSizes = &poolSize,
     };
-    CheckVulkan(vkCreateDescriptorPool(context.Device(), &poolInfo, nullptr, &descriptorPool), "creating the descriptor pool of the textures");
+    CheckVulkan(vkCreateDescriptorPool(context.Device(), &poolInfo, nullptr, &descriptorPool),
+        "creating the descriptor pool of the textures");
 
     Formats::Rgba8Pixel whitePixel = {255, 255, 255, 255};
-    std::unique_ptr<GpuImage> blankImage = std::make_unique<GpuImage>(
+    std::unique_ptr<GraphicsImage> blankImage = std::make_unique<GraphicsImage>(
         context, 1, 1, PixelFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
     UploadPixels(*blankImage, std::span<const Formats::Rgba8Pixel>(&whitePixel, 1));
     blankTexture = MakeTexture(std::move(blankImage), FindSampler(WrapMode::Clamp, WrapMode::Clamp, FilterMode::Nearest));
@@ -101,8 +102,8 @@ TextureHandle TextureStore::Create(const TextureDescription& description)
 
     VkSampler sampler = FindSampler(description.horizontalWrap, description.verticalWrap, description.filter);
 
-    std::unique_ptr<GpuImage> image = std::make_unique<GpuImage>(
-        context, description.width, description.height, PixelFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    std::unique_ptr<GraphicsImage> image = std::make_unique<GraphicsImage>(context, description.width, description.height, PixelFormat, usage);
     UploadPixels(*image, description.pixels);
 
     return Add(MakeTexture(std::move(image), sampler));
@@ -114,8 +115,8 @@ TextureHandle TextureStore::CreateDrawTarget(std::uint32_t width, std::uint32_t 
 
     VkSampler sampler = FindSampler(WrapMode::Clamp, WrapMode::Clamp, FilterMode::Linear);
 
-    std::unique_ptr<GpuImage> image = std::make_unique<GpuImage>(
-        context, width, height, PictureFormat, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    std::unique_ptr<GraphicsImage> image = std::make_unique<GraphicsImage>(context, width, height, PictureFormat, usage);
 
     return Add(MakeTexture(std::move(image), sampler));
 }
@@ -184,10 +185,10 @@ VkSampler TextureStore::FindSampler(WrapMode horizontalWrap, WrapMode verticalWr
     return sampler;
 }
 
-void TextureStore::UploadPixels(const GpuImage& image, std::span<const Formats::Rgba8Pixel> pixels)
+void TextureStore::UploadPixels(const GraphicsImage& image, std::span<const Formats::Rgba8Pixel> pixels)
 {
-    GpuBuffer stagingBuffer(
-        context, pixels.size_bytes(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkMemoryPropertyFlags reachableByTheProgram = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    GraphicsBuffer stagingBuffer(context, pixels.size_bytes(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, reachableByTheProgram);
     std::memcpy(stagingBuffer.MappedBytes(), pixels.data(), pixels.size_bytes());
 
     OneTimeCommands commands(context);
@@ -211,7 +212,7 @@ void TextureStore::UploadPixels(const GpuImage& image, std::span<const Formats::
     commands.SubmitAndWait();
 }
 
-Texture TextureStore::MakeTexture(std::unique_ptr<GpuImage> image, VkSampler sampler)
+Texture TextureStore::MakeTexture(std::unique_ptr<GraphicsImage> image, VkSampler sampler)
 {
     VkDescriptorSetAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -220,7 +221,8 @@ Texture TextureStore::MakeTexture(std::unique_ptr<GpuImage> image, VkSampler sam
         .pSetLayouts = &setLayout,
     };
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    CheckVulkan(vkAllocateDescriptorSets(context.Device(), &allocateInfo, &descriptorSet), "allocating the descriptor set of a texture");
+    CheckVulkan(vkAllocateDescriptorSets(context.Device(), &allocateInfo, &descriptorSet),
+        "allocating the descriptor set of a texture");
 
     VkDescriptorImageInfo imageInfo = {
         .sampler = sampler,

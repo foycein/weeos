@@ -6,14 +6,15 @@ namespace Graphics
 {
 
 // A buffer with its own memory. A buffer in memory the PC can reach stays mapped, so the program can write to it at any time.
-class GpuBuffer
+class GraphicsBuffer
 {
 public:
-    GpuBuffer(const VulkanContext& context, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
-    ~GpuBuffer();
+    GraphicsBuffer(
+        const VulkanContext& context, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
+    ~GraphicsBuffer();
 
-    GpuBuffer(const GpuBuffer&) = delete;
-    GpuBuffer& operator=(const GpuBuffer&) = delete;
+    GraphicsBuffer(const GraphicsBuffer&) = delete;
+    GraphicsBuffer& operator=(const GraphicsBuffer&) = delete;
 
     VkBuffer Handle() const;
     VkDeviceSize Size() const;

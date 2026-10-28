@@ -42,7 +42,8 @@ public:
     void Present() override;
 
     // Reads the pixels of a texture back from the graphics card, for tests and for screenshots of offscreen pictures.
-    // It waits until the card has finished all its work. The texture must not be drawn into at that time.
+    // The texture must not be drawn into at that time. An offscreen picture that was drawn between BeginFrame and
+    // Present is on the card only after Present.
     Formats::RgbaImage ReadTexturePixels(TextureHandle texture);
 
     std::string DeviceName() const;
@@ -93,6 +94,9 @@ private:
     void Submit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence fence);
 
     void CheckTextures(const Material& material);
+
+    // Puts the stages and the record of the quad into the buffers of the picture. Gives the number of the draw.
+    std::uint32_t WriteDrawData(Recording& recording, const Quad& quad, const Material& material);
     void BindPipeline(Recording& recording, BlendMode blendMode);
     void BindTextures(const Material& material);
 

@@ -1,7 +1,12 @@
 // The data of the draws. The C++ side writes it into two buffers; these structures must stay the same as
 // the ones in Graphics/DrawData.h.
 
+// The same numbers as in Graphics/GraphicsDevice.h.
 const uint CornersPerQuad = 4u;
+const uint MaximumTextureCount = 3u;
+const uint ColorRegisterCount = 3u;
+const uint ConstantColorCount = 4u;
+
 const uint NumbersPerTextureMatrix = 6u;
 
 struct Stage
@@ -34,17 +39,17 @@ struct Stage
 
 struct DrawRecord
 {
-    vec4 colorRegisters[3];
-    vec4 constantColors[4];
-    vec2 cornerPositions[4];
+    vec4 colorRegisters[ColorRegisterCount];
+    vec4 constantColors[ConstantColorCount];
+    vec2 cornerPositions[CornersPerQuad];
 
-    // Texture number n, corner c is at n * 4 + c.
-    vec2 textureCoordinates[12];
+    // Texture number n, corner c is at n * CornersPerQuad + c.
+    vec2 textureCoordinates[MaximumTextureCount * CornersPerQuad];
 
-    // Texture number n has its six numbers at n * 6.
-    float textureMatrices[18];
+    // Texture number n has its six numbers at n * NumbersPerTextureMatrix.
+    float textureMatrices[MaximumTextureCount * NumbersPerTextureMatrix];
 
-    uint cornerColors[4];
+    uint cornerColors[CornersPerQuad];
     uint firstStage;
     uint stageCount;
 };

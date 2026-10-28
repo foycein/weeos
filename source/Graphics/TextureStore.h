@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Graphics/GpuImage.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Graphics/GraphicsImage.h"
 #include "Graphics/VulkanContext.h"
 
 #include <cstdint>
@@ -14,13 +14,14 @@
 namespace Graphics
 {
 
-// How many textures can exist at the same time.
-constexpr std::uint32_t MaximumLiveTextures = 4096;
+// How many textures can exist at the same time. Every texture has a memory allocation of its own,
+// and a graphics card has to allow at least 4096 allocations.
+constexpr std::uint32_t MaximumLiveTextures = 4000;
 
 // A texture of the device: the picture, and the descriptor set the fragment shader reads it through.
 struct Texture
 {
-    std::unique_ptr<GpuImage> image;
+    std::unique_ptr<GraphicsImage> image;
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 
     // True from BeginOffscreen to EndOffscreen, while the picture is being drawn into the texture.
@@ -65,8 +66,8 @@ private:
     using SamplerKey = std::tuple<WrapMode, WrapMode, FilterMode>;
 
     VkSampler FindSampler(WrapMode horizontalWrap, WrapMode verticalWrap, FilterMode filter);
-    void UploadPixels(const GpuImage& image, std::span<const Formats::Rgba8Pixel> pixels);
-    Texture MakeTexture(std::unique_ptr<GpuImage> image, VkSampler sampler);
+    void UploadPixels(const GraphicsImage& image, std::span<const Formats::Rgba8Pixel> pixels);
+    Texture MakeTexture(std::unique_ptr<GraphicsImage> image, VkSampler sampler);
     TextureHandle Add(Texture texture);
 
     const VulkanContext& context;

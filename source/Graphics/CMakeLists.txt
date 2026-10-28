@@ -2,15 +2,15 @@
 if(NOT DEFINED ENV{VULKAN_SDK})
     set(ENV{VULKAN_SDK} "C:/VulkanSDK/1.4.363.0")
 endif()
-find_package(Vulkan REQUIRED COMPONENTS glslc GLOBAL)
+find_package(Vulkan REQUIRED COMPONENTS glslc)
 
 add_library(Graphics STATIC
     CanvasMapping.cpp
     DrawData.cpp
     FramePacer.cpp
     FrameResources.cpp
-    GpuBuffer.cpp
-    GpuImage.cpp
+    GraphicsBuffer.cpp
+    GraphicsImage.cpp
     MaterialCheck.cpp
     OneTimeCommands.cpp
     QuadPipeline.cpp
@@ -36,7 +36,7 @@ function(CompileGraphicsShaders programName)
         set(spirvFile ${CMAKE_CURRENT_BINARY_DIR}/${shaderName}.spv)
         add_custom_command(
             OUTPUT ${spirvFile}
-            COMMAND Vulkan::glslc --target-env=vulkan1.3 -o ${spirvFile} ${shaderFolder}/${shaderName}
+            COMMAND ${Vulkan_GLSLC_EXECUTABLE} --target-env=vulkan1.3 -o ${spirvFile} ${shaderFolder}/${shaderName}
             DEPENDS ${shaderFolder}/${shaderName} ${shaderIncludes}
         )
         list(APPEND spirvFiles ${spirvFile})

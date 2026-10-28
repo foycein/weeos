@@ -155,7 +155,14 @@ void Swapchain::CreateImages()
     }
 
     RequirePictureFormat(context);
+    CreateSwapchain(capabilities);
+    GetImages();
+    CreateImageViews();
+    CreateSemaphores();
+}
 
+void Swapchain::CreateSwapchain(const VkSurfaceCapabilitiesKHR& capabilities)
+{
     std::uint32_t imageCount = std::max(WantedImageCount, capabilities.minImageCount);
     bool hasMaximumImageCount = capabilities.maxImageCount > 0;
     if (hasMaximumImageCount)
@@ -177,13 +184,19 @@ void Swapchain::CreateImages()
         .clipped = VK_TRUE,
     };
     CheckVulkan(vkCreateSwapchainKHR(context.Device(), &swapchainInfo, nullptr, &swapchain), "creating the swap chain");
+}
 
-    std::uint32_t actualImageCount = 0;
-    CheckVulkan(vkGetSwapchainImagesKHR(context.Device(), swapchain, &actualImageCount, nullptr), "getting the images of the swap chain");
-    images.resize(actualImageCount);
-    CheckVulkan(vkGetSwapchainImagesKHR(context.Device(), swapchain, &actualImageCount, images.data()),
-        "getting the images of the swap chain");
+void Swapchain::GetImages()
+{
+    std::uint32_t imageCount = 0;
+    CheckVulkan(vkGetSwapchainImagesKHR(context.Device(), swapchain, &imageCount, nullptr), "counting the images of the swap chain");
 
+    images.resize(imageCount);
+    CheckVulkan(vkGetSwapchainImagesKHR(context.Device(), swapchain, &imageCount, images.data()), "getting the images of the swap chain");
+}
+
+void Swapchain::CreateImageViews()
+{
     for (VkImage image : images)
     {
         VkImageViewCreateInfo viewInfo = {
@@ -196,9 +209,13 @@ void Swapchain::CreateImages()
         VkImageView view = VK_NULL_HANDLE;
         CheckVulkan(vkCreateImageView(context.Device(), &viewInfo, nullptr, &view), "creating the view of a swap chain image");
         imageViews.push_back(view);
-
-        renderFinishedSemaphores.push_back(MakeSemaphore());
     }
+}
+
+void Swapchain::CreateSemaphores()
+{
+    for (std::size_t imageNumber = 0; imageNumber < images.size(); ++imageNumber)
+        renderFinishedSemaphores.push_back(MakeSemaphore());
 
     for (VkSemaphore& semaphore : imageAvailableSemaphores)
         semaphore = MakeSemaphore();

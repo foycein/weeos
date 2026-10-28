@@ -28,8 +28,12 @@ layout(location = 0) out vec4 pictureColor;
 // They hold the colors in the range 0 to 1, where 1 is the 255 of the material, and they can go below 0 and above 1.
 vec4 registers[4];
 
-const float LowestRegisterValue = -1024.0 / 255.0;
-const float HighestRegisterValue = 1023.0 / 255.0;
+const float MaximumByteValue = 255.0;
+const uint ValuesPerByte = 256u;
+const float LowestRegisterValue = -1024.0 / MaximumByteValue;
+const float HighestRegisterValue = 1023.0 / MaximumByteValue;
+
+const uint EighthsInOne = 8u;
 
 // What a stage can read besides the registers.
 struct StageSources
@@ -57,14 +61,14 @@ vec4 SampleTexture(uint textureNumber)
 
 float ConstantFraction(uint constantNumber)
 {
-    return float(8u - constantNumber) / 8.0;
+    return float(EighthsInOne - constantNumber) / float(EighthsInOne);
 }
 
 float ConstantChannel(uint constantNumber)
 {
     uint channelOrder = constantNumber - FirstSingleChannelConstant;
-    uint colorNumber = channelOrder % 4u;
-    uint channelNumber = channelOrder / 4u;
+    uint colorNumber = channelOrder % ConstantColorCount;
+    uint channelNumber = channelOrder / ConstantColorCount;
     return drawRecords[drawIndex].constantColors[colorNumber][channelNumber];
 }
 
@@ -175,22 +179,22 @@ float ScaleValue(uint scaleNumber)
 // The compare operations look at the colors as whole numbers from 0 to 255.
 uvec3 ColorBytes(vec3 color)
 {
-    return uvec3(round(clamp(color, 0.0, 1.0) * 255.0));
+    return uvec3(round(clamp(color, 0.0, 1.0) * MaximumByteValue));
 }
 
 uint AlphaByte(float alpha)
 {
-    return uint(round(clamp(alpha, 0.0, 1.0) * 255.0));
+    return uint(round(clamp(alpha, 0.0, 1.0) * MaximumByteValue));
 }
 
 uint GreenRedNumber(uvec3 bytes)
 {
-    return bytes.g * 256u + bytes.r;
+    return bytes.g * ValuesPerByte + bytes.r;
 }
 
 uint BlueGreenRedNumber(uvec3 bytes)
 {
-    return (bytes.b * 256u + bytes.g) * 256u + bytes.r;
+    return (bytes.b * ValuesPerByte + bytes.g) * ValuesPerByte + bytes.r;
 }
 
 vec3 CompareColors(uint operation, vec3 a, vec3 b, vec3 c, vec3 d)
@@ -287,7 +291,7 @@ void RunStage(Stage stage)
 void main()
 {
     registers[0] = vec4(0.0);
-    for (uint registerNumber = 0u; registerNumber < 3u; ++registerNumber)
+    for (uint registerNumber = 0u; registerNumber < ColorRegisterCount; ++registerNumber)
         registers[registerNumber + 1u] = drawRecords[drawIndex].colorRegisters[registerNumber];
 
     uint firstStage = drawRecords[drawIndex].firstStage;
