@@ -1,5 +1,6 @@
 #include "Formats/TitleEncryption.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/FormatError.h"
 #include "Formats/Sha1.h"
 #include "Formats/WiiKeys.h"
@@ -84,6 +85,15 @@ Bytes DecryptContent(ByteView encryptedContent, const AesKey& titleKey, const Co
     }
 
     return content;
+}
+
+Bytes EncryptContent(ByteView content, const AesKey& titleKey, const ContentRecord& record)
+{
+    Bytes paddedContent(content.begin(), content.end());
+    paddedContent.resize(static_cast<std::size_t>(RoundUpToMultiple(paddedContent.size(), AesBlockSize)), 0);
+
+    AesBlock initializationVector = MakeContentInitializationVector(record.index);
+    return EncryptAes128Cbc(paddedContent, titleKey, initializationVector);
 }
 
 }

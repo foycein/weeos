@@ -15,4 +15,9 @@ void ProcessPendingMessages()
     }
 }
 
+void WaitForMessage()
+{
+    WaitMessage();
+}
+
 }

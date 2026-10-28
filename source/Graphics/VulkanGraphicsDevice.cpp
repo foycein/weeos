@@ -7,6 +7,7 @@
 #include "Graphics/OneTimeCommands.h"
 #include "Graphics/StageList.h"
 #include "Graphics/VulkanSupport.h"
+#include "Platform/FitPicture.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -53,7 +54,7 @@ constexpr ImageTransition FinishReadingBack = {VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTI
     VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
     VK_ACCESS_2_SHADER_SAMPLED_READ_BIT};
 
-VkRect2D ToVulkanRectangle(const PixelRectangle& rectangle)
+VkRect2D ToVulkanRectangle(const Platform::PixelRectangle& rectangle)
 {
     VkOffset2D offset = {static_cast<std::int32_t>(rectangle.left), static_cast<std::int32_t>(rectangle.top)};
     VkExtent2D size = {static_cast<std::uint32_t>(rectangle.width), static_cast<std::uint32_t>(rectangle.height)};
@@ -91,7 +92,7 @@ void VulkanGraphicsDevice::DestroyTexture(TextureHandle texture)
     textures.Retire(texture, lastFrameNumber);
 }
 
-void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, ScreenShape screenShape)
+void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape)
 {
     if (isFrameActive)
         throw GraphicsError("BeginFrame was called before Present ended the picture before");
@@ -107,21 +108,27 @@ void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, ScreenShape screenSh
         return;
     }
 
-    VkExtent2D size = swapchain.Extent();
-    PixelRectangle pictureArea = FitPicture({size.width, size.height}, screenShape);
-    CanvasMapping mapping(canvas, pictureArea);
+    CanvasMapping mapping = MapScreenPicture(canvas, screenShape);
 
     ++lastFrameNumber;
     FrameResources& resources = *frames[frameIndex];
     resources.SetFrameNumber(lastFrameNumber);
     StartRecording(frameRecording, resources);
 
-    VkImage image = swapchain.AcquiredImage();
-    TransitionImage(resources.CommandBuffer(), image, StartDrawing);
+    if (pictureSettings.resolution == PictureResolution::Console)
+        StartConsolePicture(mapping, screenShape);
+    else
+        StartWindowPicture(mapping);
 
-    screenTarget.emplace(Target{mapping, std::nullopt, image, swapchain.AcquiredView(), size});
-    BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
     isFrameActive = true;
+}
+
+void VulkanGraphicsDevice::SetPictureSettings(const PictureSettings& settings)
+{
+    if (isFrameActive || offscreenTarget)
+        throw GraphicsError("The picture settings cannot change while a picture is being drawn");
+
+    pictureSettings = settings;
 }
 
 void VulkanGraphicsDevice::SetScissor(const ScissorRectangle& scissor)
@@ -174,7 +181,7 @@ TextureHandle VulkanGraphicsDevice::BeginOffscreen(const Canvas& canvas, std::ui
 
     CanvasMapping mapping(canvas, {0, 0, static_cast<float>(width), static_cast<float>(height)});
 
-    TextureHandle handle = textures.CreateDrawTarget(width, height);
+    TextureHandle handle = textures.CreateDrawTarget(width, height, FilterMode::Linear);
     Texture& texture = textures.Get(handle);
     texture.isBeingDrawn = true;
 
@@ -280,6 +287,16 @@ int VulkanGraphicsDevice::ValidationMessageCount() const
     return context.ValidationMessageCount();
 }
 
+std::size_t VulkanGraphicsDevice::ImagesMade() const
+{
+    return textures.ImagesMade();
+}
+
+std::size_t VulkanGraphicsDevice::MemoryBlockCount() const
+{
+    return textures.MemoryBlockCount();
+}
+
 void VulkanGraphicsDevice::RequireActivePicture(const char* functionName) const
 {
     if (!isFrameActive && !offscreenTarget)
@@ -332,6 +349,42 @@ void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
     textures.ReleaseFinished(finishedFrameNumber);
 }
 
+CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const
+{
+    if (pictureSettings.resolution == PictureResolution::Console)
+        return CanvasMapping(canvas, {0, 0, static_cast<float>(ConsoleFrameWidth), static_cast<float>(ConsoleFrameHeight)});
+
+    VkExtent2D size = swapchain.Extent();
+    return CanvasMapping(canvas, Platform::FitPicture({size.width, size.height}, screenShape));
+}
+
+void VulkanGraphicsDevice::StartWindowPicture(const CanvasMapping& mapping)
+{
+    VkImage image = swapchain.AcquiredImage();
+    TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
+
+    screenTarget.emplace(Target{mapping, std::nullopt, image, swapchain.AcquiredView(), swapchain.Extent()});
+    BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
+}
+
+void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape)
+{
+    TextureHandle frameBuffer = textures.CreateDrawTarget(ConsoleFrameWidth, ConsoleFrameHeight, ConsoleScalingFilter);
+    Texture& texture = textures.Get(frameBuffer);
+    texture.isBeingDrawn = true;
+
+    // The copy to the screen is written now, so the picture always has room for it.
+    Material copyMaterial = MakeConsoleFilterMaterial(frameBuffer, pictureSettings.consoleScan);
+    std::uint32_t copyDrawIndex = WriteDrawData(*frameRecording, MakeConsolePictureQuad(screenShape), copyMaterial);
+    consoleFrame = ConsoleFrame{frameBuffer, screenShape, copyMaterial, copyDrawIndex};
+
+    TransitionImage(CurrentCommandBuffer(), texture.image->Handle(), StartDrawing);
+
+    VkExtent2D size = {ConsoleFrameWidth, ConsoleFrameHeight};
+    screenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), size});
+    BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
+}
+
 void VulkanGraphicsDevice::StartRecording(std::optional<Recording>& recording, FrameResources& resources)
 {
     VkCommandBufferBeginInfo beginInfo = {
@@ -377,12 +430,12 @@ void VulkanGraphicsDevice::EndPass()
 void VulkanGraphicsDevice::ApplyTargetState(const Target& target)
 {
     VkCommandBuffer commandBuffer = CurrentCommandBuffer();
-    const PixelRectangle& pictureArea = target.mapping.PictureArea();
+    const Platform::PixelRectangle& pictureArea = target.mapping.PictureArea();
 
     VkViewport viewport = {pictureArea.left, pictureArea.top, pictureArea.width, pictureArea.height, 0.0f, 1.0f};
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    PixelRectangle coveredArea = pictureArea;
+    Platform::PixelRectangle coveredArea = pictureArea;
     if (target.scissor)
         coveredArea = target.mapping.ScissorToPixels(*target.scissor);
 
@@ -421,8 +474,12 @@ void VulkanGraphicsDevice::FinishScreenPicture()
 {
     FrameResources& resources = *frameRecording->resources;
 
-    EndPass();
-    TransitionImage(resources.CommandBuffer(), screenTarget->image, FinishDrawingScreen);
+    if (consoleFrame)
+        CopyConsoleFrameToScreen();
+    else
+        EndPass();
+
+    TransitionImage(resources.CommandBuffer(), swapchain.AcquiredImage(), FinishDrawingScreen);
     CheckVulkan(vkEndCommandBuffer(resources.CommandBuffer()), "finishing the picture of the screen");
 
     VkSemaphore imageAvailable = swapchain.ImageAvailableSemaphore(frameIndex);
@@ -435,6 +492,30 @@ void VulkanGraphicsDevice::FinishScreenPicture()
 
     frameIndex = (frameIndex + 1) % FramesInFlight;
     PrepareFrame();
+}
+
+void VulkanGraphicsDevice::CopyConsoleFrameToScreen()
+{
+    EndPass();
+
+    Texture& frameBuffer = textures.Get(consoleFrame->frameBuffer);
+    TransitionImage(CurrentCommandBuffer(), frameBuffer.image->Handle(), FinishDrawingTexture);
+    frameBuffer.isBeingDrawn = false;
+
+    VkExtent2D size = swapchain.Extent();
+    Platform::PixelRectangle screenArea = Platform::FitPicture({size.width, size.height}, consoleFrame->screenShape);
+    VkImage image = swapchain.AcquiredImage();
+    TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
+
+    Target copyTarget{CanvasMapping(ConsoleRasterCanvas, screenArea), std::nullopt, image, swapchain.AcquiredView(), size};
+    BeginPass(copyTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
+    BindPipeline(*frameRecording, consoleFrame->copyMaterial.blendMode);
+    BindTextures(consoleFrame->copyMaterial);
+    vkCmdDraw(CurrentCommandBuffer(), VerticesPerQuad, 1, 0, consoleFrame->copyDrawIndex);
+    EndPass();
+
+    textures.Retire(consoleFrame->frameBuffer, lastFrameNumber);
+    consoleFrame.reset();
 }
 
 void VulkanGraphicsDevice::Submit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence fence)
