@@ -89,8 +89,9 @@ std::vector<Mii::MiiRecord> WiiSpeakSaveData::ChosenMiis() const
         std::span<const Formats::Byte, Mii::MiiRecordSize> record(bytes.data() + start, Mii::MiiRecordSize);
         Formats::ByteReader reader(bytes, "Wii Speak save file");
         reader.MoveTo(start + Mii::MiiRecordSize);
+        std::uint16_t storedChecksum = reader.ReadUint16();
         bool isFilled = std::any_of(record.begin(), record.end(), [](Formats::Byte value) { return value != 0; });
-        if (isFilled && reader.ReadUint16() == Mii::CalculateMiiChecksum(record))
+        if (isFilled && storedChecksum == Mii::CalculateMiiChecksum(record))
             miis.push_back(Mii::ReadMiiRecord(record));
     }
     return miis;
@@ -124,7 +125,9 @@ LoadedSaveData WiiSpeakSaveFile::Load() const
     if (opened.Failed())
         return {SaveFileState::Missing, WiiSpeakSaveData()};
 
-    Ios::Result<Formats::Bytes> read = opened.Value().Read(WiiSpeakSaveData::FileSize + 1);
+    // One byte more than the file should have, so that a longer file is noticed.
+    std::size_t bytesToRead = WiiSpeakSaveData::FileSize + 1;
+    Ios::Result<Formats::Bytes> read = opened.Value().Read(bytesToRead);
     if (read.Failed())
         return {SaveFileState::Damaged, WiiSpeakSaveData()};
 

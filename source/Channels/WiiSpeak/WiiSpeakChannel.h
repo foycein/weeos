@@ -19,13 +19,14 @@
 namespace Channels
 {
 
-// The Wii Speak Channel 2.0 (HCFE v512) without a network (docs/research/Channels.md 8, docs/audit/WiiSpeak.md).
+// The Wii Speak Channel 2.0 (HCFE v512) (docs/research/Channels.md 8, docs/audit/WiiSpeak.md).
 //
 // The start follows FirstSetUpScene (0x80094920 of the program): the Mii database must be readable ("Could not read save data from
 // the Mii Channel." and back to the Wii Menu otherwise), the Wii Speak accessory must be there (its two messages, and back to the Wii
 // Menu), and the save file mic_chat.dat is read. Without a save file this is the first start: three windows of welcome, the
 // precautions, the save file is made ("Save data created!"). A damaged save file asks whether to make new data.
-// Then the chat room runs, with the settings, the performance check and the voice message behind its buttons.
+// Then the chat room runs, with Choose Miis, Show Photos, the Wii number, the address book, the settings, the performance check,
+// the voice message and the lobby behind its buttons.
 //
 // The microphone stays open while the channel runs; every step the channel takes what it heard and gives it to the screen.
 class WiiSpeakChannel : public Channel

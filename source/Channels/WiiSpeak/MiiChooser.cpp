@@ -3,6 +3,8 @@
 #include "Channels/ChannelText.h"
 #include "Channels/WiiSpeak/WiiSpeakMessageIds.h"
 
+#include "Formats/Alignment.h"
+
 #include <algorithm>
 #include <format>
 #include <string>
@@ -49,11 +51,11 @@ std::string Numbered(std::string_view name, std::size_t number)
 
 }
 
-MiiChooser::MiiChooser(WiiSpeakSession& chooserSession, std::vector<Mii::MiiRecord> chosenBefore, std::size_t most)
+MiiChooser::MiiChooser(WiiSpeakSession& chooserSession, std::vector<Mii::MiiRecord> chosenBefore, std::size_t mostChosenMiis)
     : session(chooserSession)
     , layout(session.services.display, session.files.SceneLayouts("mii_select", "05000_MiiSel.arc"), "05000_MiiSel")
     , chosen(std::move(chosenBefore))
-    , mostChosen(most)
+    , mostChosen(mostChosenMiis)
 {
     for (std::size_t place = 0; place < MiisPerPage; ++place)
         layout.AddButton(LineupButton(place));
@@ -134,10 +136,10 @@ void MiiChooser::PressLineupMii(std::size_t place)
         return;
 
     const Mii::MiiRecord& mii = session.consoleMiis[index];
-    auto inCircle = std::find_if(chosen.begin(), chosen.end(), [&mii](const Mii::MiiRecord& other) { return IsSameMii(mii, other); });
-    if (inCircle != chosen.end())
+    std::optional<std::size_t> circleOfTheMii = CircleOf(mii);
+    if (circleOfTheMii)
     {
-        chosen.erase(inCircle);
+        chosen.erase(chosen.begin() + static_cast<std::ptrdiff_t>(*circleOfTheMii));
         session.services.sounds.Request(ClearSound);
     }
     else if (chosen.size() < mostChosen)
@@ -198,12 +200,17 @@ void MiiChooser::ShowPage()
 
         const Mii::MiiRecord& mii = session.consoleMiis[index];
         layout.ShowMadeTexture(Numbered("P_miiB", place), MiiFaces::TextureNameOf(mii), session.miiFaces.FaceOf(mii));
-        layout.ShowAnimationFrame(Numbered(IsChosen(mii) ? "nbutton_miiOn" : "nbutton_miiOff", place), 0);
+        std::string_view buttonLight = IsChosen(mii) ? "nbutton_miiOn" : "nbutton_miiOff";
+        layout.ShowAnimationFrame(Numbered(buttonLight, place), 0);
     }
 
     std::size_t shownPage = page + 1;
     std::size_t tens = shownPage / DigitBase;
-    layout.SetText("T_no_00", tens > 0 ? AsciiToText(std::to_string(tens)) : u"");
+    std::u16string tensText;
+    if (tens > 0)
+        tensText = AsciiToText(std::to_string(tens));
+
+    layout.SetText("T_no_00", tensText);
     layout.SetText("T_no_01", AsciiToText(std::to_string(shownPage % DigitBase)));
     layout.SetText("T_no_03", AsciiToText(std::to_string(PageCount())));
 }
@@ -216,19 +223,32 @@ void MiiChooser::ShowCircles()
         layout.SetVisible(Numbered("P_miiC", circle), hasMii);
         layout.SetVisible(Numbered("N_miiRootC", circle), circle < mostChosen);
         layout.SetButtonEnabled(CircleButton(circle), hasMii);
-        if (hasMii)
-            layout.ShowMadeTexture(Numbered("P_miiC", circle), MiiFaces::TextureNameOf(chosen[circle]), session.miiFaces.FaceOf(chosen[circle]));
+        if (!hasMii)
+            continue;
+
+        const Mii::MiiRecord& mii = chosen[circle];
+        layout.ShowMadeTexture(Numbered("P_miiC", circle), MiiFaces::TextureNameOf(mii), session.miiFaces.FaceOf(mii));
     }
+}
+
+std::optional<std::size_t> MiiChooser::CircleOf(const Mii::MiiRecord& mii) const
+{
+    for (std::size_t circle = 0; circle < chosen.size(); ++circle)
+    {
+        if (IsSameMii(mii, chosen[circle]))
+            return circle;
+    }
+    return std::nullopt;
 }
 
 bool MiiChooser::IsChosen(const Mii::MiiRecord& mii) const
 {
-    return std::any_of(chosen.begin(), chosen.end(), [&mii](const Mii::MiiRecord& other) { return IsSameMii(mii, other); });
+    return CircleOf(mii).has_value();
 }
 
 std::size_t MiiChooser::PageCount() const
 {
-    std::size_t pages = (session.consoleMiis.size() + MiisPerPage - 1) / MiisPerPage;
+    std::size_t pages = Formats::DivideRoundingUp(session.consoleMiis.size(), MiisPerPage);
     return std::max<std::size_t>(pages, 1);
 }
 

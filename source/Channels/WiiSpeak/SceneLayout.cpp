@@ -142,7 +142,8 @@ SceneLayout::BoundAnimation* SceneLayout::FindOrBindAnimation(const std::string&
     BoundAnimation* bound = nullptr;
     try
     {
-        boundAnimations.push_back(std::make_unique<BoundAnimation>(BindToItsGroups(archive->ReadAnimation(layoutName + "_" + animationName))));
+        Formats::LayoutAnimation animation = archive->ReadAnimation(layoutName + "_" + animationName);
+        boundAnimations.push_back(std::make_unique<BoundAnimation>(BindToItsGroups(std::move(animation))));
         bound = boundAnimations.back().get();
     }
     catch (const Layout::LayoutError&)
@@ -164,7 +165,10 @@ SceneLayout::BoundAnimation SceneLayout::BindToItsGroups(Formats::LayoutAnimatio
         panes.insert(panes.end(), panesOfGroup.begin(), panesOfGroup.end());
     }
 
-    Layout::PaneReach reach = animation.reachesPanesBelowTheGroups ? Layout::PaneReach::PanesAndThoseBelow : Layout::PaneReach::GivenPanesOnly;
+    Layout::PaneReach reach = Layout::PaneReach::GivenPanesOnly;
+    if (animation.reachesPanesBelowTheGroups)
+        reach = Layout::PaneReach::PanesAndThoseBelow;
+
     if (panes.empty())
     {
         panes.push_back(&live.RootPane());
@@ -240,19 +244,18 @@ void SceneLayout::ShowMadeTexture(std::string_view paneName, const std::string& 
 
 std::optional<Formats::Vector2> SceneLayout::PlaceOfPane(std::string_view paneName)
 {
-    const Formats::Pane* pane = Layout().FindPane(paneName);
+    const Formats::Pane* pane = layout.FindPane(paneName);
     if (pane == nullptr)
         return std::nullopt;
 
-    ::Layout::PaneRectangle rectangle = ::Layout::RectangleOfPane(*pane);
+    Layout::PaneRectangle rectangle = Layout::RectangleOfPane(*pane);
     Formats::Vector2 middle = {rectangle.left + rectangle.width / 2, rectangle.top - rectangle.height / 2};
-    return Layout().PointOfPaneInPicture(paneName, middle);
+    return layout.PointOfPaneInPicture(paneName, middle);
 }
 
 void SceneLayout::SetVisible(std::string_view paneName, bool isVisible)
 {
     layout.PaneNamed(paneName).isVisible = isVisible;
 }
-
 
 }

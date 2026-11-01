@@ -99,8 +99,9 @@ std::vector<double> Solve(Matrix matrix, std::vector<double> rightSide)
     }
 
     std::vector<double> solution(size, 0.0);
-    for (std::size_t row = size; row-- > 0;)
+    for (std::size_t rowsLeft = size; rowsLeft > 0; --rowsLeft)
     {
+        std::size_t row = rowsLeft - 1;
         if (matrix[row][row] == 0.0)
             continue;
 
@@ -110,6 +111,14 @@ std::vector<double> Solve(Matrix matrix, std::vector<double> rightSide)
         solution[row] = sum / matrix[row][row];
     }
     return solution;
+}
+
+std::size_t DistanceBetween(std::size_t first, std::size_t second)
+{
+    if (first > second)
+        return first - second;
+
+    return second - first;
 }
 
 std::vector<double> FindEchoPath(std::span<const std::int16_t> heard, std::span<const std::int16_t> played, std::size_t firstLag)
@@ -125,7 +134,7 @@ std::vector<double> FindEchoPath(std::span<const std::int16_t> heard, std::span<
     for (std::size_t row = 0; row < FilterTaps; ++row)
     {
         for (std::size_t column = 0; column < FilterTaps; ++column)
-            equations[row][column] = autocorrelation[row > column ? row - column : column - row];
+            equations[row][column] = autocorrelation[DistanceBetween(row, column)];
         equations[row][row] += DiagonalLoading * autocorrelation[0];
     }
 
@@ -139,7 +148,6 @@ std::vector<double> FindEchoPath(std::span<const std::int16_t> heard, std::span<
 }
 
 }
-
 
 CheckResult JudgeLevels(float heardLevel, float reducedLevel)
 {
@@ -186,7 +194,8 @@ std::vector<std::int16_t> RemoveEcho(std::span<const std::int16_t> heard, std::s
             echo += path[tap] * PlayedAt(played, sample, firstLag + tap);
 
         double left = std::round(double(heard[sample]) - echo);
-        reduced.push_back(static_cast<std::int16_t>(std::clamp(left, double(SmallestSampleValue), double(LargestSampleValue))));
+        double leftInRange = std::clamp(left, double(SmallestSampleValue), double(LargestSampleValue));
+        reduced.push_back(static_cast<std::int16_t>(leftInRange));
     }
     return reduced;
 }

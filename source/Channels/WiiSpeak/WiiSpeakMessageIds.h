@@ -17,7 +17,7 @@ constexpr std::uint32_t SaveDataCreated = WiiSpeakMessageId(1030, 21);
 constexpr std::uint32_t WiiMenu = WiiSpeakMessageId(1030, 80);
 constexpr std::uint32_t Next = WiiSpeakMessageId(2010, 1);
 
-// Groups 501, 504 and 507: the errors of the system, of Nintendo Wi-Fi Connection and of the accessory.
+// Groups 502, 504 and 507: the errors of the system, of Nintendo Wi-Fi Connection and of the accessory.
 constexpr std::uint32_t SaveDataCorrupted = WiiSpeakMessageId(502, 5);
 constexpr std::uint32_t UnableToConnectToTheInternet = WiiSpeakMessageId(504, 6);
 constexpr std::uint32_t AccessoryProblem = WiiSpeakMessageId(507, 2);
@@ -170,6 +170,5 @@ constexpr std::uint32_t PhotoFinish = WiiSpeakMessageId(50000, 90);
 constexpr std::uint32_t PrecautionsBack = WiiSpeakMessageId(20001, 1);
 constexpr std::uint32_t PrecautionsNext = WiiSpeakMessageId(20001, 2);
 constexpr std::uint32_t PrecautionsClose = WiiSpeakMessageId(20001, 80);
-constexpr std::uint32_t ReviewPrecautionsLater = WiiSpeakMessageId(20001, 83);
 
 }

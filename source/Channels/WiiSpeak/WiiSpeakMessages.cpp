@@ -41,8 +41,10 @@ std::u16string WiiSpeakMessages::Text(std::uint32_t messageId, std::u16string_vi
 
         // The reader of the file has checked that every escape is complete and at least two characters long.
         char16_t sizeAndGroup = stored[position + 1];
-        std::size_t escapeCharacters = (sizeAndGroup >> EscapeSizeShift) / sizeof(char16_t);
-        if ((sizeAndGroup & EscapeGroupMask) == FillInGroup)
+        std::size_t escapeBytes = sizeAndGroup >> EscapeSizeShift;
+        std::size_t escapeCharacters = escapeBytes / sizeof(char16_t);
+        bool isFillIn = (sizeAndGroup & EscapeGroupMask) == FillInGroup;
+        if (isFillIn)
             text += argument;
 
         position += escapeCharacters;

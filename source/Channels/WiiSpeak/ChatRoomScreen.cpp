@@ -18,7 +18,7 @@ namespace
 constexpr std::string_view SceneName = "talk";
 
 // The code that the Wii Speak Channel shows when the login server of Nintendo Wi-Fi Connection, whose place the owner's server takes,
-// cannot be reached while the Internet works. The codes of the SDK's Wi-Fi Connection library were not read (CHN-04, Assumed).
+// cannot be reached while the Internet works (CHN-99, Assumed).
 constexpr std::uint32_t LoginServerUnreachableCode = 20100;
 
 // The buttons of 02000_button and the panes of the ones WeeOS does not have.
@@ -32,13 +32,7 @@ const std::string CreateMessageButton = "B_dbutton_06";
 const std::string AddressBookButton = "B_dbutton_07";
 const std::string LobbyButton = "B_dbutton_08";
 
-struct ButtonLabel
-{
-    std::string_view pane;
-    std::uint32_t messageId;
-};
-
-constexpr std::array<ButtonLabel, 9> ButtonLabels = {{
+constexpr std::array<PaneText, 9> ButtonLabels = {{
     {"TextBox_00", WiiSpeakText::ChatRoomButtonWiiMenu},
     {"TextBox_01", WiiSpeakText::ChatRoomButtonChooseMiis},
     {"TextBox_02", WiiSpeakText::ChatRoomButtonShowPhotos},
@@ -84,9 +78,24 @@ constexpr std::string_view PhotoPane = "P_photoA_00";
 constexpr Formats::Vector2 MiddleOfTheCircle = {0, 0};
 
 constexpr int HoursOfHalfADay = 12;
-constexpr int FirstYearOfTheCalendar = 1900;
 constexpr int DaysOfTheWeek = 7;
 constexpr int DigitBase = 10;
+
+// The buttons that only make their sound and open another screen.
+struct ScreenButton
+{
+    std::string button;
+    std::string_view sound;
+    WiiSpeakScreenName screen;
+};
+
+const std::array<ScreenButton, 5> ScreenButtons = {{
+    {ChooseMiisButton, ChooseMiisSound, WiiSpeakScreenName::ChooseMiis},
+    {ShowPhotosButton, ShowPhotosSound, WiiSpeakScreenName::ShowPhotos},
+    {AddressBookButton, AddressBookSound, WiiSpeakScreenName::AddressBook},
+    {SettingsButton, SettingsSound, WiiSpeakScreenName::SettingsMenu},
+    {CreateMessageButton, CreateMessageSound, WiiSpeakScreenName::CreateMessage},
+}};
 
 constexpr SystemMenu::ButtonSet MuteButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus};
 
@@ -175,8 +184,7 @@ bool ChatRoomScreen::IsCircleLit() const
 
 void ChatRoomScreen::ShowTexts()
 {
-    for (const ButtonLabel& label : ButtonLabels)
-        buttons.SetText(label.pane, session.Text(label.messageId));
+    session.SetTexts(buttons, ButtonLabels);
 
     clock.SetText("T_mute", session.Text(WiiSpeakText::Mute));
     clock.SetText("T_volume", session.Text(WiiSpeakText::Volume));
@@ -202,7 +210,11 @@ void ChatRoomScreen::ShowClock()
         hour = HoursOfHalfADay;
 
     clock.SetText("T_time_00", session.Text(isAfternoon ? WiiSpeakText::Afternoon : WiiSpeakText::Morning));
-    clock.SetText("T_time_01", hour >= DigitBase ? DigitText(hour / DigitBase) : u"");
+    std::u16string tensDigitText;
+    if (hour >= DigitBase)
+        tensDigitText = DigitText(hour / DigitBase);
+
+    clock.SetText("T_time_01", tensDigitText);
     clock.SetText("T_time_02", DigitText(hour % DigitBase));
     clock.SetText("T_time_04", DigitText(calendar.tm_min / DigitBase));
     clock.SetText("T_time_05", DigitText(calendar.tm_min % DigitBase));
@@ -254,16 +266,13 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
         return std::nullopt;
     }
 
-    if (button == ChooseMiisButton)
+    for (const ScreenButton& screenButton : ScreenButtons)
     {
-        session.services.sounds.Request(ChooseMiisSound);
-        return WiiSpeakScreenName::ChooseMiis;
-    }
+        if (button != screenButton.button)
+            continue;
 
-    if (button == ShowPhotosButton)
-    {
-        session.services.sounds.Request(ShowPhotosSound);
-        return WiiSpeakScreenName::ShowPhotos;
+        session.services.sounds.Request(screenButton.sound);
+        return screenButton.screen;
     }
 
     if (button == WiiNumberButton)
@@ -271,24 +280,6 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
         session.services.sounds.Request(WiiNumberSound);
         ShowWiiNumber();
         return std::nullopt;
-    }
-
-    if (button == AddressBookButton)
-    {
-        session.services.sounds.Request(AddressBookSound);
-        return WiiSpeakScreenName::AddressBook;
-    }
-
-    if (button == SettingsButton)
-    {
-        session.services.sounds.Request(SettingsSound);
-        return WiiSpeakScreenName::SettingsMenu;
-    }
-
-    if (button == CreateMessageButton)
-    {
-        session.services.sounds.Request(CreateMessageSound);
-        return WiiSpeakScreenName::CreateMessage;
     }
 
     session.services.sounds.Request(LobbySound);
@@ -334,10 +325,11 @@ void ChatRoomScreen::FollowTheMessageWindow()
     if (waiting == Waiting::Connecting)
     {
         std::optional<std::uint32_t> failureCode = FindConnectionFailure();
-        if (failureCode)
-            session.dialog.Close();
+        if (!failureCode)
+            return;
 
-        if (session.dialog.IsOpen() || !failureCode)
+        session.dialog.Close();
+        if (session.dialog.IsOpen())
             return;
 
         std::u16string code = AsciiToText(std::to_string(*failureCode));
@@ -350,7 +342,7 @@ void ChatRoomScreen::FollowTheMessageWindow()
     if (!choice)
         return;
 
-    if (waiting == Waiting::AnswerToReturning && *choice == 0)
+    if (waiting == Waiting::AnswerToReturning && *choice == WiiSpeakDialog::FirstChoice)
         session.services.wiiMenu.Request();
 
     waiting = Waiting::Nothing;
@@ -383,7 +375,7 @@ void ChatRoomScreen::ShowSharedPhoto()
 
     photo = std::make_unique<SceneLayout>(session.services.display, session.files.SceneLayouts("photoAppre", "12410_photoap.arc"),
         "12410_photoap");
-    photo->ShowMadeTexture("P_photoA_00", SharedPhotoName, *session.sharedPhoto);
+    photo->ShowMadeTexture(PhotoPane, SharedPhotoName, *session.sharedPhoto);
     if (!session.isSharedPhotoNew)
     {
         photo->ShowAnimationFrame("all_in", PrintedPhotoFrame);

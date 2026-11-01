@@ -80,6 +80,12 @@ std::u16string WiiSpeakSession::Text(std::uint32_t messageId, std::u16string_vie
     return messages.Text(messageId, argument);
 }
 
+void WiiSpeakSession::SetTexts(SceneLayout& layout, std::span<const PaneText> texts) const
+{
+    for (const PaneText& text : texts)
+        layout.SetText(text.pane, Text(text.messageId));
+}
+
 // WeeOS has no WiiConnect24 (docs/DECISIONS.md): the message comes at once, without a try. Without an address the name of the server is not
 // found; with one, the service is not there to answer.
 SystemMenu::ServerAnswer WiiSpeakSession::WiiConnect24ServerAnswerOf(const std::string& serverAddress)

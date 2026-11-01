@@ -15,7 +15,7 @@ namespace Channels
 {
 
 // The countdown before a recording: 3, 2, 1, a third of a second each (the animation "count" of 16000_comment has 61 frames).
-constexpr double CountdownSecondsPerNumber = 20.0 / 60.0;
+constexpr double CountdownSecondsPerNumber = 1.0 / 3.0;
 constexpr int CountdownStart = 3;
 
 // Create Message (scene letter, LetterMakeScene 0x80042D44 of the program): the voice of the message with its comment window
@@ -25,9 +25,9 @@ constexpr int CountdownStart = 3;
 // are full. The voice is played back by pointing at it and pressing A; the 1 button changes the voice (Change Voice) for the next
 // playback. Redo records again, OK keeps the voice in the message.
 //
-// WeeOS has no WiiConnect24 and so no Wii Friends: the addressees say so (10240005) and Send asks for an addressee (10240012).
-// The original refuses the whole screen without Wii Friends; WeeOS opens it so that a voice can be recorded and heard, a written
-// deviation (CHN-36). The photo is not built and not shown; Add Mii says that there is no Mii when the console has none.
+// The addressees say that there are no Wii Friends (10240005) and Send asks for an addressee (10240012). The original refuses
+// the whole screen without Wii Friends; WeeOS opens it so that a voice can be recorded and heard, a written deviation (CHN-36).
+// The photo box is hidden; Add Mii says that there is no Mii when the console has none.
 class CreateMessageScreen : public WiiSpeakScreen
 {
 public:
@@ -58,6 +58,11 @@ public:
 
 private:
     std::optional<WiiSpeakScreenName> UpdateLetter();
+    std::optional<WiiSpeakScreenName> FollowQuitQuestion();
+    std::optional<WiiSpeakScreenName> LeaveLetter();
+    void PressLetterButton(const std::string& button);
+    void OpenComment();
+    void OpenMiiChooser();
     void UpdateComment();
     void PressCommentButton(const std::string& button);
     void StartRecording();

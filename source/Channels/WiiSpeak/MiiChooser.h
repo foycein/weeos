@@ -21,7 +21,7 @@ class MiiChooser
 {
 public:
     // The chat room's Miis take up to six circles, the Mii of a voice message one.
-    MiiChooser(WiiSpeakSession& session, std::vector<Mii::MiiRecord> chosenBefore, std::size_t mostChosen);
+    MiiChooser(WiiSpeakSession& session, std::vector<Mii::MiiRecord> chosenBefore, std::size_t mostChosenMiis);
 
     // Once in every step. Gives the chosen Miis when OK was pressed.
     std::optional<std::vector<Mii::MiiRecord>> Update();
@@ -37,6 +37,7 @@ private:
     void TurnPage(int step);
     void ShowPage();
     void ShowCircles();
+    std::optional<std::size_t> CircleOf(const Mii::MiiRecord& mii) const;
     bool IsChosen(const Mii::MiiRecord& mii) const;
     std::size_t PageCount() const;
 

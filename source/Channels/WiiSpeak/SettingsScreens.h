@@ -5,7 +5,6 @@
 #include "Channels/WiiSpeak/WiiSpeakWater.h"
 
 #include <memory>
-
 #include <optional>
 
 namespace Channels

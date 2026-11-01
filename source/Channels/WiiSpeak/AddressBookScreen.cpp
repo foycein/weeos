@@ -3,6 +3,8 @@
 #include "Channels/ChannelText.h"
 #include "Channels/WiiSpeak/WiiSpeakMessageIds.h"
 
+#include "Formats/Alignment.h"
+
 #include <algorithm>
 #include <format>
 #include <string>
@@ -72,9 +74,10 @@ std::optional<WiiSpeakScreenName> AddressBookScreen::Update()
 {
     std::optional<WiiSpeakScreenName> nextScreen;
     std::optional<SystemMenu::KeyboardAnswer> answer = session.keyboard.TakeAnswer();
-    if (answer && answer->wasConfirmed && typing == Typing::WiiNumber)
+    bool isConfirmed = answer && answer->wasConfirmed;
+    if (isConfirmed && typing == Typing::WiiNumber)
         TakeTheWiiNumber(answer->text);
-    else if (answer && answer->wasConfirmed && typing == Typing::Nickname)
+    else if (isConfirmed && typing == Typing::Nickname)
         TakeTheNickname(answer->text);
     else if (answer)
         typing = Typing::Nothing;
@@ -128,12 +131,21 @@ std::optional<WiiSpeakScreenName> AddressBookScreen::Press(const std::string& bu
     else if (button == LeftButton || button == RightButton)
     {
         bool isRight = button == RightButton;
-        std::size_t pageCount = PageCount();
-        page = isRight ? (page + 1) % pageCount : (page + pageCount - 1) % pageCount;
         session.services.sounds.Request(isRight ? NextPageSound : PreviousPageSound);
-        ShowPage();
+        TurnPage(isRight);
     }
     return std::nullopt;
+}
+
+// The pages go round: after the last page comes the first.
+void AddressBookScreen::TurnPage(bool isForward)
+{
+    std::size_t pageCount = PageCount();
+    if (isForward)
+        page = (page + 1) % pageCount;
+    else
+        page = (page + pageCount - 1) % pageCount;
+    ShowPage();
 }
 
 void AddressBookScreen::StartAddingAFriend()
@@ -145,7 +157,7 @@ void AddressBookScreen::StartAddingAFriend()
     }
 
     typing = Typing::WiiNumber;
-    OpenKeyboard(WiiSpeakText::EnterWiiNumber, WiiNumberDigits, true);
+    OpenKeyboard(WiiSpeakText::EnterWiiNumber, WiiNumberDigits, SystemMenu::IsDigit);
 }
 
 void AddressBookScreen::TakeTheWiiNumber(const std::u16string& typed)
@@ -164,8 +176,7 @@ void AddressBookScreen::TakeTheWiiNumber(const std::u16string& typed)
         return;
     }
 
-    bool isKnown = std::any_of(friends.begin(), friends.end(), [&](const WiiFriend& known) { return known.wiiNumber == *wiiNumber; });
-    if (isKnown)
+    if (IsKnownFriend(*wiiNumber))
     {
         session.ShowMessage(WiiSpeakText::WiiNumberAlreadyRegistered, {WiiSpeakText::Ok});
         return;
@@ -173,7 +184,17 @@ void AddressBookScreen::TakeTheWiiNumber(const std::u16string& typed)
 
     typedWiiNumber = *wiiNumber;
     typing = Typing::Nickname;
-    OpenKeyboard(WiiSpeakText::EnterNickname, NicknameLength, false);
+    OpenKeyboard(WiiSpeakText::EnterNickname, NicknameLength, SystemMenu::IsAnyCharacter);
+}
+
+bool AddressBookScreen::IsKnownFriend(std::uint64_t wiiNumber) const
+{
+    for (const WiiFriend& known : friends)
+    {
+        if (known.wiiNumber == wiiNumber)
+            return true;
+    }
+    return false;
 }
 
 void AddressBookScreen::TakeTheNickname(const std::u16string& typed)
@@ -192,12 +213,12 @@ void AddressBookScreen::TakeTheNickname(const std::u16string& typed)
     ShowPage();
 }
 
-void AddressBookScreen::OpenKeyboard(std::uint32_t titleMessageId, std::size_t maximumLength, bool takesDigitsOnly)
+void AddressBookScreen::OpenKeyboard(std::uint32_t titleMessageId, std::size_t maximumLength, SystemMenu::CharacterRule allowedCharacters)
 {
     SystemMenu::KeyboardRequest request;
     request.title = session.Text(titleMessageId);
     request.rules.maximumLength = maximumLength;
-    request.rules.allowedCharacters = takesDigitsOnly ? SystemMenu::IsDigit : SystemMenu::IsAnyCharacter;
+    request.rules.allowedCharacters = allowedCharacters;
     session.keyboard.Open(request);
 }
 
@@ -220,7 +241,7 @@ void AddressBookScreen::ShowPage()
 
 std::size_t AddressBookScreen::PageCount() const
 {
-    std::size_t pages = (friends.size() + FriendsPerPage - 1) / FriendsPerPage;
+    std::size_t pages = Formats::DivideRoundingUp(friends.size(), FriendsPerPage);
     return std::max<std::size_t>(pages, 1);
 }
 

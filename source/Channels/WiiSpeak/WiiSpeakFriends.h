@@ -24,8 +24,8 @@ enum class FriendServerAnswer
 };
 
 // What the Wii Speak Channel needs from a server for its friends: the Wii number of this console and the Wii Friends of its address
-// book. On a Wii these come from WiiConnect24, which WeeOS does not have (docs/DECISIONS.md); the owner's server will answer through
-// this interface later. Until then OfflineFriendServer stands in.
+// book. On a Wii these come from WiiConnect24, which WeeOS does not have (docs/DECISIONS.md); the channel asks OfflineFriendServer
+// (CHN-36).
 class WiiSpeakFriendServer
 {
 public:

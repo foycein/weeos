@@ -35,7 +35,11 @@ constexpr std::string_view LargeLayoutFontName = "pac_nRodDb_200_IA4.brfnt";
 constexpr std::uint16_t HomeMenuContentIndex = 3;
 constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
 
-constexpr std::array<std::uint32_t, 3> WelcomeTexts = {WiiSpeakText::Welcome, WiiSpeakText::AboutChatting, WiiSpeakText::AboutVoiceMessages};
+constexpr std::array<std::uint32_t, 3> WelcomeTexts = {
+    WiiSpeakText::Welcome,
+    WiiSpeakText::AboutChatting,
+    WiiSpeakText::AboutVoiceMessages,
+};
 
 std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents& contents)
 {
@@ -287,7 +291,7 @@ void WiiSpeakChannel::FollowTheFirstStart()
 
     if (stage == Stage::Refusing)
         services.wiiMenu.Request();
-    else if (stage == Stage::AskingForNewData && *choice == 0)
+    else if (stage == Stage::AskingForNewData && *choice == WiiSpeakDialog::FirstChoice)
         FinishFirstStart();
     else if (stage == Stage::AskingForNewData)
         services.wiiMenu.Request();
