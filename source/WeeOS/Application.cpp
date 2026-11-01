@@ -34,7 +34,7 @@ namespace
 
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 
-// A hidden window has no display that paces its pictures, so the program waits one step of the console between them.
+// One step of the console, 1001/60000 of a second, in whole microseconds.
 constexpr std::chrono::microseconds StepOfAHiddenWindow(16683);
 
 }
@@ -258,10 +258,7 @@ void Application::StopOnTheKeyOfKoreanConsoles()
 void Application::Run()
 {
     while (!isPoweredOff)
-    {
         ShowNextPicture();
-        WaitForTheNextStepOfAHiddenWindow();
-    }
 }
 
 void Application::ShowNextPicture()
@@ -282,6 +279,7 @@ void Application::ShowNextPicture()
     CarryOutRequestsOfTheMenu();
     ReportProblems();
     ShowPicture();
+    WaitForTheNextStepOfAHiddenWindow();
 }
 
 void Application::RunOneStep()
@@ -349,6 +347,8 @@ void Application::RememberWindowPlace()
     }
 }
 
+// The display of a shown window paces the pictures (Present waits for its refresh). A hidden window has none, so the pictures come
+// one step apart instead, and a hand that arrives and a button that is pressed in two pictures reach the menu in two steps.
 void Application::WaitForTheNextStepOfAHiddenWindow()
 {
     if (window.IsShown())

@@ -52,7 +52,8 @@ public:
     // Shows pictures until the console is powered off.
     void Run();
 
-    // One picture: handles the events of the window, runs the steps of the menu that are due and shows the newest state.
+    // One picture: handles the events of the window, runs the steps of the menu that are due and shows the newest state. It waits for
+    // the display of a shown window, or one step of the console for a hidden one.
     void ShowNextPicture();
 
     // Exactly one step of the menu or the channel, whatever the clock says, with the events of the window before it and what the program
