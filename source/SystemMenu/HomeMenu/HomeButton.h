@@ -78,6 +78,9 @@ public:
     // The master volume of the console that the open menu asks for (HomeButtonMenu::SoundVolume), and 1 while it is closed.
     float SoundVolume() const;
 
+    // A big button that does not leave the program (the manual of a channel) shows the picture again after the menu made it black.
+    void ShowPictureAgain();
+
     // The volume of the speakers as SYSCONF keeps it. The program gives it when it has read SYSCONF.
     void SetSpeakerVolumeSetting(std::uint8_t setting);
 

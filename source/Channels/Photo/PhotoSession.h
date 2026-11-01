@@ -2,14 +2,24 @@
 
 #include "Channels/ChannelServices.h"
 #include "Channels/Photo/PhotoLibrary.h"
+#include "Channels/Photo/PhotoStorage.h"
+#include "Channels/Photo/ShownPicture.h"
 
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/MenuFonts.h"
+#include "SystemMenu/NandFiles.h"
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/MessageBoard/MessageStore.h"
 
 #include "Layout/LayoutArchive.h"
 
+#include "Formats/TplTexture.h"
+#include "Media/PcmSound.h"
+#include "Sound/WavePlayer.h"
+
+#include <map>
 #include <memory>
+#include <optional>
 #include <string_view>
 
 namespace Channels
@@ -73,10 +83,41 @@ public:
     // The place a player points at, in canvas units, when a player pressed A in this step.
     std::optional<Formats::Vector2> PlaceOfPress();
 
+    // The bytes of a file of the library: the picture of a board letter, or the file of the card.
+    std::optional<Formats::Bytes> FileBytes(int fileIndex);
+
+    // The Message Board's database (cdb.vff in the System Menu's data folder), opened the first time it is needed.
+    SystemMenu::MessageStore& BoardStore();
+
+    // Where a pane of a layout lies on the screen, in canvas units (the panes named "picture", where the channel draws the photo).
+    PictureBox BoxOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName);
+
+    // The photo of a file as Fun! has left it, else as the card holds it (the first frame of a movie). Nothing for a file that
+    // cannot be shown.
+    std::optional<Formats::RgbaImage> PhotoOfFile(int fileIndex);
+    std::optional<Formats::RgbaImage> OriginalPhotoOfFile(int fileIndex);
+    void ChangePhoto(int fileIndex, const Formats::RgbaImage& changedPhoto);
+    void ForgetChanges(int fileIndex);
+    bool HasChangedPhotos() const;
+    bool IsPhotoChanged(int fileIndex) const;
+
+    // Plays sound that the channel decoded itself (the sound of a movie, the user's music) through the channel's wave player, in
+    // place of what played before. Stop ends it.
+    void PlayDecodedSound(const Media::PcmSound& sound);
+    void StopDecodedSound();
+    bool IsDecodedSoundPlaying();
+
+    // The font of the channel, font_photo.brfnt.
+    const Layout::DrawableFont& Font() const;
+
+    // A picture of TPLPhoto.tpl (the stamps of Doodle, the background, the channel's own hands).
+    const Formats::RgbaImage& ChannelTexture(int textureIndex);
+
     void GoTo(std::unique_ptr<PhotoScreen> screen);
     std::unique_ptr<PhotoScreen> TakeNextScreen();
 
     PhotoLibrary library;
+    PhotoStorage storage;
 
 private:
     ChannelServices& services;
@@ -84,6 +125,12 @@ private:
     SystemMenu::MenuFonts fonts;
     std::unique_ptr<SystemMenu::CursorManager> cursors;
     std::unique_ptr<PhotoScreen> nextScreen;
+    std::map<int, Formats::RgbaImage> changedPhotos;
+    std::vector<Formats::TplTexture> channelTextures;
+    std::map<int, Formats::RgbaImage> decodedTextures;
+    std::unique_ptr<SystemMenu::NandFiles> boardFiles;
+    std::unique_ptr<SystemMenu::MessageStore> boardStore;
+    Sound::WaveHandle decodedSound;
 };
 
 // The screens. Each one is made when the channel goes to it.
@@ -93,5 +140,12 @@ std::unique_ptr<PhotoScreen> MakeMessageBoardScreen(PhotoSession& session);
 std::unique_ptr<PhotoScreen> MakeThumbnailScreen(PhotoSession& session, int firstShownFile);
 std::unique_ptr<PhotoScreen> MakeViewScreen(PhotoSession& session, int fileIndex);
 std::unique_ptr<PhotoScreen> MakeSlideShowScreen(PhotoSession& session, int firstFileIndex);
+std::unique_ptr<PhotoScreen> MakeSlideSettingsScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakeFunScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakeMoodScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakeDoodleScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakePuzzleScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakePostScreen(PhotoSession& session, int fileIndex);
+std::unique_ptr<PhotoScreen> MakeSaveErrorScreen(PhotoSession& session, PhotoStorage::StartResult result);
 
 }

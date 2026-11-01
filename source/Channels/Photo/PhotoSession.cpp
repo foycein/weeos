@@ -1,6 +1,8 @@
 #include "Channels/Photo/PhotoSession.h"
 
+#include "Channels/ChannelError.h"
 #include "Channels/ChannelFiles.h"
+#include "Channels/Photo/PhotoPictures.h"
 
 #include "Formats/Font.h"
 
@@ -19,6 +21,7 @@ constexpr std::uint16_t HomeMenuContentIndex = 3;
 constexpr std::string_view LayoutArchivePath = "./layout.arc.LZ";
 constexpr std::string_view FontPath = "arc/font/font_photo.brfnt";
 constexpr std::string_view FontName = "font_photo.brfnt";
+constexpr std::string_view TexturesPath = "./TPLPhoto.tpl.LZ";
 
 // The hands are the ones of the channel's HOME Button Menu, HomeButton2: the channels' own hand is a NintendoWare effect that WeeOS
 // cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
@@ -35,6 +38,57 @@ std::unique_ptr<Layout::LayoutArchive> ReadHands(SystemMenu::TitleContents& cont
     Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, HomeMenuContentIndex);
     return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(ReadPackedFile(homeMenuFiles, HandArchivePath)));
 }
+
+// The board's database as a channel reaches it: cdb.vff lies in the menu's data folder, which only the menu may change, but the file
+// itself may be written by every title (rw rw rw in the dump). So the channel writes into the file as it is and never makes or deletes it.
+class BoardFiles : public SystemMenu::NandFiles
+{
+public:
+    BoardFiles(Ios::FileSystemService& fileSystemService, Ios::Caller channelCaller)
+        : fileSystem(fileSystemService)
+        , caller(channelCaller)
+    {
+    }
+
+    std::optional<Formats::Bytes> ReadFile(std::string_view path) override
+    {
+        Ios::Result<Ios::OpenFile> file = fileSystem.Open(Ios::NandPath::Parse(path).Value(), Ios::OpenMode::Read, caller);
+        if (file.Failed())
+            return std::nullopt;
+
+        Ios::Result<Ios::FileStatistics> statistics = file.Value().GetStatistics();
+        if (statistics.Failed())
+            return std::nullopt;
+
+        Ios::Result<Formats::Bytes> bytes = file.Value().Read(statistics.Value().length);
+        file.Value().Close();
+        if (bytes.Failed())
+            return std::nullopt;
+
+        return bytes.Value();
+    }
+
+    void DeleteFile(std::string_view path) override
+    {
+        throw ChannelError("A channel cannot delete the file " + std::string(path) + " of the Message Board");
+    }
+
+    void WriteFile(std::string_view path, Formats::ByteView bytes) override
+    {
+        Ios::Result<Ios::OpenFile> file = fileSystem.Open(Ios::NandPath::Parse(path).Value(), Ios::OpenMode::Write, caller);
+        if (file.Failed())
+            throw ChannelError("The channel cannot write the file " + std::string(path) + " of the Message Board");
+
+        Ios::Result<std::size_t> written = file.Value().Write(bytes);
+        file.Value().Close();
+        if (written.Failed() || written.Value() != bytes.size())
+            throw ChannelError("The channel could not write all of " + std::string(path));
+    }
+
+private:
+    Ios::FileSystemService& fileSystem;
+    Ios::Caller caller;
+};
 
 bool IsPaneOfAnotherLanguage(std::string_view paneName)
 {
@@ -53,9 +107,11 @@ bool IsPaneOfAnotherLanguage(std::string_view paneName)
 }
 
 PhotoSession::PhotoSession(ChannelServices& channelServices)
-    : services(channelServices)
+    : storage(channelServices.storage)
+    , services(channelServices)
 {
     Formats::U8Archive resources = ReadArchiveContent(services.contents, ResourceContentIndex);
+    channelTextures = Formats::ReadTplTextures(ReadPackedFile(resources, TexturesPath));
     Formats::U8Archive layoutFiles = Formats::ReadU8Archive(ReadPackedFile(resources, LayoutArchivePath));
 
     fonts.AddFont(services.display.Device(), Formats::ReadFont(FindFileOrFail(layoutFiles, FontPath)), {FontName});
@@ -123,6 +179,123 @@ std::optional<Formats::Vector2> PhotoSession::PlaceOfPress()
             return services.display.PointerToCanvas(player->state.pointer);
     }
     return std::nullopt;
+}
+
+PictureBox PhotoSession::BoxOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName)
+{
+    const Formats::Pane& pane = layout.PaneNamed(paneName);
+    Formats::Vector2 stretch = services.display.LayoutStretch();
+    return {pane.translation.x * stretch.x, pane.translation.y * stretch.y, pane.width * stretch.x, pane.height * stretch.y};
+}
+
+std::optional<Formats::Bytes> PhotoSession::FileBytes(int fileIndex)
+{
+    const PhotoFile& file = library.files[fileIndex];
+    if (file.boardPicture)
+        return file.boardPicture;
+
+    return ReadCardFile(services.storage.sdCard, file.path);
+}
+
+SystemMenu::MessageStore& PhotoSession::BoardStore()
+{
+    if (boardStore)
+        return *boardStore;
+
+    Ios::MacAddress address = services.network.GetWirelessMacAddress();
+    SystemMenu::WirelessAddress wirelessAddress{};
+    std::copy(address.begin(), address.end(), wirelessAddress.begin());
+    boardFiles = std::make_unique<BoardFiles>(services.storage.fileSystem, services.storage.fileSystemCaller);
+    boardStore = std::make_unique<SystemMenu::MessageStore>(*boardFiles, wirelessAddress);
+    return *boardStore;
+}
+
+std::optional<Formats::RgbaImage> PhotoSession::PhotoOfFile(int fileIndex)
+{
+    auto changed = changedPhotos.find(fileIndex);
+    if (changed != changedPhotos.end())
+        return changed->second;
+
+    return OriginalPhotoOfFile(fileIndex);
+}
+
+std::optional<Formats::RgbaImage> PhotoSession::OriginalPhotoOfFile(int fileIndex)
+{
+    const PhotoFile& file = library.files[fileIndex];
+    std::optional<Formats::Bytes> bytes = FileBytes(fileIndex);
+    if (!bytes)
+        return std::nullopt;
+
+    if (file.IsMovie())
+        return FirstFrameOfMovie(*bytes, file.kind);
+
+    return MakeShownPhoto(*bytes);
+}
+
+void PhotoSession::ChangePhoto(int fileIndex, const Formats::RgbaImage& changedPhoto)
+{
+    changedPhotos[fileIndex] = changedPhoto;
+}
+
+void PhotoSession::ForgetChanges(int fileIndex)
+{
+    changedPhotos.erase(fileIndex);
+}
+
+bool PhotoSession::HasChangedPhotos() const
+{
+    return !changedPhotos.empty();
+}
+
+bool PhotoSession::IsPhotoChanged(int fileIndex) const
+{
+    return changedPhotos.contains(fileIndex);
+}
+
+void PhotoSession::PlayDecodedSound(const Media::PcmSound& sound)
+{
+    constexpr float LargestSixteenBitValue = 32768.0f;
+    StopDecodedSound();
+    if (sound.channelCount <= 0)
+        return;
+
+    auto wave = std::make_shared<Sound::DecodedWave>();
+    wave->sampleRate = static_cast<std::uint32_t>(sound.sampleRate);
+    wave->loops = false;
+    wave->loopStartSample = 0;
+    wave->channels.assign(sound.channelCount, std::vector<float>(sound.FrameCount()));
+    for (std::size_t frame = 0; frame < sound.FrameCount(); ++frame)
+    {
+        for (int channel = 0; channel < sound.channelCount; ++channel)
+            wave->channels[channel][frame] = sound.samples[frame * sound.channelCount + channel] / LargestSixteenBitValue;
+    }
+    decodedSound = services.audio.waves.Play(wave);
+}
+
+void PhotoSession::StopDecodedSound()
+{
+    services.audio.waves.Stop(decodedSound);
+    decodedSound = {};
+}
+
+bool PhotoSession::IsDecodedSoundPlaying()
+{
+    return services.audio.waves.IsPlaying(decodedSound);
+}
+
+const Layout::DrawableFont& PhotoSession::Font() const
+{
+    return fonts.Fonts().Find(std::string(FontName));
+}
+
+const Formats::RgbaImage& PhotoSession::ChannelTexture(int textureIndex)
+{
+    auto decoded = decodedTextures.find(textureIndex);
+    if (decoded != decodedTextures.end())
+        return decoded->second;
+
+    decodedTextures[textureIndex] = Formats::DecodeTexture(channelTextures.at(textureIndex));
+    return decodedTextures[textureIndex];
 }
 
 void PhotoSession::GoTo(std::unique_ptr<PhotoScreen> screen)

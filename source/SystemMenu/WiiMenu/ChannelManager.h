@@ -51,6 +51,9 @@ struct LoadedChannel
     // What WeeOS does instead of the script, and the numbers of the animations icon_Rso0 to icon_Rso15 that the icon has for it.
     IconScript iconScript = IconScript::None;
     std::vector<int> scriptAnimationNumbers;
+
+    // The photo that the Photo Channel posted to the Wii Menu, which its icon shows.
+    std::optional<Formats::RgbaImage> postedPhoto;
 };
 
 // The animation of an icon, as the grid chooses it: an icon that a script drives plays icon_Start, when it has it, and the script

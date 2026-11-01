@@ -3,6 +3,7 @@
 #include "Channels/Photo/ShownPicture.h"
 
 #include "Media/MovieFrames.h"
+#include "Media/MovieSound.h"
 
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
@@ -27,8 +28,6 @@ constexpr std::string_view UnsupportedPhotoMessage = "textTUS0A";
 constexpr std::string_view UnsupportedMovieMessage = "textTUS1A";
 constexpr std::string_view OtherUnsupportedMessage = "textTUS2A";
 
-// The buttons of a feature of the view that WeeOS does not have yet: they are not shown (Fun!, Post).
-constexpr std::array<std::string_view, 2> ButtonsNotBuilt = {"today", "play"};
 constexpr std::array<std::string_view, 2> ButtonsAtTheEndOfAMovie = {"again", "playback"};
 constexpr std::array<std::string_view, 3> ButtonsOfAPhotoOnly = {"rot", "zoom_in", "zoom_out"};
 
@@ -40,10 +39,12 @@ public:
         , buttons(session.MakeLayout("view"))
         , unsupported(session.MakeLayout("error"))
     {
-        for (std::string_view button : ButtonsNotBuilt)
-            buttons->PaneNamed(button).isVisible = false;
-
         Open(fileIndex);
+    }
+
+    ~ViewScreen() override
+    {
+        session.StopDecodedSound();
     }
 
     void Update() override
@@ -90,12 +91,14 @@ private:
         index = fileIndex;
         shown = nullptr;
         movie = std::nullopt;
+        movieSound = std::nullopt;
+        session.StopDecodedSound();
         fileBytes.clear();
         zoom = 0;
         quarterTurns = 0;
         isUnsupported = false;
 
-        std::optional<Formats::Bytes> bytes = ReadCardFile(session.Services().storage.sdCard, File().path);
+        std::optional<Formats::Bytes> bytes = session.FileBytes(index);
         if (bytes)
             fileBytes = std::move(*bytes);
 
@@ -109,7 +112,7 @@ private:
 
     void OpenPhoto()
     {
-        std::optional<Formats::RgbaImage> photo = MakeShownPhoto(fileBytes);
+        std::optional<Formats::RgbaImage> photo = session.PhotoOfFile(index);
         if (!photo)
         {
             ShowUnsupported(UnsupportedPhotoMessage);
@@ -134,6 +137,7 @@ private:
             ShowUnsupported(UnsupportedMovieMessage);
             return;
         }
+        movieSound = DecodeSoundOfMovie();
         StartMovie(false);
     }
 
@@ -154,9 +158,52 @@ private:
             buttons->PaneNamed(button).isVisible = false;
     }
 
+    // The movie plays without sound when its sound is of a kind the channel does not play, or has more than two channels (0x800178A0).
+    std::optional<Media::PcmSound> DecodeSoundOfMovie() const
+    {
+        const std::optional<Media::MovieSoundTrack>& sound = movie->sound;
+        bool isPlayable = sound && sound->kind != Media::MovieSoundKind::Unsupported && sound->kind != Media::MovieSoundKind::Aac
+            && sound->channelCount >= 1 && sound->channelCount <= 2;
+        if (!isPlayable)
+            return std::nullopt;
+
+        try
+        {
+            return Media::DecodeMovieSound(*sound, fileBytes);
+        }
+        catch (const Formats::FormatError&)
+        {
+            return std::nullopt;
+        }
+    }
+
+    // Played backward, the sound runs backward too (play_audio_inv of the original).
+    void StartMovieSound(bool backward)
+    {
+        if (!movieSound)
+            return;
+
+        Media::PcmSound sound = *movieSound;
+        if (backward)
+            ReverseFrames(sound.samples, sound.channelCount);
+
+        session.PlayDecodedSound(sound);
+    }
+
+    static void ReverseFrames(std::vector<std::int16_t>& samples, int channelCount)
+    {
+        std::size_t frameCount = samples.size() / channelCount;
+        for (std::size_t frame = 0; frame < frameCount / 2; ++frame)
+        {
+            for (int channel = 0; channel < channelCount; ++channel)
+                std::swap(samples[frame * channelCount + channel], samples[(frameCount - 1 - frame) * channelCount + channel]);
+        }
+    }
+
     void StartMovie(bool backward)
     {
         isPlayingBackward = backward;
+        StartMovieSound(backward);
         movieStartSeconds = session.Services().clock.Seconds();
         shownFrame = -1;
         for (std::string_view button : ButtonsAtTheEndOfAMovie)
@@ -248,6 +295,16 @@ private:
         {
             ChangeZoom(-1, PhotoSound::ZoomOut);
         }
+        else if (session.IsButtonPressed(*buttons, "play") && !isUnsupported)
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            session.GoTo(MakeFunScreen(session, index));
+        }
+        else if (session.IsButtonPressed(*buttons, "today") && !isUnsupported)
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            session.GoTo(MakePostScreen(session, index));
+        }
         else if (session.IsButtonPressed(*buttons, "again"))
         {
             services.sounds.Request(PhotoSound::Decide);
@@ -281,6 +338,7 @@ private:
     Formats::RgbaImage photoPicture;
     std::unique_ptr<ShownPicture> shown;
     std::optional<Media::Movie> movie;
+    std::optional<Media::PcmSound> movieSound;
     double movieStartSeconds = 0;
     int shownFrame = -1;
     bool isPlayingBackward = false;

@@ -91,6 +91,9 @@ private:
 
     Display& display;
     TileKind kind;
+
+    // Declared before the picture that reads from it, so that it goes after it.
+    std::unique_ptr<Layout::PictureSource> postedPhotoPictures;
     std::unique_ptr<MenuLayout> picture;
     std::unique_ptr<MenuLayout> focusFrame;
     std::unique_ptr<Balloon> balloon;

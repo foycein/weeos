@@ -1,5 +1,7 @@
 #include "SystemMenu/WiiMenu/ChannelManager.h"
 
+#include "Formats/PostedPictureFile.h"
+
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/WiiMenu/ChannelPlacement.h"
 
@@ -25,6 +27,15 @@ bool HasAnimation(const Formats::U8Archive& iconFiles, std::string_view animatio
 {
     std::string path = std::string(AnimationsFolder) + std::string(animationName) + std::string(AnimationExtension);
     return iconFiles.FindFile(path).has_value();
+}
+
+std::optional<Formats::RgbaImage> ReadPostedPhoto(MenuConsole& console)
+{
+    std::optional<Formats::Bytes> file = console.ReadNandFile(Formats::PostedIconPicturePath);
+    if (!file)
+        return std::nullopt;
+
+    return Formats::ReadPostedPictureFile(*file, Formats::PostedIconWidth, Formats::PostedIconHeight);
 }
 
 bool IsPositionInsideTheGrid(SlotPosition position)
@@ -213,6 +224,8 @@ std::unique_ptr<LoadedChannel> ChannelManager::ReadChannel(Ios::TitleId titleId)
             channel->isIconDrivenByCode = banner.isIconDrivenByCode;
             channel->iconScript = FindIconScript(titleId, banner.isIconDrivenByCode);
             channel->scriptAnimationNumbers = ListScriptAnimations(iconFiles);
+            if (channel->iconScript == IconScript::PhotoChannel)
+                channel->postedPhoto = ReadPostedPhoto(console);
             channel->icon = std::make_unique<Layout::LayoutArchive>(std::move(iconFiles));
         }
     }

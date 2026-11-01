@@ -1,7 +1,16 @@
 add_library(Channels STATIC
     ChannelFiles.cpp
+    ChannelText.cpp
     ChannelSystem.cpp
     InternetChannel.cpp
+    Manual/HtmlDocument.cpp
+    Manual/ManualViewer.cpp
+    Manual/PageLayouter.cpp
+    Manual/PageMeasure.cpp
+    Manual/PageScript.cpp
+    Manual/PageStyle.cpp
+    Manual/PageStyleSheet.cpp
+    Manual/PageTableLayout.cpp
     MiiChannel/ButtonFocus.cpp
     MiiChannel/EditorScreen.cpp
     MiiChannel/LookAlikeScreen.cpp
@@ -19,18 +28,29 @@ add_library(Channels STATIC
     NativeChannels.cpp
     OperaLanguageFile.cpp
     PagePainter.cpp
+    Photo/FunScreens.cpp
+    Photo/MoodFilters.cpp
     Photo/PhotoChannel.cpp
     Photo/PhotoLibrary.cpp
     Photo/PhotoPictures.cpp
     Photo/PhotoSession.cpp
+    Photo/PhotoStorage.cpp
+    Photo/PostScreens.cpp
+    Photo/PuzzleBoard.cpp
+    Photo/PuzzleScreens.cpp
+    Photo/SaveErrorScreen.cpp
     Photo/ShownPicture.cpp
+    Photo/SlideSettingsScreen.cpp
+    Photo/SlideShowMusic.cpp
     Photo/SlideShowScreen.cpp
     Photo/ThumbnailScreen.cpp
     Photo/TitleScreens.cpp
     Photo/ViewScreen.cpp
     ShopChannel.cpp
+    WaitingMark.cpp
     WiiConnect24Channel.cpp
     WiiSpeak/AddressBookScreen.cpp
+    WiiSpeak/ChatPhotos.cpp
     WiiSpeak/ChatRoomScreen.cpp
     WiiSpeak/CreateMessageScreen.cpp
     WiiSpeak/MicrophoneLevel.cpp

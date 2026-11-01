@@ -16,4 +16,7 @@ inline std::u16string AsciiToText(std::string_view asciiText)
     return text;
 }
 
+// Text in UTF-8, as the pages of the browser and its language files hold it.
+std::u16string Utf8ToText(std::string_view utf8);
+
 }

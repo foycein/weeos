@@ -73,7 +73,6 @@ constexpr std::string_view BalloonBundleName = "balloon";
 constexpr int StepsBeforeABalloonAppears = 17;
 constexpr float BalloonDepthBelowItsPlace = 55;
 constexpr float BalloonMarginOnAWideScreen = 90;
-constexpr float BalloonMarginOnANarrowScreen = 60;
 
 // The buttons of the list and of the window, in the order of their numbers in the button groups.
 constexpr std::size_t WiiButton = 0;
