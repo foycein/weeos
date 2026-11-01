@@ -3,10 +3,12 @@
 
 #include "DrawData.glsl"
 
-// Half of the width and the height of the canvas, to bring canvas units into the range -1 to 1.
+// Half of the width and the height of the whole picture in canvas units, to bring canvas units into the range -1 to 1.
+// The canvas lies in the middle of the picture. The share is for the meshes.
 layout(push_constant) uniform CanvasSize
 {
-    vec2 halfCanvasSize;
+    vec2 halfPictureSize;
+    vec2 canvasShare;
 } canvasSize;
 
 layout(location = 0) out vec4 rasterColor;
@@ -46,7 +48,7 @@ void main()
     vec2 position = drawRecords[drawNumber].cornerPositions[corner];
 
     // The canvas has y upward and the picture has y downward.
-    gl_Position = vec4(position.x / canvasSize.halfCanvasSize.x, -position.y / canvasSize.halfCanvasSize.y, 0.0, 1.0);
+    gl_Position = vec4(position.x / canvasSize.halfPictureSize.x, -position.y / canvasSize.halfPictureSize.y, 0.0, 1.0);
 
     rasterColor = unpackUnorm4x8(drawRecords[drawNumber].cornerColors[corner]);
     firstTextureCoordinates = TransformedTextureCoordinates(drawNumber, 0u, corner);

@@ -5,8 +5,12 @@
 #include "Channels/NativeChannels.h"
 
 #include "SystemMenu/HomeMenu/HomeMenuFiles.h"
+#include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MenuFonts.h"
+#include "SystemMenu/TurnOffQuestion.h"
 
 #include "Formats/Font.h"
+#include "Formats/Yaz0.h"
 
 #include <format>
 #include <utility>
@@ -40,16 +44,54 @@ ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 
 }
 
-ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-    Ios::TitleId titleId, Settings::PcClock consoleTime, std::optional<Formats::Bytes> consoleFontArchive)
+class ChannelSystem::TurnOffParts
+{
+public:
+    TurnOffParts(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& menuContents, SystemMenu::SoundRequests& sounds)
+        : files(menuContents)
+        , fonts(device, menuContents, files)
+        , display(device)
+    {
+        display.SetTextFonts(fonts.Fonts());
+        question = std::make_unique<SystemMenu::TurnOffQuestion>(display, files, sounds);
+    }
+
+    SystemMenu::TurnOffQuestion& Question()
+    {
+        return *question;
+    }
+
+    const SystemMenu::Display& Display() const
+    {
+        return display;
+    }
+
+    void Draw()
+    {
+        display.ForgetDrawnLayouts();
+        question->Draw();
+    }
+
+private:
+    SystemMenu::MenuFiles files;
+    SystemMenu::MenuFonts fonts;
+    SystemMenu::Display display;
+    std::unique_ptr<SystemMenu::TurnOffQuestion> question;
+};
+
+ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents,
+    SystemMenu::TitleContents& systemMenuContents, Ios::RemoteService& remoteService, Ios::NetworkConfigService& network,
+    const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime,
+    std::optional<Formats::Bytes> consoleFontArchive)
     : runningTitle(titleId)
+    , graphicsDevice(device)
+    , menuContents(systemMenuContents)
     , sharedFiles(SharedFilesOrFail(titleId))
     , power(powerService)
-    , display(device, screenShape)
+    , display(device)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, std::move(consoleTime)}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, audio, std::move(consoleTime)}
 {
     LoadSystemFonts(contents, std::move(consoleFontArchive));
     channel = MakeChannel(titleId, services);
@@ -59,12 +101,20 @@ ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::Title
     homeButton->Start();
 }
 
+ChannelSystem::~ChannelSystem() = default;
+
 void ChannelSystem::Update()
 {
     sounds.StartNextStep();
     clock.Advance();
     input.Poll();
     AnswerFrontPanel();
+
+    if (IsAskingToTurnOff())
+    {
+        RunStepOfTheTurnOffQuestion();
+        return;
+    }
     FollowHomeButtonPermission();
 
     // The HOME button is seen before the channel moves on, so a press stops the channel in the step it came.
@@ -96,6 +146,11 @@ void ChannelSystem::DrawScene()
 {
     channel->Draw();
     homeButton->Draw();
+    if (IsAskingToTurnOff())
+    {
+        turnOff->Draw();
+        channel->Hands().Draw();
+    }
     fader.Draw();
 }
 
@@ -117,6 +172,37 @@ Channel& ChannelSystem::RunningChannel()
 bool ChannelSystem::IsHomeMenuOpen() const
 {
     return homeButton->IsOpen();
+}
+
+void ChannelSystem::AskToTurnOff()
+{
+    if (!turnOff)
+        turnOff = std::make_unique<TurnOffParts>(graphicsDevice, menuContents, sounds);
+
+    turnOff->Question().Ask();
+}
+
+bool ChannelSystem::IsAskingToTurnOff() const
+{
+    return turnOff && turnOff->Question().IsOpen();
+}
+
+const SystemMenu::Display* ChannelSystem::TurnOffQuestionDisplay() const
+{
+    if (!IsAskingToTurnOff())
+        return nullptr;
+
+    return &turnOff->Display();
+}
+
+void ChannelSystem::RunStepOfTheTurnOffQuestion()
+{
+    bool isYes = turnOff->Question().Update(input);
+    if (isYes)
+        PressPowerButton();
+
+    channel->Hands().Update(input);
+    fader.Calculate();
 }
 
 void ChannelSystem::LoadSystemFonts(SystemMenu::TitleContents& contents, std::optional<Formats::Bytes> consoleFontArchive)
@@ -179,11 +265,20 @@ void ChannelSystem::AnswerFrontPanel()
     if (!button)
         return;
 
-    homeButton->HoldForFrontPanel();
     if (*button == Ios::PowerEvent::PowerButtonPressed)
-        power.RequestShutdown();
-    else
-        power.RequestReset();
+    {
+        PressPowerButton();
+        return;
+    }
+
+    homeButton->HoldForFrontPanel();
+    power.RequestReset();
+}
+
+void ChannelSystem::PressPowerButton()
+{
+    homeButton->HoldForFrontPanel();
+    power.RequestShutdown();
 }
 
 void ChannelSystem::LeaveWhenAsked()

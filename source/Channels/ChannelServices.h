@@ -7,10 +7,13 @@
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 
+#include "Ios/Caller.h"
 #include "Ios/FileSystem/FileSystemService.h"
+#include "Ios/Microphone/MicrophoneService.h"
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/SdCard/SdCardService.h"
 #include "Layout/TextFonts.h"
+#include "Sound/WavePlayer.h"
 #include "Settings/ConsoleClock.h"
 
 namespace Channels
@@ -35,9 +38,8 @@ private:
     bool isRequested = false;
 };
 
-// Everything a channel gets from the channel system: the same engines that the menu uses, the contents of its own title and the
-// network configuration module of IOS.
-// The storage of the console that a channel may use: the SD card slot and the file system of the NAND (the channel's own data folder).
+// The storage of the console that a channel may use: the SD card slot and the file system of the NAND, where the channel is the
+// user and the group of its title (its own data folder).
 struct ChannelStorage
 {
     Ios::SdCardService& sdCard;
@@ -47,6 +49,16 @@ struct ChannelStorage
     Ios::Caller fileSystemCaller;
 };
 
+// What a channel hears and plays beyond its sound archives: the Wii Speak accessory of IOS and the player of the waves that the
+// channel makes itself (a recorded voice, a stream file).
+struct ChannelAudio
+{
+    Ios::MicrophoneService& microphone;
+    Sound::WavePlayer& waves;
+};
+
+// Everything a channel gets from the channel system: the same engines that the menu uses, the contents of its own title and the
+// network configuration module of IOS.
 struct ChannelServices
 {
     SystemMenu::Display& display;
@@ -62,6 +74,7 @@ struct ChannelServices
     const Layout::TextFonts& systemFonts;
 
     ChannelStorage storage;
+    ChannelAudio audio;
 
     // The time of the console's clock as the PC gives it: what a channel seeds its chances with and the time a Mii is made.
     Settings::PcClock consoleTime;

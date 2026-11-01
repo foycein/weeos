@@ -33,6 +33,7 @@ void ProgramSound::ApplyPcSettings(const Settings::PcSettings& settings)
     deviceName = settings.audioDevice;
     volumeGain = GainOfVolume(settings.volume);
 
+    waves.SetMasterVolume(volumeGain);
     if (sounds)
         sounds->SetMasterVolume(volumeGain);
 
@@ -73,6 +74,7 @@ Sound::SoundSystem* ProgramSound::Start(Formats::ByteView menuSoundArchive)
 void ProgramSound::ChangeSampleRate(std::uint32_t sampleRate)
 {
     sounds->SetDeviceSampleRate(sampleRate);
+    waves.SetDeviceSampleRate(sampleRate);
 
     std::lock_guard<std::mutex> lock(titleSoundsMutex);
     for (const std::unique_ptr<Sound::SoundSystem>& titleSound : titleSounds)
@@ -84,6 +86,7 @@ void ProgramSound::Render(std::span<float> interleavedStereo)
 {
     sounds->Render(interleavedStereo);
     AddTitleSounds(interleavedStereo);
+    waves.Render(interleavedStereo);
     renderedSoundingSamples += CountSoundingSamples(interleavedStereo);
 
     if (isSilent)
@@ -136,6 +139,7 @@ void ProgramSound::SetSoundMode(Settings::SoundMode mode)
 
 void ProgramSound::StopAllSounds()
 {
+    waves.StopAll();
     if (sounds)
         sounds->StopAll();
 }
@@ -143,6 +147,11 @@ void ProgramSound::StopAllSounds()
 bool ProgramSound::IsSilent() const
 {
     return isSilent;
+}
+
+Sound::WavePlayer& ProgramSound::Waves()
+{
+    return waves;
 }
 
 Sound::SoundSystem* ProgramSound::Sounds()

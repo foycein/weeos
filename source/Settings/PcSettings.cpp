@@ -17,6 +17,8 @@ namespace
 
 constexpr std::string_view WindowWidthName = "WindowWidth";
 constexpr std::string_view WindowHeightName = "WindowHeight";
+constexpr std::string_view WindowLeftName = "WindowLeft";
+constexpr std::string_view WindowTopName = "WindowTop";
 constexpr std::string_view FullscreenName = "Fullscreen";
 constexpr std::string_view AudioDeviceName = "AudioDevice";
 constexpr std::string_view VolumeName = "Volume";
@@ -200,6 +202,14 @@ void ReadLine(std::string_view name, std::string_view value, PcSettings& setting
     {
         ReadWindowSide(value, settings.windowHeight);
     }
+    else if (name == WindowLeftName)
+    {
+        settings.windowLeft = ReadWholeNumber(value);
+    }
+    else if (name == WindowTopName)
+    {
+        settings.windowTop = ReadWholeNumber(value);
+    }
     else if (name == FullscreenName)
     {
         settings.isFullscreen = ReadYesOrNo(value).value_or(settings.isFullscreen);
@@ -250,7 +260,8 @@ bool PcSettings::operator==(const PcSettings& other) const
             return false;
     }
 
-    return windowWidth == other.windowWidth && windowHeight == other.windowHeight && isFullscreen == other.isFullscreen
+    return windowWidth == other.windowWidth && windowHeight == other.windowHeight && windowLeft == other.windowLeft
+        && windowTop == other.windowTop && isFullscreen == other.isFullscreen
         && audioDevice == other.audioDevice && volume == other.volume && areMouseButtonsSwapped == other.areMouseButtonsSwapped;
 }
 
@@ -298,6 +309,11 @@ std::string WritePcSettingsText(const PcSettings& settings)
     std::string text(FileHeading);
     text += std::format("{} = {}\n", WindowWidthName, settings.windowWidth);
     text += std::format("{} = {}\n", WindowHeightName, settings.windowHeight);
+    if (settings.windowLeft && settings.windowTop)
+    {
+        text += std::format("{} = {}\n", WindowLeftName, *settings.windowLeft);
+        text += std::format("{} = {}\n", WindowTopName, *settings.windowTop);
+    }
     text += std::format("{} = {}\n", FullscreenName, YesOrNo(settings.isFullscreen));
     text += std::format("{} = {}\n", AudioDeviceName, Utf8FromText(settings.audioDevice));
     text += std::format("{} = {}\n", VolumeName, settings.volume);

@@ -17,8 +17,10 @@ namespace SystemMenu
 class MenuAnimation
 {
 public:
-    // The animation is bound to the given panes and the panes below them. The layout and the panes must outlive this object.
-    MenuAnimation(Layout::LiveLayout& layout, Formats::LayoutAnimation animation, Layout::PlaybackMode mode, std::vector<Formats::Pane*> panes);
+    // The animation is bound to the given panes and, unless the reach says otherwise, the panes below them. The layout and the panes
+    // must outlive this object.
+    MenuAnimation(Layout::LiveLayout& layout, Formats::LayoutAnimation animation, Layout::PlaybackMode mode, std::vector<Formats::Pane*> panes,
+        Layout::PaneReach reach = Layout::PaneReach::PanesAndThoseBelow);
 
     // Plays from the first frame. An animation that plays already starts again.
     void Start();
@@ -42,6 +44,7 @@ private:
     Formats::LayoutAnimation animation;
     Layout::PlaybackMode mode;
     std::vector<Formats::Pane*> panes;
+    Layout::PaneReach reach;
     std::optional<Layout::AnimationPlayer> player;
     bool isPlaying = false;
 };

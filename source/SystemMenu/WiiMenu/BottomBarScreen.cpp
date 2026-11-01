@@ -121,11 +121,10 @@ constexpr std::string_view PreviousPageArrow = "ArwL";
 constexpr std::string_view NextPageArrow = "ArwR";
 
 // A balloon of the bar appears 17 steps after the hand came (0x813D18F8), 50 units above its button (0x8139CF4C), and keeps
-// 120 units from the edges of a 16:9 picture or 30 units from those of a 4:3 picture (0x813D1AB8).
+// 120 units from the edges of the 16:9 picture (0x813D1AB8).
 constexpr int StepsBeforeABalloonAppears = 17;
 constexpr float BalloonHeightAboveTheButton = 50;
-constexpr float BalloonMarginOnAWideScreen = 120;
-constexpr float BalloonMarginOnANarrowScreen = 30;
+constexpr float BalloonMarginFromTheEdges = 120;
 
 constexpr std::string_view TargetedSound = "WIPL_SE_BT_TARGETTING";
 constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
@@ -579,8 +578,6 @@ void BottomBarScreen::SetFocused(std::size_t buttonNumber, bool shouldBeFocused)
 
 void BottomBarScreen::PlaceTheBalloons()
 {
-    bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-    float margin = isWide ? BalloonMarginOnAWideScreen : BalloonMarginOnANarrowScreen;
     for (std::size_t number = 0; number < FocusButtons.size(); ++number)
     {
         FocusState& state = focusStates[number];
@@ -588,7 +585,7 @@ void BottomBarScreen::PlaceTheBalloons()
             continue;
 
         Formats::Vector2 button = PlaceOfButton(FocusButtons[number].button);
-        state.balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, margin);
+        state.balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, BalloonMarginFromTheEdges);
     }
 }
 

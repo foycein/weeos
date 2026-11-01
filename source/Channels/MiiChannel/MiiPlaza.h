@@ -110,8 +110,8 @@ public:
     static constexpr int ClosestZoomLevel = 0;
     static constexpr int FarthestZoomLevel = 3;
 
-    // The plaza of a 4:3 or a 16:9 picture: the wide picture shows more of the ground, and the Miis may walk farther to the sides.
-    MiiPlaza(bool isWidePicture, std::uint32_t randomSeed, PlazaKind plazaKind = PlazaKind::Plaza);
+    // The plaza of the 16:9 picture, which shows more of the ground than the 4:3 one, so the Miis may walk farther to the sides.
+    explicit MiiPlaza(std::uint32_t randomSeed, PlazaKind plazaKind = PlazaKind::Plaza);
 
     // The parade's fast forward: its Miis run instead of walking.
     void SetParadeRunning(bool isRunning);
@@ -195,7 +195,6 @@ private:
     int RandomWait();
     void LimitCameraDestination();
 
-    bool isWide;
     PlazaKind kind;
     bool isParadeRunning = false;
     std::mt19937 random;

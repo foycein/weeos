@@ -25,6 +25,7 @@ constexpr Ios::TitleId NewsChannelTitleId = {0x00010002, 0x48414745};
 constexpr Ios::TitleId InternetChannelTitleId = {0x00010001, 0x48414445};
 constexpr Ios::TitleId MiiChannelTitleId = {0x00010002, 0x48414341};
 constexpr Ios::TitleId PhotoChannelTitleId = {0x00010002, 0x48415941};
+constexpr Ios::TitleId WiiSpeakChannelTitleId = {0x00010001, 0x48434645};
 
 // The shared contents that the channel system reads for a channel: the two bitmap fonts of the console and the channel's copy of the
 // HOME Button Menu, in the folder of the version that the channel's program opens.

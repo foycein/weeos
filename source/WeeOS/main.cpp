@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-// WeeOS.exe [--silent] [nand folder [identity folder]]
+// WeeOS.exe [--silent] [--hidden] [nand folder [identity folder]]
 // WeeOS is one portable folder. Beside WeeOS.exe are:
 //   NAND                 the NAND of the console (made at the first start, or imported from a Wii)
 //   Identity             who the console is: keys.txt, device.cert, seeprom.bin (and authority.cert for a console that WeeOS made)
@@ -18,7 +18,8 @@
 //   WeeOS.settings.txt   the settings of the PC: window, sound, keys
 //   WiiFiles             the Wii files that a new console is made from
 // Folders on the command line are for tests and development; the SD card is then the folder SDCard beside the NAND folder.
-// --silent opens the sound output with nothing but silence, for the runs of development. Without it WeeOS plays its sound.
+// --silent opens the sound output with nothing but silence, and --hidden draws into a window that is never shown, for the runs of
+// development (docs/HelperRules.md). Without them WeeOS plays its sound and shows its window.
 // When WeeOS cannot start it says why in a message box, except with --silent, where nobody may be asked anything: there the reason
 // only goes to the error output.
 
@@ -26,6 +27,7 @@ namespace
 {
 
 constexpr std::string_view SilentOption = "--silent";
+constexpr std::string_view HiddenOption = "--hidden";
 constexpr std::string_view NandFolderName = "NAND";
 constexpr std::string_view IdentityFolderName = "Identity";
 constexpr std::string_view SdCardFolderName = "SDCard";
@@ -63,19 +65,24 @@ void ReportWhyWeeOSCannotStart(const std::exception& error, bool isSilent)
 int main(int argumentCount, char** arguments)
 {
     bool isSilent = false;
+    WeeOS::HostEnvironment host;
+    host.windowVisibility = Platform::WindowVisibility::Shown;
+
     std::vector<std::string_view> folderArguments;
     for (int argumentNumber = 1; argumentNumber < argumentCount; ++argumentNumber)
     {
         std::string_view argument = arguments[argumentNumber];
         if (argument == SilentOption)
             isSilent = true;
+        else if (argument == HiddenOption)
+            host.windowVisibility = Platform::WindowVisibility::Hidden;
         else
             folderArguments.push_back(argument);
     }
 
     try
     {
-        WeeOS::Application application(ChooseFolders(folderArguments), isSilent);
+        WeeOS::Application application(ChooseFolders(folderArguments), isSilent, host);
         application.Run();
         return 0;
     }

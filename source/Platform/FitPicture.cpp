@@ -5,63 +5,26 @@
 namespace Platform
 {
 
-namespace
+PixelRectangle FitPicture(WindowSize windowSize)
 {
+    float windowWidth = static_cast<float>(windowSize.width);
+    float windowHeight = static_cast<float>(windowSize.height);
 
-constexpr double BarsAroundThePicture = 2;
+    float pictureWidth = windowWidth;
+    float pictureHeight = std::round(windowWidth * PictureHeightShare / PictureWidthShare);
 
-struct ShapeProportions
-{
-    double width;
-    double height;
-};
-
-constexpr ShapeProportions FourByThreeProportions = {4, 3};
-constexpr ShapeProportions SixteenByNineProportions = {16, 9};
-
-ShapeProportions ProportionsOf(ScreenShape screenShape)
-{
-    if (screenShape == ScreenShape::FourByThree)
-        return FourByThreeProportions;
-
-    return SixteenByNineProportions;
-}
-
-// The space that is left in the window is shared by two bars. The first bar gets the whole pixels, the second one the rest.
-double SizeOfFirstBar(double windowLength, double pictureLength)
-{
-    double spaceLeft = windowLength - pictureLength;
-    return std::floor(spaceLeft / BarsAroundThePicture);
-}
-
-}
-
-PixelRectangle FitPicture(WindowSize windowSize, ScreenShape screenShape)
-{
-    ShapeProportions shape = ProportionsOf(screenShape);
-    double windowWidth = windowSize.width;
-    double windowHeight = windowSize.height;
-
-    double pictureWidth = 0;
-    double pictureHeight = 0;
-
-    bool windowIsTooWide = windowWidth * shape.height > windowHeight * shape.width;
+    bool windowIsTooWide = pictureHeight > windowHeight;
     if (windowIsTooWide)
     {
         pictureHeight = windowHeight;
-        pictureWidth = std::round(pictureHeight * shape.width / shape.height);
-    }
-    else
-    {
-        pictureWidth = windowWidth;
-        pictureHeight = std::round(pictureWidth * shape.height / shape.width);
+        pictureWidth = std::round(windowHeight * PictureWidthShare / PictureHeightShare);
     }
 
     PixelRectangle pictureArea;
-    pictureArea.left = static_cast<float>(SizeOfFirstBar(windowWidth, pictureWidth));
-    pictureArea.top = static_cast<float>(SizeOfFirstBar(windowHeight, pictureHeight));
-    pictureArea.width = static_cast<float>(pictureWidth);
-    pictureArea.height = static_cast<float>(pictureHeight);
+    pictureArea.left = (windowWidth - pictureWidth) / 2;
+    pictureArea.top = (windowHeight - pictureHeight) / 2;
+    pictureArea.width = pictureWidth;
+    pictureArea.height = pictureHeight;
     return pictureArea;
 }
 

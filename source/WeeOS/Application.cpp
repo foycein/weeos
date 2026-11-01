@@ -6,9 +6,11 @@
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/FilePicker.h"
 #include "Platform/MessagePump.h"
+#include "Settings/SettingsError.h"
 #include "SystemMenu/BackgroundServices/StartServices.h"
 #include "SystemMenu/DataManagement/DataManagementServices.h"
 #include "SystemMenu/DataManagement/MenuCertificates.h"
+#include "SystemMenu/InstalledTitleContents.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
 #include "SystemMenu/MenuStateFile.h"
@@ -20,9 +22,11 @@
 #include "WeeOS/NewConsole.h"
 #include "WeeOS/WiiSettingsServices.h"
 
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -35,6 +39,9 @@ namespace
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 constexpr std::wstring_view NandPickerTitle = L"Import your Wii: choose nand.bin of its BootMii backup";
 constexpr std::wstring_view NandImageFileName = L"nand.bin";
+
+// One step of the console, 1001/60000 of a second, in whole microseconds.
+constexpr std::chrono::microseconds StepOfAHiddenWindow(16683);
 
 SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
 {
@@ -73,22 +80,22 @@ std::optional<std::filesystem::path> PickNandWithWindows()
 
 // The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
 // the keys of the PC that go to those services.
-// The window sends its events to the keys, the keys to the keyboard service, and the keyboard service to the virtual remote.
+// The window sends its events to the keyboard service, and the keyboard service to the virtual remote.
 class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
-        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
+        Graphics::GraphicsDevice& graphicsDevice, Settings::PcSettingsStore& pcSettings, ProgramSound& programSound,
         const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii)
         : window(programWindow)
         , consoleImport(importOfAWii)
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
+        , systemMenuContents(iosServices.GetTitles(), Ios::SystemMenuTitleId)
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, host.pcSettingsFile)
+        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, pcSettings)
         , wiiMenuConsole(iosServices, host.clock, ClockFormatOf(host.regionalSettings))
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
-        , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
     {
         if (runningTitle == Ios::SystemMenuTitleId)
@@ -96,7 +103,7 @@ public:
         else
             StartChannel(iosServices, graphicsDevice, runningTitle, host.clock);
 
-        window.SetListener(&hostKeys);
+        window.SetListener(&keyboard);
     }
 
     ~Session()
@@ -159,12 +166,20 @@ public:
         return virtualRemote;
     }
 
+    void AskToTurnOff()
+    {
+        if (menu)
+            menu->AskToTurnOff();
+        else
+            channel->AskToTurnOff();
+    }
+
 private:
     void StartMenu(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice)
     {
         wiiSettings.FlowServices().consoleImport = &consoleImport;
         menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
-            iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices(), &consoleImport);
+            iosServices.GetPower(), wiiMenuConsole, &wiiSettings.FlowServices(), &consoleImport);
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
         Ios::TitleService& titles = iosServices.GetTitles();
@@ -199,8 +214,9 @@ private:
         const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
-        channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
+        Channels::ChannelAudio audio{iosServices.GetMicrophone(), sound.Waves()};
+        channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, systemMenuContents, iosServices.GetRemote(),
+            iosServices.GetNetworkConfig(), storage, audio, iosServices.GetPower(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -227,6 +243,7 @@ private:
     SystemMenu::ConsoleImport& consoleImport;
     ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
+    SystemMenu::InstalledTitleContents systemMenuContents;
     SystemMenu::IosNandFiles nandFiles;
     WiiSettingsServices wiiSettings;
     SystemMenu::IosMenuConsole wiiMenuConsole;
@@ -239,7 +256,6 @@ private:
     std::unique_ptr<SystemMenu::MenuSystem> menu;
     std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;
-    Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
     std::optional<SystemMenu::MenuSound> menuSound;
     std::optional<SystemMenu::MenuSound> channelSound;
@@ -250,11 +266,13 @@ Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostE
     , host(std::move(hostEnvironment))
     , importer(iosFolders, host.pickNand)
     , console(iosFolders)
-    , window(WindowTitle)
+    , pcSettings(host.pcSettingsFile)
+    , window(WindowTitle, Platform::DefaultClientSize, host.windowVisibility)
     , device(window)
     , sound(isSilent)
     , pacer(timer.ElapsedSeconds())
 {
+    PlaceWindow();
     PrepareConsoleFolders();
     console.PowerOn();
     StartSession();
@@ -279,9 +297,52 @@ Application::~Application() = default;
 
 void Application::StartSession()
 {
-    Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, pcSettings, sound, host, importer);
+    AttachMicrophone();
     StopOnTheKeyOfKoreanConsoles();
+}
+
+// Fullscreen last, so that the window leaves fullscreen to its own place and size.
+void Application::PlaceWindow()
+{
+    const Settings::PcSettings& settings = pcSettings.Values();
+
+    Platform::WindowPlace place = window.WindowedPlace();
+    place.clientSize = {settings.windowWidth, settings.windowHeight};
+    if (settings.windowLeft && settings.windowTop)
+    {
+        place.left = *settings.windowLeft;
+        place.top = *settings.windowTop;
+    }
+    window.SetWindowedPlace(place);
+
+    if (settings.isFullscreen)
+        window.ToggleFullscreen();
+}
+
+// IOS is new in every session, so the accessory is plugged into the new microphone service. A channel looks for it in its first step.
+void Application::AttachMicrophone()
+{
+    Ios::MicrophoneService& microphone = console.GetServices().GetMicrophone();
+    if (givenMicrophone != nullptr)
+    {
+        microphone.AttachSource(*givenMicrophone);
+        return;
+    }
+
+    if (Sound::HasCaptureDevice())
+        microphone.AttachSource(pcMicrophone);
+}
+
+void Application::UseMicrophoneSource(Ios::MicrophoneSource& source)
+{
+    givenMicrophone = &source;
+    console.GetServices().GetMicrophone().AttachSource(source);
+}
+
+const PcMicrophone& Application::GetPcMicrophone() const
+{
+    return pcMicrophone;
 }
 
 // The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.
@@ -301,7 +362,7 @@ void Application::Run()
 void Application::ShowNextPicture()
 {
     Platform::ProcessPendingMessages();
-    ReportCloseOfTheWindowAsPowerButton();
+    HandleTheWindow();
 
     if (isPoweredOff)
         return;
@@ -317,12 +378,13 @@ void Application::ShowNextPicture()
     StartImportedConsole();
     ReportProblems();
     ShowPicture();
+    WaitForTheNextStepOfAHiddenWindow();
 }
 
 void Application::RunOneStep()
 {
     Platform::ProcessPendingMessages();
-    ReportCloseOfTheWindowAsPowerButton();
+    HandleTheWindow();
 
     if (isPoweredOff)
         return;
@@ -343,17 +405,56 @@ void Application::ShowPicture()
     device.Present();
 }
 
-// The window that is closed is the POWER button. A window that cannot be seen cannot show the picture that fades out, so it powers off at once.
-void Application::ReportCloseOfTheWindowAsPowerButton()
+void Application::HandleTheWindow()
 {
-    if (!window.IsCloseRequested() || hasReportedClose)
+    AskBeforeClosing();
+    RememberWindowPlace();
+}
+
+// A minimized window cannot show the question, nor the picture that fades out, so it powers off at once.
+void Application::AskBeforeClosing()
+{
+    if (!window.TakeCloseRequest())
         return;
 
-    hasReportedClose = true;
     if (window.IsMinimized())
         isPoweredOff = true;
     else
-        console.GetServices().GetPower().ReportButtonPress(Ios::PowerEvent::PowerButtonPressed);
+        session->AskToTurnOff();
+}
+
+// The settings of the PC remember where the user put the window and whether it is fullscreen, for the next start.
+void Application::RememberWindowPlace()
+{
+    if (!window.TakePlaceChange())
+        return;
+
+    Platform::WindowPlace place = window.WindowedPlace();
+    Settings::PcSettings settings = pcSettings.Values();
+    settings.windowLeft = place.left;
+    settings.windowTop = place.top;
+    settings.windowWidth = place.clientSize.width;
+    settings.windowHeight = place.clientSize.height;
+    settings.isFullscreen = window.IsFullscreen();
+
+    try
+    {
+        pcSettings.Store(settings);
+    }
+    catch (const Settings::SettingsError& error)
+    {
+        std::cout << "The place of the window cannot be remembered: " << error.what() << "\n";
+    }
+}
+
+// The display of a shown window paces the pictures (Present waits for its refresh). A hidden window has none, so the pictures come
+// one step apart instead, and a hand that arrives and a button that is pressed in two pictures reach the menu in two steps.
+void Application::WaitForTheNextStepOfAHiddenWindow()
+{
+    if (window.IsShown())
+        return;
+
+    std::this_thread::sleep_for(StepOfAHiddenWindow);
 }
 
 void Application::RunDueSteps()
@@ -452,37 +553,14 @@ void Application::ForgetReportedProblems()
     reportedUnbuiltScreen.reset();
 }
 
-void Application::OnHostCommand(Platform::HostCommand command)
+void Application::PressPowerButton()
 {
-    switch (command)
-    {
-    case Platform::HostCommand::Power:
-        console.GetServices().GetPower().ReportButtonPress(Ios::PowerEvent::PowerButtonPressed);
-        return;
-
-    case Platform::HostCommand::Reset:
-        console.GetServices().GetPower().ReportButtonPress(Ios::PowerEvent::ResetButtonPressed);
-        return;
-
-    case Platform::HostCommand::ToggleSdCard:
-        ToggleSdCard();
-        return;
-    }
+    console.GetServices().GetPower().ReportButtonPress(Ios::PowerEvent::PowerButtonPressed);
 }
 
-void Application::ToggleSdCard()
+void Application::PressResetButton()
 {
-    Ios::SdCardService& sdCard = console.GetServices().GetSdCard();
-    if (sdCard.GetStatus().isInserted)
-    {
-        sdCard.RemoveCard();
-        return;
-    }
-
-    constexpr bool isWriteProtected = false;
-    Ios::Result<void> inserted = sdCard.InsertCard(folders.sdCardFolder, isWriteProtected);
-    if (inserted.Failed())
-        std::cout << std::format("There is no SD card: the folder {} is not there.\n", folders.sdCardFolder.string());
+    console.GetServices().GetPower().ReportButtonPress(Ios::PowerEvent::ResetButtonPressed);
 }
 
 // The program is the only place that can tell the person who runs it: the menu has no screen for a screen that is not built, and it
@@ -541,6 +619,11 @@ Channels::ChannelSystem* Application::GetChannel()
 Ios::TitleId Application::RunningTitle() const
 {
     return console.GetBootInformation().titleId;
+}
+
+Ios::IosServices& Application::GetServices()
+{
+    return console.GetServices();
 }
 
 ProgramSound& Application::GetSound()

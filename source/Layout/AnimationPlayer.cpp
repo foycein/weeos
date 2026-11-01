@@ -103,6 +103,7 @@ void ApplyPaneTag(Formats::Pane& pane, const Formats::AnimationTag& tag, float f
     case Formats::AnimationTagKind::TextureTransform:
     case Formats::AnimationTagKind::MaterialColor:
     case Formats::AnimationTagKind::TexturePattern:
+    case Formats::AnimationTagKind::IndirectTransform:
         return;
     }
 }
@@ -143,6 +144,11 @@ void ApplyMaterialTag(LiveMaterial& material, const Formats::LayoutAnimation& an
             ShowTextureOfPattern(material, animation, target, frame);
         return;
 
+    case Formats::AnimationTagKind::IndirectTransform:
+        for (const Formats::AnimationTarget& target : tag.targets)
+            SetIndirectTransformValue(material.description, target.index, target.target, EvaluateCurve(target, frame));
+        return;
+
     case Formats::AnimationTagKind::PaneTransform:
     case Formats::AnimationTagKind::Visibility:
     case Formats::AnimationTagKind::VertexColor:
@@ -153,22 +159,26 @@ void ApplyMaterialTag(LiveMaterial& material, const Formats::LayoutAnimation& an
 }
 
 AnimationPlayer::AnimationPlayer(LiveLayout& layoutToAnimate, Formats::LayoutAnimation animationToPlay, PlaybackMode playbackMode,
-    const std::vector<Formats::Pane*>& panes)
+    const std::vector<Formats::Pane*>& panes, PaneReach reach)
     : layout(layoutToAnimate)
     , animation(std::move(animationToPlay))
     , mode(playbackMode)
 {
-    BindObjects(panes);
+    BindObjects(panes, reach);
     ApplyCurrentFrame();
 }
 
-void AnimationPlayer::BindObjects(const std::vector<Formats::Pane*>& panes)
+void AnimationPlayer::BindObjects(const std::vector<Formats::Pane*>& panes, PaneReach reach)
 {
-    std::vector<Formats::Pane*> panesToBind;
-    for (Formats::Pane* pane : panes)
+    std::vector<Formats::Pane*> panesToBind = panes;
+    if (reach == PaneReach::PanesAndThoseBelow)
     {
-        std::vector<Formats::Pane*> paneAndDescendants = PaneWithDescendants(*pane);
-        panesToBind.insert(panesToBind.end(), paneAndDescendants.begin(), paneAndDescendants.end());
+        panesToBind.clear();
+        for (Formats::Pane* pane : panes)
+        {
+            std::vector<Formats::Pane*> paneAndDescendants = PaneWithDescendants(*pane);
+            panesToBind.insert(panesToBind.end(), paneAndDescendants.begin(), paneAndDescendants.end());
+        }
     }
 
     for (std::size_t objectIndex = 0; objectIndex < animation.objects.size(); ++objectIndex)

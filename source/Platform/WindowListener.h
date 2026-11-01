@@ -24,6 +24,9 @@ public:
 
     virtual void OnMouseButton(MouseButton button, bool isPressed) = 0;
 
+    // The mouse wheel turned by whole notches: a positive number away from the user, a negative one towards the user.
+    virtual void OnMouseWheel(int notches) = 0;
+
     // A key went down or up. The code is the Windows virtual key code, with the side of the shift, control and alt keys and a code
     // of its own for the Enter key of the keypad (KeyCodes.h). Holding a key down gives one event, not many.
     virtual void OnKey(int virtualKeyCode, bool isPressed) = 0;
