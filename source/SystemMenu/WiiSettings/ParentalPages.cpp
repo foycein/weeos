@@ -2,6 +2,7 @@
 
 #include "Settings/ParentalMasterKey.h"
 
+#include <algorithm>
 #include <array>
 
 namespace SystemMenu
@@ -366,22 +367,21 @@ void ParentalPages::BuildQuestionChoice(PageBuilder& builder)
     builder.AddChoice(0, 1, std::u16string(QuestionText(draft.secretQuestion)), false, nullptr).name = "Question";
 
     int lastQuestion = static_cast<int>(SecretQuestions.size()) - 1;
-    builder.AddStepArrow(ButtonLook::ArrowUp, RatingArrowLeft, RatingArrowUpTop, "PreviousQuestion",
+    PageButton& previous = builder.AddStepArrow(ButtonLook::ArrowUp, RatingArrowLeft, RatingArrowUpTop, "PreviousQuestion",
         [this]
         {
-            if (draft.secretQuestion > 0)
-                --draft.secretQuestion;
-
+            --draft.secretQuestion;
             navigator.Refresh();
-        }).isShown = draft.secretQuestion > 0;
-    builder.AddStepArrow(ButtonLook::ArrowDown, RatingArrowLeft, RatingArrowDownTop, "NextQuestion",
-        [this, lastQuestion]
+        });
+    previous.isShown = draft.secretQuestion > 0;
+
+    PageButton& next = builder.AddStepArrow(ButtonLook::ArrowDown, RatingArrowLeft, RatingArrowDownTop, "NextQuestion",
+        [this]
         {
-            if (draft.secretQuestion < lastQuestion)
-                ++draft.secretQuestion;
-
+            ++draft.secretQuestion;
             navigator.Refresh();
-        }).isShown = draft.secretQuestion < lastQuestion;
+        });
+    next.isShown = draft.secretQuestion < lastQuestion;
 
     builder.AddBackButton([this] { navigator.GoTo(PageAfterTheSecret(PageId::ParentalPinChoice)); });
     builder.AddBottomRight(u"OK", [this] { navigator.GoTo(PageId::ParentalAnswerChoice); });
@@ -432,10 +432,11 @@ void ParentalPages::BuildRatingChoice(PageBuilder& builder)
     builder.AddPicture(std::string(rating.picture), isWidePicture ? WideRatingPictureBounds : RatingPictureBounds);
 
     int lastRating = static_cast<int>(Ratings.size()) - 1;
-    builder.AddStepArrow(ButtonLook::ArrowUp, RatingArrowLeft, RatingArrowUpTop, "LooserRating", [this] { ChangeRating(-1); }).isShown =
-        shownRating > 0;
-    builder.AddStepArrow(ButtonLook::ArrowDown, RatingArrowLeft, RatingArrowDownTop, "StricterRating", [this] { ChangeRating(1); }).isShown =
-        shownRating < lastRating;
+    PageButton& looser = builder.AddStepArrow(ButtonLook::ArrowUp, RatingArrowLeft, RatingArrowUpTop, "LooserRating", [this] { ChangeRating(-1); });
+    looser.isShown = shownRating > 0;
+
+    PageButton& stricter = builder.AddStepArrow(ButtonLook::ArrowDown, RatingArrowLeft, RatingArrowDownTop, "StricterRating", [this] { ChangeRating(1); });
+    stricter.isShown = shownRating < lastRating;
 
     builder.AddBottomLeft(u"Cancel", [this] { navigator.GoTo(PageId::ParentalSettingsOverview); }).sound = PageSound::Back;
     builder.AddBottomRight(u"OK",

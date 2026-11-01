@@ -18,7 +18,8 @@ namespace SystemMenu
 class SettingsScreen : public Screen
 {
 public:
-    // The argument says which page comes first: 0 the first index page, 4 the second one (docs/research/SystemMenuStructure.md 3.4).
+    // The argument says which page comes first: 0 the first index page, 1 Internet, 3 Wii System Update, 4 the second index page,
+    // 6 Country (docs/research/SystemMenuStructure.md 3.4).
     // Throws a MenuError when the menu has no settings to work with.
     SettingsScreen(MenuServices& menuServices, int argument);
 

@@ -342,8 +342,9 @@ void PcPages::ChangeKey(Input::ButtonMask button, int change)
         [button, change](Settings::PcSettings& changed)
         {
             int keyCount = static_cast<int>(Settings::SelectableKeys().size());
-            int position = (PositionOfKey(Settings::KeyOfButton(changed, button)) + change + keyCount) % keyCount;
-            Settings::SetKeyOfButton(changed, button, Settings::SelectableKeys()[position].virtualKeyCode);
+            int position = PositionOfKey(Settings::KeyOfButton(changed, button)) + change;
+            int positionInTheList = (position + keyCount) % keyCount;
+            Settings::SetKeyOfButton(changed, button, Settings::SelectableKeys()[positionInTheList].virtualKeyCode);
         });
 }
 

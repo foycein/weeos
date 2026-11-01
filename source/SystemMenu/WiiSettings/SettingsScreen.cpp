@@ -15,8 +15,13 @@ namespace
 {
 
 // The pages that the argument of the screen names.
+// The pages that the argument of the screen names (the tables 0x81610A30 and 0x81610AA4 of the original). The arguments 2 and 5 open
+// the first-time setup, which WeeOS does not have (docs/DECISIONS.md: no first-run setup), so they open the first index page.
 constexpr int FirstIndexArgument = 0;
+constexpr int InternetArgument = 1;
+constexpr int SystemUpdateArgument = 3;
 constexpr int SecondIndexArgument = 4;
+constexpr int CountryArgument = 6;
 
 // A button that is held down presses again after 400 milliseconds, then every 150 milliseconds. A step lasts 1001/60000 of a second.
 constexpr int StepsBeforeRepeat = 24;
@@ -53,10 +58,23 @@ SettingsScreen::SettingsScreen(MenuServices& menuServices, int argumentOfTheScre
 
 PageId SettingsScreen::FirstPageOf(int argument)
 {
-    if (argument == SecondIndexArgument)
+    switch (argument)
+    {
+    case InternetArgument:
+        return PageId::InternetIndex;
+
+    case SystemUpdateArgument:
+        return PageId::UpdateIndex;
+
+    case SecondIndexArgument:
         return PageId::SecondIndex;
 
-    return PageId::FirstIndex;
+    case CountryArgument:
+        return PageId::CountrySelect;
+
+    default:
+        return PageId::FirstIndex;
+    }
 }
 
 void SettingsScreen::Build()
