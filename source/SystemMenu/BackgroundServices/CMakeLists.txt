@@ -1,5 +1,5 @@
 target_sources(SystemMenu PRIVATE
-    BootFiles.cpp
+    BootCache.cpp
     NandFileAccess.cpp
     PlayTimeLog.cpp
     SharedFlagsFile.cpp

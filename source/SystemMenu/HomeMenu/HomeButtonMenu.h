@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace SystemMenu
@@ -49,6 +50,9 @@ enum class HomeMenuSound : std::size_t
 
     ConnectWindowCloses = 21,
 };
+
+// The name of the sound in the sound archive, for example "HOMESE_FOCUS".
+std::string_view NameOfHomeMenuSound(HomeMenuSound sound);
 
 using HomeMenuSoundPlayer = std::function<void(HomeMenuSound sound)>;
 

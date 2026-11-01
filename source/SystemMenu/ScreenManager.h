@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace SystemMenu
 {
@@ -25,7 +26,7 @@ class ScreenManager
 public:
     explicit ScreenManager(ScreenFactory screenFactory);
 
-    // Starts the menu: makes the launcher, which opens the first screen.
+    // Starts the menu: forgets what was going on and makes the launcher, which opens the first screen.
     void Start(ScreenId firstScreen, int argument);
 
     // Requests. A request is dropped when eight others wait already.
@@ -43,7 +44,18 @@ public:
     // The screen that was asked for last and that the factory could not make, so that the program can tell the user.
     std::optional<ScreenId> UnbuiltScreen() const;
 
+    // The front panel asks every screen in the tree before a reset or a power off (Screen::CanStopForFrontPanel).
+    bool CanEveryScreenStop();
+    void TellEveryScreenToStop();
+    bool HasEveryScreenStopped();
+
+    // True while a screen that was asked for has been made and loaded, and is not in the tree yet.
+    bool IsLoadingScreen() const;
+
 private:
+    // Every screen in the tree, a screen before the screens below it.
+    std::vector<Screen*> AllScreens();
+
     static constexpr std::size_t MaximumPendingRequests = 8;
 
     void Post(const ScreenRequest& request);
@@ -55,6 +67,7 @@ private:
     void BeginLoading(const ScreenRequest& request);
     void FinishLoading();
     void GoToNewRoot(const ScreenRequest& request);
+    void MakeLauncher(ScreenId firstScreen, int argument);
 
     Screen* FindParentFor(const ScreenRequest& request);
     void Attach(Screen& parent, std::unique_ptr<Screen> screen, std::optional<ScreenId> nextSibling);

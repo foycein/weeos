@@ -20,9 +20,28 @@ void MenuAnimation::Start()
     isPlaying = true;
 }
 
+void MenuAnimation::ShowLastFrame()
+{
+    player.emplace(layout, animation, mode, panes);
+    player->Advance(static_cast<float>(animation.frameCount) - 1);
+    isPlaying = false;
+}
+
+void MenuAnimation::Stop()
+{
+    isPlaying = false;
+}
+
 bool MenuAnimation::IsPlaying() const
 {
     return isPlaying;
+}
+
+void MenuAnimation::ShowFrame(float frame)
+{
+    player.emplace(layout, animation, mode, panes);
+    player->Advance(frame);
+    isPlaying = false;
 }
 
 void MenuAnimation::Step()

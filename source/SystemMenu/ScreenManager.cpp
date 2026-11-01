@@ -33,6 +33,14 @@ ScreenManager::ScreenManager(ScreenFactory screenFactory)
 
 void ScreenManager::Start(ScreenId firstScreen, int argument)
 {
+    pendingRequests.clear();
+    loadingScreen.reset();
+    isLoadingScreenArmed = false;
+    MakeLauncher(firstScreen, argument);
+}
+
+void ScreenManager::MakeLauncher(ScreenId firstScreen, int argument)
+{
     root = std::make_unique<LauncherScreen>(*this, firstScreen, argument);
     root->Build();
 }
@@ -101,27 +109,67 @@ void ScreenManager::Draw()
 
 Screen* ScreenManager::FindScreen(ScreenId screen)
 {
+    for (Screen* candidate : AllScreens())
+    {
+        if (candidate->Id() == screen)
+            return candidate;
+    }
+    return nullptr;
+}
+
+std::vector<Screen*> ScreenManager::AllScreens()
+{
+    std::vector<Screen*> screens;
     if (!root)
-        return nullptr;
+        return screens;
 
     std::vector<Screen*> toVisit = {root.get()};
     while (!toVisit.empty())
     {
         Screen* visited = toVisit.back();
         toVisit.pop_back();
-
-        if (visited->Id() == screen)
-            return visited;
+        screens.push_back(visited);
 
         for (const std::unique_ptr<Screen>& child : visited->children)
             toVisit.push_back(child.get());
     }
-    return nullptr;
+    return screens;
 }
 
 std::optional<ScreenId> ScreenManager::UnbuiltScreen() const
 {
     return unbuiltScreen;
+}
+
+bool ScreenManager::CanEveryScreenStop()
+{
+    for (Screen* screen : AllScreens())
+    {
+        if (!screen->CanStopForFrontPanel())
+            return false;
+    }
+    return true;
+}
+
+void ScreenManager::TellEveryScreenToStop()
+{
+    for (Screen* screen : AllScreens())
+        screen->StopForFrontPanel();
+}
+
+bool ScreenManager::HasEveryScreenStopped()
+{
+    for (Screen* screen : AllScreens())
+    {
+        if (!screen->HasStoppedForFrontPanel())
+            return false;
+    }
+    return true;
+}
+
+bool ScreenManager::IsLoadingScreen() const
+{
+    return loadingScreen != nullptr;
 }
 
 void ScreenManager::UpdateScreens(Screen& screen)
@@ -191,7 +239,7 @@ void ScreenManager::GoToNewRoot(const ScreenRequest& request)
     if (root)
         RemoveScreen(*root);
 
-    Start(request.screen, request.argument);
+    MakeLauncher(request.screen, request.argument);
 }
 
 Screen* ScreenManager::FindParentFor(const ScreenRequest& request)

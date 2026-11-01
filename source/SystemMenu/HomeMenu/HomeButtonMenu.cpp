@@ -25,6 +25,18 @@ constexpr int FadeOutSteps = 30;
 constexpr int OpaqueAlpha = 255;
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
 
+// The first 22 sounds of IplSound.brsar, in the order of their numbers.
+constexpr std::array<std::string_view, 22> SoundNames = {"HOMESE_HOME_BUTTON", "HOMESE_RETURN_APP", "HOMESE_GOTO_MENU",
+    "HOMESE_RESET_APP", "HOMESE_FOCUS", "HOMESE_SELECT", "HOMESE_CANCEL", "HOMESE_OPEN_CONTROLLER", "HOMESE_CLOSE_CONTROLLER",
+    "HOMESE_VOLUME_PLUS", "HOMESE_VOLUME_MINUS", "HOMESE_VOLUME_PLUS_LIMIT", "HOMESE_VOLUME_MINUS_LIMIT", "HOMESE_NOTHING_DONE",
+    "HOMESE_VIBE_ON", "HOMESE_VIBE_OFF", "HOMESE_START_CONNECT_WINDOW", "HOMESE_CONNECTED", "HOMESE_CONNECTED2", "HOMESE_CONNECTED3",
+    "HOMESE_CONNECTED4", "HOMESE_END_CONNECT_WINDOW"};
+
+}
+
+std::string_view NameOfHomeMenuSound(HomeMenuSound sound)
+{
+    return SoundNames.at(static_cast<std::size_t>(sound));
 }
 
 HomeButtonMenu::HomeButtonMenu(Display& menuDisplay, const HomeMenuFiles& homeMenuFiles, const InputManager& inputManager,
