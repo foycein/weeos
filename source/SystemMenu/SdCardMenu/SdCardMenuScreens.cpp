@@ -48,6 +48,10 @@ constexpr ButtonSet NextPageButtons = {Input::RemoteButtons::Plus, Input::Classi
 constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus};
 
 // A tile of the list is as big as the icon of a channel.
+// While the window of a channel covers the picture, the list paints it black.
+constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
+constexpr std::uint8_t FullyShown = 255;
+
 constexpr float TileWidth = 128;
 constexpr float TileHeight = 96;
 
@@ -94,7 +98,8 @@ void SdCardMenuBarScreen::Draw(DrawPass pass)
     if (pass == DrawPass::Underlay)
         layout->Draw();
 
-    if (pass == DrawPass::Overlay)
+    bool isWindowOpen = services.screens.FindScreen(ScreenId::SdChannelWindow) != nullptr;
+    if (pass == DrawPass::Overlay && !isWindowOpen)
         DrawArrowsOnly();
 }
 
@@ -134,6 +139,11 @@ bool SdCardMenuBarScreen::DrawsWithChildren() const
 bool SdCardMenuBarScreen::RunMain()
 {
     layout->Calculate();
+
+    // The window of a channel lies over the bar and answers its own dialogs.
+    if (services.screens.FindScreen(ScreenId::SdChannelWindow) != nullptr)
+        return false;
+
     bool isActive = !services.dialogs.IsOpen();
 
     // The help and the notice of too many channels wait for OK and need no answer.
@@ -311,6 +321,12 @@ void SdChannelListScreen::TurnPage(int direction)
 
 bool SdChannelListScreen::RunMain()
 {
+    if (HasChildren())
+    {
+        RunZoom();
+        return false;
+    }
+
     bool isCardReadyNow = services.dataManagement != nullptr && ReadCardState(*services.dataManagement) == CardState::Ready;
     if (isCardReadyNow != isCardReady)
         ReadChannels();
@@ -342,8 +358,72 @@ void SdChannelListScreen::FollowThePointer()
         return;
 
     services.sounds.Request(PushSound);
+    pressedTile = focusedTile;
     std::size_t place = page * Formats::ChannelPlacesPerPage + tiles[*focusedTile].placeOfPage;
     services.screens.OpenChild(ScreenId::SdChannelWindow, Id(), static_cast<int>(place));
+}
+
+std::uint32_t SdChannelListScreen::PressedChannel() const
+{
+    return pressedTile ? tiles[*pressedTile].lowPart : 0;
+}
+
+void SdChannelListScreen::ZoomIntoPressedChannel()
+{
+    if (!pressedTile)
+        return;
+
+    Formats::Vector2 stretch = services.display.LayoutStretch();
+    std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(TilePaneName(tiles[*pressedTile].placeOfPage), {0, 0});
+    Formats::Vector2 place = middle.value_or(Formats::Vector2{0, 0});
+    float halfWidth = TileWidth * stretch.x / 2;
+    float halfHeight = TileHeight / 2;
+    PictureArea television = {place.x - halfWidth, place.x + halfWidth, place.y - halfHeight, place.y + halfHeight};
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), television);
+    zoom->StartZoomingIn();
+}
+
+void SdChannelListScreen::ZoomOutOfPressedChannel()
+{
+    if (!zoom)
+        return;
+
+    zoom->StartZoomingOut();
+    isCoveredByWindow = false;
+}
+
+const TelevisionZoom* SdChannelListScreen::Zoom() const
+{
+    return zoom.get();
+}
+
+bool SdChannelListScreen::UpdatesWithChildren() const
+{
+    return true;
+}
+
+bool SdChannelListScreen::DrawsWithChildren() const
+{
+    return true;
+}
+
+// When the zoom has come in, the window covers the picture; when it has gone out again, the list is as it was.
+void SdChannelListScreen::RunZoom()
+{
+    if (!zoom)
+        return;
+
+    zoom->Step();
+    if (zoom->IsMoving())
+        return;
+
+    if (zoom->Closeness() > 0)
+    {
+        isCoveredByWindow = true;
+        return;
+    }
+
+    zoom.reset();
 }
 
 std::optional<std::size_t> SdChannelListScreen::TileUnderPointer() const
@@ -398,6 +478,21 @@ void SdChannelListScreen::Draw(DrawPass pass)
     if (pass != DrawPass::Main)
         return;
 
+    if (isCoveredByWindow)
+    {
+        services.display.FillArea(services.display.WholePicture(), Black);
+        return;
+    }
+
+    if (zoom)
+        services.display.MoveArea(zoom->VisibleArea(), services.display.WholePicture(), FullyShown);
+
+    DrawTheList();
+    services.display.StopMovingAreas();
+}
+
+void SdChannelListScreen::DrawTheList()
+{
     gridLayout->Draw();
     for (Tile& tile : tiles)
     {

@@ -31,8 +31,10 @@ struct ReverbParameters
     float mix;
 };
 
-// The numbers the menu gives the reverb of its effect bus A (they sit at 0x81632f78 in the program of the menu).
-constexpr ReverbParameters MenuReverbParameters = {0.02f, 3.0f, 0.6f, 0.4f, 0.1f, 1.0f};
+// The numbers the menu gives the reverb of its effect bus A. The sound library first makes the reverb with its own default numbers
+// (0x81632f78: 0.02, 3.0, 0.6, 0.4, 0.1, 1.0), and the menu at once makes it again with its numbers at 0x8160f048 (0x8136b37c, called by
+// the sound set-up 0x8136b280 and again before the music starts). The HOME menu gives its own reverb the same numbers (0x81372c18).
+constexpr ReverbParameters MenuReverbParameters = {0.0f, 2.5f, 0.5f, 0.0f, 0.0f, 1.0f};
 
 // The reverb of the menu: the late reverb of the high quality reverb of the AX effect library, for two channels.
 // The sound passes the pre-delay and three comb filters side by side, then two all-pass filters, the damping filter and

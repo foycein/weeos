@@ -2,8 +2,10 @@ target_sources(SystemMenu PRIVATE
     Balloon.cpp
     BottomBarScreen.cpp
     ChannelGridScreen.cpp
+    ChannelLaunch.cpp
     ChannelManager.cpp
     ChannelPlacement.cpp
+    ChannelStartWindowScreen.cpp
     ChannelTile.cpp
     ChannelTitleIds.cpp
     ClockDisplay.cpp

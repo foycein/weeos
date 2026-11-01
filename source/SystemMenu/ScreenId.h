@@ -10,7 +10,7 @@ enum class ScreenId : int
     // The root of the tree of screens. It opens the first real screen.
     Launcher = 0x01,
 
-    // The channel grid, and the window that opens when a channel is pressed (not built yet).
+    // The channel grid, and the window that opens when a channel is pressed.
     ChannelGrid = 0x02,
     ChannelStartWindow = 0x03,
 
