@@ -36,16 +36,17 @@ SourceFolderName = "Source"
 ReadmeFileName = "README.md"
 ToReleaseOption = "--to-release"
 
-# What WeeOS.exe needs beside it, in the build folder of the program (source/WeeOS/CMakeLists.txt).
-ProgramFiles = ["WeeOS.exe", "Mesh.vert.spv", "Quad.frag.spv", "Quad.vert.spv"]
+# What WeeOS.exe needs beside it, in the build folder of the program (source/WeeOS/CMakeLists.txt). WebView2Loader.dll is the loader of
+# the browser engine of the Internet Channel (external/Chromium).
+ProgramFiles = ["WeeOS.exe", "Mesh.vert.spv", "Quad.frag.spv", "Quad.vert.spv", "WebView2Loader.dll"]
 WiiFilesFolderName = "WiiFiles"
 SdCardFolderName = "SDCard"
 
 # A console never goes into the release: the first start of every install makes its own.
 ConsoleNames = ["NAND", "Identity", "WeeOS.settings.txt"]
 
-# Names that must never be in the clean source.
-NamesNeverInTheSource = ["assets", "reference", "Worktrees", "data", "out", "build", "build-release", "external"]
+# Names that must never be in the clean source. external/Chromium (the WebView2 SDK) is part of it: the source does not build without it.
+NamesNeverInTheSource = ["assets", "reference", "Worktrees", "data", "out", "build", "build-release"]
 
 
 def ReadVersion():
