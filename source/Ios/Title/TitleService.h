@@ -10,6 +10,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/FileSystem/NandPath.h"
 #include "Ios/Identity/ConsoleIdentityService.h"
+#include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
 #include "Ios/Title/ContentStream.h"
 #include "Ios/Title/KernelFiles.h"
@@ -52,32 +53,39 @@ struct LaunchPlan
 // The identity of the console tells which tickets are for this console.
 // Errors of the file system come back unchanged. The codes of ES are the ones of IosError.
 // Calls from several threads are safe.
+//
+// The profile says which IOS this is. A call marked "Command" gives TitleInvalidArgument when that IOS does not have the command,
+// as the original does for a number it does not know.
 class TitleService
 {
 public:
-    // The file system service and the identity must outlive this object.
-    TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity);
+    // The file system service and the identity must outlive this object. Without a profile this is the title service of IOS80.
+    TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity, const IosProfile& iosProfile = SystemMenuProfile());
 
     // Every title that has a folder under /title, in the order of the file system. A title that is being installed is not there yet.
     Result<std::vector<TitleId>> ListInstalledTitles() const;
 
-    // Every title that has a ticket file under /ticket.
+    // Every title that has a ticket file under /ticket. The IOS that read tickets of version 1 count their files (.tv1) too.
     Result<std::vector<TitleId>> ListTitlesWithTickets() const;
 
     // The ids of the contents of an installed title that are on the NAND, in the order of the title metadata.
     // A private content is on the NAND when its file is there, a shared content when /shared1/content.map names its hash.
     Result<std::vector<std::uint32_t>> ListPresentContentIds(TitleId titleId) const;
 
-    // The same for any title metadata, also one of a title that is not installed.
+    // The same for any title metadata, also one of a title that is not installed. Command GetStoredContents.
     Result<std::vector<std::uint32_t>> ListPresentContentIds(const Formats::TitleMetadata& metadata) const;
 
-    // The hashes of the contents that titles share.
+    // The hashes of the contents that titles share. Command GetSharedContents.
     Result<std::vector<Formats::Sha1Digest>> ListSharedContentHashes() const;
 
     // The title metadata of an installed title, as it is stored with its signature. NotFound when the title is not installed.
+    // Command GetStoredTitleMetadata. The parsed form is for the parts of the system that read it without a command, such as Boot.
     Result<Formats::Bytes> ReadTitleMetadataBytes(TitleId titleId) const;
     Result<Formats::TitleMetadata> ReadTitleMetadata(TitleId titleId) const;
     Result<TitleMetadataView> ReadTitleMetadataView(TitleId titleId) const;
+
+    // True when the console has the key that only Korean consoles have. Command CheckHasKoreanKey.
+    Result<bool> CheckHasKoreanKey() const;
 
     // The views of all the tickets of a title. A title without a ticket file has none.
     Result<std::vector<TicketView>> ListTicketViews(TitleId titleId) const;
@@ -158,6 +166,7 @@ public:
     Result<void> DeleteTitleContents(TitleId titleId);
 
     // Deletes one content. TitleInvalidArgument for a shared content and for an id that the title does not have.
+    // Command DeleteTitleContent.
     Result<void> DeleteContent(TitleId titleId, std::uint32_t contentId);
 
     // Takes the ticket of the view out of the ticket file of its title. The file goes when it has no ticket left.
@@ -175,6 +184,8 @@ private:
         Formats::AesKey titleKey;
     };
 
+    Result<void> RequireCommand(int command) const;
+    Result<std::vector<std::uint32_t>> FindPresentContentIds(const Formats::TitleMetadata& metadata) const;
     Result<std::vector<Formats::Ticket>> ReadTickets(TitleId titleId) const;
     Result<Formats::Ticket> FindTicket(TitleId titleId, std::uint64_t ticketId) const;
     Result<Formats::AesKey> ReadTitleKey(TitleId titleId) const;
@@ -194,6 +205,7 @@ private:
 
     KernelFiles files;
     const ConsoleIdentityService& identity;
+    const IosProfile profile;
 
     mutable std::mutex mutex;
     std::optional<TitleId> runningTitleId;

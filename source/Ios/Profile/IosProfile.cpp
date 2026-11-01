@@ -121,10 +121,11 @@ IosProfile MakeProfile(const IosVersion& version, const IosFeatureTable& feature
     profile.esCreatesWfsFolder = features.Has(Feature::EsCreatesWfsFolder, ios);
 
     profile.fileSystemFlavor = features.KindOf<FileSystemFlavor>(Feature::FileSystemFlavor, ios);
+    profile.fileSystemChecksNameLengthInLookUp = features.Has(Feature::FileSystemChecksNameLengthInLookUp, ios);
+    profile.fileSystemRecreatesTmpAtEveryStart = features.Has(Feature::FileSystemRecreatesTmpAtEveryStart, ios);
 
     profile.discDriveHasNoDiscCommands = features.Has(Feature::DiscDriveHasNoDiscCommands, ios);
     profile.sdSupportsHighCapacityCards = features.Has(Feature::SdSupportsHighCapacityCards, ios);
-    profile.powerHasWakeupCommand = features.Has(Feature::PowerHasWakeupCommand, ios);
 
     profile.usbHostGeneration = features.KindOf<UsbHostGeneration>(Feature::UsbHostGeneration, ios);
     profile.keyboardDriver = features.KindOf<KeyboardDriver>(Feature::KeyboardDriver, ios);

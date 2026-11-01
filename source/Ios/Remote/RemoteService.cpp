@@ -50,6 +50,18 @@ void RemoteService::SetSensorBarPosition(Input::SensorBarPosition position)
     channels.SetSensorBarPosition(position);
 }
 
+void RemoteService::SetRumbleEnabled(bool isEnabled)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    channels.SetRumbleEnabled(isEnabled);
+}
+
+bool RemoteService::IsRumbleEnabled()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    return channels.IsRumbleEnabled();
+}
+
 Input::DeviceKind RemoteService::Probe(int channel)
 {
     std::lock_guard<std::mutex> lock(mutex);

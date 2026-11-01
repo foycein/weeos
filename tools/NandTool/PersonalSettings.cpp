@@ -24,12 +24,14 @@ constexpr Formats::Byte FactoryHighestAllowedRating = 0x14;
 // The address starts with the code of the country. The rest is the region, the city, names and coordinates.
 constexpr std::size_t CountryCodeSize = 1;
 
-// The channel grid of the System Menu has 48 slots. One count says how many have a channel, the other how many are free.
-// A console from the factory has the five channels that the import keeps: Photo, Mii, Wii Shop, Forecast and News.
-// Assumed: the meaning of the two counts is read from their values on the dump's console (28 and 20, which add up to 48,
-// and 28 is those five channels and 23 downloaded ones). See docs/audit/OpenPoints/Formats.md.
+// The channel grid of the System Menu has 48 slots. One count says how many hold a tile, the other how many are free (the menu
+// writes the second as 48 minus the first, 0x8156A874 and 0x813515A4). The Disc Channel is one of the tiles: the dump's console has it and
+// 27 channels, which is the 28 in its file. The menu counts the tiles again whenever it builds the grid and writes both numbers when
+// they differ (0x81339ABC), so these values only hold until the first start.
+// Likely: the tiles of the system the import keeps are the Disc Channel, Photo, Mii, Wii Shop, Forecast, News and the Internet Channel.
+// See docs/audit/OpenPoints/Formats.md.
 constexpr std::uint64_t ChannelGridSlotCount = 48;
-constexpr std::uint64_t FactoryChannelCount = 5;
+constexpr std::uint64_t FactoryTileCount = 7;
 
 constexpr std::string_view NicknameSettingName = "IPL.NIK";
 constexpr std::string_view ParentalControlsSettingName = "IPL.PC";
@@ -120,8 +122,8 @@ void ResetPersonalSettings(Formats::SystemConfiguration& configuration)
     ClearArray(configuration, AddressSettingName, CountryCodeSize);
     SetNumber(configuration, ClockBiasSettingName, 0);
     SetNumber(configuration, TemporaryChannelSettingName, 0);
-    SetNumber(configuration, InstalledChannelCountSettingName, FactoryChannelCount);
-    SetNumber(configuration, FreeChannelCountSettingName, ChannelGridSlotCount - FactoryChannelCount);
+    SetNumber(configuration, InstalledChannelCountSettingName, FactoryTileCount);
+    SetNumber(configuration, FreeChannelCountSettingName, ChannelGridSlotCount - FactoryTileCount);
     RemoveSetting(configuration, NetworkProfileSettingName);
     RemoveSetting(configuration, NetworkConfigurationSettingName);
 }

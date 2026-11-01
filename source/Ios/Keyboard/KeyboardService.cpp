@@ -32,8 +32,16 @@ KeyboardEvent MakeEventWithoutKeys(KeyboardEventKind kind, std::uint32_t keyboar
 
 }
 
+KeyboardService::KeyboardService(const IosProfile& iosProfile)
+    : profile(iosProfile)
+{
+}
+
 void KeyboardService::ReportConnected(std::uint32_t keyboardId)
 {
+    if (profile.keyboardDriver == KeyboardDriver::None)
+        return;
+
     std::lock_guard<std::mutex> lock(mutex);
     if (events.IsClosed())
         return;
