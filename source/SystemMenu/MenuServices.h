@@ -10,6 +10,7 @@ class MessageCatalog;
 namespace SystemMenu
 {
 
+class ConsoleImport;
 class CursorManager;
 struct DataManagementServices;
 class DialogManager;
@@ -67,6 +68,9 @@ struct MenuServices
 
     // The titles, the NAND, the SD card and the identity for Data Management and the SD Card Menu. Nothing when the menu runs without IOS.
     DataManagementServices* dataManagement = nullptr;
+
+    // The import of a person's own Wii (ConsoleImport.h). Nothing when the program offers none.
+    ConsoleImport* consoleImport = nullptr;
 };
 
 }

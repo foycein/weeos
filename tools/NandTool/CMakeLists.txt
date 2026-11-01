@@ -5,6 +5,7 @@ add_library(NandImporter STATIC
     ImportRules.cpp
     NandImporter.cpp
     PersonalSettings.cpp
+    PreparedTitles.cpp
     WindowsNames.cpp
 )
 target_link_libraries(NandImporter PUBLIC Formats Ios)

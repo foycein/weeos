@@ -27,4 +27,8 @@ struct SettingTextFile
 
 SettingTextFile ReadSettingTextFile(ByteView encryptedBytes);
 
+// The 256 bytes of the file: the lines, each ending with a carriage return and a line feed, encrypted, and zeros behind them as the
+// console leaves them. Throws a FormatError when the text does not fit.
+Bytes WriteSettingTextFile(const SettingTextFile& file);
+
 }
