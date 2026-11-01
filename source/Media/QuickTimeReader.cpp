@@ -3,6 +3,8 @@
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 
+#include <algorithm>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -17,6 +19,7 @@ constexpr std::string_view DataDescription = "QuickTime movie";
 // A box (atom) is its size, its four character type and its body. A size of 1 means a 64 bit size follows the type,
 // a size of 0 means the box reaches to the end of the file.
 constexpr std::size_t FourCharacters = 4;
+constexpr std::size_t BoxHeaderSize = 2 * FourCharacters;
 constexpr std::uint32_t SizeIsSixtyFourBits = 1;
 constexpr std::uint32_t SizeReachesTheEnd = 0;
 
@@ -38,6 +41,16 @@ constexpr std::string_view ElementaryStreamBox = "esds";
 
 constexpr std::string_view VideoHandler = "vide";
 constexpr std::string_view SoundHandler = "soun";
+
+constexpr std::string_view JpegCodec = "jpeg";
+constexpr std::string_view MotionJpegACodec = "mjpa";
+constexpr std::string_view MotionJpegBCodec = "mjpb";
+constexpr std::string_view UnsignedEightBitCodec = "raw ";
+constexpr std::string_view BigEndianCodec = "twos";
+constexpr std::string_view LittleEndianCodec = "sowt";
+constexpr std::string_view MuLawCodec = "ulaw";
+constexpr std::string_view ALawCodec = "alaw";
+constexpr std::string_view AacCodec = "mp4a";
 
 // The places inside a sample description entry, counted from the start of the entry (its size and its codec come first).
 constexpr std::size_t EntryCodecPlace = 4;
@@ -89,7 +102,7 @@ std::vector<Box> ReadBoxes(Formats::ByteView data)
 {
     std::vector<Box> boxes;
     Formats::ByteReader reader(data, DataDescription);
-    while (reader.RemainingSize() >= 2 * FourCharacters)
+    while (reader.RemainingSize() >= BoxHeaderSize)
     {
         std::size_t boxStart = reader.Position();
         std::uint64_t size = reader.ReadUint32();
@@ -100,7 +113,8 @@ std::vector<Box> ReadBoxes(Formats::ByteView data)
             size = data.size() - boxStart;
 
         std::size_t headerSize = reader.Position() - boxStart;
-        if (size < headerSize || !Formats::IsRangeInside(boxStart, size, data.size()))
+        bool isWholeBox = size >= headerSize && Formats::IsRangeInside(boxStart, size, data.size());
+        if (!isWholeBox)
             break;
 
         boxes.push_back({type, reader.ReadBytes(static_cast<std::size_t>(size - headerSize))});
@@ -158,18 +172,22 @@ std::vector<std::uint32_t> ReadSampleSizes(Formats::ByteView body)
     std::uint32_t sizeOfEverySample = reader.ReadUint32();
     std::uint32_t sampleCount = reader.ReadUint32();
 
+    if (sizeOfEverySample != 0)
+        return std::vector<std::uint32_t>(sampleCount, sizeOfEverySample);
+
     std::vector<std::uint32_t> sizes;
     for (std::uint32_t sampleNumber = 0; sampleNumber < sampleCount; ++sampleNumber)
-        sizes.push_back(sizeOfEverySample != 0 ? sizeOfEverySample : reader.ReadUint32());
+        sizes.push_back(reader.ReadUint32());
 
     return sizes;
 }
 
-std::vector<std::uint64_t> ReadChunkPlaces(Formats::ByteView stbl)
+std::vector<std::uint64_t> ReadChunkPlaces(Formats::ByteView sampleTableBody)
 {
-    std::optional<Formats::ByteView> largeOffsets = FindBox(stbl, LargeChunkOffsetBox);
+    std::optional<Formats::ByteView> largeOffsets = FindBox(sampleTableBody, LargeChunkOffsetBox);
     bool isLarge = largeOffsets.has_value();
-    Formats::ByteReader reader(isLarge ? *largeOffsets : FindBoxOrFail(stbl, ChunkOffsetBox), DataDescription);
+    Formats::ByteView offsets = isLarge ? *largeOffsets : FindBoxOrFail(sampleTableBody, ChunkOffsetBox);
+    Formats::ByteReader reader(offsets, DataDescription);
     reader.Skip(VersionAndFlagsSize);
     std::uint32_t chunkCount = reader.ReadUint32();
 
@@ -180,29 +198,41 @@ std::vector<std::uint64_t> ReadChunkPlaces(Formats::ByteView stbl)
     return places;
 }
 
-// The table names runs of chunks: from a first chunk on (counted from 1) every chunk holds the same number of samples.
+// From its first chunk on (counted from 1) every chunk of a run holds the same number of samples.
+struct ChunkRun
+{
+    std::uint32_t firstChunk = 0;
+    std::uint32_t samplesPerChunk = 0;
+};
+
+// The table names runs of chunks; a run lasts up to the first chunk of the next run.
 std::vector<std::uint32_t> ReadSamplesInChunks(Formats::ByteView body, std::size_t chunkCount)
 {
     Formats::ByteReader reader(body, DataDescription);
     reader.Skip(VersionAndFlagsSize);
     std::uint32_t runCount = reader.ReadUint32();
 
-    std::vector<std::uint32_t> samplesInChunk(chunkCount, 0);
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> runs;
+    std::vector<ChunkRun> runs;
     for (std::uint32_t runNumber = 0; runNumber < runCount; ++runNumber)
     {
-        std::uint32_t firstChunk = reader.ReadUint32();
-        std::uint32_t samplesPerChunk = reader.ReadUint32();
+        ChunkRun run;
+        run.firstChunk = reader.ReadUint32();
+        run.samplesPerChunk = reader.ReadUint32();
         reader.Skip(sizeof(std::uint32_t));
-        runs.push_back({firstChunk, samplesPerChunk});
+        runs.push_back(run);
     }
 
+    std::vector<std::uint32_t> samplesInChunk(chunkCount, 0);
     for (std::size_t runIndex = 0; runIndex < runs.size(); ++runIndex)
     {
-        std::size_t firstChunkIndex = runs[runIndex].first - 1;
-        std::size_t endChunkIndex = runIndex + 1 < runs.size() ? runs[runIndex + 1].first - 1 : chunkCount;
-        for (std::size_t chunkIndex = firstChunkIndex; chunkIndex < endChunkIndex && chunkIndex < chunkCount; ++chunkIndex)
-            samplesInChunk[chunkIndex] = runs[runIndex].second;
+        std::size_t firstChunkIndex = runs[runIndex].firstChunk - 1;
+        std::size_t endChunkIndex = chunkCount;
+        bool hasNextRun = runIndex + 1 < runs.size();
+        if (hasNextRun)
+            endChunkIndex = std::min<std::size_t>(runs[runIndex + 1].firstChunk - 1, chunkCount);
+
+        for (std::size_t chunkIndex = firstChunkIndex; chunkIndex < endChunkIndex; ++chunkIndex)
+            samplesInChunk[chunkIndex] = runs[runIndex].samplesPerChunk;
     }
     return samplesInChunk;
 }
@@ -223,13 +253,13 @@ std::vector<std::uint32_t> ReadSampleDurations(Formats::ByteView body)
     return durations;
 }
 
-SampleTables ReadSampleTables(Formats::ByteView stbl)
+SampleTables ReadSampleTables(Formats::ByteView sampleTableBody)
 {
     SampleTables tables;
-    tables.sampleSizes = ReadSampleSizes(FindBoxOrFail(stbl, SampleSizeBox));
-    tables.chunkPlaces = ReadChunkPlaces(stbl);
-    tables.samplesInChunk = ReadSamplesInChunks(FindBoxOrFail(stbl, SampleToChunkBox), tables.chunkPlaces.size());
-    tables.sampleDurations = ReadSampleDurations(FindBoxOrFail(stbl, TimeToSampleBox));
+    tables.sampleSizes = ReadSampleSizes(FindBoxOrFail(sampleTableBody, SampleSizeBox));
+    tables.chunkPlaces = ReadChunkPlaces(sampleTableBody);
+    tables.samplesInChunk = ReadSamplesInChunks(FindBoxOrFail(sampleTableBody, SampleToChunkBox), tables.chunkPlaces.size());
+    tables.sampleDurations = ReadSampleDurations(FindBoxOrFail(sampleTableBody, TimeToSampleBox));
     return tables;
 }
 
@@ -308,9 +338,9 @@ std::string ReadHandlerType(Formats::ByteView body)
 }
 
 // The first entry of the sample description box.
-Formats::ByteView FirstSampleDescription(Formats::ByteView stbl)
+Formats::ByteView FirstSampleDescription(Formats::ByteView sampleTableBody)
 {
-    Formats::ByteReader reader(FindBoxOrFail(stbl, SampleDescriptionBox), DataDescription);
+    Formats::ByteReader reader(FindBoxOrFail(sampleTableBody, SampleDescriptionBox), DataDescription);
     reader.Skip(VersionAndFlagsSize);
     if (reader.ReadUint32() == 0)
         reader.Fail("a track has no sample description");
@@ -330,10 +360,10 @@ std::string CodecOf(Formats::ByteView entry)
 
 MovieVideoKind VideoKindOf(const std::string& codec)
 {
-    if (codec == "jpeg" || codec == "mjpa")
+    if (codec == JpegCodec || codec == MotionJpegACodec)
         return MovieVideoKind::MotionJpeg;
 
-    if (codec == "mjpb")
+    if (codec == MotionJpegBCodec)
         return MovieVideoKind::MotionJpegB;
 
     return MovieVideoKind::Unsupported;
@@ -341,25 +371,26 @@ MovieVideoKind VideoKindOf(const std::string& codec)
 
 MovieSoundKind SoundKindOf(const std::string& codec, int bitsPerSample)
 {
-    if (codec == "raw ")
+    if (codec == UnsignedEightBitCodec)
         return MovieSoundKind::Unsigned8Bit;
 
-    if ((codec == "twos" || codec == "sowt") && bitsPerSample == EightBits)
+    bool isTwosComplement = codec == BigEndianCodec || codec == LittleEndianCodec;
+    if (isTwosComplement && bitsPerSample == EightBits)
         return MovieSoundKind::Signed8Bit;
 
-    if (codec == "twos" && bitsPerSample == SixteenBits)
+    if (codec == BigEndianCodec && bitsPerSample == SixteenBits)
         return MovieSoundKind::BigEndian16Bit;
 
-    if (codec == "sowt" && bitsPerSample == SixteenBits)
+    if (codec == LittleEndianCodec && bitsPerSample == SixteenBits)
         return MovieSoundKind::LittleEndian16Bit;
 
-    if (codec == "ulaw")
+    if (codec == MuLawCodec)
         return MovieSoundKind::MuLaw;
 
-    if (codec == "alaw")
+    if (codec == ALawCodec)
         return MovieSoundKind::ALaw;
 
-    if (codec == "mp4a")
+    if (codec == AacCodec)
         return MovieSoundKind::Aac;
 
     return MovieSoundKind::Unsupported;
@@ -388,9 +419,9 @@ std::size_t ReadDescriptorLength(Formats::ByteReader& reader)
 
 // The AudioSpecificConfig inside the "esds" box: the elementary stream descriptor holds the decoder configuration,
 // which holds the decoder's setup.
-Formats::Bytes ReadDecoderSetup(Formats::ByteView esds)
+Formats::Bytes ReadDecoderSetup(Formats::ByteView elementaryStreamBody)
 {
-    Formats::ByteReader reader(esds, DataDescription);
+    Formats::ByteReader reader(elementaryStreamBody, DataDescription);
     reader.Skip(VersionAndFlagsSize);
     if (reader.ReadByte() != ElementaryStreamDescriptor)
         reader.Fail("the esds box does not start with an elementary stream descriptor");
@@ -418,9 +449,9 @@ Formats::Bytes ReadDecoderSetup(Formats::ByteView esds)
     return Formats::Bytes(setup.begin(), setup.end());
 }
 
-MovieVideoTrack MakeVideoTrack(Formats::ByteView stbl, const MediaHeader& header)
+MovieVideoTrack MakeVideoTrack(Formats::ByteView sampleTableBody, const MediaHeader& header)
 {
-    Formats::ByteView entry = FirstSampleDescription(stbl);
+    Formats::ByteView entry = FirstSampleDescription(sampleTableBody);
     Formats::ByteReader reader(entry, DataDescription);
 
     MovieVideoTrack video;
@@ -437,7 +468,7 @@ MovieVideoTrack MakeVideoTrack(Formats::ByteView stbl, const MediaHeader& header
             video.fieldCount = (*fields)[0];
     }
 
-    SampleTables tables = ReadSampleTables(stbl);
+    SampleTables tables = ReadSampleTables(sampleTableBody);
     video.frames = EverySample(tables);
 
     std::uint64_t time = 0;
@@ -450,9 +481,30 @@ MovieVideoTrack MakeVideoTrack(Formats::ByteView stbl, const MediaHeader& header
     return video;
 }
 
-MovieSoundTrack MakeSoundTrack(Formats::ByteView stbl)
+// The boxes of a sound description follow its fields, which are longer in the versions 1 and 2.
+std::size_t SoundBoxesPlace(int version)
 {
-    Formats::ByteView entry = FirstSampleDescription(stbl);
+    if (version == SoundVersion1)
+        return SoundBoxesPlaceOfVersion1;
+
+    if (version == SoundVersion2)
+        return SoundBoxesPlaceOfVersion2;
+
+    return SoundBoxesPlaceOfVersion0;
+}
+
+std::optional<Formats::ByteView> FindElementaryStreamBox(Formats::ByteView entry, int version)
+{
+    std::size_t boxesPlace = SoundBoxesPlace(version);
+    if (entry.size() <= boxesPlace)
+        return std::nullopt;
+
+    return FindBoxAnywhere(entry.subspan(boxesPlace), ElementaryStreamBox);
+}
+
+MovieSoundTrack MakeSoundTrack(Formats::ByteView sampleTableBody)
+{
+    Formats::ByteView entry = FirstSampleDescription(sampleTableBody);
     Formats::ByteReader reader(entry, DataDescription);
 
     MovieSoundTrack sound;
@@ -466,22 +518,14 @@ MovieSoundTrack MakeSoundTrack(Formats::ByteView stbl)
     sound.sampleRate = static_cast<int>(reader.ReadUint32() >> FixedPointFractionBits);
     sound.kind = SoundKindOf(sound.codecName, sound.bitsPerSample);
 
-    SampleTables tables = ReadSampleTables(stbl);
+    SampleTables tables = ReadSampleTables(sampleTableBody);
     if (sound.kind == MovieSoundKind::Aac)
     {
-        std::size_t boxesPlace = SoundBoxesPlaceOfVersion0;
-        if (version == SoundVersion1)
-            boxesPlace = SoundBoxesPlaceOfVersion1;
-        else if (version == SoundVersion2)
-            boxesPlace = SoundBoxesPlaceOfVersion2;
-
-        std::optional<Formats::ByteView> esds;
-        if (entry.size() > boxesPlace)
-            esds = FindBoxAnywhere(entry.subspan(boxesPlace), ElementaryStreamBox);
-        if (!esds)
+        std::optional<Formats::ByteView> elementaryStreamBody = FindElementaryStreamBox(entry, version);
+        if (!elementaryStreamBody)
             reader.Fail("an AAC track has no esds box");
 
-        sound.decoderSetup = ReadDecoderSetup(*esds);
+        sound.decoderSetup = ReadDecoderSetup(*elementaryStreamBody);
         sound.pieces = EverySample(tables);
     }
     else if (sound.kind != MovieSoundKind::Unsupported)
@@ -508,17 +552,18 @@ Movie ReadQuickTimeMovie(Formats::ByteView fileBytes)
         Formats::ByteView media = FindBoxOrFail(box.body, MediaBox);
         MediaHeader header = ReadMediaHeader(FindBoxOrFail(media, MediaHeaderBox));
         std::string handler = ReadHandlerType(FindBoxOrFail(media, HandlerBox));
-        Formats::ByteView stbl = FindBoxOrFail(FindBoxOrFail(media, MediaInformationBox), SampleTableBox);
+        Formats::ByteView mediaInformation = FindBoxOrFail(media, MediaInformationBox);
+        Formats::ByteView sampleTableBody = FindBoxOrFail(mediaInformation, SampleTableBox);
 
         double durationSeconds = static_cast<double>(header.duration) / header.timeScale;
         if (handler == VideoHandler && !movie.video)
         {
-            movie.video = MakeVideoTrack(stbl, header);
+            movie.video = MakeVideoTrack(sampleTableBody, header);
             movie.durationSeconds = std::max(movie.durationSeconds, durationSeconds);
         }
         else if (handler == SoundHandler && !movie.sound)
         {
-            movie.sound = MakeSoundTrack(stbl);
+            movie.sound = MakeSoundTrack(sampleTableBody);
             movie.durationSeconds = std::max(movie.durationSeconds, durationSeconds);
         }
     }

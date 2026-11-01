@@ -154,27 +154,60 @@ bool IsBelow(int value, int count)
     return value >= 0 && value < count;
 }
 
+bool HasValidFaceAndHair(const MiiRecord& record)
+{
+    bool hasValidFace = IsBelow(record.face.shape, FaceShapeCount) && IsBelow(record.face.skinColor, SkinColorCount)
+        && IsBelow(record.face.facialFeature, FacialFeatureCount);
+    bool hasValidHair = IsBelow(record.hair.type, HairTypeCount) && IsBelow(record.hair.color, HairColorCount);
+    return hasValidFace && hasValidHair;
+}
+
+bool HasValidEyes(const MiiEyes& eyes)
+{
+    bool hasValidLook = IsBelow(eyes.type, EyeTypeCount) && IsBelow(eyes.color, EyeColorCount) && IsBelow(eyes.size, EyeSizeCount);
+    bool hasValidPlace = IsBelow(eyes.rotation, EyeRotationCount) && IsBelow(eyes.spacing, EyeSpacingCount)
+        && IsBelow(eyes.vertical, EyeVerticalCount);
+    return hasValidLook && hasValidPlace;
+}
+
+bool HasValidEyebrows(const MiiEyebrows& eyebrows)
+{
+    bool hasValidLook = IsBelow(eyebrows.type, EyebrowTypeCount) && IsBelow(eyebrows.color, EyebrowColorCount)
+        && IsBelow(eyebrows.size, EyebrowSizeCount);
+    bool hasValidPlace = IsBelow(eyebrows.rotation, EyebrowRotationCount) && IsBelow(eyebrows.spacing, EyebrowSpacingCount);
+    bool hasValidHeight = eyebrows.vertical >= EyebrowLowestVertical && eyebrows.vertical < EyebrowVerticalCount;
+    return hasValidLook && hasValidPlace && hasValidHeight;
+}
+
+bool HasValidNoseAndMouth(const MiiRecord& record)
+{
+    bool hasValidNose = IsBelow(record.nose.type, NoseTypeCount) && IsBelow(record.nose.size, NoseSizeCount)
+        && IsBelow(record.nose.vertical, NoseVerticalCount);
+    bool hasValidMouth = IsBelow(record.mouth.type, MouthTypeCount) && IsBelow(record.mouth.color, MouthColorCount)
+        && IsBelow(record.mouth.size, MouthSizeCount) && IsBelow(record.mouth.vertical, MouthVerticalCount);
+    return hasValidNose && hasValidMouth;
+}
+
+bool HasValidFacialHair(const MiiFacialHair& facialHair)
+{
+    return IsBelow(facialHair.mustacheType, MustacheTypeCount) && IsBelow(facialHair.beardType, BeardTypeCount)
+        && IsBelow(facialHair.color, FacialHairColorCount) && IsBelow(facialHair.mustacheSize, MustacheSizeCount)
+        && IsBelow(facialHair.mustacheVertical, MustacheVerticalCount);
+}
+
+bool HasValidGlassesAndMole(const MiiRecord& record)
+{
+    bool hasValidGlasses = IsBelow(record.glasses.type, GlassesTypeCount) && IsBelow(record.glasses.color, GlassesColorCount)
+        && IsBelow(record.glasses.size, GlassesSizeCount) && IsBelow(record.glasses.vertical, GlassesVerticalCount);
+    bool hasValidMole = IsBelow(record.mole.size, MoleSizeCount) && IsBelow(record.mole.horizontal, MoleHorizontalCount)
+        && IsBelow(record.mole.vertical, MoleVerticalCount);
+    return hasValidGlasses && hasValidMole;
+}
+
 bool HasValidParts(const MiiRecord& record)
 {
-    return IsBelow(record.face.shape, FaceShapeCount) && IsBelow(record.face.skinColor, SkinColorCount)
-        && IsBelow(record.face.facialFeature, FacialFeatureCount) && IsBelow(record.hair.type, HairTypeCount)
-        && IsBelow(record.hair.color, HairColorCount) && IsBelow(record.eyes.type, EyeTypeCount)
-        && IsBelow(record.eyes.color, EyeColorCount) && IsBelow(record.eyes.size, EyeSizeCount)
-        && IsBelow(record.eyes.rotation, EyeRotationCount) && IsBelow(record.eyes.spacing, EyeSpacingCount)
-        && IsBelow(record.eyes.vertical, EyeVerticalCount) && IsBelow(record.eyebrows.type, EyebrowTypeCount)
-        && IsBelow(record.eyebrows.color, EyebrowColorCount) && IsBelow(record.eyebrows.size, EyebrowSizeCount)
-        && IsBelow(record.eyebrows.rotation, EyebrowRotationCount) && IsBelow(record.eyebrows.spacing, EyebrowSpacingCount)
-        && record.eyebrows.vertical >= EyebrowLowestVertical && record.eyebrows.vertical < EyebrowVerticalCount
-        && IsBelow(record.nose.type, NoseTypeCount) && IsBelow(record.nose.size, NoseSizeCount)
-        && IsBelow(record.nose.vertical, NoseVerticalCount) && IsBelow(record.mouth.type, MouthTypeCount)
-        && IsBelow(record.mouth.color, MouthColorCount) && IsBelow(record.mouth.size, MouthSizeCount)
-        && IsBelow(record.mouth.vertical, MouthVerticalCount) && IsBelow(record.facialHair.mustacheType, MustacheTypeCount)
-        && IsBelow(record.facialHair.beardType, BeardTypeCount) && IsBelow(record.facialHair.color, FacialHairColorCount)
-        && IsBelow(record.facialHair.mustacheSize, MustacheSizeCount)
-        && IsBelow(record.facialHair.mustacheVertical, MustacheVerticalCount) && IsBelow(record.glasses.type, GlassesTypeCount)
-        && IsBelow(record.glasses.color, GlassesColorCount) && IsBelow(record.glasses.size, GlassesSizeCount)
-        && IsBelow(record.glasses.vertical, GlassesVerticalCount) && IsBelow(record.mole.size, MoleSizeCount)
-        && IsBelow(record.mole.horizontal, MoleHorizontalCount) && IsBelow(record.mole.vertical, MoleVerticalCount);
+    return HasValidFaceAndHair(record) && HasValidEyes(record.eyes) && HasValidEyebrows(record.eyebrows)
+        && HasValidNoseAndMouth(record) && HasValidFacialHair(record.facialHair) && HasValidGlassesAndMole(record);
 }
 
 bool HasValidBirthday(const MiiRecord& record)

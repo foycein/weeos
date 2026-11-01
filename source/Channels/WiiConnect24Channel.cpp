@@ -41,7 +41,11 @@ constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
 // picture, the shadow 3 units right of and below the hand (0x8002C304).
 constexpr std::string_view HandEffectsPath = "./nw4r_defcursor_all01.breff.LZ";
 constexpr std::string_view HandPicturesPath = "./nw4r_defcursor_all01.breft.LZ";
-constexpr EffectHandsLook HandsLook = {true, {1, 1}, {3, -3}, 0, true};
+constexpr EffectHandsLook HandsLook = {.showsEveryPlayer = true,
+    .boxToCanvasScale = {1, 1},
+    .shadowOffset = {3, -3},
+    .holdingLift = 0,
+    .closedHandTurns = true};
 
 // The label in front of the code is a text of the program (0x8000B9C8 of the Forecast, "%ls %ls%06d").
 constexpr std::u16string_view ErrorCodeLabel = u"Error Code: ";

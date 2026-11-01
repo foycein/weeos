@@ -1,3 +1,4 @@
+#include "Channels/Photo/PhotoPictures.h"
 #include "Channels/Photo/PhotoSession.h"
 #include "Channels/Photo/PuzzleBoard.h"
 #include "Channels/Photo/ShownPicture.h"
@@ -79,7 +80,7 @@ public:
         , records(session.MakeLayout("puzzle_record"))
         , random(std::random_device()())
     {
-        Formats::RgbaImage photo = session.PhotoOfFile(fileIndex).value_or(Formats::RgbaImage{1, 1, {{0, 0, 0, 255}}});
+        Formats::RgbaImage photo = session.PhotoOfFile(fileIndex).value_or(MissingPhotoPicture());
         picture = std::make_unique<ShownPicture>(session.Services().display.Device(), photo);
         photoAspect = static_cast<float>(photo.width) / static_cast<float>(photo.height);
         session.Services().sounds.Request(PuzzleMusic);
@@ -192,7 +193,9 @@ private:
                 continue;
 
             int piece = puzzle->PieceAt(slot);
-            Formats::Vector2 topLeft = {static_cast<float>(piece % size.columns) / size.columns, static_cast<float>(piece / size.columns) / size.rows};
+            float pieceColumn = static_cast<float>(piece % size.columns);
+            float pieceRow = static_cast<float>(piece / size.columns);
+            Formats::Vector2 topLeft = {pieceColumn / size.columns, pieceRow / size.rows};
             Formats::Vector2 bottomRight = {topLeft.x + 1.0f / size.columns, topLeft.y + 1.0f / size.rows};
             picture->DrawPart(BoxOfSlot(slot), topLeft, bottomRight);
         }
@@ -206,7 +209,6 @@ private:
         puzzle->Mix(random);
         heldSlot = std::nullopt;
         steps = 0;
-        cheats = 0;
         stage = Stage::Playing;
     }
 
@@ -250,7 +252,6 @@ private:
         if (session.IsButtonPressed(*board, "hint"))
         {
             services.sounds.Request(CheatSound);
-            ++cheats;
             stage = Stage::Cheating;
             return;
         }
@@ -316,8 +317,7 @@ private:
     {
         for (int slot = 0; slot < puzzle->PieceCount(); ++slot)
         {
-            PictureBox box = BoxOfSlot(slot);
-            if (std::abs(place.x - box.centerX) <= box.width / 2 && std::abs(place.y - box.centerY) <= box.height / 2)
+            if (BoxOfSlot(slot).Contains(place))
                 return slot;
         }
         return std::nullopt;
@@ -421,7 +421,6 @@ private:
     int sizeIndex = 0;
     std::optional<int> heldSlot;
     int steps = 0;
-    int cheats = 0;
     bool isFirstSolve = false;
 };
 

@@ -185,7 +185,13 @@ PictureBox PhotoSession::BoxOfPane(SystemMenu::MenuLayout& layout, std::string_v
 {
     const Formats::Pane& pane = layout.PaneNamed(paneName);
     Formats::Vector2 stretch = services.display.LayoutStretch();
-    return {pane.translation.x * stretch.x, pane.translation.y * stretch.y, pane.width * stretch.x, pane.height * stretch.y};
+
+    PictureBox box;
+    box.centerX = pane.translation.x * stretch.x;
+    box.centerY = pane.translation.y * stretch.y;
+    box.width = pane.width * stretch.x;
+    box.height = pane.height * stretch.y;
+    return box;
 }
 
 std::optional<Formats::Bytes> PhotoSession::FileBytes(int fileIndex)
@@ -254,7 +260,7 @@ bool PhotoSession::IsPhotoChanged(int fileIndex) const
 
 void PhotoSession::PlayDecodedSound(const Media::PcmSound& sound)
 {
-    constexpr float LargestSixteenBitValue = 32768.0f;
+    constexpr float SixteenBitFullScale = 32768.0f;
     StopDecodedSound();
     if (sound.channelCount <= 0)
         return;
@@ -267,7 +273,7 @@ void PhotoSession::PlayDecodedSound(const Media::PcmSound& sound)
     for (std::size_t frame = 0; frame < sound.FrameCount(); ++frame)
     {
         for (int channel = 0; channel < sound.channelCount; ++channel)
-            wave->channels[channel][frame] = sound.samples[frame * sound.channelCount + channel] / LargestSixteenBitValue;
+            wave->channels[channel][frame] = sound.samples[frame * sound.channelCount + channel] / SixteenBitFullScale;
     }
     decodedSound = services.audio.waves.Play(wave);
 }

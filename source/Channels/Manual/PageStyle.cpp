@@ -203,6 +203,11 @@ std::optional<PageLength> ReadLength(std::string_view text, float fontSize)
     return PageLength{*number, false};
 }
 
+float ReadLengthValue(std::string_view text, float fontSize)
+{
+    return ReadLength(text, fontSize).value_or(PageLength{}).value;
+}
+
 std::optional<Formats::Rgba8Color> ReadColor(std::string_view text)
 {
     std::string word = ToLowerCase(text);
@@ -312,21 +317,21 @@ void PageLayouter::ApplyDeclaration(const StyleDeclaration& declaration, BoxStyl
         style.look.isBold = weight == "bold" || weight == "bolder" || (number && *number >= FirstBoldWeight);
     }
     else if (property == "letter-spacing")
-        style.look.letterSpacing = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.look.letterSpacing = ReadLengthValue(value, fontSize);
     else if (property == "text-align")
         style.textAlignment = ReadAlignment(value, style.textAlignment);
     else if (property == "text-indent")
-        style.textIndent = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.textIndent = ReadLengthValue(value, fontSize);
     else if (property == "padding")
         ReadBoxSides(value, fontSize, style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft);
     else if (property == "padding-top")
-        style.paddingTop = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.paddingTop = ReadLengthValue(value, fontSize);
     else if (property == "padding-right")
-        style.paddingRight = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.paddingRight = ReadLengthValue(value, fontSize);
     else if (property == "padding-bottom")
-        style.paddingBottom = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.paddingBottom = ReadLengthValue(value, fontSize);
     else if (property == "padding-left")
-        style.paddingLeft = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.paddingLeft = ReadLengthValue(value, fontSize);
     else if (property == "margin")
     {
         float right = 0;
@@ -334,9 +339,9 @@ void PageLayouter::ApplyDeclaration(const StyleDeclaration& declaration, BoxStyl
         ReadBoxSides(value, fontSize, style.marginTop, right, style.marginBottom, left);
     }
     else if (property == "margin-top")
-        style.marginTop = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.marginTop = ReadLengthValue(value, fontSize);
     else if (property == "margin-bottom")
-        style.marginBottom = ReadLength(value, fontSize).value_or(PageLength{}).value;
+        style.marginBottom = ReadLengthValue(value, fontSize);
     else if (property == "width")
         style.width = ReadLength(value, fontSize);
     else if (property == "height")

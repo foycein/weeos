@@ -162,9 +162,12 @@ private:
     std::optional<Media::PcmSound> DecodeSoundOfMovie() const
     {
         const std::optional<Media::MovieSoundTrack>& sound = movie->sound;
-        bool isPlayable = sound && sound->kind != Media::MovieSoundKind::Unsupported && sound->kind != Media::MovieSoundKind::Aac
-            && sound->channelCount >= 1 && sound->channelCount <= 2;
-        if (!isPlayable)
+        if (!sound)
+            return std::nullopt;
+
+        bool isPlayableKind = sound->kind != Media::MovieSoundKind::Unsupported && sound->kind != Media::MovieSoundKind::Aac;
+        bool isMonoOrStereo = sound->channelCount >= 1 && sound->channelCount <= 2;
+        if (!isPlayableKind || !isMonoOrStereo)
             return std::nullopt;
 
         try
@@ -196,7 +199,10 @@ private:
         for (std::size_t frame = 0; frame < frameCount / 2; ++frame)
         {
             for (int channel = 0; channel < channelCount; ++channel)
-                std::swap(samples[frame * channelCount + channel], samples[(frameCount - 1 - frame) * channelCount + channel]);
+            {
+                std::size_t mirroredFrame = frameCount - 1 - frame;
+                std::swap(samples[frame * channelCount + channel], samples[mirroredFrame * channelCount + channel]);
+            }
         }
     }
 
@@ -260,6 +266,7 @@ private:
     {
         ChannelServices& services = session.Services();
         int fileCount = static_cast<int>(session.library.files.size());
+        bool isPhoto = !File().IsMovie();
 
         if (session.IsButtonPressed(*buttons, "back"))
         {
@@ -287,11 +294,11 @@ private:
             ++quarterTurns;
             ShowPhoto();
         }
-        else if (session.IsButtonPressed(*buttons, "zoom_in") || (!File().IsMovie() && session.IsRemoteButtonPressed(Input::RemoteButtons::Plus)))
+        else if (session.IsButtonPressed(*buttons, "zoom_in") || (isPhoto && session.IsRemoteButtonPressed(Input::RemoteButtons::Plus)))
         {
             ChangeZoom(1, PhotoSound::ZoomIn);
         }
-        else if (session.IsButtonPressed(*buttons, "zoom_out") || (!File().IsMovie() && session.IsRemoteButtonPressed(Input::RemoteButtons::Minus)))
+        else if (session.IsButtonPressed(*buttons, "zoom_out") || (isPhoto && session.IsRemoteButtonPressed(Input::RemoteButtons::Minus)))
         {
             ChangeZoom(-1, PhotoSound::ZoomOut);
         }

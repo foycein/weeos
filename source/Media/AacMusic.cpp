@@ -38,8 +38,8 @@ class MediaFoundationSession
 public:
     MediaFoundationSession()
     {
-        HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        hasStartedCom = SUCCEEDED(com);
+        HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        hasStartedCom = SUCCEEDED(comResult);
         Require(MFStartup(MF_VERSION, MFSTARTUP_LITE), "start Media Foundation");
     }
 
@@ -104,9 +104,10 @@ void AppendSample(IMFSample& sample, PcmSound& sound)
     BYTE* data = nullptr;
     DWORD length = 0;
     Require(buffer->Lock(&data, nullptr, &length), "give the decoded sound");
-    std::size_t first = sound.samples.size();
-    sound.samples.resize(first + length / sizeof(std::int16_t));
-    std::memcpy(sound.samples.data() + first, data, length / sizeof(std::int16_t) * sizeof(std::int16_t));
+    std::size_t firstNewSample = sound.samples.size();
+    std::size_t newSampleCount = length / sizeof(std::int16_t);
+    sound.samples.resize(firstNewSample + newSampleCount);
+    std::memcpy(sound.samples.data() + firstNewSample, data, newSampleCount * sizeof(std::int16_t));
     buffer->Unlock();
 }
 

@@ -82,6 +82,7 @@ private:
     HiddenEntry ReadHiddenEntry(std::uint16_t entryNumber) const;
     void WriteHiddenEntry(std::uint16_t entryNumber, const HiddenEntry& entry);
     MiiRecord ReadHiddenMii(std::uint16_t entryNumber) const;
+    void WriteHiddenMii(std::uint16_t entryNumber, const MiiRecord& record);
     std::vector<std::uint16_t> HiddenEntriesInOrder() const;
     void RemoveHiddenEntry(std::uint16_t entryNumber);
     void RemoveFromHiddenList(std::uint64_t createId);

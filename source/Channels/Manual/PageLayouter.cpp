@@ -264,7 +264,7 @@ float PageLayouter::LayOutFrameset(const HtmlNode& frameset, const PageRectangle
 // The children one under the other: runs of text and inline elements become lines, and every block starts on a line of its own.
 float PageLayouter::LayOutChildren(const HtmlNode& node, const BoxStyle& style, float left, float top, float width)
 {
-    float y = top;
+    float nextTop = top;
     std::vector<InlineItem> lineItems;
     for (const HtmlNode& child : node.children)
     {
@@ -277,13 +277,13 @@ float PageLayouter::LayOutChildren(const HtmlNode& node, const BoxStyle& style, 
             continue;
         }
 
-        y += LayOutLines(lineItems, style, left, y, width);
+        nextTop += LayOutLines(lineItems, style, left, nextTop, width);
         lineItems.clear();
-        y += LayOutBlock(child, style, left, y, width);
+        nextTop += LayOutBlock(child, style, left, nextTop, width);
     }
 
-    y += LayOutLines(lineItems, style, left, y, width);
-    return y - top;
+    nextTop += LayOutLines(lineItems, style, left, nextTop, width);
+    return nextTop - top;
 }
 
 float PageLayouter::LayOutBlock(const HtmlNode& element, const BoxStyle& parentStyle, float left, float top, float width)
@@ -413,13 +413,13 @@ PageLayouter::InlineItem PageLayouter::PictureItem(const HtmlNode& image, const 
         item.floatSide = TextAlignment::Left;
     if (alignment == "right")
         item.floatSide = TextAlignment::Right;
-    item.verticalSpace = ReadLength(image.Attribute("vspace"), 0).value_or(PageLength{}).value;
+    item.verticalSpace = ReadLengthValue(image.Attribute("vspace"), 0);
     return item;
 }
 
 float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxStyle& style, float left, float top, float width)
 {
-    float y = top;
+    float lineTop = top;
     std::vector<InlineItem> line;
     float lineWidth = 0;
     bool isFirstLine = true;
@@ -430,7 +430,7 @@ float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxS
         float floatsWidth = 0;
         for (const FloatingPicture& picture : floats)
         {
-            if (picture.side == TextAlignment::Left && picture.bottom > y)
+            if (picture.side == TextAlignment::Left && picture.bottom > lineTop)
                 floatsWidth += picture.width;
         }
         return left + floatsWidth;
@@ -439,13 +439,13 @@ float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxS
         float floatsWidth = 0;
         for (const FloatingPicture& picture : floats)
         {
-            if (picture.bottom > y)
+            if (picture.bottom > lineTop)
                 floatsWidth += picture.width;
         }
         return width - floatsWidth;
     };
     auto finishLine = [&]() {
-        float lineHeight = PlaceLine(line, style, lineLeft(), y, lineWidthRoom(), isFirstLine);
+        float lineHeight = PlaceLine(line, style, lineLeft(), lineTop, lineWidthRoom(), isFirstLine);
         line.clear();
         lineWidth = 0;
         isFirstLine = false;
@@ -456,7 +456,7 @@ float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxS
     {
         if (item.floatSide)
         {
-            PlaceFloatingPicture(item, left, y, width, floats);
+            PlaceFloatingPicture(item, left, lineTop, width, floats);
             continue;
         }
 
@@ -464,7 +464,7 @@ float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxS
         {
             bool isEmptyLine = line.empty();
             float lineHeight = finishLine();
-            y += isEmptyLine ? item.height : lineHeight;
+            lineTop += isEmptyLine ? item.height : lineHeight;
             continue;
         }
 
@@ -474,17 +474,17 @@ float PageLayouter::LayOutLines(const std::vector<InlineItem>& items, const BoxS
         float room = isFirstLine ? lineWidthRoom() - style.textIndent : lineWidthRoom();
         bool overflows = item.kind != InlineItem::Kind::Space && !line.empty() && lineWidth + item.width > room;
         if (overflows)
-            y += finishLine();
+            lineTop += finishLine();
 
         line.push_back(item);
         lineWidth += item.width;
     }
 
-    y += finishLine();
+    lineTop += finishLine();
     for (const FloatingPicture& picture : floats)
-        y = std::max(y, picture.bottom);
+        lineTop = std::max(lineTop, picture.bottom);
 
-    return y - top;
+    return lineTop - top;
 }
 
 void PageLayouter::PlaceFloatingPicture(const InlineItem& item, float left, float top, float width, std::vector<FloatingPicture>& floats)
@@ -529,22 +529,25 @@ float PageLayouter::PlaceLine(const std::vector<InlineItem>& line, const BoxStyl
         const InlineItem& item = line[index];
         lineWidth += item.width;
         lineHeight = std::max(lineHeight, item.height + 2 * item.verticalSpace);
-        hasCenteredPicture = hasCenteredPicture || (item.kind == InlineItem::Kind::Picture && item.isCenteredInLine);
+        bool isCenteredPicture = item.kind == InlineItem::Kind::Picture && item.isCenteredInLine;
+        hasCenteredPicture = hasCenteredPicture || isCenteredPicture;
     }
 
     float indent = isFirstLine ? style.textIndent : 0;
-    float x = left + indent;
+    float itemLeft = left + indent;
     if (style.textAlignment == TextAlignment::Center)
-        x = left + (width - lineWidth) / 2;
+        itemLeft = left + (width - lineWidth) / 2;
     else if (style.textAlignment == TextAlignment::Right)
-        x = left + width - lineWidth;
+        itemLeft = left + width - lineWidth;
 
     for (std::size_t index = 0; index < end; ++index)
     {
         const InlineItem& item = line[index];
         bool isCentered = hasCenteredPicture && (item.kind == InlineItem::Kind::Word || item.isCenteredInLine);
-        float itemTop = isCentered ? top + (lineHeight - item.height) / 2 : top + lineHeight - item.verticalSpace - item.height;
-        PageRectangle place = {x, itemTop, item.width, item.height};
+        float itemTop = top + lineHeight - item.verticalSpace - item.height;
+        if (isCentered)
+            itemTop = top + (lineHeight - item.height) / 2;
+        PageRectangle place = {itemLeft, itemTop, item.width, item.height};
 
         if (item.kind == InlineItem::Kind::Word)
         {
@@ -569,7 +572,7 @@ float PageLayouter::PlaceLine(const std::vector<InlineItem>& line, const BoxStyl
         for (std::size_t link : item.links)
             GrowLink(link, place);
 
-        x += item.width;
+        itemLeft += item.width;
     }
     return lineHeight;
 }

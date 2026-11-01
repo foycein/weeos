@@ -41,6 +41,8 @@ private:
     void RefineAverage(CoefficientBlock& block, JpegBitReader& bits);
     void DecodeFirstBand(JpegComponent& component, CoefficientBlock& block, JpegBitReader& bits);
     void RefineBand(JpegComponent& component, CoefficientBlock& block, JpegBitReader& bits);
+    int RefineCodedCoefficients(JpegComponent& component, CoefficientBlock& block, JpegBitReader& bits);
+    int SkipZeroCoefficients(CoefficientBlock& block, int zigZagPosition, int zerosToSkip, JpegBitReader& bits);
     void RefineNonZeroCoefficient(std::int16_t& coefficient, JpegBitReader& bits);
 
     int ReadAverageDifference(JpegComponent& component, JpegBitReader& bits);

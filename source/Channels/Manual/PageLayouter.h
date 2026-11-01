@@ -133,6 +133,8 @@ private:
     // Tables (PageTableLayout.cpp).
     float LayOutTable(const HtmlNode& table, const BoxStyle& parentStyle, float left, float top, float width);
     std::vector<float> ColumnWidths(const HtmlNode& table, const BoxStyle& tableStyle, const TableLayoutValues& values, float room) const;
+    std::vector<RowHeight> MeasureRowHeights(const TableLayoutValues& values, const BoxStyle& tableStyle, const std::vector<float>& columns);
+    void PlaceTableCell(const TableCell& cell, const HtmlNode& row, const BoxStyle& rowStyle, float cellPadding, const PageRectangle& cellBox);
 
     // Widths before layout (PageMeasure.cpp).
     ContentWidths MeasureWidths(const HtmlNode& node, const BoxStyle& style) const;
@@ -167,6 +169,9 @@ float PageLayouter::MeasureHeight(LayOutFunction layOut)
 
 // Values of CSS and of attributes (PageStyle.cpp).
 std::optional<PageLength> ReadLength(std::string_view text, float fontSize);
+
+// The number of a length without its unit, or 0 when the text is no length.
+float ReadLengthValue(std::string_view text, float fontSize);
 std::optional<Formats::Rgba8Color> ReadColor(std::string_view text);
 
 // The elements that start a block of their own; everything else flows in lines.

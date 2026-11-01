@@ -1,3 +1,4 @@
+#include "Channels/Photo/MoodFilters.h"
 #include "Channels/Photo/PhotoPictures.h"
 #include "Channels/Photo/PhotoSession.h"
 #include "Channels/Photo/ShownPicture.h"
@@ -25,6 +26,7 @@ constexpr float DramaticLargestZoom = 1.15f;
 constexpr float SepiaRed = 1.07f;
 constexpr float SepiaGreen = 0.88f;
 constexpr float SepiaBlue = 0.66f;
+constexpr float LargestColorValue = 255;
 
 double SecondsOfFade(SlideEffect effect)
 {
@@ -42,10 +44,10 @@ Formats::RgbaImage MakeSepia(const Formats::RgbaImage& photo)
     Formats::RgbaImage sepia = photo;
     for (Formats::Rgba8Pixel& pixel : sepia.pixels)
     {
-        float gray = 0.299f * pixel.red + 0.587f * pixel.green + 0.114f * pixel.blue;
-        pixel.red = static_cast<Formats::Byte>(std::min(255.0f, gray * SepiaRed));
-        pixel.green = static_cast<Formats::Byte>(std::min(255.0f, gray * SepiaGreen));
-        pixel.blue = static_cast<Formats::Byte>(std::min(255.0f, gray * SepiaBlue));
+        float gray = BrightnessOf(pixel);
+        pixel.red = static_cast<Formats::Byte>(std::min(LargestColorValue, gray * SepiaRed));
+        pixel.green = static_cast<Formats::Byte>(std::min(LargestColorValue, gray * SepiaGreen));
+        pixel.blue = static_cast<Formats::Byte>(std::min(LargestColorValue, gray * SepiaBlue));
     }
     return sepia;
 }
@@ -57,14 +59,8 @@ public:
         : session(photoSession)
         , pause(session.MakeLayout("slide_pause"))
     {
-        for (int index = 0; index < static_cast<int>(session.library.files.size()); ++index)
-        {
-            if (!session.library.files[index].IsMovie())
-                photoIndexes.push_back(index);
-        }
-
-        auto first = std::lower_bound(photoIndexes.begin(), photoIndexes.end(), firstFileIndex);
-        position = first == photoIndexes.end() ? 0 : static_cast<int>(first - photoIndexes.begin());
+        ListPhotos();
+        position = PositionOfFile(firstFileIndex);
 
         const PhotoSettings& settings = session.storage.Settings();
         effect = settings.effect;
@@ -92,10 +88,10 @@ public:
             return;
         }
 
-
         ChannelServices& services = session.Services();
-        bool wantsToPause = session.IsRemoteButtonPressed(Input::RemoteButtons::A) || session.IsRemoteButtonPressed(Input::RemoteButtons::B);
-        if (wantsToPause && services.fader.GetStatus() == SystemMenu::FaderStatus::Clear)
+        bool isPressingAOrB = session.IsRemoteButtonPressed(Input::RemoteButtons::A) || session.IsRemoteButtonPressed(Input::RemoteButtons::B);
+        bool isScreenClear = services.fader.GetStatus() == SystemMenu::FaderStatus::Clear;
+        if (isPressingAOrB && isScreenClear)
         {
             services.sounds.Request(PhotoSound::Decide);
             isPaused = true;
@@ -116,14 +112,10 @@ public:
         Graphics::Canvas canvas = session.Services().display.GetCanvas();
         PictureBox wholeScreen = {0, 0, canvas.width, canvas.height};
         float fadeIn = static_cast<float>(std::min(1.0, SecondsOfSlide() / SecondsOfFade(effect)));
-        float zoom = 1;
-        if (effect == SlideEffect::Dramatic)
-            zoom = 1 + (DramaticLargestZoom - 1) * static_cast<float>(std::min(1.0, SecondsOfSlide() / SecondsPerSlide));
-
         if (previous)
             previous->DrawInside(wholeScreen, 1 - fadeIn, previousZoom);
         if (current)
-            current->DrawInside(wholeScreen, fadeIn, zoom);
+            current->DrawInside(wholeScreen, fadeIn, CurrentZoom());
 
         if (isPaused)
             pause->Draw();
@@ -135,9 +127,38 @@ public:
     }
 
 private:
+    void ListPhotos()
+    {
+        for (int index = 0; index < static_cast<int>(session.library.files.size()); ++index)
+        {
+            if (!session.library.files[index].IsMovie())
+                photoIndexes.push_back(index);
+        }
+    }
+
+    // The first photo at or after the file, else the first photo.
+    int PositionOfFile(int fileIndex) const
+    {
+        auto first = std::lower_bound(photoIndexes.begin(), photoIndexes.end(), fileIndex);
+        if (first == photoIndexes.end())
+            return 0;
+
+        return static_cast<int>(first - photoIndexes.begin());
+    }
+
     int ShownFileIndex() const
     {
         return photoIndexes.empty() ? -1 : photoIndexes[position];
+    }
+
+    // Dramatic moves closer to the photo during the whole slide.
+    float CurrentZoom() const
+    {
+        if (effect != SlideEffect::Dramatic)
+            return 1;
+
+        float shareOfSlide = static_cast<float>(std::min(1.0, SecondsOfSlide() / SecondsPerSlide));
+        return 1 + (DramaticLargestZoom - 1) * shareOfSlide;
     }
 
     double SecondsOfSlide() const

@@ -62,6 +62,60 @@ void ShareExtraRoom(std::vector<float>& widths, const ColumnMeasures& measures, 
         widths[column] += extra * weights[column] / totalWeight;
 }
 
+// A table stands where its align attribute says; without one it follows the alignment of the text around it.
+float TableLeftOf(const HtmlNode& table, TextAlignment surroundingAlignment, float left, float width, float tableWidth)
+{
+    std::string alignment = table.Attribute("align");
+    bool isCentered = alignment == "center" || (alignment.empty() && surroundingAlignment == TextAlignment::Center);
+    if (isCentered)
+        return left + (width - tableWidth) / 2;
+    if (alignment == "right")
+        return left + width - tableWidth;
+
+    return left;
+}
+
+// A cell covers its columns and the spacing between them.
+float CellWidthOf(const TableCell& cell, const std::vector<float>& columns, float spacing)
+{
+    return Sum(columns, cell.column, cell.span) + spacing * static_cast<float>(cell.span - 1);
+}
+
+float CellLeftOf(const TableCell& cell, const std::vector<float>& columns, float spacing, float tableLeft)
+{
+    return tableLeft + spacing + Sum(columns, 0, cell.column) + spacing * static_cast<float>(cell.column);
+}
+
+// The room inside a cell, without the cell padding of the table and the padding of the cell.
+float ContentWidthOf(float cellWidth, float cellPadding, const BoxStyle& cellStyle)
+{
+    return cellWidth - 2 * cellPadding - cellStyle.paddingLeft - cellStyle.paddingRight;
+}
+
+float RowsHeightOf(const std::vector<RowHeight>& rowHeights, float spacing)
+{
+    float rowsHeight = 0;
+    for (const RowHeight& row : rowHeights)
+        rowsHeight += row.height;
+
+    return rowsHeight + spacing * static_cast<float>(rowHeights.size() + 1);
+}
+
+// A table that must be higher than its rows gives the rest to the rows that ask for no height (or to the last row).
+void ShareExtraHeight(std::vector<RowHeight>& rowHeights, float extraHeight)
+{
+    auto isFree = [](const RowHeight& row) { return !row.isAsked; };
+    std::size_t freeRows = static_cast<std::size_t>(std::count_if(rowHeights.begin(), rowHeights.end(), isFree));
+    float share = extraHeight / static_cast<float>(std::max<std::size_t>(freeRows, 1));
+    for (std::size_t row = 0; row < rowHeights.size(); ++row)
+    {
+        bool isLastRow = row + 1 == rowHeights.size();
+        bool getsShare = freeRows == 0 ? isLastRow : !rowHeights[row].isAsked;
+        if (getsShare)
+            rowHeights[row].height += share;
+    }
+}
+
 // Cells that ask for more than the width of their table give way, down to their content: the pages ask for a cell of 1019 pixels in a
 // table as wide as the screen and still show their content in the middle of the screen (CHN-13).
 void NarrowAskedColumns(std::vector<float>& widths, const ColumnMeasures& measures, float excess)
@@ -83,8 +137,8 @@ void NarrowAskedColumns(std::vector<float>& widths, const ColumnMeasures& measur
 TableLayoutValues TableValuesOf(const HtmlNode& table)
 {
     TableLayoutValues values;
-    values.spacing = table.HasAttribute("cellspacing") ? ReadLength(table.Attribute("cellspacing"), 0).value_or(PageLength{}).value : DefaultCellSpacing;
-    values.padding = table.HasAttribute("cellpadding") ? ReadLength(table.Attribute("cellpadding"), 0).value_or(PageLength{}).value : DefaultCellPadding;
+    values.spacing = table.HasAttribute("cellspacing") ? ReadLengthValue(table.Attribute("cellspacing"), 0) : DefaultCellSpacing;
+    values.padding = table.HasAttribute("cellpadding") ? ReadLengthValue(table.Attribute("cellpadding"), 0) : DefaultCellPadding;
     values.rows = RowsOf(table);
     for (const TableRow& row : values.rows)
     {
@@ -118,7 +172,8 @@ std::vector<TableRow> RowsOf(const HtmlNode& table)
             if (cell.tag != "td" && cell.tag != "th")
                 continue;
 
-            std::size_t span = std::max<std::size_t>(1, static_cast<std::size_t>(ReadLength(cell.Attribute("colspan"), 0).value_or(PageLength{1, false}).value));
+            float askedSpan = ReadLength(cell.Attribute("colspan"), 0).value_or(PageLength{1, false}).value;
+            std::size_t span = std::max<std::size_t>(1, static_cast<std::size_t>(askedSpan));
             row.cells.push_back({&cell, column, span});
             column += span;
         }
@@ -173,100 +228,96 @@ std::vector<float> PageLayouter::ColumnWidths(const HtmlNode& table, const BoxSt
     return widths;
 }
 
+// First every cell is laid out aside, to learn the height of the rows; then every cell is laid out in its place.
 float PageLayouter::LayOutTable(const HtmlNode& table, const BoxStyle& parentStyle, float left, float top, float width)
 {
     BoxStyle tableStyle = StyleOf(table, parentStyle);
     TableLayoutValues values = TableValuesOf(table);
     std::vector<float> columns = ColumnWidths(table, tableStyle, values, width);
     float tableWidth = Sum(columns, 0, columns.size()) + values.spacing * static_cast<float>(columns.size() + 1);
+    float tableLeft = TableLeftOf(table, parentStyle.textAlignment, left, width, tableWidth);
 
-    float tableLeft = left;
-    std::string alignment = table.Attribute("align");
-    if (alignment == "center" || (alignment.empty() && parentStyle.textAlignment == TextAlignment::Center))
-        tableLeft = left + (width - tableWidth) / 2;
-    else if (alignment == "right")
-        tableLeft = left + width - tableWidth;
-
-    // First every cell is laid out aside, to learn the height of the rows.
-    std::vector<float> rowHeights;
-    std::vector<bool> rowIsAsked;
-    for (const TableRow& row : values.rows)
-    {
-        BoxStyle rowStyle = StyleOf(*row.element, tableStyle);
-        float rowHeight = ReadLength(row.element->Attribute("height"), 0).value_or(PageLength{}).value;
-        bool isAsked = rowHeight > 0;
-        for (const TableCell& cell : row.cells)
-        {
-            BoxStyle cellStyle = StyleOf(*cell.element, rowStyle);
-            float cellWidth = Sum(columns, cell.column, cell.span) + values.spacing * static_cast<float>(cell.span - 1);
-            float contentWidth = cellWidth - 2 * values.padding - cellStyle.paddingLeft - cellStyle.paddingRight;
-            float contentHeight = MeasureHeight([&] { return LayOutChildren(*cell.element, cellStyle, 0, 0, contentWidth); });
-            float askedHeight = ReadLength(cell.element->Attribute("height"), 0).value_or(PageLength{}).value;
-            if (cellStyle.height)
-                askedHeight = std::max(askedHeight, cellStyle.height->value);
-
-            isAsked = isAsked || askedHeight > 0;
-            rowHeight = std::max({rowHeight, askedHeight, contentHeight + 2 * values.padding + cellStyle.paddingTop + cellStyle.paddingBottom});
-        }
-        rowHeights.push_back(rowHeight);
-        rowIsAsked.push_back(isAsked);
-    }
-
-    // A table that must be higher than its rows gives the rest to the rows that ask for no height (or to the last row).
-    float rowsHeight = Sum(rowHeights, 0, rowHeights.size()) + values.spacing * static_cast<float>(rowHeights.size() + 1);
-    float askedTableHeight = ReadLength(table.Attribute("height"), 0).value_or(PageLength{}).value;
+    std::vector<RowHeight> rowHeights = MeasureRowHeights(values, tableStyle, columns);
+    float rowsHeight = RowsHeightOf(rowHeights, values.spacing);
+    float askedTableHeight = ReadLengthValue(table.Attribute("height"), 0);
     if (tableStyle.height)
         askedTableHeight = std::max(askedTableHeight, tableStyle.height->value);
+
     float extraHeight = askedTableHeight - rowsHeight;
     if (extraHeight > 0 && !rowHeights.empty())
     {
-        std::size_t freeRows = static_cast<std::size_t>(std::count(rowIsAsked.begin(), rowIsAsked.end(), false));
-        for (std::size_t row = 0; row < rowHeights.size(); ++row)
-        {
-            bool getsShare = freeRows == 0 ? row + 1 == rowHeights.size() : !rowIsAsked[row];
-            if (getsShare)
-                rowHeights[row] += extraHeight / static_cast<float>(std::max<std::size_t>(freeRows, 1));
-        }
+        ShareExtraHeight(rowHeights, extraHeight);
         rowsHeight = askedTableHeight;
     }
 
-    // Then every cell is laid out in its place.
     std::size_t tableBackground = output->parts.size();
-    float y = top + values.spacing;
+    float rowTop = top + values.spacing;
     for (std::size_t rowIndex = 0; rowIndex < values.rows.size(); ++rowIndex)
     {
         const TableRow& row = values.rows[rowIndex];
+        float rowHeight = rowHeights[rowIndex].height;
         BoxStyle rowStyle = StyleOf(*row.element, tableStyle);
         std::size_t rowBackground = output->parts.size();
         for (const TableCell& cell : row.cells)
         {
-            BoxStyle cellStyle = StyleOf(*cell.element, rowStyle);
-            float cellLeft = tableLeft + values.spacing + Sum(columns, 0, cell.column) + values.spacing * static_cast<float>(cell.column);
-            float cellWidth = Sum(columns, cell.column, cell.span) + values.spacing * static_cast<float>(cell.span - 1);
-            float contentLeft = cellLeft + values.padding + cellStyle.paddingLeft;
-            float contentWidth = cellWidth - 2 * values.padding - cellStyle.paddingLeft - cellStyle.paddingRight;
-            float contentHeight = MeasureHeight([&] { return LayOutChildren(*cell.element, cellStyle, 0, 0, contentWidth); });
-
-            float freeHeight = rowHeights[rowIndex] - contentHeight - 2 * values.padding - cellStyle.paddingTop - cellStyle.paddingBottom;
-            float contentTop = y + values.padding + cellStyle.paddingTop;
-            VerticalPlace place = VerticalPlaceOf(*cell.element, *row.element);
-            if (place == VerticalPlace::Middle)
-                contentTop += freeHeight / 2;
-            else if (place == VerticalPlace::Bottom)
-                contentTop += freeHeight;
-
-            std::size_t cellBackground = output->parts.size();
-            LayOutChildren(*cell.element, cellStyle, contentLeft, contentTop, contentWidth);
-            DrawBackground(cellBackground, *cell.element, cellStyle, {cellLeft, y, cellWidth, rowHeights[rowIndex]});
+            float cellLeft = CellLeftOf(cell, columns, values.spacing, tableLeft);
+            float cellWidth = CellWidthOf(cell, columns, values.spacing);
+            PlaceTableCell(cell, *row.element, rowStyle, values.padding, {cellLeft, rowTop, cellWidth, rowHeight});
         }
 
         float rowWidth = tableWidth - 2 * values.spacing;
-        DrawBackground(rowBackground, *row.element, rowStyle, {tableLeft + values.spacing, y, rowWidth, rowHeights[rowIndex]});
-        y += rowHeights[rowIndex] + values.spacing;
+        DrawBackground(rowBackground, *row.element, rowStyle, {tableLeft + values.spacing, rowTop, rowWidth, rowHeight});
+        rowTop += rowHeight + values.spacing;
     }
 
     DrawBackground(tableBackground, table, tableStyle, {tableLeft, top, tableWidth, rowsHeight});
     return rowsHeight;
+}
+
+std::vector<RowHeight> PageLayouter::MeasureRowHeights(const TableLayoutValues& values, const BoxStyle& tableStyle, const std::vector<float>& columns)
+{
+    std::vector<RowHeight> rowHeights;
+    for (const TableRow& row : values.rows)
+    {
+        BoxStyle rowStyle = StyleOf(*row.element, tableStyle);
+        float rowHeight = ReadLengthValue(row.element->Attribute("height"), 0);
+        bool isAsked = rowHeight > 0;
+        for (const TableCell& cell : row.cells)
+        {
+            BoxStyle cellStyle = StyleOf(*cell.element, rowStyle);
+            float contentWidth = ContentWidthOf(CellWidthOf(cell, columns, values.spacing), values.padding, cellStyle);
+            float contentHeight = MeasureHeight([&] { return LayOutChildren(*cell.element, cellStyle, 0, 0, contentWidth); });
+            float askedHeight = ReadLengthValue(cell.element->Attribute("height"), 0);
+            if (cellStyle.height)
+                askedHeight = std::max(askedHeight, cellStyle.height->value);
+
+            float neededHeight = contentHeight + 2 * values.padding + cellStyle.paddingTop + cellStyle.paddingBottom;
+            isAsked = isAsked || askedHeight > 0;
+            rowHeight = std::max({rowHeight, askedHeight, neededHeight});
+        }
+        rowHeights.push_back({rowHeight, isAsked});
+    }
+    return rowHeights;
+}
+
+void PageLayouter::PlaceTableCell(const TableCell& cell, const HtmlNode& row, const BoxStyle& rowStyle, float cellPadding, const PageRectangle& cellBox)
+{
+    BoxStyle cellStyle = StyleOf(*cell.element, rowStyle);
+    float contentLeft = cellBox.left + cellPadding + cellStyle.paddingLeft;
+    float contentWidth = ContentWidthOf(cellBox.width, cellPadding, cellStyle);
+    float contentHeight = MeasureHeight([&] { return LayOutChildren(*cell.element, cellStyle, 0, 0, contentWidth); });
+
+    float freeHeight = cellBox.height - contentHeight - 2 * cellPadding - cellStyle.paddingTop - cellStyle.paddingBottom;
+    float contentTop = cellBox.top + cellPadding + cellStyle.paddingTop;
+    VerticalPlace place = VerticalPlaceOf(*cell.element, row);
+    if (place == VerticalPlace::Middle)
+        contentTop += freeHeight / 2;
+    else if (place == VerticalPlace::Bottom)
+        contentTop += freeHeight;
+
+    std::size_t cellBackground = output->parts.size();
+    LayOutChildren(*cell.element, cellStyle, contentLeft, contentTop, contentWidth);
+    DrawBackground(cellBackground, *cell.element, cellStyle, cellBox);
 }
 
 }

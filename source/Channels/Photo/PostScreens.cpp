@@ -102,7 +102,7 @@ public:
         , fileIndex(index)
         , layout(session.MakeLayout("today_select"))
     {
-        photo = session.PhotoOfFile(fileIndex).value_or(Formats::RgbaImage{1, 1, {{0, 0, 0, 255}}});
+        photo = session.PhotoOfFile(fileIndex).value_or(MissingPhotoPicture());
     }
 
     void Update() override

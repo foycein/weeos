@@ -49,6 +49,9 @@ std::optional<Formats::RgbaImage> MakeShownPhoto(Formats::ByteView fileBytes);
 // The first frame of a movie at its own size. Nothing when the channel cannot play its video.
 std::optional<Formats::RgbaImage> FirstFrameOfMovie(Formats::ByteView fileBytes, PhotoFileKind kind);
 
+// A black picture of one pixel, used where a photo cannot be decoded.
+Formats::RgbaImage MissingPhotoPicture();
+
 // The movie of a file, when the channel can play its video.
 std::optional<Media::Movie> ReadPlayableMovie(Formats::ByteView fileBytes, PhotoFileKind kind);
 

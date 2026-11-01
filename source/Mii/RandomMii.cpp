@@ -40,6 +40,9 @@ constexpr int SecondChanceLimit = 8;
 
 // Two in ten adult or elder men get facial hair: a beard, a mustache or both, each of type 1 to 3.
 constexpr int FacialHairChanceLimit = 2;
+constexpr int BeardOnlyStyle = 0;
+constexpr int MustacheOnlyStyle = 1;
+constexpr int BeardAndMustacheStyle = 2;
 constexpr int FacialHairStyleCount = 3;
 constexpr int FacialHairTypeCount = 3;
 
@@ -98,8 +101,8 @@ MiiFacialHair ChooseFacialHair(int hairColor, std::mt19937& random)
         return facialHair;
 
     int style = DrawBelow(random, FacialHairStyleCount);
-    bool hasBeard = style == 0 || style == 2;
-    bool hasMustache = style == 1 || style == 2;
+    bool hasBeard = style == BeardOnlyStyle || style == BeardAndMustacheStyle;
+    bool hasMustache = style == MustacheOnlyStyle || style == BeardAndMustacheStyle;
 
     if (hasBeard)
         facialHair.beardType = DrawBelow(random, FacialHairTypeCount) + 1;

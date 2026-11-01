@@ -177,6 +177,12 @@ std::optional<Formats::RgbaImage> MakeShownPhoto(Formats::ByteView fileBytes)
     }
 }
 
+Formats::RgbaImage MissingPhotoPicture()
+{
+    constexpr Formats::Rgba8Pixel OpaqueBlack = {0, 0, 0, 255};
+    return Formats::RgbaImage{1, 1, {OpaqueBlack}};
+}
+
 std::optional<Media::Movie> ReadPlayableMovie(Formats::ByteView fileBytes, PhotoFileKind kind)
 {
     try
@@ -185,9 +191,10 @@ std::optional<Media::Movie> ReadPlayableMovie(Formats::ByteView fileBytes, Photo
         if (!movie.video || movie.video->kind == Media::MovieVideoKind::Unsupported)
             return std::nullopt;
 
-        bool hasFittingSize = movie.video->width > 0 && movie.video->width <= MovieLargestWidth && movie.video->height > 0
-            && movie.video->height / movie.video->fieldCount <= MovieLargestHeight;
-        if (!hasFittingSize || IsTooThin(movie.video->width, movie.video->height))
+        const Media::MovieVideoTrack& video = *movie.video;
+        bool hasFittingWidth = video.width > 0 && video.width <= MovieLargestWidth;
+        bool hasFittingHeight = video.height > 0 && video.height / video.fieldCount <= MovieLargestHeight;
+        if (!hasFittingWidth || !hasFittingHeight || IsTooThin(video.width, video.height))
             return std::nullopt;
 
         return movie;

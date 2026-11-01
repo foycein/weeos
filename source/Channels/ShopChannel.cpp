@@ -61,6 +61,7 @@ constexpr double StartupPictureSeconds = 2;
 
 // The loop that plays while the access mark shows (0x8001CB60).
 constexpr std::string_view LoadingSound = "WIPL_SE_LOADING";
+constexpr int StopAtOnce = 0;
 constexpr std::string_view FontFile = "wbf1.brfna";
 
 // The places and the styles of error.css and of the pages internet.html and error.html, in pixels of the page. On a 16:9 screen the
@@ -81,6 +82,7 @@ constexpr PageTextStyle TitleStyle = {28, {0x34, 0xBE, 0xED, 255}, Text::Horizon
 constexpr PageTextStyle DotsStyle = {16, {0x8C, 0x8C, 0x8C, 255}, Text::HorizontalAlignment::Left};
 constexpr PageTextStyle ErrorCodeStyle = {22, {0xFF, 0x00, 0x00, 255}, Text::HorizontalAlignment::Left};
 constexpr PageTextStyle ErrorTextStyle = {16, {0xFF, 0x00, 0x00, 255}, Text::HorizontalAlignment::Left};
+constexpr Formats::Rgba8Color PageBackground = {255, 255, 255, 255};
 constexpr PageTextStyle ButtonTextStyle = {18, {0x32, 0x32, 0x32, 255}, Text::HorizontalAlignment::Center};
 
 // The dotted lines are a row of halfwidth middle dots.
@@ -299,7 +301,7 @@ void ShopChannel::UpdateAccessMark()
     if (isLoading && !playsTheLoadingSound)
         services.sounds.StartMusic(LoadingSound);
     if (!isLoading && playsTheLoadingSound)
-        services.sounds.StopMusic(0);
+        services.sounds.StopMusic(StopAtOnce);
     playsTheLoadingSound = isLoading;
 }
 
@@ -390,8 +392,9 @@ std::optional<Formats::Vector2> ShopChannel::PointerOnPage(int playerIndex) cons
 void ShopChannel::DrawWallpaper()
 {
     painter->DrawPicture(*wallpaper, LeftWallpaper);
-    painter->DrawPicture(*wallpaper, RightWallpaper, true);
-    painter->FillRectangle(WholePage, {255, 255, 255, 255});
+    bool isMirrored = true;
+    painter->DrawPicture(*wallpaper, RightWallpaper, isMirrored);
+    painter->FillRectangle(WholePage, PageBackground);
 }
 
 // In the order of the z-index of the pages: the buttons lie under the dotted lines, the title and the texts.

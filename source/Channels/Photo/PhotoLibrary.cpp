@@ -13,7 +13,9 @@ namespace
 // The original goes ten folders deep (the root is level 0) and refuses paths that do not fit its buffer of 0x101 characters
 // with room for the name of the drive and its extension (0x80014510).
 constexpr int DeepestFolderLevel = 9;
-constexpr std::size_t LongestPath = 0x101 - 0xE;
+constexpr std::size_t PathBufferSize = 0x101;
+constexpr std::size_t RoomForDriveAndExtension = 0xE;
+constexpr std::size_t LongestPath = PathBufferSize - RoomForDriveAndExtension;
 
 // A file of 2 GB or more has the top bit of its FAT size set; the original leaves it out.
 constexpr std::uint64_t LargestFileLength = 0x7FFFFFFF;

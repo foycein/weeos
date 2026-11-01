@@ -236,9 +236,7 @@ private:
 
         for (int index = FirstShownFile(); index < EndOfShownFiles(); ++index)
         {
-            PictureBox box = BoxOfFile(index);
-            bool isInside = std::abs(place->x - box.centerX) <= box.width / 2 && std::abs(place->y - box.centerY) <= box.height / 2;
-            if (!isInside)
+            if (!BoxOfFile(index).Contains(*place))
                 continue;
 
             session.Services().sounds.Request(PhotoSound::SelectPhoto);

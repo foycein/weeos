@@ -33,7 +33,8 @@ struct PhotoSettings
     SlideOrder order = SlideOrder::Date;
     SlideEffect effect = SlideEffect::Simple;
 
-    // 0 to 5 are the built-in songs (BGM_SLIDE1 to 6), 6 is "All AAC files", 7 "Shuffle AAC files", from 8 on one AAC file of the card.
+    // The place in the list "Choose a song" (ListSlideShowSongs): 0 to 4 the built-in songs, 5 "None", 6 "All AAC files",
+    // 7 "Shuffle AAC files", from 8 on one AAC file of the card.
     int song = 0;
     std::array<int, PuzzleSizeCount> puzzleBestSteps{};
     bool mayChoosePieceCount = false;
