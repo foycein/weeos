@@ -8,7 +8,9 @@
 
 #include "Text/TextStyle.h"
 
+#include <algorithm>
 #include <format>
+#include <limits>
 
 namespace SystemMenu
 {
@@ -180,6 +182,20 @@ Text::LaidOutText MenuLayout::LayOutText(std::string_view paneName)
     area.width = rectangle.width;
     area.height = rectangle.height;
     return font.layouter.LayOut(textBox.text, style, area);
+}
+
+float MenuLayout::WidestLineOfText(std::string_view paneName)
+{
+    Formats::Pane& pane = PaneNamed(paneName);
+    float boxWidth = pane.width;
+    pane.width = std::numeric_limits<float>::max();
+    Text::LaidOutText text = LayOutText(paneName);
+    pane.width = boxWidth;
+
+    float widestLine = 0;
+    for (const Text::PlacedLine& line : text.lines)
+        widestLine = std::max(widestLine, line.width);
+    return widestLine;
 }
 
 std::optional<Formats::Vector2> MenuLayout::PointOfPaneInPicture(std::string_view paneName, Formats::Vector2 point)

@@ -154,6 +154,15 @@ enum class BlendMode : std::uint8_t
 
 constexpr std::size_t BlendModeCount = 5;
 
+// An indirect texture moves the place where a stage reads its own texture, as the water of the Wii Speak Channel's chat room does.
+// Its texel at the place of the pixel gives three numbers (its alpha, blue and green, each less 128, from -128 to 127), and the
+// matrix turns them into how many texels the stage's texture is read away in S and T.
+struct IndirectTexture
+{
+    std::uint8_t textureIndex = 0;
+    std::array<std::array<float, 3>, 2> matrix = {};
+};
+
 // A material says how a quad gets its colors.
 struct Material
 {
@@ -180,6 +189,9 @@ struct Material
     // The alpha test of the Wii's graphics chip as the Mii face library uses it: a pixel whose alpha is 0 is not drawn at all,
     // so it changes neither the colors nor the depth.
     bool skipsTransparentPixels = false;
+
+    // Only for the stages that are moved by it (TevStage::isMovedByIndirectTexture).
+    std::optional<IndirectTexture> indirectTexture;
 };
 
 // ---- Meshes (3D)

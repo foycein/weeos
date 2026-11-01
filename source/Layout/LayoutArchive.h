@@ -22,7 +22,7 @@ public:
     explicit LayoutArchive(Formats::U8Archive archive);
 
     // An archive whose folders blyt, anim and timg lie in another folder than "arc/", or at its root (rootFolder ""), as in the
-    // Layout00.szs of the Mii Channel.
+    // Layout00.szs of the Mii Channel and the layout bundles of the Wii Speak Channel.
     LayoutArchive(Formats::U8Archive archive, std::string rootFolder);
 
     // Reads "arc/blyt/<layoutName>.brlyt", for example the layoutName "my_IplTop_c".

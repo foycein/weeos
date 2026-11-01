@@ -10,6 +10,7 @@
 #include "SystemMenu/TurnOffQuestion.h"
 
 #include "Formats/Font.h"
+#include "Formats/Yaz0.h"
 
 #include <format>
 #include <utility>
@@ -80,7 +81,7 @@ private:
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents,
     SystemMenu::TitleContents& systemMenuContents, Ios::RemoteService& remoteService, Ios::NetworkConfigService& network,
-    const ChannelStorage& storage, Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime,
+    const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime,
     std::optional<Formats::Bytes> consoleFontArchive)
     : runningTitle(titleId)
     , graphicsDevice(device)
@@ -90,7 +91,7 @@ ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::Title
     , display(device)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, std::move(consoleTime)}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, audio, std::move(consoleTime)}
 {
     LoadSystemFonts(contents, std::move(consoleFontArchive));
     channel = MakeChannel(titleId, services);

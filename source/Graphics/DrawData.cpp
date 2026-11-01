@@ -87,6 +87,7 @@ ShaderStage PackStage(const TevStage& stage)
         packed.swaps |= std::uint32_t{stage.rasterSwap[channel]} << shift;
         packed.swaps |= std::uint32_t{stage.textureSwap[channel]} << (TextureSwapShift + shift);
     }
+    packed.isMovedByIndirectTexture = stage.isMovedByIndirectTexture ? 1 : 0;
 
     return packed;
 }
@@ -114,6 +115,13 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
     record.firstStage = firstStage;
     record.stageCount = stageCount;
     record.skipsTransparentPixels = material.skipsTransparentPixels ? 1 : 0;
+
+    if (material.indirectTexture)
+    {
+        record.indirectTextureIndex = material.indirectTexture->textureIndex;
+        const auto& rows = material.indirectTexture->matrix;
+        record.indirectMatrix = {rows[0][0], rows[0][1], rows[0][2], rows[1][0], rows[1][1], rows[1][2]};
+    }
     return record;
 }
 

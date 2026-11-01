@@ -62,19 +62,62 @@ struct StageSources
     float constantAlpha;
 };
 
-vec4 SampleTexture(uint textureNumber)
+// The pictures have no smaller copies, so the sample always comes from the one picture there is. The shift is in texture coordinates.
+vec4 SampleTexture(uint textureNumber, vec2 shift)
 {
-    // The pictures have no smaller copies, so the sample always comes from the one picture there is.
     switch (textureNumber)
     {
     case 0u:
-        return textureLod(firstTexture, firstTextureCoordinates, 0.0);
+        return textureLod(firstTexture, firstTextureCoordinates + shift, 0.0);
     case 1u:
-        return textureLod(secondTexture, secondTextureCoordinates, 0.0);
+        return textureLod(secondTexture, secondTextureCoordinates + shift, 0.0);
     case 2u:
-        return textureLod(thirdTexture, thirdTextureCoordinates, 0.0);
+        return textureLod(thirdTexture, thirdTextureCoordinates + shift, 0.0);
     }
     return vec4(0.0);
+}
+
+vec4 SampleTexture(uint textureNumber)
+{
+    return SampleTexture(textureNumber, vec2(0.0));
+}
+
+vec2 TextureSize(uint textureNumber)
+{
+    switch (textureNumber)
+    {
+    case 0u:
+        return vec2(textureSize(firstTexture, 0));
+    case 1u:
+        return vec2(textureSize(secondTexture, 0));
+    case 2u:
+        return vec2(textureSize(thirdTexture, 0));
+    }
+    return vec2(1.0);
+}
+
+// The indirect texel gives three numbers from -128 to 127 (its alpha, blue and green), and the matrix turns them into texels.
+const float IndirectBias = 128.0;
+
+vec2 IndirectShift(uint textureNumber)
+{
+    vec4 texel = SampleTexture(drawRecords[drawIndex].indirectTextureIndex);
+    vec3 numbers = vec3(texel.a, texel.b, texel.g) * MaximumByteValue - IndirectBias;
+    float matrix[6] = drawRecords[drawIndex].indirectMatrix;
+    float shiftS = matrix[0] * numbers.x + matrix[1] * numbers.y + matrix[2] * numbers.z;
+    float shiftT = matrix[3] * numbers.x + matrix[4] * numbers.y + matrix[5] * numbers.z;
+    return vec2(shiftS, shiftT) / TextureSize(textureNumber);
+}
+
+vec4 SampleTextureOfStage(Stage stage)
+{
+    if (stage.textureIndex == NoTexture)
+        return vec4(0.0);
+
+    if (stage.isMovedByIndirectTexture == 0u)
+        return SampleTexture(stage.textureIndex);
+
+    return SampleTexture(stage.textureIndex, IndirectShift(stage.textureIndex));
 }
 
 float ConstantFraction(uint constantNumber)
@@ -301,7 +344,7 @@ vec4 Swapped(vec4 color, uint table)
 void RunStage(Stage stage)
 {
     StageSources sources;
-    sources.textureSample = stage.textureIndex == NoTexture ? vec4(0.0) : SampleTexture(stage.textureIndex);
+    sources.textureSample = SampleTextureOfStage(stage);
     sources.rasterSample = stage.usesRasterColor != 0u ? rasterColor : vec4(0.0);
     sources.textureSample = Swapped(sources.textureSample, stage.swaps >> TextureSwapShift);
     sources.rasterSample = Swapped(sources.rasterSample, stage.swaps);

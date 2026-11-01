@@ -7,6 +7,10 @@
 namespace Sound
 {
 
+// How many samples of the wave the filter reaches to the left and to the right of the position, when the wave is not read faster than
+// its own rate. Read faster, the filter is stretched by the step.
+constexpr int ResamplerHalfWidth = 24;
+
 // One channel of a decoded wave, as the resampler reads it. A looping wave goes back to the loop start when it reaches
 // its end, and a wave that does not loop is silent before its start and behind its end.
 struct WaveSamples

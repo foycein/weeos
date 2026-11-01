@@ -10,6 +10,7 @@
 #include "Settings/ConsoleClock.h"
 #include "Settings/PcSettings.h"
 #include "SystemMenu/MenuSystem.h"
+#include "WeeOS/PcMicrophone.h"
 #include "WeeOS/ConsoleImporter.h"
 #include "WeeOS/ProgramSound.h"
 
@@ -98,6 +99,10 @@ public:
 
     // The services of the IOS that runs. A test takes the SD card out of the slot here.
     Ios::IosServices& GetServices();
+    // The Wii Speak accessory is the default microphone of Windows, when the PC has one. A test gives its own source instead, from the
+    // session that runs on; the source must outlive the application.
+    void UseMicrophoneSource(Ios::MicrophoneSource& source);
+    const PcMicrophone& GetPcMicrophone() const;
 
 private:
     // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
@@ -105,6 +110,7 @@ private:
 
     void PrepareConsoleFolders();
     void StartSession();
+    void AttachMicrophone();
     void StartImportedConsole();
     void StopOnTheKeyOfKoreanConsoles();
     void PlaceWindow();
@@ -122,6 +128,11 @@ private:
 
     Ios::IosFolders folders;
     HostEnvironment host;
+
+    // Before the console, so that the microphone service of IOS can still stop a capture session while the console goes.
+    PcMicrophone pcMicrophone;
+    Ios::MicrophoneSource* givenMicrophone = nullptr;
+
     ConsoleImporter importer;
     Boot::ConsoleStartup console;
     Settings::PcSettingsStore pcSettings;

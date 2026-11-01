@@ -5,6 +5,7 @@
 #include "Settings/SystemSettings.h"
 #include "Sound/AudioOutput.h"
 #include "Sound/SoundSystem.h"
+#include "Sound/WavePlayer.h"
 
 #include <atomic>
 #include <cstdint>
@@ -30,6 +31,9 @@ float GainOfVolume(int volumePercent);
 class ProgramSound
 {
 public:
+    // The rate the wave player assumes until the output tells it the rate of the device.
+    static constexpr std::uint32_t DefaultWaveSampleRate = 48000;
+
     explicit ProgramSound(bool silent);
 
     ProgramSound(const ProgramSound&) = delete;
@@ -57,6 +61,10 @@ public:
 
     bool IsSilent() const;
 
+    // The waves that a channel makes itself (a recorded voice, a stream file) play beside the archives, at the same volume.
+    // The player exists from the start; nothing is heard before Start or when the PC cannot play sound.
+    Sound::WavePlayer& Waves();
+
     // Nothing before Start, or when the PC cannot play sound.
     Sound::SoundSystem* Sounds();
     Sound::AudioOutput* Output();
@@ -82,6 +90,8 @@ private:
     std::mutex titleSoundsMutex;
     std::vector<std::unique_ptr<Sound::SoundSystem>> titleSounds;
     std::vector<float> titleMixBuffer;
+
+    Sound::WavePlayer waves{DefaultWaveSampleRate};
 
     // The output comes last, so that it goes first: its audio thread stops before the sound system that it renders goes.
     std::unique_ptr<Sound::SoundSystem> sounds;

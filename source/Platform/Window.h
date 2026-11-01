@@ -15,9 +15,6 @@ constexpr WindowSize DefaultClientSize = {1280, 720};
 // The smallest area inside the frame that the user can drag the window to.
 constexpr WindowSize SmallestClientSize = {480, 270};
 
-// The number of the program's icon in the resources of WeeOS.exe (source/WeeOS/WeeOS.rc). A program without it gets the icon of Windows.
-constexpr int ProgramIconResource = 1;
-
 // Only WeeOS.exe started by the owner shows its window. Tests and the runs of helpers draw into a window that is never shown, so nothing
 // appears on the screen (docs/HelperRules.md).
 enum class WindowVisibility

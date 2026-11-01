@@ -1,0 +1,7 @@
+// The resources of weeossetup.exe: the WeeOS logo as its icon, and the portable zip of WeeOS that it installs (Package.h).
+#include <windows.h>
+
+1 ICON "@WeeOSIcon@"
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+PACKAGE RCDATA "@WeeOSSetupPackage@"

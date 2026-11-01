@@ -32,4 +32,7 @@ void SetMaterialColorElement(Formats::Material& material, unsigned element, int 
 // A material that has no texture transform with this number ignores the value.
 void SetTextureTransformValue(Formats::Material& material, std::size_t transformIndex, unsigned property, float value);
 
+// The same for an indirect matrix (the animation RLIM), whose numbers are the same five.
+void SetIndirectTransformValue(Formats::Material& material, std::size_t transformIndex, unsigned property, float value);
+
 }

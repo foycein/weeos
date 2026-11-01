@@ -214,8 +214,9 @@ private:
         const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
+        Channels::ChannelAudio audio{iosServices.GetMicrophone(), sound.Waves()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, systemMenuContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), runningTitle, consoleTime,
+            iosServices.GetNetworkConfig(), storage, audio, iosServices.GetPower(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -297,6 +298,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, pcSettings, sound, host, importer);
+    AttachMicrophone();
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -316,6 +318,31 @@ void Application::PlaceWindow()
 
     if (settings.isFullscreen)
         window.ToggleFullscreen();
+}
+
+// IOS is new in every session, so the accessory is plugged into the new microphone service. A channel looks for it in its first step.
+void Application::AttachMicrophone()
+{
+    Ios::MicrophoneService& microphone = console.GetServices().GetMicrophone();
+    if (givenMicrophone != nullptr)
+    {
+        microphone.AttachSource(*givenMicrophone);
+        return;
+    }
+
+    if (Sound::HasCaptureDevice())
+        microphone.AttachSource(pcMicrophone);
+}
+
+void Application::UseMicrophoneSource(Ios::MicrophoneSource& source)
+{
+    givenMicrophone = &source;
+    console.GetServices().GetMicrophone().AttachSource(source);
+}
+
+const PcMicrophone& Application::GetPcMicrophone() const
+{
+    return pcMicrophone;
 }
 
 // The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.

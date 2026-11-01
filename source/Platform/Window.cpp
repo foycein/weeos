@@ -15,6 +15,10 @@ namespace
 {
 
 constexpr wchar_t WindowClassName[] = L"WeeOSWindow";
+
+// The icon of the program: number 1 of its resources (source/WeeOS/WeeOS.rc).
+constexpr int ProgramIconNumber = 1;
+
 constexpr DWORD WindowedStyle = WS_OVERLAPPEDWINDOW;
 constexpr DWORD FullscreenStyle = WS_POPUP;
 
@@ -244,7 +248,7 @@ void Window::RegisterWindowClass()
     windowClass.lpfnWndProc = WindowProcedure;
     windowClass.hInstance = program;
     windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    windowClass.hIcon = LoadIconW(program, MAKEINTRESOURCEW(ProgramIconResource));
+    windowClass.hIcon = LoadIconW(windowClass.hInstance, MAKEINTRESOURCEW(ProgramIconNumber));
     windowClass.lpszClassName = WindowClassName;
 
     // Registering a second time fails, which is fine: the class is already there.

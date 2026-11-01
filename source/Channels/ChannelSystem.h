@@ -36,8 +36,8 @@ public:
     // channel system. The contents of the System Menu are read only when the question "Turn off WeeOS?" first comes.
     // A channel that brings no fonts of its own draws its texts with the console's fonts, when they are given (ReadConsoleFontArchive).
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, SystemMenu::TitleContents& systemMenuContents,
-        Ios::RemoteService& remoteService, Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService,
-        Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
+        Ios::RemoteService& remoteService, Ios::NetworkConfigService& network, const ChannelStorage& storage, const ChannelAudio& audio,
+        Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
         std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
     ~ChannelSystem();
 
