@@ -37,6 +37,7 @@ add_library(Formats STATIC
     PlayLogAttachment.cpp
     PlayRecordFile.cpp
     PngImage.cpp
+    PostedPictureFile.cpp
     ResourceFile.cpp
     RgbaImage.cpp
     RsaSignature.cpp

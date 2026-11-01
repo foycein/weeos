@@ -2,6 +2,10 @@
 
 #include "Ios/SdCard/SdCardService.h"
 
+#include "Formats/Bytes.h"
+
+#include <optional>
+
 #include <string>
 #include <vector>
 
@@ -20,6 +24,9 @@ struct PhotoFile
 {
     Ios::SdPath path;
     PhotoFileKind kind = PhotoFileKind::Photo;
+
+    // A photo of the Wii Message Board: the JPEG file of a letter's picture, in place of a file of the card.
+    std::optional<Formats::Bytes> boardPicture;
 
     bool IsMovie() const
     {

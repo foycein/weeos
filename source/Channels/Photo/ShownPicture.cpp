@@ -53,4 +53,23 @@ void ShownPicture::DrawInside(const PictureBox& box, float opacity, float zoom) 
     device.DrawQuad(quad, material);
 }
 
+void ShownPicture::DrawPart(const PictureBox& box, Formats::Vector2 partTopLeft, Formats::Vector2 partBottomRight) const
+{
+    float left = box.centerX - box.width / 2;
+    float right = box.centerX + box.width / 2;
+    float top = box.centerY + box.height / 2;
+    float bottom = box.centerY - box.height / 2;
+    Formats::Rgba8Color white = {White, White, White, White};
+
+    Graphics::Quad quad{};
+    quad.positions = {Formats::Vector2{left, top}, {right, top}, {right, bottom}, {left, bottom}};
+    quad.colors = {white, white, white, white};
+    quad.textureCoordinates[0] = {partTopLeft, Formats::Vector2{partBottomRight.x, partTopLeft.y}, partBottomRight,
+        Formats::Vector2{partTopLeft.x, partBottomRight.y}};
+
+    Graphics::Material material;
+    material.textures.push_back({texture, Graphics::TextureMatrix()});
+    device.DrawQuad(quad, material);
+}
+
 }

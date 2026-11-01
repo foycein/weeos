@@ -1,9 +1,11 @@
 add_library(Media STATIC
+    AacMusic.cpp
     AviReader.cpp
     ExifReader.cpp
     InverseDct.cpp
     JpegBitReader.cpp
     JpegDecoder.cpp
+    JpegEncoder.cpp
     JpegFrame.cpp
     JpegHuffmanTable.cpp
     JpegPicture.cpp
@@ -15,3 +17,6 @@ add_library(Media STATIC
 )
 
 target_link_libraries(Media PUBLIC Formats)
+
+# Windows' own AAC decoder, allowed by the owner for music files (docs/DECISIONS.md).
+target_link_libraries(Media PRIVATE mfplat mfreadwrite mfuuid shlwapi ole32)

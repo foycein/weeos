@@ -19,6 +19,7 @@ struct MessageBoardData
         , portraits(device, menuFiles)
         , nand(nandFiles)
     {
+        store.CreateWhenMissing();
     }
 
     MessageStore store;

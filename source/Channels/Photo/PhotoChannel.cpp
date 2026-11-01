@@ -6,8 +6,13 @@ namespace Channels
 PhotoChannel::PhotoChannel(ChannelServices& channelServices)
     : services(channelServices)
     , session(channelServices)
-    , screen(MakeTitleScreen(session))
 {
+    PhotoStorage::StartResult result = session.storage.Start();
+    if (result == PhotoStorage::StartResult::Ready)
+        screen = MakeTitleScreen(session);
+    else
+        screen = MakeSaveErrorScreen(session, result);
+
     services.sounds.Request(PhotoSound::MainMusic);
 }
 
