@@ -44,6 +44,7 @@ private:
     void RequestSoundsOfThePages();
     void FadeMusicOnTheSoundPage(PageId pageBefore);
     void HandlePlayers();
+    void PressButtonsOfTheRemote();
     void PressWithPlayer(int player, std::size_t button);
     void RepeatHeldButton();
     std::optional<std::size_t> FindButtonAt(float pageX, float pageY) const;

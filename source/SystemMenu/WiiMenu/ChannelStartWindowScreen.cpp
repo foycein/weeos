@@ -94,6 +94,10 @@ constexpr std::uint16_t OkMessage = 46;
 constexpr std::string_view BannerFilePath = "meta/banner.bin";
 constexpr std::string_view SoundFilePath = "meta/sound.bin";
 constexpr std::string_view DiscStartAnimation = "my_DiskCh_a_Start";
+
+// The empty drive shows the discs it takes. WeeOS takes no GameCube disc (DECISIONS.md, scope), so its disc, shade, reflection and
+// window stay hidden (SYS-89).
+constexpr std::array<std::string_view, 4> GameCubeDiscPanes = {"N_GC0", "ShadeGC", "N_RefGC", "W_GC"};
 constexpr std::string_view NoDiscSound = "WIPL_ME_NO_DISC_BANNER";
 
 // The scripts of two banners (docs/research/Channels.md 1.6): the News Channel without save data shows the text textT0, the Photo
@@ -331,6 +335,9 @@ void ChannelStartWindowScreen::BuildTheDiscBanner()
     bannerLayout->SetText("T_Comment0", services.messages.Find(InsertDiscMessage));
     bannerLayout->SetText("T_Comment1", services.messages.Find(CannotReadDiscMessage));
     bannerStart = bannerLayout->BindAnimationToAllPanes(std::string(DiscStartAnimation));
+
+    for (std::string_view paneName : GameCubeDiscPanes)
+        bannerLayout->PaneNamed(paneName).isVisible = false;
 }
 
 // The loop of the banner follows its start (0x813B4D10).

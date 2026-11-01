@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Input/RemoteButtons.h"
+
 #include <cstddef>
 #include <deque>
 #include <functional>
@@ -92,6 +94,9 @@ struct PageButton
 
     // A button that is held down presses again and again, as the arrows that change a number do.
     bool repeatsWhenHeld = false;
+
+    // A button of the Wii Remote that presses this button wherever the hand is, as 1 and 2 on the page of the sensitivity. None is 0.
+    Input::ButtonMask remoteButton = 0;
 
     PageSound sound = PageSound::Decide;
     std::function<void()> onPress;

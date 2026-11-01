@@ -131,6 +131,7 @@ bool SettingsScreen::RunMain()
     std::optional<std::size_t> pointedBefore = pointedButton;
     PageId pageBefore = flow->CurrentPageId();
     HandlePlayers();
+    PressButtonsOfTheRemote();
     if (pointedButton && pointedButton != pointedBefore)
         services.sounds.Request(SoundName::ButtonTargeted);
 
@@ -246,6 +247,29 @@ std::optional<std::size_t> SettingsScreen::FindButtonAt(float pageX, float pageY
     }
 
     return std::nullopt;
+}
+
+// A page may give a button of the Wii Remote to one of its buttons: the sensitivity page says "Press 1 and 2 on the Wii Remote".
+void SettingsScreen::PressButtonsOfTheRemote()
+{
+    for (int player = 0; player < PlayerCount; ++player)
+    {
+        const std::optional<PlayerInput>& playerInput = services.input.Player(player);
+        if (!playerInput)
+            continue;
+
+        const Page& page = flow->CurrentPage();
+        for (std::size_t buttonIndex = 0; buttonIndex < page.buttons.size(); ++buttonIndex)
+        {
+            const PageButton& button = page.buttons[buttonIndex];
+            bool isPressed = (playerInput->state.buttonsPressed & button.remoteButton) != 0;
+            if (button.isShown && button.remoteButton != 0 && isPressed)
+            {
+                PressWithPlayer(player, buttonIndex);
+                return;
+            }
+        }
+    }
 }
 
 void SettingsScreen::PressWithPlayer(int player, std::size_t button)

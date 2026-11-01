@@ -24,6 +24,9 @@ constexpr std::array<std::string_view, 13> AreaPaneNames = {
 constexpr std::size_t PictureOfTheRemote = 12;
 constexpr std::size_t RemoteSettingsBarPane = 2;
 
+// The second big button of a channel's HOME menu is "Reset"; a yes to its question sounds HOMESE_RESET_APP, not HOMESE_GOTO_MENU.
+constexpr std::size_t ResetBigButton = 1;
+
 bool WasPressed(const Input::RemoteState& state, Input::DeviceKind kind, Input::ButtonMask remoteButton, Input::ButtonMask classicButton)
 {
     if ((state.buttonsPressed & remoteButton) != 0)
@@ -479,7 +482,8 @@ void HomeButtonMenu::PressAnswer(bool isYes)
     part = Part::Menu;
     if (isYes)
     {
-        Play(HomeMenuSound::GoToWiiMenu);
+        bool isReset = chosenBigButton == ResetBigButton;
+        Play(isReset ? HomeMenuSound::ResetProgram : HomeMenuSound::GoToWiiMenu);
         WaitFor("_cmn_msg_btn_psh", "msgBtn_00_psh", Step::AnswerShown);
         return;
     }
