@@ -16,7 +16,8 @@ constexpr int BatteryBarCount = 4;
 // Below this level the battery shows red.
 constexpr int LowBatteryLevel = 2;
 
-// A remote that connects rumbles for 300 milliseconds, and its speaker sounds 400 milliseconds after the connection, in steps of 1001/60000 s.
+// A remote that connects rumbles for 300 milliseconds, and its speaker sounds 400 milliseconds after the connection, in steps of
+// 1001/60000 s.
 constexpr int ConnectRumbleSteps = 18;
 constexpr int ConnectSoundDelaySteps = 24;
 
@@ -87,7 +88,8 @@ void HomeButtonMenu::NoticeConnect(int player)
     Stop("_btry_wink_gry", group);
     Start("_btry_wink", group);
 
-    Play(static_cast<HomeMenuSound>(static_cast<std::size_t>(HomeMenuSound::Connected) + player));
+    std::size_t soundOfThePlayer = static_cast<std::size_t>(HomeMenuSound::Connected) + static_cast<std::size_t>(player);
+    Play(static_cast<HomeMenuSound>(soundOfThePlayer));
     record.connectSoundStepsLeft = ConnectSoundDelaySteps;
 
     StartRumble(player);

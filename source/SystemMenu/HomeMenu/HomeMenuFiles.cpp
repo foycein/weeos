@@ -41,6 +41,11 @@ constexpr std::string_view LayoutFileExtension = ".brlyt";
 constexpr char ConfigurationSeparator = ',';
 constexpr char ButtonAsksMark = '1';
 
+// config.txt is one line of fields: the layout file, the start of the animation names, then one field for every big button.
+constexpr std::size_t LayoutFileField = 0;
+constexpr std::size_t AnimationPrefixField = 1;
+constexpr std::size_t FirstButtonField = 2;
+
 // home.csv holds one row for every message and one column for every language. English is the second column.
 // The menu's file has ten languages, the copies in the channels seven.
 constexpr std::size_t EnglishColumn = 1;
@@ -90,8 +95,13 @@ std::vector<std::string> SplitConfiguration(Formats::ByteView bytes)
     {
         char character = static_cast<char>(byte);
         if (character == ConfigurationSeparator)
+        {
             fields.emplace_back();
-        else if (character != '\r' && character != '\n' && character != '\0')
+            continue;
+        }
+
+        bool isLineEndOrZero = character == '\r' || character == '\n' || character == '\0';
+        if (!isLineEndOrZero)
             fields.back().push_back(character);
     }
     return fields;
@@ -100,13 +110,18 @@ std::vector<std::string> SplitConfiguration(Formats::ByteView bytes)
 void ReadConfiguration(Formats::ByteView configuration, HomeMenuFiles& homeMenuFiles)
 {
     std::vector<std::string> fields = SplitConfiguration(configuration);
-    if (fields.size() < 3 || !fields[0].ends_with(LayoutFileExtension))
+    bool hasAllFields = fields.size() > FirstButtonField && fields[LayoutFileField].ends_with(LayoutFileExtension);
+    if (!hasAllFields)
         throw MenuError(std::format("{} does not name a layout, its animations and its buttons", ConfigurationPath));
 
-    homeMenuFiles.layoutName = fields[0].substr(0, fields[0].size() - LayoutFileExtension.size());
-    homeMenuFiles.animationPrefix = fields[1];
-    for (std::size_t field = 2; field < fields.size(); ++field)
-        homeMenuFiles.buttonAsks.push_back(!fields[field].empty() && fields[field][0] == ButtonAsksMark);
+    const std::string& layoutFile = fields[LayoutFileField];
+    homeMenuFiles.layoutName = layoutFile.substr(0, layoutFile.size() - LayoutFileExtension.size());
+    homeMenuFiles.animationPrefix = fields[AnimationPrefixField];
+    for (std::size_t field = FirstButtonField; field < fields.size(); ++field)
+    {
+        bool asks = fields[field].starts_with(ButtonAsksMark);
+        homeMenuFiles.buttonAsks.push_back(asks);
+    }
 }
 
 // The texts are UTF-16, most significant byte first. Every text stands between two quotation marks; a line feed outside the
@@ -192,6 +207,25 @@ Formats::RgbaImage ReadProhibitedIcon(Formats::ByteView iconFile)
     return Formats::DecodeTexture(textures.front());
 }
 
+Formats::U8Archive ReadChannelArchive(const Formats::U8Archive& content, std::string_view folder, std::string_view name, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, name)));
+
+    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, Lz77NamePrefix, name));
+    return Formats::ReadU8Archive(Formats::DecompressLz77(packedFile));
+}
+
+Formats::U8Archive ReadChannelSpeakerSounds(const Formats::U8Archive& content, std::string_view folder, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, ChannelSpeakerSoundsName)));
+
+    std::string packedName = std::format("{}/{}{}", folder, HuffmanNamePrefix, ChannelSpeakerSoundsName);
+    Formats::ByteView packedFile = FindFileOfContent(content, packedName);
+    return Formats::ReadU8Archive(Formats::DecompressHuffman(packedFile));
+}
+
 }
 
 HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files)
@@ -207,24 +241,6 @@ HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files)
     ReadSpeakerSounds(Formats::ReadU8Archive(files.ReadFile(SpeakerSoundsPath)), homeMenuFiles);
     homeMenuFiles.prohibitedIcon = ReadProhibitedIcon(files.ReadFile(ProhibitedIconPath));
     return homeMenuFiles;
-}
-
-Formats::U8Archive ReadChannelArchive(const Formats::U8Archive& content, std::string_view folder, std::string_view name, bool isPacked)
-{
-    if (!isPacked)
-        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, name)));
-
-    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, Lz77NamePrefix, name));
-    return Formats::ReadU8Archive(Formats::DecompressLz77(packedFile));
-}
-
-Formats::U8Archive ReadChannelSpeakerSounds(const Formats::U8Archive& content, std::string_view folder, bool isPacked)
-{
-    if (!isPacked)
-        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, ChannelSpeakerSoundsName)));
-
-    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, HuffmanNamePrefix, ChannelSpeakerSoundsName));
-    return Formats::ReadU8Archive(Formats::DecompressHuffman(packedFile));
 }
 
 HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, bool arePacked,
