@@ -7,7 +7,9 @@
 
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/MenuFonts.h"
+#include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/MessageBoard/MessageStore.h"
 
 #include "Layout/LayoutArchive.h"
 
@@ -79,6 +81,12 @@ public:
     // The place a player points at, in canvas units, when a player pressed A in this step.
     std::optional<Formats::Vector2> PlaceOfPress();
 
+    // The bytes of a file of the library: the picture of a board letter, or the file of the card.
+    std::optional<Formats::Bytes> FileBytes(int fileIndex);
+
+    // The Message Board's database (cdb.vff in the System Menu's data folder), opened the first time it is needed.
+    SystemMenu::MessageStore& BoardStore();
+
     // Where a pane of a layout lies on the screen, in canvas units (the panes named "picture", where the channel draws the photo).
     PictureBox BoxOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName);
 
@@ -112,6 +120,8 @@ private:
     std::map<int, Formats::RgbaImage> changedPhotos;
     std::vector<Formats::TplTexture> channelTextures;
     std::map<int, Formats::RgbaImage> decodedTextures;
+    std::unique_ptr<SystemMenu::IosNandFiles> boardFiles;
+    std::unique_ptr<SystemMenu::MessageStore> boardStore;
 };
 
 // The screens. Each one is made when the channel goes to it.

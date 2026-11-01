@@ -271,8 +271,9 @@ private:
     std::unique_ptr<SystemMenu::MenuLayout> shown;
 };
 
-// "View Wii Message Board photos". The board of WeeOS keeps no photos yet, so the search ends with "The Wii Message Board currently
-// has no photos to display." (title_wii3), as the original says for a board without photos.
+// "View Wii Message Board photos": the pictures of the letters on the board (the JPEG files of their picture attachments), the oldest
+// first, after "Searching the Wii Message Board..." (title_wii1); none gives "The Wii Message Board currently has no photos to display."
+// (title_wii3), too many "not all files will be displayed" (title_wii2).
 class MessageBoardScreen : public PhotoScreen
 {
 public:
@@ -294,8 +295,15 @@ public:
             return;
         }
 
+        if (hasSearched && session.IsButtonPressed(*shown, "next"))
+        {
+            session.Services().sounds.Request(PhotoSound::Decide);
+            session.GoTo(MakeThumbnailScreen(session, 0));
+            return;
+        }
+
         if (steps == StepsOfSearchingAtLeast)
-            shown = session.MakeLayout("title_wii3");
+            Search();
     }
 
     void Draw() override
@@ -309,11 +317,43 @@ public:
     }
 
 private:
+    void Search()
+    {
+        hasSearched = true;
+        session.library = PhotoLibrary();
+        SystemMenu::MessageStore& store = session.BoardStore();
+        for (SystemMenu::BoardDay day : store.DaysWithRecords())
+        {
+            for (const SystemMenu::StoredMessage& stored : store.MessagesOfDay(day))
+                AddPicturesOf(stored.message);
+        }
+
+        if (session.library.files.empty())
+            shown = session.MakeLayout("title_wii3");
+        else if (session.library.HasMoreThanItShows())
+            shown = session.MakeLayout("title_wii2");
+        else
+            session.GoTo(MakeThumbnailScreen(session, 0));
+    }
+
+    void AddPicturesOf(const Formats::BoardMessage& message)
+    {
+        for (const std::optional<Formats::BoardAttachment>& attachment : message.attachments)
+        {
+            if (!attachment || attachment->kind != Formats::BoardAttachmentKind::Picture)
+                continue;
+
+            ++session.library.foundCount;
+            if (session.library.files.size() < ShownFileLimit)
+                session.library.files.push_back({Ios::SdPath::Root(), PhotoFileKind::Photo, attachment->contents});
+        }
+    }
+
     PhotoSession& session;
     std::unique_ptr<SystemMenu::MenuLayout> shown;
     int steps = 0;
+    bool hasSearched = false;
 };
-
 }
 
 std::unique_ptr<PhotoScreen> MakeTitleScreen(PhotoSession& session)

@@ -143,7 +143,7 @@ private:
     void MakeThumbnail(int index)
     {
         const PhotoFile& file = session.library.files[index];
-        std::optional<Formats::Bytes> bytes = ReadCardFile(session.Services().storage.sdCard, file.path);
+        std::optional<Formats::Bytes> bytes = session.FileBytes(index);
         std::optional<Formats::RgbaImage> picture;
         if (bytes)
             picture = Channels::MakeThumbnail(*bytes, file.kind);

@@ -1,5 +1,14 @@
+#include "Channels/Photo/PhotoPictures.h"
 #include "Channels/Photo/PhotoSession.h"
 #include "Channels/Photo/ShownPicture.h"
+
+#include "SystemMenu/MessageBoard/BoardPosting.h"
+
+#include "Media/JpegEncoder.h"
+#include "Media/PictureShapes.h"
+
+#include <chrono>
+#include <random>
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +17,8 @@
 // the Wii Menu photo (menu_del, menu_del_save, menu_del_comp, menu_del_ng). The photo is shown in the channel's icon and preview:
 // noerase/photo_i.dat (160 x 120) and photo_b.dat (480 x 272). + and - make the part of the photo smaller and larger, the
 // +Control Pad moves it (the tip of the tips window: "you can adjust the photo by pressing the + or - Buttons").
-// Posting to the Wii Message Board needs the board of WeeOS, which is not there yet: that button stays hidden.
+// Post to the Wii Message Board (layouts today, today_what, today_save, today_comp, today_ng) puts the photo, with its changes, as a
+// JPEG picture on a letter of this console on today's page of the board.
 
 namespace Channels
 {
@@ -16,9 +26,13 @@ namespace Channels
 namespace
 {
 
-constexpr std::string_view MessageBoardButton = "board";
+// The board keeps a photo at most 640 x 480, written as a JPEG picture of this quality (Assumed, CHN-33).
+constexpr int BoardPictureLargestWidth = 640;
+constexpr int BoardPictureLargestHeight = 480;
+constexpr int BoardPictureQuality = 90;
 constexpr std::string_view PhotoQuestion = "textTUS0A";
 constexpr std::string_view MovieFrameQuestion = "textTUS1A";
+constexpr std::string_view NewPhotoQuestion = "textTUS2A";
 constexpr std::string_view SaveSound = "SE_SAVE";
 
 // How the part of the photo can be changed (Assumed, CHN-33): the zoom grows by a quarter per press, up to four times; a press of the
@@ -72,6 +86,11 @@ public:
         Saving,
         Posted,
         PostFailed,
+        AskingToPostToBoard,
+        AboutBoard,
+        SavingToBoard,
+        PostedToBoard,
+        BoardFailed,
         AskingToRemove,
         Removing,
         Removed,
@@ -83,7 +102,6 @@ public:
         , fileIndex(index)
         , layout(session.MakeLayout("today_select"))
     {
-        layout->PaneNamed(MessageBoardButton).isVisible = false;
         photo = session.PhotoOfFile(fileIndex).value_or(Formats::RgbaImage{1, 1, {{0, 0, 0, 255}}});
     }
 
@@ -115,6 +133,22 @@ public:
             break;
         case Stage::AskingToRemove:
             UpdateAskingToRemove();
+            break;
+        case Stage::AskingToPostToBoard:
+            UpdateAskingToPostToBoard();
+            break;
+        case Stage::AboutBoard:
+            if (session.IsButtonPressed(*layout, "back"))
+                StartAskingToPostToBoard();
+            break;
+        case Stage::SavingToBoard:
+            UpdateSavingToBoard();
+            break;
+        case Stage::PostedToBoard:
+            BackToView("next");
+            break;
+        case Stage::BoardFailed:
+            BackToView("back");
             break;
         case Stage::Removing:
             UpdateRemoving();
@@ -153,6 +187,16 @@ public:
             return "Removed from the Wii Menu";
         case Stage::RemoveFailed:
             return "Not removed";
+        case Stage::AskingToPostToBoard:
+            return "Post to the Wii Message Board?";
+        case Stage::AboutBoard:
+            return "About Posting to the Wii Message Board";
+        case Stage::SavingToBoard:
+            return "Posting to the Wii Message Board";
+        case Stage::PostedToBoard:
+            return "Posted to the Wii Message Board";
+        case Stage::BoardFailed:
+            return "Not posted to the Wii Message Board";
         }
         return "Post";
     }
@@ -168,7 +212,12 @@ private:
     void UpdateChoosing()
     {
         ChannelServices& services = session.Services();
-        if (session.IsButtonPressed(*layout, "menu"))
+        if (session.IsButtonPressed(*layout, "board"))
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            StartAskingToPostToBoard();
+        }
+        else if (session.IsButtonPressed(*layout, "menu"))
         {
             services.sounds.Request(PhotoSound::Decide);
             StartAdjusting();
@@ -271,6 +320,83 @@ private:
         ShowPreview();
     }
 
+    void StartAskingToPostToBoard()
+    {
+        Show(Stage::AskingToPostToBoard, "today");
+        bool isMovie = session.library.files[fileIndex].IsMovie();
+        layout->PaneNamed(PhotoQuestion).isVisible = !isMovie;
+        layout->PaneNamed(MovieFrameQuestion).isVisible = isMovie;
+        layout->PaneNamed(NewPhotoQuestion).isVisible = false;
+    }
+
+    void UpdateAskingToPostToBoard()
+    {
+        ChannelServices& services = session.Services();
+        if (session.IsButtonPressed(*layout, "yes"))
+        {
+            services.sounds.Request(SaveSound);
+            Show(Stage::SavingToBoard, "today_save");
+        }
+        else if (session.IsButtonPressed(*layout, "no") || session.IsButtonPressed(*layout, "back"))
+        {
+            services.sounds.Request(PhotoSound::Cancel);
+            session.GoTo(MakeViewScreen(session, fileIndex));
+        }
+        else if (session.IsButtonPressed(*layout, "what"))
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            Show(Stage::AboutBoard, "today_what");
+        }
+    }
+
+    void UpdateSavingToBoard()
+    {
+        if (stepsOfStage < StepsOfSaving)
+            return;
+
+        if (PostToBoard())
+            Show(Stage::PostedToBoard, "today_comp");
+        else
+            Show(Stage::BoardFailed, "today_ng");
+    }
+
+    bool PostToBoard()
+    {
+        std::optional<int> factor = ShrinkFactorToFit(static_cast<int>(photo.width), static_cast<int>(photo.height), BoardPictureLargestWidth,
+            BoardPictureLargestHeight);
+        Formats::RgbaImage picture = Media::ShrinkPicture(photo, factor.value_or(1));
+        Formats::Bytes jpeg = Media::EncodeJpeg(picture, BoardPictureQuality);
+
+        std::uniform_real_distribution<float> share(0.0f, 1.0f);
+        Formats::Vector2 place = SystemMenu::PlaceForNewLetter(share(random), share(random));
+        try
+        {
+            SystemMenu::PostPicture(session.BoardStore(), jpeg, place, Now());
+            return true;
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+    }
+
+    SystemMenu::LocalTime Now() const
+    {
+        std::chrono::local_seconds now = session.Services().consoleTime();
+        std::chrono::local_days today = std::chrono::floor<std::chrono::days>(now);
+        std::chrono::year_month_day date(today);
+        std::chrono::hh_mm_ss<std::chrono::seconds> time(now - today);
+
+        SystemMenu::LocalTime localTime;
+        localTime.year = static_cast<int>(date.year());
+        localTime.month = static_cast<int>(static_cast<unsigned>(date.month()));
+        localTime.day = static_cast<int>(static_cast<unsigned>(date.day()));
+        localTime.hour = static_cast<int>(time.hours().count());
+        localTime.minute = static_cast<int>(time.minutes().count());
+        localTime.second = static_cast<int>(time.seconds().count());
+        return localTime;
+    }
+
     void UpdateAskingToRemove()
     {
         ChannelServices& services = session.Services();
@@ -324,6 +450,7 @@ private:
     int stepsOfStage = 0;
     float zoom = 1;
     Formats::Vector2 middle = {0.5f, 0.5f};
+    std::mt19937 random{std::random_device{}()};
 };
 
 }

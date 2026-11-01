@@ -136,6 +136,28 @@ PictureBox PhotoSession::BoxOfPane(SystemMenu::MenuLayout& layout, std::string_v
     return {pane.translation.x * stretch.x, pane.translation.y * stretch.y, pane.width * stretch.x, pane.height * stretch.y};
 }
 
+std::optional<Formats::Bytes> PhotoSession::FileBytes(int fileIndex)
+{
+    const PhotoFile& file = library.files[fileIndex];
+    if (file.boardPicture)
+        return file.boardPicture;
+
+    return ReadCardFile(services.storage.sdCard, file.path);
+}
+
+SystemMenu::MessageStore& PhotoSession::BoardStore()
+{
+    if (boardStore)
+        return *boardStore;
+
+    Ios::MacAddress address = services.network.GetWirelessMacAddress();
+    SystemMenu::WirelessAddress wirelessAddress{};
+    std::copy(address.begin(), address.end(), wirelessAddress.begin());
+    boardFiles = std::make_unique<SystemMenu::IosNandFiles>(services.storage.fileSystem, services.storage.fileSystemCaller);
+    boardStore = std::make_unique<SystemMenu::MessageStore>(*boardFiles, wirelessAddress);
+    return *boardStore;
+}
+
 std::optional<Formats::RgbaImage> PhotoSession::PhotoOfFile(int fileIndex)
 {
     auto changed = changedPhotos.find(fileIndex);
@@ -148,7 +170,7 @@ std::optional<Formats::RgbaImage> PhotoSession::PhotoOfFile(int fileIndex)
 std::optional<Formats::RgbaImage> PhotoSession::OriginalPhotoOfFile(int fileIndex)
 {
     const PhotoFile& file = library.files[fileIndex];
-    std::optional<Formats::Bytes> bytes = ReadCardFile(services.storage.sdCard, file.path);
+    std::optional<Formats::Bytes> bytes = FileBytes(fileIndex);
     if (!bytes)
         return std::nullopt;
 

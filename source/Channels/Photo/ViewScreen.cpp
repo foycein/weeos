@@ -98,7 +98,7 @@ private:
         quarterTurns = 0;
         isUnsupported = false;
 
-        std::optional<Formats::Bytes> bytes = ReadCardFile(session.Services().storage.sdCard, File().path);
+        std::optional<Formats::Bytes> bytes = session.FileBytes(index);
         if (bytes)
             fileBytes = std::move(*bytes);
 
