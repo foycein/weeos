@@ -1,5 +1,6 @@
 #include "DumpVerification.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/Certificate.h"
 #include "Formats/FormatError.h"
 #include "Formats/NandTitles.h"
@@ -47,7 +48,8 @@ ContentReport CheckContentsOfTitles(Formats::NandFileSystem& fileSystem, std::sp
                 continue;
             }
 
-            if (!checkedPaths.insert(*path).second)
+            bool isCheckedAlready = !checkedPaths.insert(*path).second;
+            if (isCheckedAlready)
                 continue;
 
             ++report.checkedCount;
@@ -103,7 +105,7 @@ HmacReport CheckHmacs(Formats::NandFileSystem& fileSystem, Formats::ByteView hma
         }
 
         ++report.checkedFileCount;
-        report.checkedClusterCount += (entry.size + Formats::NandClusterSize - 1) / Formats::NandClusterSize;
+        report.checkedClusterCount += Formats::DivideRoundingUp(entry.size, Formats::NandClusterSize);
         report.wrongClusterCount += fileSystem.CountClustersWithWrongHmac(entry, hmacKey);
     }
 
