@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -37,6 +38,16 @@ SoftKeyboard::SoftKeyboard(Display& display, const MenuFiles& files, const Text:
     , input(menuInput)
     , sounds(menuSounds)
     , view(display, files, messages)
+{
+    view.SetOpacity(0);
+}
+
+SoftKeyboard::SoftKeyboard(Display& display, std::unique_ptr<Layout::LayoutArchive> keyboardArchive, const KeyboardButtonTexts& texts,
+    const MenuClock& menuClock, InputManager& menuInput, SoundRequests& menuSounds)
+    : clock(menuClock)
+    , input(menuInput)
+    , sounds(menuSounds)
+    , view(display, std::move(keyboardArchive), texts)
 {
     view.SetOpacity(0);
 }

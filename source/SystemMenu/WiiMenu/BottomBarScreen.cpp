@@ -167,13 +167,16 @@ void BottomBarScreen::MakeTheFocusStates()
     }
 }
 
+// The bar zooms with the grid: it is seen through the camera of the display (0x8139C49C). Its arrows are not (0x8139DA5C).
 void BottomBarScreen::Draw(DrawPass pass)
 {
     if (pass != DrawPass::Main || !layout)
         return;
 
+    services.display.LookThroughCamera();
     layout->Draw();
     sdCardButton->Draw();
+    services.display.StopMovingAreas();
 }
 
 void BottomBarScreen::DrawPageArrows()

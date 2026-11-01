@@ -7,7 +7,6 @@
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SdCardMenu/SdCardMenuScreens.h"
 #include "SystemMenu/SoundRequests.h"
-#include "SystemMenu/ZoomedWindow.h"
 
 #include "Formats/FormatError.h"
 #include "Text/MessageCatalog.h"
@@ -49,6 +48,7 @@ constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 SdChannelWindowScreen::SdChannelWindowScreen(MenuServices& menuServices)
     : Screen(ScreenId::SdChannelWindow)
     , services(menuServices)
+    , zoomedWindow(menuServices.display)
 {
 }
 
@@ -214,20 +214,25 @@ SdChannelListScreen* SdChannelWindowScreen::List()
     return dynamic_cast<SdChannelListScreen*>(services.screens.FindScreen(ScreenId::SdChannelList));
 }
 
+// While the list zooms, the window is a picture inside the television (0x813E5F54, pass 0 and pass 1).
 void SdChannelWindowScreen::Draw(DrawPass pass)
 {
-    if (pass != DrawPass::Main || state == SdWindowState::WaitingForTheZoom)
+    if (state == SdWindowState::WaitingForTheZoom)
         return;
 
     bool isZooming = state == SdWindowState::ZoomingIn || state == SdWindowState::ZoomingOut;
     SdChannelListScreen* list = List();
     if (isZooming && list != nullptr && list->Zoom() != nullptr)
     {
-        DrawWindowInsideTheTelevision(services.display, *list->Zoom(), [this] { DrawTheWindow(); });
+        if (pass == DrawPass::Underlay)
+            zoomedWindow.DrawPicture([this] { DrawTheWindow(); });
+
+        if (pass == DrawPass::Main)
+            zoomedWindow.ShowInsideTheTelevision(*list->Zoom());
         return;
     }
 
-    if (!isZooming)
+    if (pass == DrawPass::Main && !isZooming)
         DrawTheWindow();
 }
 

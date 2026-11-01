@@ -41,6 +41,9 @@ struct ChannelStorage
 {
     Ios::SdCardService& sdCard;
     Ios::FileSystemService& fileSystem;
+
+    // Who the channel is to the file system: the user and the group of its title.
+    Ios::Caller fileSystemCaller;
 };
 
 struct ChannelServices

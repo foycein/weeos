@@ -106,6 +106,11 @@ std::vector<Formats::Pane*> LiveLayout::AllPanes()
     return PaneWithDescendants(rootPane);
 }
 
+const std::optional<Formats::Group>& LiveLayout::RootGroup() const
+{
+    return rootGroup;
+}
+
 std::vector<Formats::Pane*> LiveLayout::PanesOfGroup(std::string_view groupName)
 {
     const Formats::Group* group = rootGroup ? FindGroupInTree(*rootGroup, groupName) : nullptr;

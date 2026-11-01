@@ -56,6 +56,14 @@ float TelevisionZoom::Closeness() const
     return isZoomingIn ? movement : 1 - movement;
 }
 
+int TelevisionZoom::StepsTowardsTheTelevision() const
+{
+    if (isZoomingIn)
+        return step;
+
+    return StepCount - step;
+}
+
 PictureArea TelevisionZoom::VisibleArea() const
 {
     float closeness = Closeness();

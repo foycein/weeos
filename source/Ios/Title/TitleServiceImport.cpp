@@ -355,6 +355,15 @@ Result<void> TitleService::MoveImportIntoPlace(TitleId titleId)
     return files.Rename(ImportTitlePath(titleId), TitlePath(titleId));
 }
 
+Result<void> TitleService::EnsureDataFolder(TitleId titleId)
+{
+    Result<Formats::TitleMetadata> metadata = ReadTitleMetadata(titleId);
+    if (metadata.Failed())
+        return metadata.Error();
+
+    return MakeDataFolder(titleId, metadata.Value().groupId);
+}
+
 // A title without a data folder gets one that belongs to its own user.
 Result<void> TitleService::MakeDataFolder(TitleId titleId, std::uint16_t groupId)
 {

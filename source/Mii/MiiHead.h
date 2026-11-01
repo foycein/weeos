@@ -16,7 +16,8 @@ namespace Mii
 // It stays with the head: the matrix brings the head's units into view space.
 Graphics::PointLight MakeHeadLight(const Graphics::Matrix4& headModelView);
 
-// A Mii's head ready to draw: its 3D parts and its textures on the graphics device, the face texture showing one expression.
+// A Mii's head ready to draw: its 3D parts (meshes that stay on the card) and its textures on the graphics device, the face texture
+// showing one expression.
 class MiiHead
 {
 public:
@@ -33,12 +34,29 @@ public:
     void Draw(const Graphics::MeshPlacement& placement) const;
 
 private:
-    void DrawPart(const std::vector<Graphics::MeshVertex>& corners, const Graphics::MeshPlacement& placement,
-        Graphics::FaceCulling culling, Graphics::DepthMode depth, Graphics::Material material) const;
+    // The parts of the head on the graphics card. An empty part (no beard, a bald head) has no mesh.
+    struct StoredParts
+    {
+        Graphics::MeshHandle faceline;
+        Graphics::MeshHandle cap;
+        Graphics::MeshHandle hair;
+        Graphics::MeshHandle forehead;
+        Graphics::MeshHandle beard;
+        Graphics::MeshHandle nose;
+        Graphics::MeshHandle noseline;
+        Graphics::MeshHandle mask;
+        Graphics::MeshHandle glasses;
+    };
+
+    void StoreParts(const MiiHeadModel& model);
+    Graphics::MeshHandle StorePart(const std::vector<Graphics::MeshVertex>& corners);
+    void DrawPart(Graphics::MeshHandle part, const Graphics::MeshPlacement& placement, Graphics::FaceCulling culling,
+        Graphics::DepthMode depth, Graphics::Material material) const;
 
     Graphics::GraphicsDevice& device;
     MiiRecord record;
-    MiiHeadModel model;
+    StoredParts parts;
+    bool hairIsMirrored = false;
     Graphics::TextureHandle faceTexture;
     Graphics::TextureHandle makeUpTexture;
     Graphics::TextureHandle capTexture;

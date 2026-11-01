@@ -10,12 +10,13 @@ namespace Graphics
 {
 
 // What one picture needs while the program records it and the graphics card draws it: a command buffer, a fence that
-// tells when the card is done, and the buffers with the draw data that the shaders read (draws, stages, meshes, mesh corners).
+// tells when the card is done, and the buffers with the draw data that the shaders read (draws, stages, meshes, mesh corners, stored mesh corners, bones).
 // The program records the next picture with other resources, so it never overwrites what the card is still reading.
 class FrameResources
 {
 public:
-    FrameResources(const VulkanContext& graphicsContext, VkDescriptorSetLayout drawDataSetLayout);
+    // The corners of the stored meshes are one buffer that every picture reads.
+    FrameResources(const VulkanContext& graphicsContext, VkDescriptorSetLayout drawDataSetLayout, VkBuffer storedMeshCorners);
     ~FrameResources();
 
     FrameResources(const FrameResources&) = delete;
@@ -34,6 +35,7 @@ public:
     ShaderStage* Stages() const;
     ShaderMeshRecord* MeshRecords() const;
     ShaderMeshCorner* MeshCorners() const;
+    ShaderBone* Bones() const;
 
     // The number of the picture that was recorded with these resources last.
     std::uint64_t FrameNumber() const;
@@ -45,6 +47,7 @@ private:
     GraphicsBuffer stageBuffer;
     GraphicsBuffer meshRecordBuffer;
     GraphicsBuffer meshCornerBuffer;
+    GraphicsBuffer boneBuffer;
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
     VkFence fence = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;

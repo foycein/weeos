@@ -29,9 +29,11 @@ add_library(Formats STATIC
     NandFileSystem.cpp
     NandImage.cpp
     NandTitles.cpp
+    NumberedMessageFile.cpp
     OneTimeProgrammable.cpp
     PlayRecordFile.cpp
     PngImage.cpp
+    ResourceFile.cpp
     RgbaImage.cpp
     RsaSignature.cpp
     SaveBanner.cpp

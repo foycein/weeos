@@ -35,6 +35,7 @@ struct Stage
     uint alphaScale;
     uint alphaClamp;
     uint alphaOutput;
+    uint swaps;
 };
 
 struct DrawRecord
@@ -71,13 +72,24 @@ struct MeshRecord
     vec4 ambientColor;
     uint hasLight;
     uint textureCoordinatesFromNormal;
+    uint usesStoredCorners;
+    uint firstBone;
+    uint boneCount;
+    uint usesCornerColors;
     uint unused[2];
+};
+
+struct Bone
+{
+    vec4 pointMatrix[3];
+    vec4 normalMatrix[3];
 };
 
 struct MeshCorner
 {
     vec4 positionAndS;
     vec4 normalAndT;
+    uvec4 boneNumberAndColor;
 };
 
 layout(std430, set = 0, binding = 0) readonly buffer DrawRecords
@@ -98,4 +110,14 @@ layout(std430, set = 0, binding = 2) readonly buffer MeshRecords
 layout(std430, set = 0, binding = 3) readonly buffer MeshCorners
 {
     MeshCorner meshCorners[];
+};
+
+layout(std430, set = 0, binding = 4) readonly buffer StoredMeshCorners
+{
+    MeshCorner storedMeshCorners[];
+};
+
+layout(std430, set = 0, binding = 5) readonly buffer Bones
+{
+    Bone bones[];
 };
