@@ -34,10 +34,28 @@ Formats::ByteView CutOutSection(Formats::ByteReader& reader, Formats::ByteView f
     return section;
 }
 
+const KnownVersion* FindKnownVersion(std::span<const KnownVersion> knownVersions, std::uint16_t version)
+{
+    for (const KnownVersion& known : knownVersions)
+    {
+        if (known.version == version)
+            return &known;
+    }
+    return nullptr;
 }
 
-SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expectedTag, std::uint16_t expectedVersion,
-    std::size_t expectedHeaderSize, std::initializer_list<std::string_view> expectedSectionTags, std::string_view dataDescription)
+std::string ListVersions(std::span<const KnownVersion> knownVersions)
+{
+    std::string list;
+    for (const KnownVersion& known : knownVersions)
+        list += std::format("{}{:#x}", list.empty() ? "" : ", ", known.version);
+    return list;
+}
+
+}
+
+SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expectedTag, std::span<const KnownVersion> knownVersions,
+    std::size_t expectedHeaderSize, std::string_view dataDescription)
 {
     Formats::ByteReader reader(bytes, dataDescription);
 
@@ -52,8 +70,9 @@ SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expected
 
     SoundFile file;
     file.version = reader.ReadUint16();
-    if (file.version != expectedVersion)
-        reader.Fail(std::format("the version {:#x} is not supported, only version {:#x} is known", file.version, expectedVersion));
+    const KnownVersion* known = FindKnownVersion(knownVersions, file.version);
+    if (known == nullptr)
+        reader.Fail(std::format("the version {:#x} is not supported, the known versions are {}", file.version, ListVersions(knownVersions)));
 
     std::uint32_t fileSize = reader.ReadUint32();
     if (fileSize != bytes.size())
@@ -64,11 +83,11 @@ SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expected
         reader.Fail(std::format("the header size {:#x} is not {:#x}", headerSize, expectedHeaderSize));
 
     std::uint16_t sectionCount = reader.ReadUint16();
-    if (sectionCount != expectedSectionTags.size())
-        reader.Fail(std::format("the file has {} sections instead of {}", sectionCount, expectedSectionTags.size()));
+    if (sectionCount != known->sectionTags.size())
+        reader.Fail(std::format("the file has {} sections instead of {}", sectionCount, known->sectionTags.size()));
 
     reader.MoveTo(SectionTableOffset);
-    for (std::string_view sectionTag : expectedSectionTags)
+    for (std::string_view sectionTag : known->sectionTags)
         file.sections.push_back(CutOutSection(reader, bytes, sectionTag));
 
     return file;

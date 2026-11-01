@@ -17,8 +17,9 @@ Formats::Bytes OwnTitleContents::ReadContent(std::uint16_t contentIndex)
     Ios::Result<Ios::ContentStream> opened = titleService.OpenOwnContent(contentIndex);
     if (opened.Failed())
     {
-        throw MenuError(std::format("The title service cannot open the content {} of the running title (result code {})",
-            contentIndex, Ios::OriginalResultCode(opened.Error())));
+        std::string message = std::format("The title service cannot open the content {} of the running title (result code {})",
+            contentIndex, Ios::OriginalResultCode(opened.Error()));
+        throw MenuError(message, FatalErrorOf(opened.Error()));
     }
 
     Ios::ContentStream& stream = opened.Value();

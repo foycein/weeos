@@ -1,19 +1,43 @@
 add_library(SystemMenu STATIC
+    BackToWiiMenuScreen.cpp
+    ButtonController.cpp
+    ButtonGroup.cpp
+    ContinueWatcher.cpp
     CursorManager.cpp
+    DialogManager.cpp
     Display.cpp
+    ErrorScreen.cpp
+    FatalError.cpp
     Fader.cpp
     FirstScreen.cpp
+    FrontPanel.cpp
     HealthAndSafetyScreen.cpp
     InputManager.cpp
+    IosNandFiles.cpp
+    KeyboardView.cpp
     LauncherScreen.cpp
+    LimitOverScreen.cpp
     MenuAnimation.cpp
     MenuFiles.cpp
+    MenuFonts.cpp
     MenuLayout.cpp
+    MenuSettings.cpp
+    MenuStateFile.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
+    ParentalDialogScreen.cpp
+    PhysicalKeyboard.cpp
+    ProgramImage.cpp
     Screen.cpp
     ScreenFactory.cpp
     ScreenManager.cpp
+    SoftKeyboard.cpp
+    StartupRouterScreen.cpp
+    TextField.cpp
+    UsKeyboardLayout.cpp
+    WiiOptionsBackgroundScreen.cpp
+    WiiOptionsBarScreen.cpp
+    WiiOptionsChoicesScreen.cpp
 )
 
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)

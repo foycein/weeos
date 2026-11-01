@@ -16,7 +16,8 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Bank file";
-constexpr std::uint16_t SupportedVersion = 0x0101;
+constexpr std::uint16_t VersionWithWaves = 0x0101;
+constexpr std::uint16_t VersionWithWaveArchive = 0x0102;
 constexpr std::size_t HeaderSize = 0x20;
 constexpr std::size_t SectionStartSize = 8;
 constexpr std::uint8_t HighestNumber = 127;
@@ -190,24 +191,33 @@ std::optional<NoteParameters> BankFile::FindNote(std::size_t instrumentNumber, i
     return std::nullopt;
 }
 
-BankFile ReadBankFile(Formats::ByteView bytes)
+void CheckThatTheWavesExist(const BankFile& bankFile, std::size_t waveCount)
 {
-    SoundFile file = ReadSoundFileHeader(bytes, "RBNK", SupportedVersion, HeaderSize, {"DATA", "WAVE"}, DataDescription);
-
-    BankFile bankFile;
-    bankFile.instruments = ReadInstruments(file.sections[0]);
-    bankFile.waves = ReadWaves(file.sections[1]);
-
     for (const Instrument& instrument : bankFile.instruments)
     {
         for (const NoteRegion& region : instrument.regions)
         {
-            if (region.note.waveIndex >= 0 && static_cast<std::size_t>(region.note.waveIndex) >= bankFile.waves.size())
+            if (region.note.waveIndex >= 0 && static_cast<std::size_t>(region.note.waveIndex) >= waveCount)
             {
-                throw Formats::FormatError(std::format("{}: an instrument plays the wave {}, but the bank has {} waves", DataDescription,
-                    region.note.waveIndex, bankFile.waves.size()));
+                throw Formats::FormatError(std::format("{}: an instrument plays the wave {}, but there are {} waves", DataDescription,
+                    region.note.waveIndex, waveCount));
             }
         }
+    }
+}
+
+BankFile ReadBankFile(Formats::ByteView bytes)
+{
+    const KnownVersion knownVersions[] = {{VersionWithWaves, {"DATA", "WAVE"}}, {VersionWithWaveArchive, {"DATA"}}};
+    SoundFile file = ReadSoundFileHeader(bytes, "RBNK", knownVersions, HeaderSize, DataDescription);
+
+    BankFile bankFile;
+    bankFile.instruments = ReadInstruments(file.sections[0]);
+    bankFile.describesItsWaves = file.version == VersionWithWaves;
+    if (bankFile.describesItsWaves)
+    {
+        bankFile.waves = ReadWaves(file.sections[1]);
+        CheckThatTheWavesExist(bankFile, bankFile.waves.size());
     }
 
     return bankFile;
