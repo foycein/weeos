@@ -7,6 +7,7 @@
 #include "SystemMenu/HomeMenu/HomeMenuFiles.h"
 
 #include "Formats/Font.h"
+#include "Formats/Yaz0.h"
 
 #include <format>
 
@@ -36,15 +37,15 @@ ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 }
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-    Ios::TitleId titleId)
+    Ios::NetworkConfigService& network, const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService,
+    Platform::ScreenShape screenShape, Ios::TitleId titleId)
     : runningTitle(titleId)
     , sharedFiles(SharedFilesOrFail(titleId))
     , power(powerService)
     , display(device, screenShape)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, audio}
 {
     LoadSystemFonts(contents);
     channel = MakeChannel(titleId, services);
@@ -111,12 +112,28 @@ void ChannelSystem::LoadSystemFonts(SystemMenu::TitleContents& contents)
     if (!sharedFiles.fontContentIndex)
         return;
 
+    if (!sharedFiles.ownFontFile.empty())
+    {
+        LoadOwnFontAsSystemFonts(contents);
+        return;
+    }
+
     Formats::U8Archive fontFiles = ReadArchiveContent(contents, *sharedFiles.fontContentIndex);
     Graphics::GraphicsDevice& device = display.Device();
     systemFonts.AddFont(device, Formats::ReadFont(FindFileOrFail(fontFiles, FirstFontFile)),
         {"RevoIpl_RodinNTLGPro_DB_32_I4.brfnt", "WiiBitmapFontType1.brfnt", FirstFontFile});
     systemFonts.AddFont(device, Formats::ReadFont(FindFileOrFail(fontFiles, SecondFontFile)),
         {"RevoIpl_UtrilloProGrecoStd_M_32_I4.brfnt", "WiiBitmapFontType2.brfnt", SecondFontFile});
+}
+
+void ChannelSystem::LoadOwnFontAsSystemFonts(SystemMenu::TitleContents& contents)
+{
+    Formats::U8Archive content = ReadArchiveContent(contents, *sharedFiles.fontContentIndex);
+    Formats::U8Archive packedArchive = Formats::ReadU8Archive(Formats::DecompressYaz0(FindFileOrFail(content, sharedFiles.packedFontArchive)));
+    Formats::Font font = Formats::ReadFont(FindFileOrFail(packedArchive, sharedFiles.ownFontFile));
+    systemFonts.AddFont(display.Device(), std::move(font),
+        {"RevoIpl_RodinNTLGPro_DB_32_I4.brfnt", "WiiBitmapFontType1.brfnt", FirstFontFile, "RevoIpl_UtrilloProGrecoStd_M_32_I4.brfnt",
+            "WiiBitmapFontType2.brfnt", SecondFontFile});
 }
 
 SystemMenu::HomeMenuFiles ChannelSystem::ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const

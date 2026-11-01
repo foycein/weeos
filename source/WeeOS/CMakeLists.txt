@@ -1,5 +1,6 @@
 add_library(WeeOSApplication STATIC
     Application.cpp
+    PcMicrophone.cpp
     ProgramSound.cpp
     WiiSettingsServices.cpp
 )

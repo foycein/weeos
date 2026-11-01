@@ -24,6 +24,7 @@ constexpr Ios::TitleId ForecastChannelTitleId = {0x00010002, 0x48414645};
 constexpr Ios::TitleId NewsChannelTitleId = {0x00010002, 0x48414745};
 constexpr Ios::TitleId InternetChannelTitleId = {0x00010001, 0x48414445};
 constexpr Ios::TitleId PhotoChannelTitleId = {0x00010002, 0x48415941};
+constexpr Ios::TitleId WiiSpeakChannelTitleId = {0x00010001, 0x48434645};
 
 // The shared contents that the channel system reads for a channel: the two bitmap fonts of the console and the channel's copy of the
 // HOME Button Menu, in the folder of the version that the channel's program opens.
@@ -38,6 +39,11 @@ struct ChannelSharedFiles
     // The big buttons of the HOME menu that WeeOS offers: "Wii Menu" and "Reset". The third one of HomeButton3 opens the channel's
     // manual, which is not built (CHN-13), so it is left out.
     std::size_t offeredHomeMenuButtons;
+
+    // A channel without a content of the console's fonts uses the font in the ROM of the console. WeeOS has no ROM font and takes
+    // the channel's own font of the same face instead, from a Yaz0 packed archive in the font content (CHN-33). Empty for the others.
+    std::string_view packedFontArchive = {};
+    std::string_view ownFontFile = {};
 };
 
 std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId);

@@ -13,17 +13,18 @@ namespace Layout
 namespace
 {
 
-const std::string LayoutsFolder = "arc/blyt/";
-const std::string AnimationsFolder = "arc/anim/";
-const std::string PicturesFolder = "arc/timg/";
+const std::string LayoutsFolder = "blyt/";
+const std::string AnimationsFolder = "anim/";
+const std::string PicturesFolder = "timg/";
 
 const std::string LayoutExtension = ".brlyt";
 const std::string AnimationExtension = ".brlan";
 
 }
 
-LayoutArchive::LayoutArchive(Formats::U8Archive archiveToUse)
+LayoutArchive::LayoutArchive(Formats::U8Archive archiveToUse, std::string folderOfTheFolders)
     : archive(std::move(archiveToUse))
+    , topFolder(std::move(folderOfTheFolders))
 {
 }
 
@@ -38,17 +39,17 @@ Formats::ByteView LayoutArchive::FindFileOrFail(const std::string& path) const
 
 Formats::Layout LayoutArchive::ReadLayout(const std::string& layoutName) const
 {
-    return Formats::ReadLayout(FindFileOrFail(LayoutsFolder + layoutName + LayoutExtension));
+    return Formats::ReadLayout(FindFileOrFail(topFolder + LayoutsFolder + layoutName + LayoutExtension));
 }
 
 Formats::LayoutAnimation LayoutArchive::ReadAnimation(const std::string& animationName) const
 {
-    return Formats::ReadLayoutAnimation(FindFileOrFail(AnimationsFolder + animationName + AnimationExtension));
+    return Formats::ReadLayoutAnimation(FindFileOrFail(topFolder + AnimationsFolder + animationName + AnimationExtension));
 }
 
 std::optional<Formats::RgbaImage> LayoutArchive::FindPicture(const std::string& textureFileName) const
 {
-    std::optional<Formats::ByteView> file = archive.FindFile(PicturesFolder + textureFileName);
+    std::optional<Formats::ByteView> file = archive.FindFile(topFolder + PicturesFolder + textureFileName);
     if (!file)
         return std::nullopt;
 

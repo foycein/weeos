@@ -99,6 +99,24 @@ MixFormat ReadMixFormat(IAudioClient& client)
 
 }
 
+bool HasCaptureDevice()
+{
+    bool comIsInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
+    bool hasDevice = true;
+    try
+    {
+        FindDefaultCaptureDevice();
+    }
+    catch (const AudioCaptureError&)
+    {
+        hasDevice = false;
+    }
+
+    if (comIsInitialized)
+        CoUninitialize();
+    return hasDevice;
+}
+
 struct AudioCapture::Implementation
 {
     Implementation(std::uint32_t outputRate, DeliveryFunction function)

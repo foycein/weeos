@@ -7,6 +7,7 @@
 #include "Platform/PreciseTimer.h"
 #include "Platform/Window.h"
 #include "SystemMenu/MenuSystem.h"
+#include "WeeOS/PcMicrophone.h"
 #include "WeeOS/ProgramSound.h"
 
 #include <memory>
@@ -49,6 +50,11 @@ public:
     // The title whose program runs: the System Menu, or a channel that the menu started.
     Ios::TitleId RunningTitle() const;
 
+    // The Wii Speak accessory is the default microphone of Windows, when the PC has one. A test gives its own source instead, from the
+    // session that runs on; the source must outlive the application.
+    void UseMicrophoneSource(Ios::MicrophoneSource& source);
+    const PcMicrophone& GetPcMicrophone() const;
+
 private:
     // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
     class Session;
@@ -56,6 +62,7 @@ private:
     void OnHostCommand(Platform::HostCommand command) override;
 
     void StartSession();
+    void AttachMicrophone();
     void StopOnTheKeyOfKoreanConsoles();
     void ReportCloseOfTheWindowAsPowerButton();
     void RunDueSteps();
@@ -67,6 +74,11 @@ private:
     void ReportProblems();
 
     Ios::IosFolders folders;
+
+    // Before the console, so that the microphone service of IOS can still stop a capture session while the console goes.
+    PcMicrophone pcMicrophone;
+    Ios::MicrophoneSource* givenMicrophone = nullptr;
+
     Boot::ConsoleStartup console;
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;

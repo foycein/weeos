@@ -29,6 +29,9 @@ public:
     }
 };
 
+// True when Windows has a default capture device now.
+bool HasCaptureDevice();
+
 // Hears the default capture device of Windows (the default microphone) through WASAPI in shared mode, like any other program, and hands
 // what it hears to a function as one channel at the sample rate that was asked for (MonoStreamConverter). The device wakes the capture
 // thread through an event.

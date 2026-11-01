@@ -33,8 +33,8 @@ class ChannelSystem
 public:
     // Throws a ChannelError when WeeOS has no program for the title. The device, the contents and the services must outlive the channel system.
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-        Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-        Ios::TitleId titleId);
+        Ios::NetworkConfigService& network, const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService,
+        Platform::ScreenShape screenShape, Ios::TitleId titleId);
 
     // One step of the console's picture, 1001/60000 of a second.
     void Update();
@@ -54,6 +54,7 @@ public:
 
 private:
     void LoadSystemFonts(SystemMenu::TitleContents& contents);
+    void LoadOwnFontAsSystemFonts(SystemMenu::TitleContents& contents);
     SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
     SystemMenu::HomeButtonConnections ConnectHomeButton();
     void LeaveThroughHomeMenu(std::size_t bigButton);
