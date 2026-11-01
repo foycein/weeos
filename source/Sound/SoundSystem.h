@@ -90,6 +90,7 @@ private:
         std::unique_ptr<SequencePlayer> sequence;
     };
 
+    std::uint8_t PlayerPriorityOf(const RunningSound& sound) const;
     void LoadWaveSoundFileOf(const SoundInfo& sound);
     void LoadSequenceFilesOf(const SoundInfo& sound);
     void ProcessCommands();

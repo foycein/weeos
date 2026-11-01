@@ -18,6 +18,12 @@ constexpr std::size_t MaximumTrackCount = 16;
 constexpr std::size_t VariableCount = 16;
 constexpr std::size_t MaximumCallDepth = 3;
 
+// Every variable starts with this value.
+constexpr std::int16_t StartVariableValue = -1;
+
+// The length of a note that is held until the track lets it go.
+constexpr std::int32_t HeldUntilReleased = -1;
+
 // What a track starts with, before a command changes it (0x81505200).
 constexpr std::uint8_t StartTrackVolume = 127;
 constexpr std::uint8_t StartExpression = 127;
@@ -58,11 +64,11 @@ struct PlayingNote
 {
     VoiceHandle voice;
 
-    // The number of ticks until the key is let go. -1 for a key that is held until the track says so.
+    // The number of ticks until the key is let go, or HeldUntilReleased.
     std::int32_t ticksLeft;
 
     int key;
-    NoteParameters note;
+    NoteParameters parameters;
 
     // How loud the note is from its velocity and the volume of its instrument. How far left or right the instrument puts it.
     float startVolume;
@@ -161,7 +167,7 @@ struct SequenceTrack
 
     SequenceTrack()
     {
-        variables.fill(-1);
+        variables.fill(StartVariableValue);
     }
 };
 

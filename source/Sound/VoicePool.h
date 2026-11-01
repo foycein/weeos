@@ -55,6 +55,9 @@ private:
     // The number of a free slot, or of the slot whose voice may be stopped, or nothing.
     std::optional<std::size_t> ChooseSlot(int newPriority) const;
 
+    // A voice of a lower priority is weaker. Of two voices with the same priority, the one that started first is weaker.
+    static bool IsWeaker(const Slot& slot, const Slot& other);
+
     std::array<Slot, MaximumVoiceCount> slots;
     std::uint64_t voicesStarted = 0;
 };

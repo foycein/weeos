@@ -10,6 +10,7 @@ namespace Sound
 namespace
 {
 
+constexpr std::uint8_t OffsetLocationType = 0;
 constexpr std::size_t UnusedAfterLocationTypeSize = 1;
 constexpr std::size_t SampleRateHighByteBits = 16;
 constexpr std::size_t VolumeFieldsSize = 4 * sizeof(std::uint32_t);
@@ -121,10 +122,11 @@ WaveInfo ReadWaveInfo(Formats::ByteView sectionBytes, std::size_t waveInfoOffset
     info.loops = reader.ReadByte() != 0;
     std::uint8_t channelCount = reader.ReadByte();
     std::uint32_t sampleRateHighByte = reader.ReadByte();
-    info.sampleRate = (sampleRateHighByte << SampleRateHighByteBits) | reader.ReadUint16();
+    std::uint32_t sampleRateLowBytes = reader.ReadUint16();
+    info.sampleRate = (sampleRateHighByte << SampleRateHighByteBits) | sampleRateLowBytes;
 
     std::uint8_t locationType = reader.ReadByte();
-    if (locationType != 0)
+    if (locationType != OffsetLocationType)
         reader.Fail(std::format("the wave data location type {} is not supported, only 0 (an offset) is", locationType));
 
     reader.Skip(UnusedAfterLocationTypeSize);
