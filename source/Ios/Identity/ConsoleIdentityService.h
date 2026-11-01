@@ -2,11 +2,14 @@
 
 #include "Formats/Aes128.h"
 #include "Formats/Bytes.h"
+#include "Formats/Certificate.h"
+#include "Formats/SignatureVerification.h"
 #include "Formats/ConsoleKeys.h"
 #include "Ios/Result.h"
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 
 namespace Ios
 {
@@ -28,7 +31,8 @@ struct CipherResult
 // Who this console is: its number, its certificate, its private key and the keys it protects data with.
 // It takes the place of the parts of ES that belong to the console, and of the crypto core of IOS that ES asks (docs/audit/Ios.md).
 //
-// WeeOS is the reference console of the dump: its identity is read from the files keys.txt, device.cert and seeprom.bin.
+// The identity is read from the files keys.txt, device.cert and seeprom.bin (IdentityFiles.h): a real console's, or one that WeeOS made.
+// A console that WeeOS made also has authority.cert: the authority of WeeOS that signed its device certificate, which it trusts.
 // The service never changes after it was opened, so calls from several threads are safe.
 class ConsoleIdentityService
 {
@@ -55,6 +59,7 @@ public:
     //  - TitleInvalidArgument: the certificates cannot be read, or there are none.
     //  - PublicKeyTypeInvalid: the last certificate has no elliptic curve key.
     //  - IssuerNotFound: a certificate of the chain is missing.
+    // A certificate that the own authority of a console made by WeeOS signed needs no certificate above it.
     //  - SignatureInvalid: a signature does not fit.
     Result<void> VerifySignature(Formats::ByteView data, Formats::ByteView signature, Formats::ByteView certificateChain) const;
 
@@ -72,12 +77,15 @@ public:
 
 private:
     ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate, std::uint8_t consoleBootTwoVersion,
-        bool consoleHasKoreanKey);
+        bool consoleHasKoreanKey, std::optional<Formats::Certificate> ownAuthority);
+
+    Formats::SignatureCheck CheckCertificate(const Formats::Certificate& certificate, std::span<const Formats::Certificate> certificates) const;
 
     Formats::ConsoleKeys keys;
     Formats::Bytes deviceCertificate;
     std::uint8_t bootTwoVersion;
     bool hasKoreanKey;
+    std::optional<Formats::Certificate> authority;
 };
 
 }
