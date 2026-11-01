@@ -8,6 +8,7 @@
 #include "SystemMenu/WiiOptionsBackgroundScreen.h"
 #include "SystemMenu/WiiOptionsBarScreen.h"
 #include "SystemMenu/WiiOptionsChoicesScreen.h"
+#include "SystemMenu/WiiSettings/SettingsScreen.h"
 
 namespace SystemMenu
 {
@@ -39,6 +40,9 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::WiiOptionsChoices:
         return std::make_unique<WiiOptionsChoicesScreen>(services, argument);
+
+    case ScreenId::WiiSettings:
+        return MakeWiiSettingsScreen(services, argument);
 
     default:
         return nullptr;

@@ -31,6 +31,9 @@ public:
     WindowSize ClientSize() const;
     bool IsMinimized() const;
 
+    // Gives the area inside the window frame this size. A window in fullscreen keeps covering the monitor.
+    void SetClientSize(WindowSize clientSize);
+
     // Borderless fullscreen covers the whole monitor the window is on.
     bool IsFullscreen() const;
     void ToggleFullscreen();
