@@ -1,4 +1,5 @@
 #include "Channels/Photo/MoodFilters.h"
+#include "Channels/Photo/PhotoPictures.h"
 #include "Channels/Photo/PhotoSession.h"
 #include "Channels/Photo/ShownPicture.h"
 
@@ -94,7 +95,7 @@ public:
         , fileIndex(index)
         , buttons(session.MakeLayout("filter"))
     {
-        original = session.OriginalPhotoOfFile(fileIndex).value_or(Formats::RgbaImage{1, 1, {{0, 0, 0, 255}}});
+        original = session.OriginalPhotoOfFile(fileIndex).value_or(MissingPhotoPicture());
         current = session.PhotoOfFile(fileIndex).value_or(original);
         ShowPhoto();
         ShowSteps();
@@ -235,7 +236,7 @@ public:
         , undoQuestion(session.MakeLayout("paint_erase"))
     {
         wasChangedAtStart = session.IsPhotoChanged(fileIndex);
-        atStart = session.PhotoOfFile(fileIndex).value_or(Formats::RgbaImage{1, 1, {{0, 0, 0, 255}}});
+        atStart = session.PhotoOfFile(fileIndex).value_or(MissingPhotoPicture());
         current = atStart;
         ShowPhoto();
     }
@@ -349,19 +350,37 @@ private:
         for (int playerIndex = 0; playerIndex < SystemMenu::PlayerCount; ++playerIndex)
         {
             const std::optional<SystemMenu::PlayerInput>& player = services.input.Player(playerIndex);
-            if (!player || !player->state.pointerIsValid || (player->state.buttonsHeld & Input::RemoteButtons::A) == 0)
+            if (!player || !player->state.pointerIsValid)
+                continue;
+
+            bool isHoldingA = (player->state.buttonsHeld & Input::RemoteButtons::A) != 0;
+            if (!isHoldingA)
                 continue;
 
             Formats::Vector2 place = services.display.PointerToCanvas(player->state.pointer);
             PictureBox box = PhotoBox();
-            float x = (place.x - (box.centerX - box.width / 2)) / box.width * current.width;
-            float y = ((box.centerY + box.height / 2) - place.y) / box.height * current.height;
-            if (x < 0 || y < 0 || x >= current.width || y >= current.height)
+            float boxLeft = box.centerX - box.width / 2;
+            float boxTop = box.centerY + box.height / 2;
+            float x = (place.x - boxLeft) / box.width * current.width;
+            float y = (boxTop - place.y) / box.height * current.height;
+            if (!IsInsidePhoto(x, y))
                 return std::nullopt;
 
             return Formats::Vector2{x, y};
         }
         return std::nullopt;
+    }
+
+    bool IsInsidePhoto(float x, float y) const
+    {
+        bool isInsideAcross = x >= 0 && x < current.width;
+        bool isInsideDownward = y >= 0 && y < current.height;
+        return isInsideAcross && isInsideDownward;
+    }
+
+    std::size_t PixelIndex(int x, int y) const
+    {
+        return static_cast<std::size_t>(y) * current.width + static_cast<std::size_t>(x);
     }
 
     float PixelsPerScreenUnit()
@@ -399,11 +418,13 @@ private:
         Formats::Vector2 from = lastPenPixel.value_or(pixel);
         float radius = std::max(PenRadiusOnScreen * PixelsPerScreenUnit(), SmallestPenRadius);
         float length = std::hypot(pixel.x - from.x, pixel.y - from.y);
-        int dots = std::max(1, static_cast<int>(length / std::max(radius / 2, 1.0f)));
+        float dotSpacing = std::max(radius / 2, 1.0f);
+        int dots = std::max(1, static_cast<int>(length / dotSpacing));
         for (int dot = 0; dot <= dots; ++dot)
         {
             float share = static_cast<float>(dot) / dots;
-            PaintDot({from.x + (pixel.x - from.x) * share, from.y + (pixel.y - from.y) * share}, radius);
+            Formats::Vector2 center = {from.x + (pixel.x - from.x) * share, from.y + (pixel.y - from.y) * share};
+            PaintDot(center, radius);
         }
         Changed();
     }
@@ -421,8 +442,7 @@ private:
                 if (std::hypot(x - center.x, y - center.y) > radius)
                     continue;
 
-                std::size_t index = static_cast<std::size_t>(y) * current.width + x;
-                current.pixels[index] = tool == DoodleTool::Eraser ? OriginalPixel(x, y) : penColor;
+                current.pixels[PixelIndex(x, y)] = tool == DoodleTool::Eraser ? OriginalPixel(x, y) : penColor;
             }
         }
     }
@@ -430,16 +450,17 @@ private:
     // The eraser brings back the photo as the card holds it (Mood included, which is not a doodle).
     Formats::Rgba8Pixel OriginalPixel(int x, int y) const
     {
-        if (atStart.width != current.width || atStart.height != current.height)
-            return current.pixels[static_cast<std::size_t>(y) * current.width + x];
+        bool hasSameSize = atStart.width == current.width && atStart.height == current.height;
+        if (!hasSameSize)
+            return current.pixels[PixelIndex(x, y)];
 
-        return atStart.pixels[static_cast<std::size_t>(y) * current.width + x];
+        return atStart.pixels[PixelIndex(x, y)];
     }
 
     void PickColor(Formats::Vector2 pixel)
     {
         session.Services().sounds.Request(PickedColorSound);
-        penColor = current.pixels[static_cast<std::size_t>(pixel.y) * current.width + static_cast<std::size_t>(pixel.x)];
+        penColor = current.pixels[PixelIndex(static_cast<int>(pixel.x), static_cast<int>(pixel.y))];
         tool = DoodleTool::Pen;
     }
 
@@ -477,7 +498,7 @@ private:
             {
                 int sourceX = std::clamp(static_cast<int>(center.x) + x, 0, static_cast<int>(current.width) - 1);
                 int sourceY = std::clamp(static_cast<int>(center.y) + y, 0, static_cast<int>(current.height) - 1);
-                piece.pixels.push_back(current.pixels[static_cast<std::size_t>(sourceY) * current.width + sourceX]);
+                piece.pixels.push_back(current.pixels[PixelIndex(sourceX, sourceY)]);
             }
         }
         return piece;
@@ -494,12 +515,13 @@ private:
             {
                 int targetX = static_cast<int>(center.x) - width / 2 + x;
                 int targetY = static_cast<int>(center.y) - height / 2 + y;
-                if (targetX < 0 || targetY < 0 || targetX >= static_cast<int>(current.width) || targetY >= static_cast<int>(current.height))
+                if (!IsInsidePhoto(static_cast<float>(targetX), static_cast<float>(targetY)))
                     continue;
 
-                const Formats::Rgba8Pixel& source = picture.pixels[static_cast<std::size_t>(y * picture.height / height) * picture.width
-                    + static_cast<std::size_t>(x * picture.width / width)];
-                Formats::Rgba8Pixel& target = current.pixels[static_cast<std::size_t>(targetY) * current.width + targetX];
+                std::size_t sourceX = static_cast<std::size_t>(x * picture.width / width);
+                std::size_t sourceY = static_cast<std::size_t>(y * picture.height / height);
+                const Formats::Rgba8Pixel& source = picture.pixels[sourceY * picture.width + sourceX];
+                Formats::Rgba8Pixel& target = current.pixels[PixelIndex(targetX, targetY)];
                 target = Mix(target, source);
             }
         }

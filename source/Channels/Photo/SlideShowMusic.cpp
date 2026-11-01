@@ -35,8 +35,16 @@ constexpr std::array<BuiltInSong, 5> BuiltInSongs = {{
 
 constexpr std::string_view NoMusicName = "None";
 
+constexpr std::string_view AllAacFilesName = "All AAC files";
+constexpr std::string_view ShuffledAacFilesName = "Shuffle AAC files";
+
 // The sample rates of AAC files that the channel plays (the table at 0x801D7940).
 constexpr std::array<int, 12> AcceptedSampleRates = {96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000};
+
+bool IsAcceptedSampleRate(int sampleRate)
+{
+    return std::find(AcceptedSampleRates.begin(), AcceptedSampleRates.end(), sampleRate) != AcceptedSampleRates.end();
+}
 
 bool IsAcceptedAacFile(Formats::ByteView file)
 {
@@ -44,12 +52,10 @@ bool IsAcceptedAacFile(Formats::ByteView file)
     if (!music.sound || music.sound->kind != Media::MovieSoundKind::Aac)
         return false;
 
-    bool hasAcceptedRate = std::find(AcceptedSampleRates.begin(), AcceptedSampleRates.end(), music.sound->sampleRate) != AcceptedSampleRates.end();
+    bool hasAcceptedRate = IsAcceptedSampleRate(music.sound->sampleRate);
     bool hasAcceptedChannels = music.sound->channelCount >= 1 && music.sound->channelCount <= 2;
     return hasAcceptedRate && hasAcceptedChannels;
 }
-constexpr std::string_view AllAacFilesName = "All AAC files";
-constexpr std::string_view ShuffledAacFilesName = "Shuffle AAC files";
 
 }
 

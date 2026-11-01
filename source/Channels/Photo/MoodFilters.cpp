@@ -22,7 +22,6 @@ constexpr float HardBoiledContrastPerStep = 0.35f;
 constexpr Formats::Rgba8Pixel ZapDark = {20, 24, 96, 255};
 constexpr Formats::Rgba8Pixel ZapLight = {210, 228, 255, 255};
 
-// The brightness of a color as television measures it (ITU-R BT.601).
 constexpr float RedWeight = 0.299f;
 constexpr float GreenWeight = 0.587f;
 constexpr float BlueWeight = 0.114f;
@@ -30,11 +29,6 @@ constexpr float BlueWeight = 0.114f;
 Formats::Byte ToByte(float value)
 {
     return static_cast<Formats::Byte>(std::lround(std::clamp(value, 0.0f, White)));
-}
-
-float BrightnessOf(const Formats::Rgba8Pixel& pixel)
-{
-    return RedWeight * pixel.red + GreenWeight * pixel.green + BlueWeight * pixel.blue;
 }
 
 template <typename ChangePixel>
@@ -52,6 +46,11 @@ int LimitedStep(int step)
     return std::clamp(step, 1, StrongestMoodStep);
 }
 
+}
+
+float BrightnessOf(const Formats::Rgba8Pixel& pixel)
+{
+    return RedWeight * pixel.red + GreenWeight * pixel.green + BlueWeight * pixel.blue;
 }
 
 Formats::RgbaImage Brighten(const Formats::RgbaImage& photo, int step)

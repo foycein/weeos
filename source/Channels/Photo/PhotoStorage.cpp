@@ -24,7 +24,6 @@ constexpr std::string_view PreviewFileName = "photo_b.dat";
 // The sizes of the files in the dump of the reference console.
 constexpr std::size_t SaveFileSize = 64160;
 
-
 // The save file has no header; its last four bytes are the CRC-32 of the rest (0x8001AAC8). The places of the settings in it were
 // not read from the program; they are WeeOS's own (Assumed, docs/audit/OpenPoints/Channels.md CHN-33).
 constexpr std::size_t OrderPlace = 0;
@@ -34,7 +33,6 @@ constexpr std::size_t FlagsPlace = 3;
 constexpr std::size_t PuzzleRecordsPlace = 4;
 constexpr Formats::Byte PieceCountMayBeChosenFlag = 0x01;
 constexpr std::size_t ChecksumSize = 4;
-
 
 // The rights of the folder noerase and of its files on the reference console: everybody may read them, so that the menu's icon of the
 // channel can show the posted photo.
@@ -115,10 +113,10 @@ PhotoStorage::StartResult PhotoStorage::Start()
 
     std::optional<Formats::Bytes> saveFile = ReadFile(SaveFileName);
     bool isEmpty = saveFile && std::all_of(saveFile->begin(), saveFile->end(), [](Formats::Byte value) { return value == 0; });
-    std::optional<PhotoSettings> read = saveFile ? ReadSaveFile(*saveFile) : std::nullopt;
-    if (read)
+    std::optional<PhotoSettings> savedSettings = saveFile ? ReadSaveFile(*saveFile) : std::nullopt;
+    if (savedSettings)
     {
-        settings = *read;
+        settings = *savedSettings;
         return StartResult::Ready;
     }
 
@@ -147,7 +145,10 @@ bool PhotoStorage::HasWiiMenuPhoto()
 
 bool PhotoStorage::PostToWiiMenu(const Formats::RgbaImage& icon, const Formats::RgbaImage& preview)
 {
-    return WriteFile(IconFileName, Formats::MakePostedPictureFile(icon)) && WriteFile(PreviewFileName, Formats::MakePostedPictureFile(preview));
+    if (!WriteFile(IconFileName, Formats::MakePostedPictureFile(icon)))
+        return false;
+
+    return WriteFile(PreviewFileName, Formats::MakePostedPictureFile(preview));
 }
 
 // Removing the photo leaves the files with zeros, as the files of a channel that never posted.

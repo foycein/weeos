@@ -4,6 +4,8 @@
 
 #include "Formats/RgbaImage.h"
 
+#include <cmath>
+
 namespace Channels
 {
 
@@ -14,6 +16,13 @@ struct PictureBox
     float centerY = 0;
     float width = 0;
     float height = 0;
+
+    bool Contains(Formats::Vector2 point) const
+    {
+        bool isInsideAcross = std::abs(point.x - centerX) <= width / 2;
+        bool isInsideUpward = std::abs(point.y - centerY) <= height / 2;
+        return isInsideAcross && isInsideUpward;
+    }
 };
 
 // A photo or a frame of a movie as a texture of the graphics device, drawn as large as it fits into a box without changing its shape.

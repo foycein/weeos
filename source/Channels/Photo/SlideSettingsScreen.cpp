@@ -104,11 +104,13 @@ private:
 
     void ShowSettings()
     {
-        for (std::size_t order = 0; order < OrderTexts.size(); ++order)
-            settingsLayout->PaneNamed(OrderTexts[order]).isVisible = static_cast<int>(order) == static_cast<int>(Settings().order);
+        int chosenOrder = static_cast<int>(Settings().order);
+        for (int order = 0; order < static_cast<int>(OrderTexts.size()); ++order)
+            settingsLayout->PaneNamed(OrderTexts[order]).isVisible = order == chosenOrder;
 
-        for (std::size_t effect = 0; effect < EffectTexts.size(); ++effect)
-            settingsLayout->PaneNamed(EffectTexts[effect]).isVisible = static_cast<int>(effect) == static_cast<int>(Settings().effect);
+        int chosenEffect = static_cast<int>(Settings().effect);
+        for (int effect = 0; effect < static_cast<int>(EffectTexts.size()); ++effect)
+            settingsLayout->PaneNamed(EffectTexts[effect]).isVisible = effect == chosenEffect;
 
         int song = std::clamp(Settings().song, 0, static_cast<int>(songs.size()) - 1);
         if (settingsLayout->FindPane(SongText) != nullptr)
@@ -154,9 +156,16 @@ private:
         return {ListLeft, ListTop + row * RowHeight, RowWidth, RowHeight};
     }
 
+    // The rows of the list that hold a song: RowsShown, or fewer at the end of the list.
+    int FilledRows() const
+    {
+        int songsFromFirstShown = static_cast<int>(songs.size()) - firstShownSong;
+        return std::min(RowsShown, songsFromFirstShown);
+    }
+
     void DrawSongList()
     {
-        for (int row = 0; row < RowsShown && firstShownSong + row < static_cast<int>(songs.size()); ++row)
+        for (int row = 0; row < FilledRows(); ++row)
         {
             int song = firstShownSong + row;
             PageTextStyle style;
@@ -207,7 +216,7 @@ private:
             return;
 
         Formats::Vector2 pagePoint = painter.PictureToPage(*place);
-        for (int row = 0; row < RowsShown && firstShownSong + row < static_cast<int>(songs.size()); ++row)
+        for (int row = 0; row < FilledRows(); ++row)
         {
             if (!RowBox(row).Contains(pagePoint))
                 continue;
