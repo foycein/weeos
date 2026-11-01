@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SystemMenu/CursorManager.h"
+
 namespace Channels
 {
 
@@ -20,8 +22,12 @@ public:
     // One step of the channel, 1001/60000 of a second.
     virtual void Update() = 0;
 
-    // Draws the picture of the channel, its hands included. The black of the fader is drawn over it.
+    // Draws the picture of the channel. The hands, the HOME menu and the black of the fader are drawn over it.
     virtual void Draw() = 0;
+
+    // The hands of the four players, from the channel's own files. The channel system moves and draws them, and the HOME menu
+    // draws them while it is open.
+    virtual SystemMenu::CursorManager& Hands() = 0;
 
     // False while the HOME button must do nothing, as on the Shop's page of a damaged save, which turns off the HOME Button Menu.
     virtual bool AllowsHomeButton() const

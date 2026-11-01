@@ -1,4 +1,4 @@
-﻿#include "WeeOS/Application.h"
+#include "WeeOS/Application.h"
 
 #include "Channels/ChannelSystem.h"
 #include "Channels/NativeChannels.h"

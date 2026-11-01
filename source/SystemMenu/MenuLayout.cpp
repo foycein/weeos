@@ -1,4 +1,4 @@
-﻿#include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/MenuLayout.h"
 
 #include "SystemMenu/MenuError.h"
 

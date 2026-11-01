@@ -93,6 +93,10 @@ public:
 
     HomeMenuOutcome Outcome() const;
 
+    // The big button that was chosen when the outcome is ButtonChosen: 0 is the first one, "Wii Menu". The HOME menu of a channel
+    // has a second one, "Reset", and some a third one for the manual.
+    std::size_t ChosenBigButton() const;
+
     // The volume the user has set. The System Menu keeps it as BT.SPKV.
     int SpeakerVolumeStep() const;
 
@@ -139,7 +143,13 @@ private:
         Reconnect,
         Yes,
         No,
+        SecondBigButton,
+        ThirdBigButton,
     };
+
+    // The big buttons in their order, and the groups of their panes in the layout.
+    static constexpr std::array<Area, 3> BigButtonAreas = {Area::BigButton, Area::SecondBigButton, Area::ThirdBigButton};
+    static constexpr std::array<std::string_view, 3> BigButtonGroups = {"btnL_00", "btnL_01", "btnL_10"};
 
     // An animation of the layout: the end of its file name and the group it plays on.
     struct AnimationName
@@ -175,6 +185,7 @@ private:
 
     // Animations and panes (HomeButtonMenu.cpp)
     void BindAllAnimations();
+    void HideBigButtonsNotOffered();
     void BindAnimation(const std::string& suffix, const std::string& groupName);
     HomeMenuAnimation& Animation(const AnimationName& name);
     HomeMenuAnimation& Animation(const std::string& suffix, const std::string& groupName);
@@ -226,7 +237,8 @@ private:
     void LeaveAllAreas();
     void DropMenuFocus();
     void Press(Area area);
-    void PressBigButton();
+    std::optional<std::size_t> OfferedBigButtonOf(Area area) const;
+    void PressBigButton(std::size_t bigButton);
     void PressClose();
     void OpenRemoteSettings();
     void CloseRemoteSettings();
@@ -265,6 +277,7 @@ private:
     HomeMenuOutcome outcome = HomeMenuOutcome::Closed;
     HomeMenuAnimation* waitedAnimation = nullptr;
     bool hasChosenButton = false;
+    std::size_t chosenBigButton = 0;
 
     int speakerVolumeStep = 0;
     bool isRumbleOn = true;

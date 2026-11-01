@@ -1,4 +1,4 @@
-﻿add_library(Channels STATIC
+add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelSystem.cpp
     NativeChannels.cpp

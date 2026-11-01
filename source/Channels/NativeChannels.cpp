@@ -1,4 +1,4 @@
-﻿#include "Channels/NativeChannels.h"
+#include "Channels/NativeChannels.h"
 
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
@@ -17,11 +17,32 @@ constexpr WiiConnect24ChannelFiles ForecastFiles = {
 constexpr WiiConnect24ChannelFiles NewsFiles = {
     9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6};
 
+// The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
+// the Shop HomeButton2 (0x802F75B8).
+constexpr std::size_t WiiMenuAndReset = 2;
+constexpr ChannelSharedFiles ForecastSharedFiles = {7, 6, "./HomeButton3", WiiMenuAndReset};
+constexpr ChannelSharedFiles NewsSharedFiles = {7, 6, "./HomeButton3", WiiMenuAndReset};
+constexpr ChannelSharedFiles ShopSharedFiles = {9, 7, "./HomeButton2", WiiMenuAndReset};
+
+}
+
+std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)
+{
+    if (titleId == WiiShopChannelTitleId)
+        return ShopSharedFiles;
+
+    if (titleId == ForecastChannelTitleId)
+        return ForecastSharedFiles;
+
+    if (titleId == NewsChannelTitleId)
+        return NewsSharedFiles;
+
+    return std::nullopt;
 }
 
 bool HasNativeProgram(Ios::TitleId titleId)
 {
-    return titleId == WiiShopChannelTitleId || titleId == ForecastChannelTitleId || titleId == NewsChannelTitleId;
+    return SharedFilesOf(titleId).has_value();
 }
 
 std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& services)

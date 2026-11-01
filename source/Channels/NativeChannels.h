@@ -5,7 +5,11 @@
 
 #include "Ios/Title/TitleId.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string_view>
 
 namespace Channels
 {
@@ -15,6 +19,21 @@ constexpr Ios::TitleId WiiShopChannelTitleId = {0x00010002, 0x48414241};
 constexpr Ios::TitleId ForecastChannelTitleId = {0x00010002, 0x48414645};
 constexpr Ios::TitleId NewsChannelTitleId = {0x00010002, 0x48414745};
 constexpr Ios::TitleId InternetChannelTitleId = {0x00010001, 0x48414445};
+
+// The shared contents that the channel system reads for a channel: the two bitmap fonts of the console and the channel's copy of the
+// HOME Button Menu, in the folder of the version that the channel's program opens.
+struct ChannelSharedFiles
+{
+    std::uint16_t fontContentIndex;
+    std::uint16_t homeMenuContentIndex;
+    std::string_view homeMenuFolder;
+
+    // The big buttons of the HOME menu that WeeOS offers: "Wii Menu" and "Reset". The third one of HomeButton3 opens the channel's
+    // manual, which is not built (CHN-13), so it is left out.
+    std::size_t offeredHomeMenuButtons;
+};
+
+std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId);
 
 // True when WeeOS has a program for the title. The menu shows its message for a title that cannot start for the others.
 bool HasNativeProgram(Ios::TitleId titleId);
