@@ -120,6 +120,96 @@ void DrawButtonBall(VectorCanvas& canvas, float ballRadius)
     canvas.Fill(rimHighlight, RadialGradient(ButtonCenter, RimHighlightClear, RimHighlightFadeEndRadius, RimHighlight, RimHighlightFadeStartRadius));
 }
 
+// The glow ring rises from nothing to its brightest, stays there for a while and falls to nothing again, in straight steps along the
+// radius.
+constexpr float GlowInnerRadius = 28.6f;
+constexpr float GlowBrightestStartRadius = 32.8f;
+constexpr float GlowBrightestEndRadius = 34.6f;
+constexpr float GlowOuterRadius = 39;
+constexpr Color GlowClear = {255, 255, 255, 0};
+constexpr Color GlowBrightest = {255, 255, 255, 245};
+
+void FillRing(VectorCanvas& canvas, float innerRadius, float outerRadius, const Paint& paint)
+{
+    VectorPath ring;
+    ring.AddCircle(ButtonCenter, outerRadius);
+    ring.AddCircle(ButtonCenter, innerRadius);
+    canvas.Fill(ring, paint);
+}
+
+// The SD card: three outlines of the card, each a unit inside the one before, then the label, the bands below it and the mark.
+constexpr float CardCornerCut = 0.8f;
+constexpr Color CardEdgeBlue = {49, 189, 239, 255};
+constexpr Color CardInnerEdgeTopBlue = {123, 198, 231, 255};
+constexpr Color CardInnerEdgeBottomBlue = {90, 173, 206, 255};
+constexpr Color CardBodyBlue = {181, 222, 239, 255};
+constexpr Color CardSideBlue = {173, 214, 231, 255};
+constexpr Color CardLabelWhite = {255, 255, 255, 255};
+constexpr Color CardLineUnderTheLabel = {156, 206, 222, 255};
+constexpr Color CardBandBlue = {82, 198, 231, 255};
+constexpr Color CardLowerStrip = {173, 198, 214, 255};
+constexpr Color CardBottomBlue = {90, 165, 198, 255};
+constexpr Color SdMarkBlue = {165, 214, 236, 255};
+constexpr Color SdTickBlue = {148, 206, 231, 150};
+
+std::vector<Point> CardOutline(float inset)
+{
+    constexpr float Left = 2;
+    constexpr float Top = 2;
+    constexpr float Right = 36;
+    constexpr float Bottom = 46;
+    constexpr float CutLength = 4.4f;
+
+    float cutInset = inset * 0.41f;
+    return {
+        {Left + inset, Top + inset},
+        {Right - CutLength - cutInset, Top + inset},
+        {Right - inset, Top + CutLength + cutInset},
+        {Right - inset, Bottom - inset},
+        {Left + inset, Bottom - inset},
+    };
+}
+
+void FillCardOutline(VectorCanvas& canvas, float inset, const Paint& paint)
+{
+    VectorPath card;
+    card.AddPolygonWithRoundCorners(CardOutline(inset), CardCornerCut);
+    canvas.Fill(card, paint);
+}
+
+void FillRectangle(VectorCanvas& canvas, float left, float top, float right, float bottom, const Paint& paint)
+{
+    VectorPath rectangle;
+    rectangle.AddRectangle(left, top, right - left, bottom - top);
+    canvas.Fill(rectangle, paint);
+}
+
+void FillPolygon(VectorCanvas& canvas, std::initializer_list<Point> corners, Color color)
+{
+    VectorPath polygon;
+    polygon.AddPolygon(corners);
+    canvas.Fill(polygon, SolidPaint(color));
+}
+
+// The S of the mark: a top bar, a slanted middle stroke and a bottom bar, all leaning to the right.
+void DrawLetterSOfTheMark(VectorCanvas& canvas)
+{
+    FillPolygon(canvas, {{11, 19.2f}, {19.9f, 19.2f}, {19.5f, 20.9f}, {10, 20.9f}}, SdMarkBlue);
+    FillPolygon(canvas, {{10, 20.5f}, {14, 20.5f}, {17.9f, 24.2f}, {17.6f, 26.5f}, {12.8f, 23.4f}, {10, 23}}, SdMarkBlue);
+    FillPolygon(canvas, {{8.2f, 24.2f}, {17.9f, 24.2f}, {17.6f, 26.6f}, {7.6f, 26.6f}}, SdMarkBlue);
+}
+
+// The D of the mark: a slanted round shape with a slit that opens to the left.
+void DrawLetterDOfTheMark(VectorCanvas& canvas)
+{
+    constexpr float RoundCut = 1.5f;
+
+    VectorPath letter;
+    letter.AddPolygonWithRoundCorners({{20.6f, 19.2f}, {27, 19.6f}, {30.4f, 22.4f}, {26.4f, 26.6f}, {18.2f, 26.6f}}, RoundCut);
+    canvas.Fill(letter, SolidPaint(SdMarkBlue));
+    FillPolygon(canvas, {{17.5f, 20.9f}, {23.3f, 20.9f}, {23, 22.8f}, {17, 22.8f}}, CardLabelWhite);
+}
+
 void DrawArrow(VectorCanvas& canvas, const ArrowCorners& outline, const ArrowCorners& inside)
 {
     FillArrowShape(canvas, outline, SolidPaint(ArrowEdgeBlue));
@@ -168,6 +258,37 @@ void DrawWiiButton(VectorCanvas& canvas)
     VectorPath word;
     AddWiiWord(word, WordOffset, WordScale);
     canvas.Fill(word, SolidPaint(WordShadow));
+}
+
+void DrawButtonGlowRing(VectorCanvas& canvas)
+{
+    Paint glow = RadialGradientByDistance(ButtonCenter, {
+        {GlowInnerRadius, GlowClear},
+        {GlowBrightestStartRadius, GlowBrightest},
+        {GlowBrightestEndRadius, GlowBrightest},
+        {GlowOuterRadius, GlowClear},
+    });
+    FillRing(canvas, GlowInnerRadius, GlowOuterRadius, glow);
+}
+
+void DrawSdCard(VectorCanvas& canvas)
+{
+    FillCardOutline(canvas, 0, SolidPaint(CardEdgeBlue));
+    FillCardOutline(canvas, 1, LinearGradient({0, 3}, CardInnerEdgeTopBlue, {0, 45}, CardInnerEdgeBottomBlue));
+    FillCardOutline(canvas, 2, SolidPaint(CardBodyBlue));
+
+    FillRectangle(canvas, 4, 9, 5, 44, SolidPaint(CardSideBlue));
+    FillRectangle(canvas, 33, 8, 34, 44, SolidPaint(CardSideBlue));
+
+    FillRectangle(canvas, 6, 10, 32, 35.7f, SolidPaint(CardLabelWhite));
+    FillRectangle(canvas, 5, 35.7f, 33, 37, SolidPaint(CardLineUnderTheLabel));
+    FillRectangle(canvas, 5, 37, 33, 42, SolidPaint(CardBandBlue));
+    FillRectangle(canvas, 4, 42, 34, 44, SolidPaint(CardLowerStrip));
+    FillRectangle(canvas, 3, 44, 35, 45, SolidPaint(CardBottomBlue));
+
+    FillRectangle(canvas, 7.1f, 11, 7.9f, 14, SolidPaint(SdTickBlue));
+    DrawLetterSOfTheMark(canvas);
+    DrawLetterDOfTheMark(canvas);
 }
 
 void DrawArrowRight(VectorCanvas& canvas)

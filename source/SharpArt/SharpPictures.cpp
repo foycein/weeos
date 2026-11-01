@@ -22,6 +22,7 @@ constexpr float ShownAtItsSize = 1;
 constexpr Color TransparentWhite = {255, 255, 255, 0};
 constexpr Color TransparentArrowBlue = {0, 34, 136, 0};
 constexpr Color TransparentButtonGray = {193, 193, 193, 0};
+constexpr Color TransparentCardBlue = {51, 187, 238, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -41,6 +42,8 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_TopBtn_a0.tpl", 48, 32, ShownAtItsSize, Intensity, DrawEnvelope},
     SharpPicture{"my_TopBtn_a.tpl", 80, 80, ShownAtItsSize, ColorAndAlpha, DrawRoundButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_c.tpl", 80, 80, ShownAtItsSize, ColorAndAlpha, DrawWiiButton, TransparentButtonGray},
+    SharpPicture{"my_TopBtn_h.tpl", 80, 80, ShownAtItsSize, Intensity, DrawButtonGlowRing},
+    SharpPicture{"mn_Top_SdCard_b.tpl", 38, 48, ShownAtItsSize, ColorAndAlpha, DrawSdCard, TransparentCardBlue},
     SharpPicture{"my_arw_a.tpl", 64, 64, ShownAtItsSize, ColorAndAlpha, DrawArrowRight, TransparentArrowBlue},
     SharpPicture{"my_arw_b.tpl", 64, 64, ShownAtItsSize, ColorAndAlpha, DrawArrowLeft, TransparentArrowBlue},
 };

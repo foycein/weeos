@@ -1,6 +1,5 @@
 #include "SharpArt/Paint.h"
 
-#include <algorithm>
 #include <cmath>
 
 namespace SharpArt
@@ -38,15 +37,32 @@ float ShareAlongLine(Point start, Point end, Point point)
     return projection / lengthSquared;
 }
 
-// 0 inside the inner circle, 1 on the outer circle through onTheCircle, and in between by the distance from the center.
-float ShareOfRadius(Point center, Point onTheCircle, float innerRadius, Point point)
+// The distance of the point from the center, as a share of the distance from the center to the end point.
+float ShareOfRadius(Point center, Point end, Point point)
 {
-    float radius = std::hypot(onTheCircle.x - center.x, onTheCircle.y - center.y);
-    if (radius <= innerRadius)
+    float radius = std::hypot(end.x - center.x, end.y - center.y);
+    if (radius == 0)
         return 0;
 
-    float distance = std::hypot(point.x - center.x, point.y - center.y);
-    return (distance - innerRadius) / (radius - innerRadius);
+    return std::hypot(point.x - center.x, point.y - center.y) / radius;
+}
+
+Color ColorOfStopsAt(const std::vector<ColorStop>& stops, float share)
+{
+    if (share <= stops.front().share)
+        return stops.front().color;
+
+    for (std::size_t index = 1; index < stops.size(); ++index)
+    {
+        const ColorStop& before = stops[index - 1];
+        const ColorStop& after = stops[index];
+        if (share > after.share)
+            continue;
+
+        float shareBetween = (share - before.share) / (after.share - before.share);
+        return MixColors(before.color, after.color, shareBetween);
+    }
+    return stops.back().color;
 }
 
 }
@@ -54,21 +70,21 @@ float ShareOfRadius(Point center, Point onTheCircle, float innerRadius, Point po
 Color Paint::ColorAt(Point point) const
 {
     if (kind == PaintKind::Solid)
-        return firstColor;
+        return stops.front().color;
 
     float share = 0;
     if (kind == PaintKind::LinearGradient)
         share = ShareAlongLine(start, end, point);
     else
-        share = ShareOfRadius(start, end, innerRadius, point);
+        share = ShareOfRadius(start, end, point);
 
-    return MixColors(firstColor, secondColor, std::clamp(share, 0.0f, 1.0f));
+    return ColorOfStopsAt(stops, share);
 }
 
 Paint SolidPaint(Color color)
 {
     Paint paint;
-    paint.firstColor = color;
+    paint.stops = {{0, color}};
     return paint;
 }
 
@@ -77,21 +93,26 @@ Paint LinearGradient(Point start, Color startColor, Point end, Color endColor)
     Paint paint;
     paint.kind = PaintKind::LinearGradient;
     paint.start = start;
-    paint.firstColor = startColor;
     paint.end = end;
-    paint.secondColor = endColor;
+    paint.stops = {{0, startColor}, {1, endColor}};
     return paint;
 }
 
 Paint RadialGradient(Point center, Color centerColor, float radius, Color edgeColor, float innerRadius)
 {
+    return RadialGradientByDistance(center, {{innerRadius, centerColor}, {radius, edgeColor}});
+}
+
+Paint RadialGradientByDistance(Point center, const std::vector<ColorStop>& stopsByDistance)
+{
+    float radius = stopsByDistance.back().share;
+
     Paint paint;
     paint.kind = PaintKind::RadialGradient;
     paint.start = center;
-    paint.firstColor = centerColor;
     paint.end = {center.x + radius, center.y};
-    paint.secondColor = edgeColor;
-    paint.innerRadius = innerRadius;
+    for (const ColorStop& stop : stopsByDistance)
+        paint.stops.push_back({stop.share / radius, stop.color});
     return paint;
 }
 
