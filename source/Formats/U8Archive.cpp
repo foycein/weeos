@@ -189,14 +189,69 @@ std::vector<U8Entry> ReadEntries(ByteReader& reader, const ArchiveHeader& header
 
 }
 
+namespace
+{
+
+char LowerCaseLetter(char letter)
+{
+    bool isUpperCase = letter >= 'A' && letter <= 'Z';
+    if (!isUpperCase)
+        return letter;
+
+    return static_cast<char>(letter - 'A' + 'a');
+}
+
+void AddPathPart(std::vector<std::string>& parts, std::string_view part)
+{
+    if (part.empty() || part == ".")
+        return;
+
+    if (part == "..")
+    {
+        if (!parts.empty())
+            parts.pop_back();
+        return;
+    }
+
+    std::string lowerCasePart;
+    for (char letter : part)
+        lowerCasePart.push_back(LowerCaseLetter(letter));
+    parts.push_back(lowerCasePart);
+}
+
+// The original's archive lookup walks the parts . and .. and compares the letters in lower case (FMT-07).
+std::string ComparablePath(std::string_view path)
+{
+    std::vector<std::string> parts;
+    std::size_t partStart = 0;
+    while (partStart <= path.size())
+    {
+        std::size_t partEnd = path.find('/', partStart);
+        if (partEnd == std::string_view::npos)
+            partEnd = path.size();
+
+        AddPathPart(parts, path.substr(partStart, partEnd - partStart));
+        partStart = partEnd + 1;
+    }
+
+    std::string joinedPath;
+    for (const std::string& part : parts)
+    {
+        if (!joinedPath.empty())
+            joinedPath.push_back('/');
+        joinedPath += part;
+    }
+    return joinedPath;
+}
+
+}
+
 std::optional<ByteView> U8Archive::FindFile(std::string_view path) const&
 {
-    if (path.starts_with('/'))
-        path.remove_prefix(1);
-
+    std::string wantedPath = ComparablePath(path);
     for (const U8Entry& entry : entries)
     {
-        if (!entry.isDirectory && entry.path == path)
+        if (!entry.isDirectory && ComparablePath(entry.path) == wantedPath)
             return FileData(entry);
     }
 
