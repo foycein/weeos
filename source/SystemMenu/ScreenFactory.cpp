@@ -23,7 +23,8 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
     if (screen == ScreenId::WiiOptionsChoices)
         return std::make_unique<WiiOptionsChoicesScreen>(services, argument);
 
-    if (screen == ScreenId::WiiSettings)
+    // A menu that runs without the settings of the console (the tests of the other screens) has no Wii Settings.
+    if (screen == ScreenId::WiiSettings && services.wiiSettings != nullptr)
         return std::make_unique<SettingsScreen>(services, argument);
 
     return nullptr;
