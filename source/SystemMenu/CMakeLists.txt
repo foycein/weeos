@@ -41,7 +41,7 @@ add_library(SystemMenu STATIC
     WiiOptionsChoicesScreen.cpp
 )
 
-target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound)
+target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound Mii)
 
 add_subdirectory(WiiSettings)
 add_subdirectory(BackgroundServices)
@@ -49,3 +49,4 @@ add_subdirectory(HomeMenu)
 add_subdirectory(WiiMenu)
 add_subdirectory(DataManagement)
 add_subdirectory(SdCardMenu)
+add_subdirectory(MessageBoard)
