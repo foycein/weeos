@@ -2,7 +2,9 @@
 
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/HomeMenu/HomeButton.h"
+#include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/ClockFace.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
@@ -45,6 +47,15 @@ void MainFrameScreen::Build()
     backgroundAnimation = std::make_unique<FramePlayer>(*background, *archive, AnimationName);
     backgroundAnimation->Show(FrameOfToday);
     WriteTheDates(services.wiiMenu.console.GetLocalTime());
+    if (services.messageBoard != nullptr)
+        board = std::make_unique<BoardView>(services, *services.messageBoard, *archive, *background, *backgroundAnimation);
+}
+
+BoardView* MainFrameScreen::Board()
+{
+    if (!board || !board->IsShown())
+        return nullptr;
+    return board.get();
 }
 
 // The background zooms with the grid: it is seen through the camera of the display (0x8138F514).
@@ -55,6 +66,8 @@ void MainFrameScreen::Draw(DrawPass pass)
 
     services.display.LookThroughCamera();
     background->Draw();
+    if (board)
+        board->Draw();
     services.display.StopMovingAreas();
 }
 
@@ -80,11 +93,26 @@ void MainFrameScreen::OnStart()
 
 bool MainFrameScreen::RunMain()
 {
+    backgroundAnimation->Step();
+    if (board && board->IsShown())
+    {
+        board->Run();
+        background->Calculate();
+        if (!board->IsShown())
+        {
+            dayOfTheDates.reset();
+            hasShownTheMessageCount = false;
+        }
+        return false;
+    }
+
     LocalTime today = services.wiiMenu.console.GetLocalTime();
     if (dayOfTheDates != today.day)
         WriteTheDates(today);
 
     background->Calculate();
+    ShowTheMessagesOfToday();
+    OpenTheBoardWhenTheGridHasGone();
 
     if (!hasFadedIn && AreTheChildrenBuilt())
         hasFadedIn = services.fader.StartFadeIn();
@@ -102,6 +130,34 @@ void MainFrameScreen::WriteTheDates(const LocalTime& today)
         ++dayOffset;
     }
     dayOfTheDates = today.day;
+}
+
+// The envelope counts the messages of today (0x81391904); the bar shows the number while the channels are shown.
+void MainFrameScreen::ShowTheMessagesOfToday()
+{
+    if (services.messageBoard == nullptr || hasShownTheMessageCount)
+        return;
+
+    auto* bar = dynamic_cast<BottomBarScreen*>(services.screens.FindScreen(ScreenId::BottomBar));
+    if (bar == nullptr)
+        return;
+
+    BoardDay today = DayOf(services.wiiMenu.console.GetLocalTime());
+    bar->ShowMessageCount(services.messageBoard->store.CountMessagesOfDay(today));
+    hasShownTheMessageCount = true;
+}
+
+void MainFrameScreen::OpenTheBoardWhenTheGridHasGone()
+{
+    if (!board || !services.messageBoard->isComingFromTheChannels)
+        return;
+
+    bool isGridThere = services.screens.FindScreen(ScreenId::ChannelGrid) != nullptr;
+    if (isGridThere || services.screens.IsLoadingScreen())
+        return;
+
+    services.messageBoard->isComingFromTheChannels = false;
+    board->Open();
 }
 
 // The original fades in when the bar overlay, the last of the three, is there.

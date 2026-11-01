@@ -7,6 +7,9 @@
 #include "SystemMenu/SdCardMenu/SdChannelWindowScreen.h"
 #include "SystemMenu/HealthAndSafetyScreen.h"
 #include "SystemMenu/LimitOverScreen.h"
+#include "SystemMenu/MessageBoard/CalendarScreen.h"
+#include "SystemMenu/MessageBoard/MemoWriterScreen.h"
+#include "SystemMenu/MessageBoard/MiiChooserScreen.h"
 #include "SystemMenu/ParentalDialogScreen.h"
 #include "SystemMenu/StartupRouterScreen.h"
 #include "SystemMenu/WiiOptionsBackgroundScreen.h"
@@ -20,6 +23,20 @@
 
 namespace SystemMenu
 {
+
+namespace
+{
+
+// The screens of the Message Board exist only when the menu has the board.
+template <typename BoardScreen>
+std::unique_ptr<Screen> MakeMessageBoardScreen(MenuServices& services)
+{
+    if (services.messageBoard == nullptr)
+        return nullptr;
+    return std::make_unique<BoardScreen>(services);
+}
+
+}
 
 std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& services)
 {
@@ -41,7 +58,7 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
         return std::make_unique<BarOverlayScreen>(services);
 
     case ScreenId::ChannelGrid:
-        return std::make_unique<ChannelGridScreen>(services);
+        return std::make_unique<ChannelGridScreen>(services, argument);
 
     case ScreenId::ChannelStartWindow:
         return std::make_unique<ChannelStartWindowScreen>(services);
@@ -75,6 +92,15 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::WiiSaveDataEditor:
         return std::make_unique<DataEditorScreen>(services, DataKind::SaveData);
+
+    case ScreenId::Calendar:
+        return MakeMessageBoardScreen<CalendarScreen>(services);
+
+    case ScreenId::MemoWriter:
+        return MakeMessageBoardScreen<MemoWriterScreen>(services);
+
+    case ScreenId::MiiChooser:
+        return MakeMessageBoardScreen<MiiChooserScreen>(services);
 
     case ScreenId::SdChannelList:
         return std::make_unique<SdChannelListScreen>(services);

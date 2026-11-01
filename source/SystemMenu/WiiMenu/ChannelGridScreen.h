@@ -49,6 +49,12 @@ enum class GridState
 
     // The Wii button or the SD card button was pressed: the picture fades out, then the menu goes to Wii Options or to the SD Card Menu.
     LeavingTheWiiMenu,
+
+    // The envelope was pressed: the televisions fly away and the grid ends; the Message Board comes in its place.
+    LeavingForTheBoard,
+
+    // The grid comes back from the Message Board: the televisions fly in.
+    ComingFromTheBoard,
 };
 
 // The channel grid of the Wii Menu (screen 0x02, docs/research/SystemMenuStructure.md 4.3): four pages of twelve televisions on a
@@ -61,7 +67,8 @@ class ChannelGridScreen : public Screen
 {
 public:
     // The original also knows the arguments 1 and 2, with which the Message Board opens the grid; they are not built.
-    explicit ChannelGridScreen(MenuServices& menuServices);
+    // The argument 1 brings the grid back from the Message Board (0x813935D4 opens it so), 0 is the start of the Wii Menu.
+    ChannelGridScreen(MenuServices& menuServices, int argument);
 
     void Load() override;
     void Build() override;
@@ -124,6 +131,7 @@ private:
     bool HandlePressOfPlayer(int playerIndex, Formats::Vector2 place);
     void HandleBarButton(BarButton button);
     void LeaveFor(ScreenId nextScreen);
+    void LeaveForTheBoard();
 
     void TurnToPreviousPage();
     void TurnToNextPage();

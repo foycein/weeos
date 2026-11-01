@@ -12,6 +12,8 @@
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
 #include "SystemMenu/MenuStateFile.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
+#include "SystemMenu/MessageBoard/PlayLog.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -166,6 +168,12 @@ private:
             SystemMenu::ReadMenuCertificates(menu->Services().program)});
         menu->Services().dataManagement = dataManagement.get();
 
+        Ios::MacAddress wirelessAddress = iosServices.GetNetworkConfig().GetWirelessMacAddress();
+        messageBoard = std::make_unique<SystemMenu::MessageBoardData>(nandFiles, wirelessAddress, graphicsDevice, menu->Services().files);
+        menu->Services().messageBoard = messageBoard.get();
+        SystemMenu::NandFileAccess menuFiles(iosServices.GetFileSystem(), iosServices.GetTitles());
+        SystemMenu::PutTheLastPlayOnTheBoard(menuFiles, messageBoard->store, menu->Services().messages, wiiMenuConsole.GetLocalTime());
+
         Sound::SoundSystem* soundSystem = sound.Start(menu->Services().files.ReadFile(SystemMenu::MenuSoundArchivePath));
         if (soundSystem != nullptr)
             menuSound.emplace(*soundSystem);
@@ -218,6 +226,9 @@ private:
 
     // Declared before the menu, which keeps a pointer to it, so that the menu goes first.
     std::unique_ptr<SystemMenu::DataManagementServices> dataManagement;
+
+    // The board keeps the faces of its Miis on the graphics device; it reads the files of the menu only while the menu is there.
+    std::unique_ptr<SystemMenu::MessageBoardData> messageBoard;
     std::unique_ptr<SystemMenu::MenuSystem> menu;
     std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;

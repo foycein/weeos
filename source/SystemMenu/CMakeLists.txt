@@ -45,7 +45,7 @@ add_library(SystemMenu STATIC
     ZoomedWindow.cpp
 )
 
-target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound)
+target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound Mii Media)
 
 add_subdirectory(WiiSettings)
 add_subdirectory(BackgroundServices)
@@ -53,3 +53,4 @@ add_subdirectory(HomeMenu)
 add_subdirectory(WiiMenu)
 add_subdirectory(DataManagement)
 add_subdirectory(SdCardMenu)
+add_subdirectory(MessageBoard)
