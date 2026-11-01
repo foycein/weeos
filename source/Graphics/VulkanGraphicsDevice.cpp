@@ -192,6 +192,16 @@ void VulkanGraphicsDevice::SetPictureSettings(const PictureSettings& settings)
     pictureSettings = settings;
 }
 
+float VulkanGraphicsDevice::ScreenPixelsPerUnit() const
+{
+    if (pictureSettings.resolution == PictureResolution::Console)
+        return static_cast<float>(ConsoleFrameHeight) / ConsoleCanvas.height;
+
+    VkExtent2D size = ScreenSize();
+    Platform::PixelRectangle picture = Platform::FitPicture({size.width, size.height});
+    return picture.height / ConsoleCanvas.height;
+}
+
 ScissorRectangle VulkanGraphicsDevice::WholeArea() const
 {
     if (!offscreenPictures.empty())

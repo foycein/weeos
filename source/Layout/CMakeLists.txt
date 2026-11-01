@@ -19,4 +19,4 @@ add_library(Layout STATIC
     WindowDrawing.cpp
 )
 
-target_link_libraries(Layout PUBLIC Formats Text)
+target_link_libraries(Layout PUBLIC Formats Text SharpArt)

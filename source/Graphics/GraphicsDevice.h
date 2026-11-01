@@ -194,6 +194,20 @@ struct AlphaTest
     AlphaJoin join = AlphaJoin::And;
 };
 
+// How the edges inside a texture look when the screen magnifies it. The graphics card blends neighbouring texels, so an edge of the
+// picture is as soft as a texel is large on the screen.
+enum class EdgeSharpening : std::uint8_t
+{
+    None,
+
+    // The soft edge of the alpha is made one pixel of the screen wide: (alpha - 0.5) times the magnification, plus 0.5. The glyphs
+    // of the bitmap fonts are drawn this way, so text is sharp on a large screen and unchanged at the console's size.
+    Alpha,
+
+    // The same for the color, for intensity pictures, whose color is their alpha.
+    ColorAndAlpha,
+};
+
 // A material says how a quad gets its colors.
 struct Material
 {
@@ -220,6 +234,9 @@ struct Material
     // The alpha test of the Wii's graphics chip as the Mii face library uses it: a pixel whose alpha is 0 is not drawn at all,
     // so it changes neither the colors nor the depth.
     bool skipsTransparentPixels = false;
+
+    // Only for the first texture's magnification, which every texture of the material is sharpened by.
+    EdgeSharpening edgeSharpening = EdgeSharpening::None;
 
     // A pixel that fails the test is not drawn at all.
     std::optional<AlphaTest> alphaTest;
@@ -344,6 +361,10 @@ public:
     // The part of the plane of the canvas that the picture shows, in canvas units: the canvas, and on a screen of another shape also the
     // space beside it or above and below it. It is the canvas itself in an offscreen picture.
     virtual ScissorRectangle WholeArea() const = 0;
+
+    // How many pixels of the screen one canvas unit of the 16:9 picture covers. Pictures that are drawn for the device, like the
+    // sharp pictures of WeeOS, are made this fine.
+    virtual float ScreenPixelsPerUnit() const = 0;
 
     // Without a scissor only the canvas is drawn. A scissor may reach beyond the canvas into the whole area.
     // The scissor holds until ClearScissor or until the next picture or offscreen picture starts.

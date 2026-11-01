@@ -135,6 +135,7 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
     record.firstStage = firstStage;
     record.stageCount = stageCount;
     record.skipsTransparentPixels = material.skipsTransparentPixels ? 1 : 0;
+    record.edgeSharpening = static_cast<std::uint32_t>(material.edgeSharpening);
     record.alphaTest = PackAlphaTest(material.alphaTest);
 
     if (material.indirectTexture)

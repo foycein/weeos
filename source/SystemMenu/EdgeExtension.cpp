@@ -230,6 +230,11 @@ void EdgeExtendingDevice::BeginFrame(const Graphics::Canvas& canvas)
     target.BeginFrame(canvas);
 }
 
+float EdgeExtendingDevice::ScreenPixelsPerUnit() const
+{
+    return target.ScreenPixelsPerUnit();
+}
+
 Graphics::ScissorRectangle EdgeExtendingDevice::WholeArea() const
 {
     return target.WholeArea();

@@ -93,6 +93,7 @@ Graphics::Material MakeGlyphMaterial(Graphics::TextureHandle sheetTexture, const
     Graphics::Material material;
     material.textures.push_back(materialTexture);
     material.blendMode = Graphics::BlendMode::StandardAlpha;
+    material.edgeSharpening = HasOnlyIntensity(sheetFormat) ? Graphics::EdgeSharpening::ColorAndAlpha : Graphics::EdgeSharpening::Alpha;
 
     bool usesDefaultColors = IsSameColor(text.blankColor, TransparentBlack) && IsSameColor(text.inkColor, OpaqueWhite);
     if (usesDefaultColors)

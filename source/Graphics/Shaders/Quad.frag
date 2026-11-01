@@ -62,17 +62,53 @@ struct StageSources
     float constantAlpha;
 };
 
+// The same numbers as Graphics::EdgeSharpening.
+const uint SharpenNothing = 0u;
+const uint SharpenAlpha = 1u;
+const uint SharpenColorAndAlpha = 2u;
+
+// How many pixels of the screen one texel of the first texture covers, at least 1. Set at the start of main, where every pixel of the
+// quad runs the same code, as a derivative needs.
+float textureMagnification = 1.0;
+const float SmallestTexelStep = 1.0 / 4096.0;
+
+float MeasureTextureMagnification()
+{
+    vec2 texelsPerPixel = fwidth(firstTextureCoordinates * vec2(textureSize(firstTexture, 0)));
+    float largestStep = max(max(texelsPerPixel.x, texelsPerPixel.y), SmallestTexelStep);
+    return max(1.0 / largestStep, 1.0);
+}
+
+// A soft edge from 0 to 1 becomes as steep as the magnification, so it is one pixel of the screen wide; 0.5 stays where it is.
+float Sharpened(float value)
+{
+    return clamp((value - 0.5) * textureMagnification + 0.5, 0.0, 1.0);
+}
+
+vec4 SharpenEdges(vec4 sampled)
+{
+    uint sharpening = drawRecords[drawIndex].edgeSharpening;
+    if (sharpening == SharpenNothing)
+        return sampled;
+
+    vec4 sharpened = sampled;
+    sharpened.a = Sharpened(sampled.a);
+    if (sharpening == SharpenColorAndAlpha)
+        sharpened.rgb = vec3(Sharpened(sampled.r), Sharpened(sampled.g), Sharpened(sampled.b));
+    return sharpened;
+}
+
 // The pictures have no smaller copies, so the sample always comes from the one picture there is. The shift is in texture coordinates.
 vec4 SampleTexture(uint textureNumber, vec2 shift)
 {
     switch (textureNumber)
     {
     case 0u:
-        return textureLod(firstTexture, firstTextureCoordinates + shift, 0.0);
+        return SharpenEdges(textureLod(firstTexture, firstTextureCoordinates + shift, 0.0));
     case 1u:
-        return textureLod(secondTexture, secondTextureCoordinates + shift, 0.0);
+        return SharpenEdges(textureLod(secondTexture, secondTextureCoordinates + shift, 0.0));
     case 2u:
-        return textureLod(thirdTexture, thirdTextureCoordinates + shift, 0.0);
+        return SharpenEdges(textureLod(thirdTexture, thirdTextureCoordinates + shift, 0.0));
     }
     return vec4(0.0);
 }
@@ -436,6 +472,8 @@ bool PassesAlphaTest(float alphaValue, uint test)
 
 void main()
 {
+    textureMagnification = MeasureTextureMagnification();
+
     registers[0] = vec4(0.0);
     for (uint registerNumber = 0u; registerNumber < ColorRegisterCount; ++registerNumber)
         registers[registerNumber + 1u] = drawRecords[drawIndex].colorRegisters[registerNumber];

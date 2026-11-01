@@ -54,6 +54,11 @@ void ZoomedDevice::BeginFrame(const Graphics::Canvas& canvas)
     target.BeginFrame(canvas);
 }
 
+float ZoomedDevice::ScreenPixelsPerUnit() const
+{
+    return target.ScreenPixelsPerUnit();
+}
+
 Graphics::ScissorRectangle ZoomedDevice::WholeArea() const
 {
     return target.WholeArea();

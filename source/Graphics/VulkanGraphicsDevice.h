@@ -43,6 +43,7 @@ public:
     void DestroyTexture(TextureHandle texture) override;
     void BeginFrame(const Canvas& canvas) override;
     ScissorRectangle WholeArea() const override;
+    float ScreenPixelsPerUnit() const override;
     void SetScissor(const ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;

@@ -64,7 +64,8 @@ struct DrawRecord
     uint indirectTextureIndex;
     uint alphaTest;
     float indirectMatrix[NumbersPerTextureMatrix];
-    uint unusedAtTheEnd[2];
+    uint edgeSharpening;
+    uint unusedAtTheEnd;
 };
 
 // One mesh: the rows of its matrices and its light.

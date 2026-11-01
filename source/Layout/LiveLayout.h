@@ -5,6 +5,7 @@
 
 #include "Formats/Layout.h"
 #include "Graphics/GraphicsDevice.h"
+#include "SharpArt/SharpPictures.h"
 
 #include <map>
 #include <optional>
@@ -70,6 +71,8 @@ public:
 
     // The picture of the texture file on the graphics device. The device keeps one copy for every combination of
     // texture file and wrap modes, because the device fixes the wrap modes when it receives a picture.
+    // When WeeOS draws a sharp picture for the file (docs/audit/SharpArt.md), the device gets that one instead, as fine as the screen
+    // needs it, and again when the screen changes its size; its width and height stay those of the original.
     // Throws a LayoutError when the picture source does not have the file.
     LoadedTexture ObtainTexture(const std::string& textureFileName, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap);
 
@@ -79,6 +82,16 @@ public:
 
 private:
     using TextureKey = std::tuple<std::string, Graphics::WrapMode, Graphics::WrapMode>;
+
+    // A sharp picture on the device, and how many pixels it has for every pixel of the original.
+    struct SharpTexture
+    {
+        const SharpArt::SharpPicture* picture = nullptr;
+        std::uint32_t pixelsPerUnit = 0;
+    };
+
+    bool IsTooCoarseOrTooFine(const TextureKey& key) const;
+    Graphics::TextureHandle SendPicture(const Formats::RgbaImage& picture, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap);
 
     Graphics::GraphicsDevice& device;
     const PictureSource& pictures;
@@ -90,6 +103,7 @@ private:
     Formats::Pane rootPane;
     std::optional<Formats::Group> rootGroup;
     std::map<TextureKey, LoadedTexture> loadedTextures;
+    std::map<TextureKey, SharpTexture> sharpTextures;
     std::map<std::string, LoadedTexture, std::less<>> providedTextures;
 };
 

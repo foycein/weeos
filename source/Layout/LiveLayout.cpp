@@ -159,27 +159,61 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
     TextureKey key(textureFileName, horizontalWrap, verticalWrap);
     auto alreadyLoaded = loadedTextures.find(key);
     if (alreadyLoaded != loadedTextures.end())
-        return alreadyLoaded->second;
+    {
+        if (!IsTooCoarseOrTooFine(key))
+            return alreadyLoaded->second;
+
+        device.DestroyTexture(alreadyLoaded->second.handle);
+        loadedTextures.erase(alreadyLoaded);
+        sharpTextures.erase(key);
+    }
 
     std::optional<Formats::RgbaImage> picture = pictures.FindPicture(textureFileName);
     if (!picture)
         throw LayoutError(std::format("The picture source has no texture file {}", textureFileName));
 
-    Graphics::TextureDescription description;
-    description.width = picture->width;
-    description.height = picture->height;
-    description.pixels = picture->pixels;
-    description.horizontalWrap = horizontalWrap;
-    description.verticalWrap = verticalWrap;
-    description.filter = Graphics::FilterMode::Linear;
-
     LoadedTexture texture;
-    texture.handle = device.CreateTexture(description);
     texture.width = picture->width;
     texture.height = picture->height;
 
+    const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName);
+    bool isTheSamePicture = sharpPicture && sharpPicture->width == picture->width && sharpPicture->height == picture->height;
+    if (isTheSamePicture)
+    {
+        std::uint32_t pixelsPerUnit = SharpArt::PixelsPerUnitFor(*sharpPicture, device.ScreenPixelsPerUnit());
+        texture.handle = SendPicture(SharpArt::DrawSharpPicture(*sharpPicture, pixelsPerUnit), horizontalWrap, verticalWrap);
+        sharpTextures[key] = {sharpPicture, pixelsPerUnit};
+    }
+    else
+    {
+        texture.handle = SendPicture(*picture, horizontalWrap, verticalWrap);
+    }
+
     loadedTextures.emplace(key, texture);
     return texture;
+}
+
+bool LiveLayout::IsTooCoarseOrTooFine(const TextureKey& key) const
+{
+    auto sharpTexture = sharpTextures.find(key);
+    if (sharpTexture == sharpTextures.end())
+        return false;
+
+    std::uint32_t neededPixelsPerUnit = SharpArt::PixelsPerUnitFor(*sharpTexture->second.picture, device.ScreenPixelsPerUnit());
+    return sharpTexture->second.pixelsPerUnit != neededPixelsPerUnit;
+}
+
+Graphics::TextureHandle LiveLayout::SendPicture(const Formats::RgbaImage& picture, Graphics::WrapMode horizontalWrap,
+    Graphics::WrapMode verticalWrap)
+{
+    Graphics::TextureDescription description;
+    description.width = picture.width;
+    description.height = picture.height;
+    description.pixels = picture.pixels;
+    description.horizontalWrap = horizontalWrap;
+    description.verticalWrap = verticalWrap;
+    description.filter = Graphics::FilterMode::Linear;
+    return device.CreateTexture(description);
 }
 
 void LiveLayout::ProvideTexture(const std::string& textureFileName, LoadedTexture texture)

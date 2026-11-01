@@ -95,7 +95,10 @@ struct ShaderDrawRecord
     // Material::alphaTest, packed by PackAlphaTest, or 0 without a test.
     std::uint32_t alphaTest;
     std::array<float, NumbersPerTextureMatrix> indirectMatrix;
-    std::array<std::uint32_t, 2> unusedAtTheEnd;
+
+    // Material::edgeSharpening as its number.
+    std::uint32_t edgeSharpening;
+    std::uint32_t unusedAtTheEnd;
 };
 
 // One mesh: its matrices and its light. The rows of the matrices are in the order of Matrix4.
