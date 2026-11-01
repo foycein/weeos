@@ -20,9 +20,10 @@ public:
 
     MenuLayout& PaperLayout();
 
-    // Counts the pieces of the body that the text of T_Letter needs. Without fonts the paper has one.
-    void MeasureTheText();
+    // Counts the pieces of the body that the text of T_Letter needs, at least the number given. Without fonts the paper has that many.
+    void MeasureTheText(int fewestLines = 1);
     int LineCount() const;
+    float LineHeight() const;
 
     // How far the paper can be scrolled: the paper and 160 units around it, less the height of the picture (0x8139A36C).
     float LongestScroll() const;

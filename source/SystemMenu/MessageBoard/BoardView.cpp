@@ -328,6 +328,7 @@ bool BoardView::HandleBarPress(int playerIndex, Formats::Vector2 place)
 
     case BarButton::CreateMessageButton:
         services.sounds.Request(SoundName::Decide);
+        bar->ShowPageArrows(false, false);
         bar->SetBackText(services.messages.Find(MemoBackMessage));
         bar->SetRightText(services.messages.Find(PostMessage));
         bar->SetMode(BarMode::MemoWriter);
@@ -501,10 +502,11 @@ void BoardView::RunTurning()
     state = BoardState::Idle;
 }
 
+// The bar stays over the calendar and the memo writer, so that their Back and Post can be seen.
 void BoardView::OpenScreenOverTheBoard(ScreenId screen)
 {
     mask->StartAnimation(maskIn);
-    services.screens.OpenChild(screen, ScreenId::MainFrame, 0);
+    services.screens.OpenChildBefore(screen, ScreenId::MainFrame, ScreenId::BottomBar, 0);
     screenOverTheBoard = screen;
     state = BoardState::WaitingForScreen;
 }

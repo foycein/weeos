@@ -46,6 +46,9 @@ enum class BarMode
     MessageBoard,
     Letter,
     LetterWithRightButton,
+
+    // A play log has only Back (the bar shows the frames 3113 to 3126 of 0x8139AAA0).
+    PlayLog,
     Calendar,
     MemoWriter,
 };

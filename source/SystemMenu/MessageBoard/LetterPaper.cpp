@@ -40,14 +40,19 @@ MenuLayout& LetterPaper::PaperLayout()
     return *layout;
 }
 
-void LetterPaper::MeasureTheText()
+void LetterPaper::MeasureTheText(int fewestLines)
 {
-    lineCount = 1;
+    lineCount = fewestLines;
     if (display.TextFonts() == nullptr || lineHeight <= 0)
         return;
 
     Text::LaidOutText text = layout->LayOutText(BodyText);
-    lineCount = std::max(1, static_cast<int>(std::ceil(text.block.height / lineHeight)));
+    lineCount = std::max(fewestLines, static_cast<int>(std::ceil(text.block.height / lineHeight)));
+}
+
+float LetterPaper::LineHeight() const
+{
+    return lineHeight;
 }
 
 int LetterPaper::LineCount() const

@@ -36,6 +36,12 @@ constexpr float LastFrameToPreviousMonth = 3030;
 constexpr float FirstFrameOfClosing = 4000;
 constexpr float LastFrameOfClosing = 4020;
 
+// The months slide with the group G_All. The group G_Yobi colors the names of the weekend: frame 0 for a week that starts on Sunday,
+// frame 1 for one that starts on Monday (0x8139DCE0 chooses by the region).
+constexpr std::string_view SlidingGroup = "G_All";
+constexpr std::string_view WeekendGroup = "G_Yobi";
+constexpr float FrameOfAWeekFromSunday = 0;
+
 // The three month grids of the layout: the month that shows in the middle, the month before on the left, the month after on the right.
 constexpr std::string_view ShownGrid = "b";
 constexpr std::string_view PreviousGrid = "a";
@@ -213,8 +219,10 @@ void CalendarScreen::Load()
 void CalendarScreen::Build()
 {
     layout = std::make_unique<MenuLayout>(services.display, *archive, std::string(MonthLayout));
-    monthSlide = std::make_unique<FramePlayer>(*layout, *archive, MonthLayout);
+    monthSlide = std::make_unique<FramePlayer>(*layout, *archive, MonthLayout, layout->Live().PanesOfGroup(SlidingGroup));
     monthSlide->PlayOnce(FirstFrameOfOpening, LastFrameOfOpening);
+    weekendColors = std::make_unique<FramePlayer>(*layout, *archive, MonthLayout, layout->Live().PanesOfGroup(WeekendGroup));
+    weekendColors->Show(FrameOfAWeekFromSunday);
 
     for (std::size_t index = 0; index < CalendarCellCount; ++index)
     {
@@ -341,7 +349,7 @@ bool CalendarScreen::RunMain()
         break;
     }
 
-    monthSlide->Step();
+    StepTheMonthSlide();
     layout->Calculate();
     PlaceCells(cells, ShownGrid);
     if (hasIncomingMonth)
@@ -473,9 +481,17 @@ void CalendarScreen::OnRunEnded()
     monthSlide->PlayOnce(FirstFrameOfClosing, LastFrameOfClosing);
 }
 
-bool CalendarScreen::RunClosing()
+// The slide moves the grids and the names of the days with them; the colors of the weekend are laid over it again, as the original
+// binds them after the slide.
+void CalendarScreen::StepTheMonthSlide()
 {
     monthSlide->Step();
+    weekendColors->Show(FrameOfAWeekFromSunday);
+}
+
+bool CalendarScreen::RunClosing()
+{
+    StepTheMonthSlide();
     layout->Calculate();
     PlaceCells(cells, ShownGrid);
     return !monthSlide->IsPlaying();

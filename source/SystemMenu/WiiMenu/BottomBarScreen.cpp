@@ -271,6 +271,9 @@ bool BottomBarScreen::HasButtonInThisMode(BarButton button) const
     case BarMode::LetterWithRightButton:
         return button == BarButton::BackButton || button == BarButton::TrashButton || button == BarButton::RightButton;
 
+    case BarMode::PlayLog:
+        return button == BarButton::BackButton;
+
     case BarMode::Calendar:
         return isPageArrow || button == BarButton::BackButton;
 

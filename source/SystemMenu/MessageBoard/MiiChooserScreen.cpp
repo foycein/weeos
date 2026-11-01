@@ -5,6 +5,7 @@
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/SoundRequests.h"
 
+#include <array>
 #include <format>
 
 namespace SystemMenu
@@ -23,6 +24,9 @@ constexpr std::string_view NextPageButton = "B_ArwR";
 constexpr std::string_view PreviousPageButton = "B_ArwL";
 
 constexpr ButtonSet LeaveButtons = {Input::RemoteButtons::B, Input::ClassicButtons::B};
+
+// The pages before and after the page that shows; they are only seen while the pages slide.
+constexpr std::array<std::string_view, 2> NeighborPages = {"N_Nigaoe_01", "N_Nigaoe_02"};
 
 std::u16string NumberText(int number)
 {
@@ -68,6 +72,9 @@ void MiiChooserScreen::Build()
     arrowLoopAnimation = layout->BindAnimation(layoutName + "_Loop", "G_ArwRoop", Layout::PlaybackMode::Loop);
     layout->StartAnimation(appearAnimation);
     layout->StartAnimation(arrowLoopAnimation);
+
+    for (std::string_view neighborPage : NeighborPages)
+        layout->PaneNamed(neighborPage).isVisible = false;
 
     miis = MiiPortraits::MiisOfTheConsole(data.nand);
     ShowThePage();

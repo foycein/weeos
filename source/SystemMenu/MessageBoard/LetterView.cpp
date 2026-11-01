@@ -22,8 +22,9 @@ constexpr std::string_view HeaderText = "T_Header";
 constexpr std::string_view BodyText = "T_Letter";
 constexpr std::string_view MiiPicture = "Nigaoe";
 constexpr std::array<std::string_view, 3> TextsOfTheWriter = {"T_TouchLetter", "T_Nigaoe", "T_2l_TextBox"};
-constexpr std::string_view DownArrowButton = "B_ArwR";
-constexpr std::string_view UpArrowButton = "B_ArwL";
+// The arrow of the group R stands at the top of the paper and points up; the arrow of the group L stands at the bottom.
+constexpr std::string_view UpArrowButton = "B_ArwR";
+constexpr std::string_view DownArrowButton = "B_ArwL";
 
 // The messages of the view (0x81398EF4, 0x8138FC4C, 0x81397768).
 constexpr std::uint16_t MemoTitleMessage = 133;
@@ -74,10 +75,10 @@ LetterView::LetterView(MenuServices& menuServices, const Layout::LayoutArchive& 
     openAnimation = layout.BindAnimationToAllPanes(layoutName + "_SelectLetter");
     closeAnimation = layout.BindAnimationToAllPanes(layoutName + "_ExitLetter");
     arrowLoopAnimation = layout.BindAnimation(layoutName + "_Loop", "G_ArwRoop", Layout::PlaybackMode::Loop);
-    nextArrowAppears = layout.BindAnimation(layoutName + "_Appear", "G_ArwR_End", Layout::PlaybackMode::PlayOnce);
-    nextArrowGoes = layout.BindAnimation(layoutName + "_Lost", "G_ArwR_End", Layout::PlaybackMode::PlayOnce);
-    previousArrowAppears = layout.BindAnimation(layoutName + "_Appear", "G_ArwL_End", Layout::PlaybackMode::PlayOnce);
-    previousArrowGoes = layout.BindAnimation(layoutName + "_Lost", "G_ArwL_End", Layout::PlaybackMode::PlayOnce);
+    upArrowAppears = layout.BindAnimation(layoutName + "_Appear", "G_ArwR_End", Layout::PlaybackMode::PlayOnce);
+    upArrowGoes = layout.BindAnimation(layoutName + "_Lost", "G_ArwR_End", Layout::PlaybackMode::PlayOnce);
+    downArrowAppears = layout.BindAnimation(layoutName + "_Appear", "G_ArwL_End", Layout::PlaybackMode::PlayOnce);
+    downArrowGoes = layout.BindAnimation(layoutName + "_Lost", "G_ArwL_End", Layout::PlaybackMode::PlayOnce);
 
     FillThePaper(message, portraits);
     paper.MeasureTheText();
@@ -86,11 +87,11 @@ LetterView::LetterView(MenuServices& menuServices, const Layout::LayoutArchive& 
     PutTheRootAtTheOpeningPlace();
     layout.Calculate();
 
-    bar.SetMode(BarMode::Letter);
+    bool isPlayLog = message.message.kind == Formats::BoardMessageKind::PlayLog;
+    bar.SetMode(isPlayLog ? BarMode::PlayLog : BarMode::Letter);
     bar.SetBackText(services.messages.Find(BackMessage));
     bar.SetTrashText(services.messages.Find(TrashMessage));
     bar.Change(BarChange::LetterOpens);
-    bool isPlayLog = message.message.kind == Formats::BoardMessageKind::PlayLog;
     bar.Change(isPlayLog ? BarChange::PlayLogShows : BarChange::LetterShowsWithoutButton);
 }
 
@@ -241,17 +242,17 @@ void LetterView::HandleThePresses()
     }
 }
 
-// The arrow at the bottom (B_ArwR) moves the paper up to show what follows, the arrow at the top (B_ArwL) moves it back.
+// The arrow at the bottom moves the paper up to show what follows, the arrow at the top moves it back (0x81363CF8: -300 for B_ArwR).
 bool LetterView::HandleArrowPress(Formats::Vector2 place)
 {
     for (const Formats::Pane* button : layout.BoundingPanesAt(place))
     {
-        if (button->name == DownArrowButton && isNextArrowShown)
+        if (button->name == DownArrowButton && isDownArrowShown)
         {
             StartScrollingTo(std::min(paper.LongestScroll(), scroll + ScrollOfAnArrow));
             return true;
         }
-        if (button->name == UpArrowButton && isPreviousArrowShown)
+        if (button->name == UpArrowButton && isUpArrowShown)
         {
             StartScrollingTo(std::max(0.0f, scroll - ScrollOfAnArrow));
             return true;
@@ -301,14 +302,14 @@ void LetterView::StartScrollingTo(float target)
 // The arrow towards the top hides at the top of the paper, the arrow towards the bottom at its bottom (0x8139A71C).
 void LetterView::ShowTheArrowsOfThePaper()
 {
-    bool shouldShowNext = scroll < paper.LongestScroll();
-    bool shouldShowPrevious = scroll > 0;
-    if (shouldShowNext != isNextArrowShown)
-        layout.StartAnimation(shouldShowNext ? nextArrowAppears : nextArrowGoes);
-    if (shouldShowPrevious != isPreviousArrowShown)
-        layout.StartAnimation(shouldShowPrevious ? previousArrowAppears : previousArrowGoes);
-    isNextArrowShown = shouldShowNext;
-    isPreviousArrowShown = shouldShowPrevious;
+    bool shouldShowDown = scroll < paper.LongestScroll();
+    bool shouldShowUp = scroll > 0;
+    if (shouldShowDown != isDownArrowShown)
+        layout.StartAnimation(shouldShowDown ? downArrowAppears : downArrowGoes);
+    if (shouldShowUp != isUpArrowShown)
+        layout.StartAnimation(shouldShowUp ? upArrowAppears : upArrowGoes);
+    isDownArrowShown = shouldShowDown;
+    isUpArrowShown = shouldShowUp;
 }
 
 void LetterView::Draw()

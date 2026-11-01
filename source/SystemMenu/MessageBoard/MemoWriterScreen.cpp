@@ -13,6 +13,7 @@
 #include "Text/MessageCatalog.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace SystemMenu
 {
@@ -108,7 +109,11 @@ void MemoWriterScreen::ShowTheText()
     MenuLayout& layout = paper->PaperLayout();
     layout.SetText(BodyText, text);
     layout.SetText(HintText, text.empty() ? services.messages.Find(WriteAMemoMessage) : std::u16string());
-    paper->MeasureTheText();
+
+    // The paper of the writer is at least as high as the field of the keyboard engine (T_2l_TextBox).
+    float fieldHeight = layout.PaneNamed(KeyboardFieldText).height;
+    int fewestLines = static_cast<int>(std::ceil(fieldHeight / paper->LineHeight()));
+    paper->MeasureTheText(fewestLines);
 }
 
 // The face of the Mii of the memo, and its name where "<-Add a Mii" was.

@@ -74,12 +74,12 @@ private:
     std::size_t openAnimation = 0;
     std::size_t closeAnimation = 0;
     std::size_t arrowLoopAnimation = 0;
-    std::size_t nextArrowAppears = 0;
-    std::size_t nextArrowGoes = 0;
-    std::size_t previousArrowAppears = 0;
-    std::size_t previousArrowGoes = 0;
-    bool isNextArrowShown = true;
-    bool isPreviousArrowShown = true;
+    std::size_t upArrowAppears = 0;
+    std::size_t upArrowGoes = 0;
+    std::size_t downArrowAppears = 0;
+    std::size_t downArrowGoes = 0;
+    bool isUpArrowShown = false;
+    bool isDownArrowShown = false;
 
     float scroll = 0;
     float scrollSpeed = 0;

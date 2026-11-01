@@ -93,6 +93,7 @@ private:
     void RunChoosing();
     void FocusTheCellsUnderThePointers();
     void TurnMonth(int direction);
+    void StepTheMonthSlide();
     void Close(bool wasADayChosen);
     BottomBarScreen* Bar();
 
@@ -101,6 +102,7 @@ private:
     std::unique_ptr<Layout::LayoutArchive> archive;
     std::unique_ptr<MenuLayout> layout;
     std::unique_ptr<FramePlayer> monthSlide;
+    std::unique_ptr<FramePlayer> weekendColors;
     std::array<std::unique_ptr<CalendarDayView>, CalendarCellCount> cells;
     std::array<std::unique_ptr<CalendarDayView>, CalendarCellCount> incomingCells;
     std::array<std::optional<std::size_t>, PlayerCount> focusedCells;
