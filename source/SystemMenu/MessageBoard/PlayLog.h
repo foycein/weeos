@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
 #include "SystemMenu/MessageBoard/MessageStore.h"
 
 #include "Formats/PlayLogAttachment.h"
@@ -32,5 +33,9 @@ std::u16string MakePlayLogText(const Formats::PlayLogAttachment& playLog, const 
 // day on which it ended. The play takes the first free place of that log, or adds its time to the other titles when the ten places
 // are full; a day without a log gets a new one in the middle of the board. "now" is the time of the console.
 void PutPlayOnTheBoard(MessageStore& store, const Formats::PlayRecord& play, const Text::MessageCatalog& messages, const LocalTime& now);
+
+// At the start of the menu the record of the title that ran last goes onto the board and its file is deleted, as the original's thread
+// of the mail service calls the play log when it starts (0x81357650 calls 0x813406CC). Nothing happens without a good record.
+void PutTheLastPlayOnTheBoard(NandFileAccess& files, MessageStore& store, const Text::MessageCatalog& messages, const LocalTime& now);
 
 }

@@ -31,6 +31,9 @@ public:
 
     // Requests. A request is dropped when eight others wait already.
     void OpenChild(ScreenId screen, ScreenId parent, int argument);
+
+    // The same, with the new screen in front of a sibling, so that it is drawn before it.
+    void OpenChildBefore(ScreenId screen, ScreenId parent, ScreenId nextSibling, int argument);
     void ReplaceScreen(const Screen& replacedScreen, ScreenId screen, int argument);
 
     void Update();

@@ -1,5 +1,7 @@
 #include "SystemMenu/MessageBoard/PlayLog.h"
 
+#include "SystemMenu/BackgroundServices/PlayTimeLog.h"
+
 #include <algorithm>
 
 namespace SystemMenu
@@ -152,6 +154,13 @@ void PutPlayOnTheBoard(MessageStore& store, const Formats::PlayRecord& play, con
     Formats::PlayLogAttachment playLog;
     AddPlay(playLog, play);
     store.AddMessage(Formats::PlayLogRecordTypeName, KindFolder::PlayLog, endOfThePlay, MakeNewPlayLog(playLog, messages, now), now);
+}
+
+void PutTheLastPlayOnTheBoard(NandFileAccess& files, MessageStore& store, const Text::MessageCatalog& messages, const LocalTime& now)
+{
+    std::optional<Formats::PlayRecord> play = TakePlayRecord(files);
+    if (play)
+        PutPlayOnTheBoard(store, *play, messages, now);
 }
 
 }
