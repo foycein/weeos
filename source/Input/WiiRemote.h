@@ -108,6 +108,7 @@ private:
     ButtonMask latestButtons = 0;
     ButtonMask buttonsPressedSinceLastRead = 0;
     ButtonMask buttonsHeldAtLastRead = 0;
+    ButtonMask buttonsWhileAsleep = 0;
     ButtonMask latestClassicButtons = 0;
     ButtonMask classicPressedSinceLastRead = 0;
     ButtonMask classicHeldAtLastRead = 0;

@@ -171,7 +171,12 @@ void WiiRemote::HandleReport(const ReportBytes& report)
     if (linkState == LinkState::Asleep)
     {
         std::optional<ButtonMask> buttons = ReadButtons(report);
-        if (!buttons || *buttons == 0)
+        if (!buttons)
+            return;
+
+        ButtonMask newlyPressed = *buttons & ~buttonsWhileAsleep;
+        buttonsWhileAsleep = *buttons;
+        if (newlyPressed == 0)
             return;
 
         Connect();
@@ -288,7 +293,8 @@ void WiiRemote::Connect()
     Wait({MakeStatusRequest()});
 }
 
-// The remote reports only changes of its buttons while it sleeps, and the program waits for a press.
+// The remote reports only changes of its buttons while it sleeps, and the program waits for a button to go down. A button that was
+// held when it fell asleep does not wake it.
 void WiiRemote::FallAsleep()
 {
     linkState = LinkState::Asleep;
@@ -299,8 +305,7 @@ void WiiRemote::FallAsleep()
     isSpeakerStreaming = false;
     isSpeakerStarted = false;
     extension = ExtensionKind::None;
-    latestButtons = 0;
-    latestClassicButtons = 0;
+    buttonsWhileAsleep = latestButtons;
 
     Send(MakePlayerLedsReport(playerLeds));
     Send(MakeReportingModeReport(WiiRemoteReportId::ButtonsOnly, false));
