@@ -198,6 +198,9 @@ struct MeshVertex
 
     // For a mesh whose corners hang on bones (MeshPlacement::boneMatrices): the bone of this corner. Position and normal are in its space.
     std::uint32_t boneNumber = 0;
+
+    // The color of the corner, the raster color of a mesh drawn with MeshPlacement::usesCornerColors.
+    Formats::Rgba8Color color = {255, 255, 255, 255};
 };
 
 // The front side of a triangle is the side from which its corners go around clockwise in the picture (the rule of the
@@ -259,6 +262,9 @@ struct MeshPlacement
     // The texture coordinates are the x and y of the normal in view space instead of the ones of the corners, for pictures of
     // a lit sphere that follow the surface (environment maps). The texture matrices then bring them into the picture.
     bool textureCoordinatesFromNormal = false;
+
+    // The raster color is the color of the corners (the vertex colors of a model) instead of the light or white.
+    bool usesCornerColors = false;
 
     FaceCulling culling = FaceCulling::Back;
     DepthMode depth = DepthMode::TestAndWrite;

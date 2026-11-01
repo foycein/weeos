@@ -79,6 +79,15 @@ ShaderStage PackStage(const TevStage& stage)
     packed.alphaClamp = stage.alpha.clamp ? 1 : 0;
     packed.alphaOutput = ToNumber(stage.alpha.output);
 
+    constexpr int BitsPerChannel = 2;
+    constexpr int TextureSwapShift = 8;
+    for (std::size_t channel = 0; channel < stage.rasterSwap.size(); ++channel)
+    {
+        int shift = static_cast<int>(channel) * BitsPerChannel;
+        packed.swaps |= std::uint32_t{stage.rasterSwap[channel]} << shift;
+        packed.swaps |= std::uint32_t{stage.textureSwap[channel]} << (TextureSwapShift + shift);
+    }
+
     return packed;
 }
 
@@ -130,12 +139,14 @@ ShaderMeshRecord MakeMeshRecord(const MeshPlacement& placement)
     }
 
     record.textureCoordinatesFromNormal = placement.textureCoordinatesFromNormal ? 1 : 0;
+    record.usesCornerColors = placement.usesCornerColors ? 1 : 0;
     return record;
 }
 
 ShaderMeshCorner MakeMeshCorner(const MeshVertex& vertex)
 {
-    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y, vertex.boneNumber, {}};
+    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y, vertex.boneNumber, PackColor(vertex.color),
+        {}};
 }
 
 ShaderBone MakeBone(const Matrix4& boneMatrix)

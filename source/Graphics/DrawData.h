@@ -55,6 +55,9 @@ struct ShaderStage
     std::uint32_t alphaScale;
     std::uint32_t alphaClamp;
     std::uint32_t alphaOutput;
+
+    // The raster swap in bits 0 to 7 and the texture swap in bits 8 to 15, two bits for each of red, green, blue and alpha.
+    std::uint32_t swaps;
 };
 
 // One quad with its material. The stages of the draw are ShaderStage structures in the stage buffer, starting at firstStage.
@@ -101,7 +104,8 @@ struct ShaderMeshRecord
     // The bones of the mesh are the bones from this number on in the bone buffer of the picture.
     std::uint32_t firstBone;
     std::uint32_t boneCount;
-    std::array<std::uint32_t, 3> unused;
+    std::uint32_t usesCornerColors;
+    std::array<std::uint32_t, 2> unused;
 };
 
 // The matrices of one bone: the one that moves points and the one that turns normals.
@@ -119,10 +123,13 @@ struct ShaderMeshCorner
     Formats::Vector3 normal;
     float t;
     std::uint32_t boneNumber;
-    std::array<std::uint32_t, 3> unused;
+
+    // Red in the lowest byte, then green, blue and alpha in the highest byte.
+    std::uint32_t color;
+    std::array<std::uint32_t, 2> unused;
 };
 
-static_assert(sizeof(ShaderStage) == 22 * sizeof(std::uint32_t));
+static_assert(sizeof(ShaderStage) == 23 * sizeof(std::uint32_t));
 static_assert(sizeof(ShaderDrawRecord) == 352);
 static_assert(sizeof(ShaderMeshRecord) == 240);
 static_assert(sizeof(ShaderMeshCorner) == 48);

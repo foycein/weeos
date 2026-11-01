@@ -1,0 +1,962 @@
+#include "Channels/MiiChannel/EditorScreen.h"
+
+#include "Channels/MiiChannel/MiiChannelFiles.h"
+#include "Channels/MiiChannel/MiiChannelInput.h"
+
+#include "Mii/MiiColors.h"
+#include "Mii/MiiCreateId.h"
+
+#include <algorithm>
+#include <chrono>
+#include <format>
+#include <map>
+#include <set>
+
+namespace Channels
+{
+
+namespace
+{
+
+constexpr std::string_view LayoutName = "editNigaoe_00";
+constexpr std::string_view MiiPane = "humanNull_00";
+constexpr int PlacesPerGridPage = 12;
+constexpr float WaitAnimationFrames = 120.0f;
+
+// The windows of the nine pages, in the order of the tabs.
+constexpr std::array<std::string_view, EditorPageCount> PageWindows = {"windowProfile", "windowBody", "windowFace", "windowHair",
+    "windowEyeB", "windowEye", "windowNose", "windowMouth", "windowEtc"};
+
+// A grid of parts: its pages (frmHairPrNull_00, _01, ...), its buttons (frameHair_00, ...) from the first number on, and its arrows.
+struct GridPanes
+{
+    EditorPart part;
+    std::string_view pagePrefix;
+    int pageCount;
+    std::string_view buttonPrefix;
+    int firstButton;
+    std::string_view arrowPrefix;
+};
+
+constexpr std::array<GridPanes, 11> Grids = {{
+    {EditorPart::FaceShape, "frmFacePrNull_", 1, "frameFace_", 0, ""},
+    {EditorPart::MakeUp, "frmFacePrNull_", 1, "frameFace_", 12, ""},
+    {EditorPart::Hair, "frmHairPrNull_", 6, "frameHair_", 0, "H"},
+    {EditorPart::Eyebrows, "frmEyeBPrNull_", 2, "frameEyeB_", 0, "EB"},
+    {EditorPart::Eyes, "frmEyePrNull_", 4, "frameEye_", 0, "E"},
+    {EditorPart::Nose, "frmNosePrNull_", 1, "frameNose_", 0, ""},
+    {EditorPart::Mouth, "frmMoutPrNull_", 2, "frameMouth_", 0, "M"},
+    {EditorPart::Glasses, "frmEtcPrNull_", 1, "frameEtc_", 0, ""},
+    {EditorPart::Mustache, "frmEtcPrNull_", 1, "frameEtc_", 12, ""},
+    {EditorPart::Mole, "frmEtcPrNull_", 1, "frameEtc_", 24, ""},
+    {EditorPart::Beard, "frmEtcPrNull_", 1, "frameEtc_", 16, ""},
+}};
+
+// The page null of the parts that share one null with a number of their own.
+const std::map<EditorPart, int> PageNullNumbers = {{EditorPart::FaceShape, 0}, {EditorPart::MakeUp, 1}, {EditorPart::Glasses, 0},
+    {EditorPart::Mustache, 1}, {EditorPart::Mole, 2}, {EditorPart::Beard, 3}};
+
+// A palette: its buttons (colorPHair_00, ...) from the first number on, and the colors they show.
+struct PalettePanes
+{
+    ColorPart part;
+    std::string_view buttonPrefix;
+    int firstButton;
+};
+
+constexpr std::array<PalettePanes, 7> Palettes = {{
+    {ColorPart::Skin, "colorPFace_", 0},
+    {ColorPart::Hair, "colorPHair_", 0},
+    {ColorPart::Eyebrows, "colorPEyeB_", 0},
+    {ColorPart::Eyes, "colorPEye_", 0},
+    {ColorPart::Mouth, "colorPMouth_", 0},
+    {ColorPart::Glasses, "colorPEtc_", 8},
+    {ColorPart::FacialHair, "colorPEtc_", 0},
+}};
+
+// The buttons that size and move a part (editEBFrm_00, ...); the picture on each says what it does.
+struct AdjustPanes
+{
+    EditorPart part;
+    std::string_view buttonPrefix;
+    int firstButton;
+    int buttonCount;
+};
+
+constexpr std::array<AdjustPanes, 7> AdjustGroups = {{
+    {EditorPart::Eyebrows, "editEBFrm", 0, 8},
+    {EditorPart::Eyes, "editEFrm", 0, 8},
+    {EditorPart::Nose, "editNsFrm", 0, 4},
+    {EditorPart::Mouth, "editMFrm", 0, 4},
+    {EditorPart::Glasses, "editEtFrm", 0, 4},
+    {EditorPart::Mustache, "editEtFrm", 4, 4},
+    {EditorPart::Mole, "editEtFrm", 8, 6},
+}};
+
+const std::map<std::string, Adjustment> AdjustmentOfPicture = {
+    {"sk_editEnlargement_00.tpl", Adjustment::Larger},
+    {"sk_editReduction_00.tpl", Adjustment::Smaller},
+    {"sk_editRotL_00.tpl", Adjustment::TurnLeft},
+    {"sk_editRotR_00.tpl", Adjustment::TurnRight},
+    {"sk_editNear_00.tpl", Adjustment::Closer},
+    {"sk_editWide_00.tpl", Adjustment::Farther},
+    {"sk_editUp_00.tpl", Adjustment::Up},
+    {"sk_editDown_00.tpl", Adjustment::Down},
+    {"sk_editleft_00.tpl", Adjustment::Left},
+    {"sk_editRight_00.tpl", Adjustment::Right},
+};
+
+// The small tabs of the face page (shape, make-up) and of the features page (glasses, mustache, mole, beard).
+constexpr std::array<EditorPart, 2> FaceSubParts = {EditorPart::FaceShape, EditorPart::MakeUp};
+constexpr std::array<EditorPart, 4> FeatureSubParts = {EditorPart::Glasses, EditorPart::Mustache, EditorPart::Mole, EditorPart::Beard};
+constexpr std::array<std::string_view, 4> FeatureAdjustNulls = {"editEtFrmPrN_00", "editEtFrmPrN_01", "editEtFrmPrN_02", ""};
+constexpr std::string_view GlassesPalette = "cpEtcPrNull_01";
+constexpr std::string_view FacialHairPalette = "cpEtcPrNull_00";
+
+constexpr std::string_view HairFlipButton = "editHairFrm_02";
+
+// The body page: the knobs of height and weight on their bars, 280 units long.
+constexpr std::array<std::string_view, 2> SliderBars = {"barBody_00", "barBody_01"};
+constexpr std::array<std::string_view, 2> SliderKnobs = {"btnBodyNull_00", "btnBodyNull_01"};
+constexpr float SliderLength = 280.0f;
+constexpr int SliderMaximum = 128;
+
+// The profile page's rows.
+constexpr std::string_view BirthdayButton = "frmProfile_01";
+constexpr std::string_view GenderButton = "frmProfile_02";
+constexpr std::string_view ColorButtonPane = "frmProfile_03";
+constexpr std::string_view CreatorButton = "frmProfile_04";
+constexpr std::string_view FavoriteButton = "frmProfile_05";
+constexpr std::string_view MingleButton = "frmProfile_06";
+constexpr std::string_view SpecialMingleRow = "frmProfile_07";
+constexpr std::uint32_t MaleWord = 300101;
+constexpr std::uint32_t FemaleWord = 300201;
+constexpr std::uint32_t MingleOffWord = 200801;
+constexpr std::uint32_t MingleOnWord = 200802;
+constexpr std::uint32_t EnterNickname = 300001;
+constexpr std::uint32_t EnterCreatorName = 300007;
+
+// Assumed (CHN-39): the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
+constexpr Formats::Rgba8Color ChosenTint = {255, 210, 90, 255};
+constexpr Formats::Rgba8Color NotChosenTint = {255, 255, 255, 255};
+
+// The sounds of the editor (the strings of 8003CBDC to 8003F26C).
+constexpr std::string_view TabSound = "SEQ_EDIT_BUT_PUSH_TOPMENU";
+constexpr std::string_view PartSound = "SEQ_EDIT_STAMP_PART";
+constexpr std::string_view ColorSound = "SEQ_EDIT_STAMP_COLOR";
+constexpr std::string_view LargerSound = "SEQ_EDIT_PARTS_UP";
+constexpr std::string_view SmallerSound = "SEQ_EDIT_PARTS_DOWN";
+constexpr std::string_view UpperLimitSound = "SEQ_EDIT_PARTS_UP_LIMIT";
+constexpr std::string_view LowerLimitSound = "SEQ_EDIT_PARTS_DOWN_LIMIT";
+constexpr std::string_view PageUpSound = "SEQ_EDIT_BUT_PUSH_PARTS_TYPE_PAGE_UP";
+constexpr std::string_view PageDownSound = "SEQ_EDIT_BUT_PUSH_PARTS_TYPE_PAGE_DOWN";
+constexpr std::string_view FlipSound = "SEQ_EDIT_BUT_PUSH_PARTS_HAIR_REVERSE";
+constexpr std::string_view BodyUpSound = "SEQ_EDIT_BODY_UP";
+constexpr std::string_view BodyDownSound = "SEQ_EDIT_BODY_DOWN";
+constexpr std::string_view QuitSound = "SEQ_EDIT_BUT_PUSH_EXIT";
+constexpr std::string_view SaveSound = "SEQ_EDITOR_EXIT_SAVE";
+constexpr std::string_view NoSaveSound = "SEQ_EDITOR_EXIT_NOSAVE";
+constexpr std::string_view ButtonSound = "SEQ_EDIT_BUT_PUSH";
+
+const GridPanes& GridOf(EditorPart part)
+{
+    for (const GridPanes& grid : Grids)
+    {
+        if (grid.part == part)
+            return grid;
+    }
+    return Grids.front();
+}
+
+const PalettePanes& PaletteOf(ColorPart part)
+{
+    for (const PalettePanes& palette : Palettes)
+    {
+        if (palette.part == part)
+            return palette;
+    }
+    return Palettes.front();
+}
+
+const AdjustPanes* AdjustGroupOf(EditorPart part)
+{
+    for (const AdjustPanes& group : AdjustGroups)
+    {
+        if (group.part == part)
+            return &group;
+    }
+    return nullptr;
+}
+
+Formats::Rgba8Color PaletteColor(ColorPart part, int color)
+{
+    switch (part)
+    {
+    case ColorPart::Skin:
+        return Mii::SkinColors[color];
+    case ColorPart::Hair:
+    case ColorPart::Eyebrows:
+    case ColorPart::FacialHair:
+        return Mii::HairColors[color];
+    case ColorPart::Eyes:
+        return Mii::EyeColors[color];
+    case ColorPart::Mouth:
+        return Mii::LipColors[color];
+    case ColorPart::Glasses:
+        return Mii::GlassesColors[color];
+    case ColorPart::Favorite:
+        return Mii::FavoriteColors[color];
+    }
+    return {};
+}
+
+void TintWindow(Formats::Pane& pane, Formats::Rgba8Color tint)
+{
+    if (pane.window)
+        pane.window->content.vertexColors.fill(tint);
+}
+
+std::u16string Ascii(std::string_view text)
+{
+    return std::u16string(text.begin(), text.end());
+}
+
+}
+
+EditorScreen::EditorScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts,
+    const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const Mii::MiiResources& faceParts,
+    MessageWindow& messageWindow, ProfileDialog& profileDialog, SystemMenu::SoftKeyboard& softKeyboard, MiiChannelData& channelData)
+    : services(channelServices)
+    , texts(messages)
+    , figures(miiFigures)
+    , message(messageWindow)
+    , profile(profileDialog)
+    , keyboard(softKeyboard)
+    , data(channelData)
+    , layout(std::make_unique<SystemMenu::MenuLayout>(channelServices.display, layouts, std::string(LayoutName)))
+    , heads(channelServices.display.Device(), faceParts)
+{
+    FillTextsFromUserData(*layout, messages);
+
+    for (const PalettePanes& palette : Palettes)
+    {
+        for (int color = 0; color < ColorCount(palette.part); ++color)
+            TintWindow(layout->PaneNamed(ColorButton(palette.part, color)), PaletteColor(palette.part, color));
+    }
+}
+
+void EditorScreen::Open(const Mii::MiiRecord& record, std::optional<std::size_t> slot)
+{
+    editor.emplace(record);
+    editedSlot = slot;
+    result.reset();
+    pending = Pending::Nothing;
+    gridPages.fill(0);
+    for (const GridPanes& grid : Grids)
+        gridPages[static_cast<std::size_t>(grid.part)] = GridPlaceOfType(grid.part, editor->ChosenType(grid.part)) / PlacesPerGridPage;
+    ShowPage(EditorPage::Face);
+}
+
+bool EditorScreen::IsOpen() const
+{
+    return editor.has_value();
+}
+
+std::optional<EditorResult> EditorScreen::TakeResult()
+{
+    std::optional<EditorResult> taken = result;
+    result.reset();
+    return taken;
+}
+
+const MiiEditor& EditorScreen::Editor() const
+{
+    return *editor;
+}
+
+EditorPage EditorScreen::Page() const
+{
+    return page;
+}
+
+std::string EditorScreen::TabButton(EditorPage tabPage)
+{
+    return std::format("mainMFrm_{:02}", static_cast<int>(tabPage));
+}
+
+std::string EditorScreen::GridButton(EditorPart part, int place) const
+{
+    const GridPanes& grid = GridOf(part);
+    return std::format("{}{:02}", grid.buttonPrefix, grid.firstButton + place);
+}
+
+std::string EditorScreen::ColorButton(ColorPart part, int color) const
+{
+    const PalettePanes& palette = PaletteOf(part);
+    return std::format("{}{:02}", palette.buttonPrefix, palette.firstButton + color);
+}
+
+std::string EditorScreen::AdjustButton(EditorPart part, Adjustment adjustment) const
+{
+    const AdjustPanes* group = AdjustGroupOf(part);
+    if (group == nullptr)
+        return {};
+
+    for (int button = group->firstButton; button < group->firstButton + group->buttonCount; ++button)
+    {
+        const Formats::Pane& icon = layout->PaneNamed(std::format("{}Icon_{:02}", group->buttonPrefix, button));
+        const std::string& picture = layout->MaterialOf(icon).textureNames.front();
+        auto known = AdjustmentOfPicture.find(picture);
+        if (known != AdjustmentOfPicture.end() && known->second == adjustment)
+            return std::format("{}_{:02}", group->buttonPrefix, button);
+    }
+    return {};
+}
+
+Formats::Vector2 EditorScreen::PlaceOf(std::string_view paneName) const
+{
+    return layout->PointOfPaneInPicture(paneName, {0, 0}).value_or(Formats::Vector2{0, 0});
+}
+
+void EditorScreen::Update(bool acceptsInput)
+{
+    layout->Calculate();
+    if (!editor)
+        return;
+
+    waitFrame = std::fmod(waitFrame + 1, WaitAnimationFrames);
+    heads.Prepare({{0, editor->Record()}});
+
+    if (keyboard.IsOpen())
+    {
+        keyboard.Update();
+        HandleKeyboardAnswer();
+        return;
+    }
+
+    HandleDialogAnswers();
+    HandleMessageAnswer();
+    if (!acceptsInput || !editor || pending != Pending::Nothing || message.IsOpen() || profile.IsOpen() || keyboard.IsOpen())
+        return;
+
+    if (IsPressed(QuitButton))
+    {
+        AskQuit();
+        return;
+    }
+
+    for (int tab = 0; tab < EditorPageCount; ++tab)
+    {
+        if (IsPressed(TabButton(static_cast<EditorPage>(tab))))
+        {
+            services.sounds.Request(TabSound);
+            ShowPage(static_cast<EditorPage>(tab));
+            return;
+        }
+    }
+
+    HandlePageButtons();
+}
+
+void EditorScreen::Draw()
+{
+    if (!editor)
+        return;
+
+    layout->Draw();
+    const Mii::MiiHead* head = heads.Find(0);
+    if (head != nullptr)
+        figures.DrawStandingMii(editor->Record(), *head, RectangleOf(MiiPane), services.display.GetCanvas(), waitFrame);
+
+    if (keyboard.IsOpen())
+        keyboard.Draw();
+}
+
+void EditorScreen::ShowPage(EditorPage newPage)
+{
+    page = newPage;
+    for (int window = 0; window < EditorPageCount; ++window)
+        layout->PaneNamed(PageWindows[window]).isVisible = window == static_cast<int>(page);
+
+    ShowSubPart(0);
+}
+
+void EditorScreen::ShowSubPart(int newSubPart)
+{
+    subPart = newSubPart;
+
+    if (page == EditorPage::Face)
+    {
+        for (std::size_t part = 0; part < FaceSubParts.size(); ++part)
+            layout->PaneNamed(std::format("frmFacePrNull_{:02}", part)).isVisible = static_cast<int>(part) == subPart;
+    }
+
+    if (page == EditorPage::Features)
+    {
+        for (std::size_t part = 0; part < FeatureSubParts.size(); ++part)
+        {
+            bool isShown = static_cast<int>(part) == subPart;
+            layout->PaneNamed(std::format("frmEtcPrNull_{:02}", part)).isVisible = isShown;
+            if (!FeatureAdjustNulls[part].empty())
+                layout->PaneNamed(FeatureAdjustNulls[part]).isVisible = isShown;
+        }
+        EditorPart shown = ShownPart();
+        layout->PaneNamed(GlassesPalette).isVisible = shown == EditorPart::Glasses;
+        layout->PaneNamed(FacialHairPalette).isVisible = shown == EditorPart::Mustache || shown == EditorPart::Beard;
+    }
+
+    RefreshSelections();
+}
+
+std::vector<EditorPart> EditorScreen::PartsOfPage(EditorPage pageOfParts) const
+{
+    switch (pageOfParts)
+    {
+    case EditorPage::Face:
+        return {FaceSubParts[subPart]};
+    case EditorPage::Hair:
+        return {EditorPart::Hair};
+    case EditorPage::Eyebrows:
+        return {EditorPart::Eyebrows};
+    case EditorPage::Eyes:
+        return {EditorPart::Eyes};
+    case EditorPage::Nose:
+        return {EditorPart::Nose};
+    case EditorPage::Mouth:
+        return {EditorPart::Mouth};
+    case EditorPage::Features:
+        return {FeatureSubParts[subPart]};
+    default:
+        return {};
+    }
+}
+
+EditorPart EditorScreen::ShownPart() const
+{
+    std::vector<EditorPart> parts = PartsOfPage(page);
+    if (parts.empty())
+        return EditorPart::FaceShape;
+    return parts.front();
+}
+
+void EditorScreen::RefreshSelections()
+{
+    for (const GridPanes& grid : Grids)
+        RefreshGridPage(grid.part);
+
+    for (const PalettePanes& palette : Palettes)
+    {
+        for (int color = 0; color < ColorCount(palette.part); ++color)
+        {
+            Formats::Pane& button = layout->PaneNamed(ColorButton(palette.part, color));
+            button.alpha = color == editor->ChosenColor(palette.part) ? 255 : 200;
+        }
+    }
+
+    RefreshProfile();
+    RefreshBodySliders();
+}
+
+void EditorScreen::RefreshGridPage(EditorPart part)
+{
+    const GridPanes& grid = GridOf(part);
+    int chosenPlace = GridPlaceOfType(part, editor->ChosenType(part));
+    for (int place = 0; place < TypeCount(part); ++place)
+        TintWindow(layout->PaneNamed(GridButton(part, place)), place == chosenPlace ? ChosenTint : NotChosenTint);
+
+    if (grid.pageCount <= 1)
+        return;
+
+    int shownPage = gridPages[static_cast<std::size_t>(part)];
+    for (int gridPage = 0; gridPage < grid.pageCount; ++gridPage)
+        layout->PaneNamed(std::format("{}{:02}", grid.pagePrefix, gridPage)).isVisible = gridPage == shownPage;
+
+    layout->SetText(std::format("{}TextNumber_00", grid.arrowPrefix), Ascii(std::format("{}/{}", shownPage + 1, grid.pageCount)));
+}
+
+void EditorScreen::RefreshProfile()
+{
+    const Mii::MiiRecord& record = editor->Record();
+    layout->SetText("textProf_00", record.name);
+
+    std::string birthday = "--/--";
+    if (record.birthMonth != 0)
+        birthday = std::format("{}/{}", record.birthMonth, record.birthDay);
+    layout->SetText("textProf_01", Ascii(birthday));
+
+    std::uint32_t genderWord = record.gender == Mii::Gender::Female ? FemaleWord : MaleWord;
+    layout->SetText("textProf_02", MessageText(texts, genderWord));
+    TintWindow(layout->PaneNamed(ColorButtonPane), Mii::FavoriteColors[record.favoriteColor]);
+    layout->SetText("textProf_04", record.creatorName);
+    layout->PaneNamed("PicProf_05").isVisible = record.isFavorite;
+
+    bool isSpecial = Mii::IsSpecialMii(record);
+    layout->PaneNamed(SpecialMingleRow).isVisible = isSpecial;
+    layout->PaneNamed("frmProfNull_06").isVisible = !isSpecial;
+    layout->SetText("textProf_06", MessageText(texts, record.mayNotTravel ? MingleOffWord : MingleOnWord));
+}
+
+void EditorScreen::RefreshBodySliders()
+{
+    const Mii::MiiRecord& record = editor->Record();
+    std::array<int, 2> values = {record.height, record.weight};
+    for (std::size_t slider = 0; slider < SliderKnobs.size(); ++slider)
+    {
+        float place = (static_cast<float>(values[slider]) / SliderMaximum - 0.5f) * SliderLength;
+        layout->PaneNamed(SliderKnobs[slider]).translation.x = layout->PaneNamed(SliderBars[slider]).translation.x + place;
+    }
+}
+
+bool EditorScreen::HandlePageButtons()
+{
+    if (page == EditorPage::Profile)
+        return HandleProfileRows();
+
+    if (page == EditorPage::Body)
+        return HandleBodySliders();
+
+    if (HandleSubTabs())
+        return true;
+
+    if (page == EditorPage::Hair && IsPressed(HairFlipButton))
+    {
+        editor->FlipHair();
+        services.sounds.Request(FlipSound);
+        return true;
+    }
+
+    for (EditorPart part : PartsOfPage(page))
+    {
+        if (HandleGridArrows(part) || HandleGrid(part) || HandleAdjustButtons(part))
+            return true;
+
+        std::optional<ColorPart> colorPart = ColorPartOf(part);
+        if (colorPart && HandlePalette(*colorPart))
+            return true;
+    }
+    return false;
+}
+
+bool EditorScreen::HandleGrid(EditorPart part)
+{
+    const GridPanes& grid = GridOf(part);
+    int shownPage = gridPages[static_cast<std::size_t>(part)];
+    int firstPlace = grid.pageCount > 1 ? shownPage * PlacesPerGridPage : 0;
+    int lastPlace = std::min(TypeCount(part), grid.pageCount > 1 ? firstPlace + PlacesPerGridPage : TypeCount(part));
+
+    for (int place = firstPlace; place < lastPlace; ++place)
+    {
+        if (!IsPressed(GridButton(part, place)))
+            continue;
+
+        editor->ChooseType(part, TypeAtGridPlace(part, place));
+        services.sounds.Request(PartSound);
+        RefreshSelections();
+        return true;
+    }
+    return false;
+}
+
+bool EditorScreen::HandleGridArrows(EditorPart part)
+{
+    const GridPanes& grid = GridOf(part);
+    if (grid.pageCount <= 1)
+        return false;
+
+    int& shownPage = gridPages[static_cast<std::size_t>(part)];
+    if (IsPressed(std::format("{}ArrowUp_00", grid.arrowPrefix)))
+    {
+        shownPage = (shownPage + grid.pageCount - 1) % grid.pageCount;
+        services.sounds.Request(PageUpSound);
+        RefreshGridPage(part);
+        return true;
+    }
+
+    if (IsPressed(std::format("{}ArrowDown_00", grid.arrowPrefix)))
+    {
+        shownPage = (shownPage + 1) % grid.pageCount;
+        services.sounds.Request(PageDownSound);
+        RefreshGridPage(part);
+        return true;
+    }
+    return false;
+}
+
+bool EditorScreen::HandlePalette(ColorPart part)
+{
+    for (int color = 0; color < ColorCount(part); ++color)
+    {
+        if (!IsPressed(ColorButton(part, color)))
+            continue;
+
+        editor->ChooseColor(part, color);
+        services.sounds.Request(ColorSound);
+        RefreshSelections();
+        return true;
+    }
+    return false;
+}
+
+bool EditorScreen::HandleAdjustButtons(EditorPart part)
+{
+    const AdjustPanes* group = AdjustGroupOf(part);
+    if (group == nullptr)
+        return false;
+
+    for (const auto& [picture, adjustment] : AdjustmentOfPicture)
+    {
+        std::string button = AdjustButton(part, adjustment);
+        if (button.empty() || !IsPressed(button))
+            continue;
+
+        bool growsOrRises = adjustment == Adjustment::Larger || adjustment == Adjustment::Up || adjustment == Adjustment::TurnLeft
+            || adjustment == Adjustment::Farther || adjustment == Adjustment::Right;
+        AdjustResult adjusted = editor->Adjust(part, adjustment);
+        if (adjusted == AdjustResult::Changed)
+            services.sounds.Request(growsOrRises ? LargerSound : SmallerSound);
+        else if (adjusted == AdjustResult::AtLimit)
+            services.sounds.Request(growsOrRises ? UpperLimitSound : LowerLimitSound);
+        return true;
+    }
+    return false;
+}
+
+bool EditorScreen::HandleSubTabs()
+{
+    if (page == EditorPage::Face)
+    {
+        for (int part = 0; part < static_cast<int>(FaceSubParts.size()); ++part)
+        {
+            if (IsPressed(std::format("editFaceFrm_{:02}", part)))
+            {
+                services.sounds.Request(ButtonSound);
+                ShowSubPart(part);
+                return true;
+            }
+        }
+    }
+
+    if (page == EditorPage::Features)
+    {
+        for (int part = 0; part < static_cast<int>(FeatureSubParts.size()); ++part)
+        {
+            if (IsPressed(std::format("editEtcFrm_{:02}", part)))
+            {
+                services.sounds.Request(ButtonSound);
+                ShowSubPart(part);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// A knob follows the hand while A is held, from the place where A went down on the bar.
+bool EditorScreen::HandleBodySliders()
+{
+    PlayerOneInput input = ReadPlayerOne(services);
+    if (!input.IsHeld(Input::RemoteButtons::A))
+        draggedSlider.reset();
+
+    if (!input.pointer)
+        return false;
+
+    if (!draggedSlider && input.WasPressed(Input::RemoteButtons::A))
+    {
+        for (std::size_t slider = 0; slider < SliderBars.size(); ++slider)
+        {
+            if (layout->IsPointInPane(SliderBars[slider], *input.pointer) || layout->IsPointInPane(SliderKnobs[slider], *input.pointer))
+                draggedSlider = static_cast<int>(slider);
+        }
+    }
+
+    if (!draggedSlider)
+        return false;
+
+    std::string_view bar = SliderBars[*draggedSlider];
+    std::optional<Formats::Vector2> leftEnd = layout->PointOfPaneInPicture(bar, {-SliderLength / 2, 0});
+    std::optional<Formats::Vector2> rightEnd = layout->PointOfPaneInPicture(bar, {SliderLength / 2, 0});
+    if (!leftEnd || !rightEnd)
+        return false;
+
+    float fraction = (input.pointer->x - leftEnd->x) / (rightEnd->x - leftEnd->x);
+    int value = static_cast<int>(std::lround(std::clamp(fraction, 0.0f, 1.0f) * SliderMaximum));
+    const Mii::MiiRecord& record = editor->Record();
+    int oldValue = *draggedSlider == 0 ? record.height : record.weight;
+    if (value == oldValue)
+        return true;
+
+    if (*draggedSlider == 0)
+        editor->SetHeight(value);
+    else
+        editor->SetWeight(value);
+
+    services.sounds.Request(value > oldValue ? BodyUpSound : BodyDownSound);
+    RefreshBodySliders();
+    return true;
+}
+
+bool EditorScreen::HandleProfileRows()
+{
+    const Mii::MiiRecord& record = editor->Record();
+    SystemMenu::KeyboardRequest request;
+    request.rules.maximumLength = Mii::MiiNameLength;
+
+    if (IsPressed(NicknameButton))
+    {
+        request.title = MessageText(texts, EnterNickname);
+        request.initialText = record.name;
+        isTypingCreator = false;
+        keyboard.Open(request);
+        return true;
+    }
+
+    if (IsPressed(BirthdayButton))
+    {
+        Ask(ProfileQuestion::Month);
+        return true;
+    }
+
+    if (IsPressed(GenderButton))
+    {
+        Ask(ProfileQuestion::Gender);
+        return true;
+    }
+
+    if (IsPressed(ColorButtonPane))
+    {
+        Ask(ProfileQuestion::FavoriteColor);
+        return true;
+    }
+
+    if (IsPressed(CreatorButton))
+    {
+        std::vector<std::u16string> creators;
+        std::set<std::u16string> seen;
+        for (const StoredMii& stored : data.Miis())
+        {
+            const std::u16string& creator = stored.record.creatorName;
+            if (!creator.empty() && seen.insert(creator).second)
+                creators.push_back(creator);
+        }
+        creatorChoices = creators;
+        profile.SetCreatorNames(creators);
+        Ask(ProfileQuestion::Creator);
+        return true;
+    }
+
+    if (IsPressed(FavoriteButton))
+    {
+        editor->SetFavorite(!record.isFavorite);
+        services.sounds.Request(record.isFavorite ? "SEQ_FAVORITE_ON" : "SEQ_FAVORITE_OFF");
+        RefreshProfile();
+        return true;
+    }
+
+    if (!Mii::IsSpecialMii(record) && IsPressed(MingleButton))
+    {
+        Ask(ProfileQuestion::Mingle);
+        return true;
+    }
+    return false;
+}
+
+void EditorScreen::Ask(ProfileQuestion question)
+{
+    askedQuestion = question;
+    profile.Ask(question, false);
+}
+
+// The birthday asks for the month and then for the day; "?" in either is no birthday. A new creator name is typed on the keyboard.
+void EditorScreen::HandleDialogAnswers()
+{
+    if (!askedQuestion)
+        return;
+
+    std::optional<ProfileAnswer> answer = profile.TakeAnswer();
+    if (!answer)
+        return;
+
+    ProfileQuestion question = *askedQuestion;
+    askedQuestion.reset();
+    if (answer->wasCancelled)
+        return;
+
+    switch (question)
+    {
+    case ProfileQuestion::Month:
+        if (answer->choice == 0)
+        {
+            editor->SetBirthday(0, 0);
+            break;
+        }
+        chosenBirthMonth = answer->choice;
+        Ask(ProfileQuestion::Day);
+        return;
+    case ProfileQuestion::Day:
+        if (answer->choice == 0)
+            editor->SetBirthday(0, 0);
+        else
+            editor->SetBirthday(chosenBirthMonth, answer->choice);
+        break;
+    case ProfileQuestion::Gender:
+        editor->SetGender(answer->choice == 1 ? Mii::Gender::Female : Mii::Gender::Male);
+        break;
+    case ProfileQuestion::FavoriteColor:
+        editor->ChooseColor(ColorPart::Favorite, answer->choice);
+        break;
+    case ProfileQuestion::Creator:
+        if (answer->choice == ProfileDialog::NewCreatorChoice)
+        {
+            SystemMenu::KeyboardRequest request;
+            request.rules.maximumLength = Mii::MiiNameLength;
+            request.title = MessageText(texts, EnterCreatorName);
+            request.initialText = editor->Record().creatorName;
+            isTypingCreator = true;
+            keyboard.Open(request);
+            return;
+        }
+        editor->SetCreatorName(creatorChoices.at(answer->choice));
+        break;
+    case ProfileQuestion::Mingle:
+        editor->SetMingles(answer->choice == 1);
+        break;
+    case ProfileQuestion::HowToMake:
+        break;
+    }
+    RefreshProfile();
+}
+
+void EditorScreen::HandleKeyboardAnswer()
+{
+    std::optional<SystemMenu::KeyboardAnswer> answer = keyboard.TakeAnswer();
+    if (!answer || !answer->wasConfirmed)
+        return;
+
+    if (isTypingCreator)
+        editor->SetCreatorName(answer->text);
+    else
+        editor->SetNickname(answer->text);
+    RefreshProfile();
+}
+
+void EditorScreen::HandleMessageAnswer()
+{
+    std::optional<MessageAnswer> answer = message.TakeAnswer();
+    if (!answer)
+        return;
+
+    Pending answered = pending;
+    pending = Pending::Nothing;
+
+    if (answered == Pending::QuitChoice)
+    {
+        if (*answer == MessageAnswer::FirstChoice)
+        {
+            Save();
+        }
+        else if (*answer == MessageAnswer::SecondChoice)
+        {
+            pending = Pending::QuitWithoutSaving;
+            message.AskQuestion(MiiMessage::QuitWithoutSaving);
+        }
+        return;
+    }
+
+    if (answered == Pending::QuitWithoutSaving && *answer == MessageAnswer::Yes)
+    {
+        services.sounds.Request(NoSaveSound);
+        result = EditorResult{false, editedSlot};
+        editor.reset();
+        return;
+    }
+
+    if (answered == Pending::CompleteProfile)
+        ShowPage(EditorPage::Profile);
+}
+
+void EditorScreen::AskQuit()
+{
+    services.sounds.Request(QuitSound);
+    pending = Pending::QuitChoice;
+    message.OfferThreeChoices(MiiMessage::SaveAndQuit, MiiMessage::QuitWithoutSavingButton, MiiMessage::Cancel);
+}
+
+// A Mii needs a nickname before it can be saved (the face library refuses a record without one). A new Mii goes into the first free slot.
+void EditorScreen::Save()
+{
+    Mii::MiiRecord record = editor->Record();
+    if (record.name.empty())
+    {
+        pending = Pending::CompleteProfile;
+        message.ShowNotice(MiiMessage::CompleteTheProfile);
+        return;
+    }
+
+    if (!editedSlot)
+    {
+        if (data.IsFull())
+        {
+            pending = Pending::PlazaIsFull;
+            message.ShowNotice(MiiMessage::PlazaIsFullCannotCreate);
+            return;
+        }
+
+        editedSlot = data.AddMii(record);
+    }
+    else
+    {
+        data.ReplaceMii(*editedSlot, record);
+    }
+
+    services.sounds.Request(SaveSound);
+    result = EditorResult{true, editedSlot};
+    editor.reset();
+}
+
+bool EditorScreen::IsPressed(std::string_view buttonPane) const
+{
+    PlayerOneInput input = ReadPlayerOne(services);
+    if (!input.pointer || !input.WasPressed(Input::RemoteButtons::A))
+        return false;
+
+    return layout->IsPointInPane(buttonPane, *input.pointer);
+}
+
+PictureRectangle EditorScreen::RectangleOf(std::string_view paneName) const
+{
+    const Formats::Pane& pane = layout->PaneNamed(paneName);
+    std::optional<Formats::Vector2> middle = layout->PointOfPaneInPicture(paneName, {0, 0});
+    std::optional<Formats::Vector2> corner = layout->PointOfPaneInPicture(paneName, {pane.width / 2, pane.height / 2});
+    if (!middle || !corner)
+        return {};
+
+    return {*middle, {corner->x - middle->x, corner->y - middle->y}};
+}
+
+std::optional<ColorPart> EditorScreen::ColorPartOf(EditorPart part) const
+{
+    switch (part)
+    {
+    case EditorPart::FaceShape:
+    case EditorPart::MakeUp:
+        return ColorPart::Skin;
+    case EditorPart::Hair:
+        return ColorPart::Hair;
+    case EditorPart::Eyebrows:
+        return ColorPart::Eyebrows;
+    case EditorPart::Eyes:
+        return ColorPart::Eyes;
+    case EditorPart::Mouth:
+        return ColorPart::Mouth;
+    case EditorPart::Glasses:
+        return ColorPart::Glasses;
+    case EditorPart::Mustache:
+    case EditorPart::Beard:
+        return ColorPart::FacialHair;
+    default:
+        return std::nullopt;
+    }
+}
+
+}

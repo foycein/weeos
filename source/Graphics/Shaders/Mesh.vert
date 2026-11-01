@@ -57,7 +57,7 @@ void main()
     vec3 meshNormal = corner.normalAndT.xyz;
     if (mesh.boneCount != 0u)
     {
-        Bone bone = bones[mesh.firstBone + corner.boneNumberAndUnused.x];
+        Bone bone = bones[mesh.firstBone + corner.boneNumberAndColor.x];
         meshPosition = TransformByRows(bone.pointMatrix, vec4(meshPosition, 1.0));
         meshNormal = TransformByRows(bone.normalMatrix, vec4(meshNormal, 0.0));
     }
@@ -75,6 +75,8 @@ void main()
     rasterColor = OpaqueWhite;
     if (mesh.hasLight != 0u)
         rasterColor = LightAtCorner(mesh, viewPosition, viewNormal);
+    if (mesh.usesCornerColors != 0u)
+        rasterColor = unpackUnorm4x8(corner.boneNumberAndColor.y);
 
     vec2 coordinates = vec2(corner.positionAndS.w, corner.normalAndT.w);
     if (mesh.textureCoordinatesFromNormal != 0u)

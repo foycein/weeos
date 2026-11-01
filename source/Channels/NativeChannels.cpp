@@ -2,6 +2,7 @@
 
 #include "Channels/ChannelFiles.h"
 #include "Channels/InternetChannel.h"
+#include "Channels/MiiChannel/MiiChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
 
@@ -27,12 +28,15 @@ constexpr WiiConnect24ChannelFiles NewsFiles = {
 // The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
 // the Shop HomeButton2 (0x802F75B8).
 constexpr std::size_t WiiMenuAndReset = 2;
-constexpr ChannelSharedFiles ForecastSharedFiles = {7, 6, "./HomeButton3", true, WiiMenuAndReset};
-constexpr ChannelSharedFiles NewsSharedFiles = {7, 6, "./HomeButton3", true, WiiMenuAndReset};
-constexpr ChannelSharedFiles ShopSharedFiles = {9, 7, "./HomeButton2", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles ForecastSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles NewsSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles ShopSharedFiles = {std::uint16_t{9}, 7, "./HomeButton2", true, WiiMenuAndReset};
+
+// The Mii Channel 6 has no content of the system fonts; its content 4 is the shared HomeButton2 (the strings of 8001C330 of its program).
+constexpr ChannelSharedFiles MiiSharedFiles = {std::nullopt, 4, "./HomeButton2", true, WiiMenuAndReset};
 
 // The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
-constexpr ChannelSharedFiles InternetSharedFiles = {8, 5, "homebutton", false, WiiMenuAndReset};
+constexpr ChannelSharedFiles InternetSharedFiles = {std::uint16_t{8}, 5, "homebutton", false, WiiMenuAndReset};
 
 // A sound archive of a channel: the content that holds it, its path there, and whether it is packed with Huffman.
 struct ChannelSoundArchive
@@ -49,6 +53,10 @@ constexpr std::array<ChannelSoundArchive, 2> ForecastSounds = {{{9, "./rev_wtr.b
 constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsar", false}, HomeButton3Sounds}};
 constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSound.brsar", false}}};
 
+// The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts (CHN-42).
+constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/NigaoeSound.brsar", false},
+    {4, "./HomeButton2/Huf8_HomeButtonSe.brsar", true}}};
+
 std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 {
     if (titleId == ForecastChannelTitleId)
@@ -59,6 +67,9 @@ std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 
     if (titleId == WiiShopChannelTitleId)
         return ShopSounds;
+
+    if (titleId == MiiChannelTitleId)
+        return MiiSounds;
 
     return {};
 }
@@ -94,6 +105,9 @@ std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)
     if (titleId == InternetChannelTitleId)
         return InternetSharedFiles;
 
+    if (titleId == MiiChannelTitleId)
+        return MiiSharedFiles;
+
     return std::nullopt;
 }
 
@@ -115,6 +129,9 @@ std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& serv
 
     if (titleId == InternetChannelTitleId)
         return std::make_unique<InternetChannel>(services);
+
+    if (titleId == MiiChannelTitleId)
+        return std::make_unique<MiiChannel>(services);
 
     return nullptr;
 }
