@@ -36,6 +36,26 @@ constexpr std::wstring_view NandImageFileName = L"nand.bin";
 
 }
 
+namespace
+{
+
+// A channel starts when WeeOS has a program for it and its IOS is installed. A new console without the IOS of a channel
+// (docs/audit/Portable.md) shows the menu's message that the channel cannot be used, as for a channel without a program.
+bool CanStart(const Ios::TitleService& titles, Ios::TitleId titleId)
+{
+    if (!Channels::HasNativeProgram(titleId))
+        return false;
+
+    Ios::Result<Formats::TitleMetadata> metadata = titles.ReadTitleMetadata(titleId);
+    if (metadata.Failed())
+        return false;
+
+    Ios::TitleId iosTitleId = Ios::TitleId::FromValue(metadata.Value().requiredSystemVersion);
+    return titles.ReadTitleMetadata(iosTitleId).Succeeded();
+}
+
+}
+
 std::optional<std::filesystem::path> PickNandWithWindows()
 {
     return Platform::PickFile(std::wstring(NandPickerTitle), std::wstring(NandImageFileName));
@@ -138,7 +158,8 @@ private:
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
-        menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
+        Ios::TitleService& titles = iosServices.GetTitles();
+        menu->Services().titleLaunch.SetProgramCheck([&titles](Ios::TitleId titleId) { return CanStart(titles, titleId); });
 
         dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
