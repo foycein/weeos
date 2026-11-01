@@ -31,6 +31,7 @@ add_library(Channels STATIC
     ShopChannel.cpp
     WiiConnect24Channel.cpp
     WiiSpeak/AddressBookScreen.cpp
+    WiiSpeak/ChatPhotos.cpp
     WiiSpeak/ChatRoomScreen.cpp
     WiiSpeak/CreateMessageScreen.cpp
     WiiSpeak/MicrophoneLevel.cpp

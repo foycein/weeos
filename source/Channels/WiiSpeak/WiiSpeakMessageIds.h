@@ -146,6 +146,17 @@ constexpr std::uint32_t WiiConnect24CannotReachTheInternet = WiiSpeakMessageId(5
 
 // Group 50000: Show Photos.
 constexpr std::uint32_t PhotoNotSupported = WiiSpeakMessageId(50000, 3);
+constexpr std::uint32_t ZoomOut = WiiSpeakMessageId(50000, 7);
+constexpr std::uint32_t ZoomIn = WiiSpeakMessageId(50000, 8);
+constexpr std::uint32_t ChangePhotoLocation = WiiSpeakMessageId(50000, 9);
+constexpr std::uint32_t FinishThumbnails = WiiSpeakMessageId(50000, 10);
+constexpr std::uint32_t ChoosePhotoLocation = WiiSpeakMessageId(50000, 23);
+constexpr std::uint32_t PhotoBack = WiiSpeakMessageId(50000, 24);
+constexpr std::uint32_t DigitalCameraOrCellPhone = WiiSpeakMessageId(50000, 25);
+constexpr std::uint32_t SdCardsOnly = WiiSpeakMessageId(50000, 26);
+constexpr std::uint32_t WiiMessageBoardPhotos = WiiSpeakMessageId(50000, 72);
+constexpr std::uint32_t NoPhotosOnTheMessageBoard = WiiSpeakMessageId(50000, 82);
+constexpr std::uint32_t PhotoThumbnails = WiiSpeakMessageId(50000, 86);
 constexpr std::uint32_t FinishPhotoSelection = WiiSpeakMessageId(50000, 14);
 constexpr std::uint32_t InsertTheSdCard = WiiSpeakMessageId(50000, 30);
 constexpr std::uint32_t SdCardUnreadable = WiiSpeakMessageId(50000, 34);

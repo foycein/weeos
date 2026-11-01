@@ -152,7 +152,7 @@ void AddressBookScreen::TakeTheWiiNumber(const std::u16string& typed)
 {
     typing = Typing::Nothing;
     std::optional<std::uint64_t> wiiNumber = ReadWiiNumber(typed);
-    if (!wiiNumber)
+    if (!wiiNumber || !IsValidWiiNumber(*wiiNumber))
     {
         session.ShowMessage(WiiSpeakText::WiiNumberIncorrect, {WiiSpeakText::Ok});
         return;

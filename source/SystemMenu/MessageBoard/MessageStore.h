@@ -79,6 +79,9 @@ public:
     // The messages that lie on a day, the newest first. Records that cannot be read are left out, as the board leaves them out.
     std::vector<StoredMessage> MessagesOfDay(BoardDay day);
 
+    // The days whose folders hold records, the oldest first: every day a program that looks through the whole board reads.
+    std::vector<BoardDay> DaysWithRecords();
+
     // The records of a day that the bar of the Wii Menu counts: letters, memos and play logs (0x81391904).
     int CountMessagesOfDay(BoardDay day);
 
