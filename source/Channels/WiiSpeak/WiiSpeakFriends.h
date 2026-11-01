@@ -55,4 +55,8 @@ std::u16string WiiNumberText(std::uint64_t wiiNumber);
 // The number of 16 digits that the user typed. Nothing when the text is not 16 digits.
 std::optional<std::uint64_t> ReadWiiNumber(std::u16string_view typed);
 
+// The check of a Wii number as the NWC24 library of the program makes it (0x802AA7F4, NWC24CheckUserId): the 53 bits of the number
+// are unscrambled (0x802AA99C) and must be a multiple of the polynomial 0x635, which the generator of the numbers built in.
+bool IsValidWiiNumber(std::uint64_t wiiNumber);
+
 }

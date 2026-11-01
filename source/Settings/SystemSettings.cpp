@@ -24,6 +24,8 @@ constexpr std::string_view LocationName = "IPL.SADR";
 constexpr std::string_view NicknameName = "IPL.NIK";
 constexpr std::string_view PointerSensitivityName = "BT.SENS";
 constexpr std::string_view RumbleName = "BT.MOT";
+constexpr std::string_view SpeakerVolumeName = "BT.SPKV";
+constexpr std::uint8_t HighestSpeakerVolume = 127;
 constexpr std::string_view SensorBarPositionName = "BT.BAR";
 constexpr std::string_view SoundModeName = "IPL.SND";
 
@@ -305,6 +307,21 @@ bool SystemSettings::IsRumbleOn() const
 void SystemSettings::SetRumble(bool isOn)
 {
     StoreNumber(RumbleName, Formats::SettingType::Byte, FlagNumber(isOn));
+}
+
+std::uint8_t SystemSettings::GetSpeakerVolume() const
+{
+    std::optional<std::uint64_t> number = configuration.FindNumber(SpeakerVolumeName);
+    if (!number)
+        return DefaultSpeakerVolume;
+
+    return static_cast<std::uint8_t>(std::min<std::uint64_t>(*number, HighestSpeakerVolume));
+}
+
+void SystemSettings::SetSpeakerVolume(std::uint8_t volume)
+{
+    std::uint8_t storedVolume = std::min(volume, HighestSpeakerVolume);
+    StoreNumber(SpeakerVolumeName, Formats::SettingType::Byte, storedVolume);
 }
 
 const Formats::SystemConfiguration& SystemSettings::Configuration() const

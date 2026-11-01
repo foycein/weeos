@@ -2,6 +2,8 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
+#include "Channels/WaitingMark.h"
+
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuLayout.h"
@@ -40,12 +42,16 @@ struct WiiConnect24ChannelFiles
 
     // The shared content of the HOME Button Menu, which holds the hands of the four players.
     std::uint16_t homeMenuContentIndex;
+
+    // The mark under "One moment, please..." that shows that the channel is busy.
+    WaitingMarkLook waitingMark;
 };
 
 // The Forecast and the News Channel (docs/research/Channels.md 5.5 and 6.4). Both need their data from a server before they can show
 // anything. Their server is the owner's own server, which does not exist yet (docs/DECISIONS.md, Online): the channel fades in
-// "One moment, please..." (layout error1) while its download tries to reach the server, fades out when the download fails, and fades in
-// the error layout error0 with the message of the failure, the error code under it and the button "Back to the Wii Menu".
+// "One moment, please..." (layout error1) with its waiting mark under it while its download tries to reach the server, fades out when
+// the download fails, and fades in the error layout error0 with the message of the failure, the error code under it and the button
+// "Back to the Wii Menu".
 // The message and the code are the ones of the WiiConnect24 download of the original (CHN-04): the Internet cannot be reached while the
 // PC is not connected or the name of the server is not known, the service is unavailable while the server does not answer.
 // The order of the fades is the original's (Forecast 0x8000AD28), the choice of the message is the one of 0x8000B46C.
@@ -76,6 +82,7 @@ public:
     SystemMenu::CursorManager& Hands() override;
 
     Stage CurrentStage() const;
+    const WaitingMark& Mark() const;
 
     // The message of the error layout, and the text of the error code under it, for example "Error Code: 107304".
     // Nothing and an empty text while the download still tries.
@@ -108,6 +115,7 @@ private:
     std::unique_ptr<SystemMenu::MenuLayout> oneMomentLayout;
     std::unique_ptr<SystemMenu::MenuLayout> errorLayout;
     std::unique_ptr<SystemMenu::CursorManager> cursors;
+    std::unique_ptr<WaitingMark> waitingMark;
     int errorMessageCount;
     Stage stage = Stage::OneMoment;
 };

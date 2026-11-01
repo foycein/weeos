@@ -2,6 +2,7 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
+#include "Channels/Manual/ManualViewer.h"
 #include "Channels/NativeChannels.h"
 
 #include "SystemMenu/HomeMenu/HomeButton.h"
@@ -26,7 +27,8 @@ namespace Channels
 // and the System Menu is asked for.
 //
 // HOME opens the HOME Button Menu of the channel's own files, as the HBM library inside every channel program does. While it is open
-// the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again (CHN-16).
+// the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again (CHN-16), and its
+// "Operations Guide" opens the channel's manual over the channel, which stands still until HOME closes the manual (CHN-13).
 // The POWER button switches the console off and the RESET button starts it again (CHN-27).
 // When the user closes the window, the question "Turn off WeeOS?" of the menu lies over the channel (AskToTurnOff).
 class ChannelSystem
@@ -57,6 +59,9 @@ public:
     Channel& RunningChannel();
     bool IsHomeMenuOpen() const;
 
+    // The manual while it is open, or nothing.
+    ManualViewer* OpenManualViewer();
+
     // Asks "Turn off WeeOS?" over the channel; the channel stands still until the user answers, and Yes is the POWER button.
     void AskToTurnOff();
     bool IsAskingToTurnOff() const;
@@ -72,6 +77,8 @@ private:
     SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
     SystemMenu::HomeButtonConnections ConnectHomeButton();
     void LeaveThroughHomeMenu(std::size_t bigButton);
+    void OpenChannelManual();
+    void UpdateManual();
     void FollowHomeButtonPermission();
     void AnswerFrontPanel();
     void PressPowerButton();
@@ -93,6 +100,8 @@ private:
     ChannelServices services;
     std::unique_ptr<Channel> channel;
     std::unique_ptr<SystemMenu::HomeButton> homeButton;
+    std::unique_ptr<ManualViewer> manual;
+    bool isClosingManual = false;
     std::unique_ptr<TurnOffParts> turnOff;
     SystemMenu::TitleLaunchRequest titleLaunch;
     bool hasAskedForMenu = false;

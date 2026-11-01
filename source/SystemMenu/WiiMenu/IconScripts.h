@@ -61,8 +61,23 @@ private:
     std::map<int, bool> isLoopByNumber;
 };
 
-// Does what the script of the icon does when the tile is made and the channel has no data.
-void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animations);
+// Does what the script of the icon does when the tile is made. Only the Photo Channel has data that WeeOS can hold: the photo it
+// posted to the Wii Menu.
+void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animations, bool hasPostedPhoto = false);
+
+// The pictures of the Photo Channel's icon with the photo posted to the Wii Menu (noerase/photo_i.dat) in place of the texture of the
+// pane pic_photo, plate1.tpl, as the script puts it there (Photo.icon). The archive must outlive the pictures.
+class PostedPhotoPictures : public Layout::PictureSource
+{
+public:
+    PostedPhotoPictures(const Layout::LayoutArchive& iconArchive, Formats::RgbaImage postedPhoto);
+
+    std::optional<Formats::RgbaImage> FindPicture(const std::string& textureFileName) const override;
+
+private:
+    const Layout::LayoutArchive& archive;
+    Formats::RgbaImage photo;
+};
 
 // The name of the animation file of a script animation, for example "icon_Rso0".
 std::string ScriptAnimationName(int number);

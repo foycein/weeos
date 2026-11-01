@@ -81,7 +81,7 @@ private:
     void RunStepOfTheTurnOffQuestion();
     void DrawTheTurnOffQuestion();
     HomeButtonConnections ConnectHomeButton();
-    void SaveRumble(bool isRumbleOn);
+    void SaveRemoteSettings(std::uint8_t speakerVolumeSetting, bool isRumbleOn);
 
     Display display;
     MenuFiles files;

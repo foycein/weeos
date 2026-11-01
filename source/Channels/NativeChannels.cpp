@@ -20,19 +20,32 @@ namespace Channels
 namespace
 {
 
+// The waiting marks under "One moment, please...": the Forecast's six suns (picture 15 of TPLWeather for the USA and Europe, 0x80179358)
+// at 0.6 of their size 40 pixels apart, 0x8000B6B0; the News' six newspapers (picture 77 of TPLNews) at 0.75, 35 apart, 0x80009710.
+constexpr WaitingMarkLook ForecastWaitingMark = {"./TPLWeather.tpl.LZ", 15, 40, 280, 0.6f, 72, false, false};
+constexpr WaitingMarkLook NewsWaitingMark = {"./TPLNews.tpl.LZ", 77, 35, 280, 0.75f, 71, true, true};
+
 // The Forecast Channel 7 (HAFE): content 9 holds the layouts, content 6 is the shared HOME Button Menu.
 constexpr WiiConnect24ChannelFiles ForecastFiles = {
-    9, "./weather_layout.arc.LZ", "arc/font/font_weather.brfnt", "font_weather.brfnt", 8, 6};
+    9, "./weather_layout.arc.LZ", "arc/font/font_weather.brfnt", "font_weather.brfnt", 8, 6, ForecastWaitingMark};
 
 // The News Channel 7 (HAGE): the same places, its own layouts and font, and one more message, the update the News Channel needs.
 constexpr WiiConnect24ChannelFiles NewsFiles = {
-    9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6};
+    9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6, NewsWaitingMark};
 
 // The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
 // the Shop HomeButton2 (0x802F75B8).
 constexpr std::size_t WiiMenuAndReset = 2;
-constexpr ChannelSharedFiles ForecastSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuAndReset};
-constexpr ChannelSharedFiles NewsSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuAndReset};
+constexpr std::size_t WiiMenuResetAndManual = 3;
+
+// The manuals of the Forecast and the News Channel: html-us.arc of content 10, which their programs open as arc:/html/startup.html
+// (0x8003B2C8 of the Forecast). The browser plays the sounds of the channel by their numbers in the archive, which both archives
+// share: 0x17 for the focus, 0x18 for a choice, 0x16 for scrolling, 0x1B for closing (0x8007E2A8; CHN-13).
+constexpr ManualSounds ManualSoundNames = {"WTR_SE_COM_RECEIVE", "WTR_SE_COM_SUCCESS", "WTR_SE_B_SCROLL", "WTR_SE_COM_BUTTON_B"};
+constexpr ManualLocation WiiConnect24ChannelManual = {10, "html-us.arc", "html/startup.html", ManualSoundNames};
+
+constexpr ChannelSharedFiles ForecastSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuResetAndManual, WiiConnect24ChannelManual};
+constexpr ChannelSharedFiles NewsSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuResetAndManual, WiiConnect24ChannelManual};
 constexpr ChannelSharedFiles ShopSharedFiles = {std::uint16_t{9}, 7, "./HomeButton2", true, WiiMenuAndReset};
 
 // The Mii Channel 6 has no content of the system fonts; its content 4 is the shared HomeButton2 (the strings of 8001C330 of its program).

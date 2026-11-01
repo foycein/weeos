@@ -76,4 +76,8 @@ Formats::Bytes WriteSaveData(const SaveData& saveData);
 // a title of the kinds 0x00010001, 3, 4 or 6 and not the Internet Channel.
 void PutFirstInTheListOfStartedTitles(SaveData& saveData, Ios::TitleId titleId);
 
+// The SD Card Menu explains itself on four pages the first time it opens; a new file says that it has not yet (0x813DDE90).
+bool IsSdCardMenuIntroPending(const SaveData& saveData);
+void MarkSdCardMenuIntroSeen(SaveData& saveData);
+
 }

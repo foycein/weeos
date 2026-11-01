@@ -40,6 +40,18 @@ std::optional<Formats::RgbaImage> DecodeToFit(Formats::ByteView jpegBytes, int l
     return Media::ShrinkPicture(Media::DecodeJpeg(jpegBytes), *factor);
 }
 
+std::optional<Formats::RgbaImage> ShrinkToThumbnail(const std::optional<Formats::RgbaImage>& frame)
+{
+    if (!frame)
+        return std::nullopt;
+
+    std::optional<int> factor = ShrinkFactorToFit(static_cast<int>(frame->width), static_cast<int>(frame->height), ThumbnailLargestWidth,
+        ThumbnailLargestHeight);
+    return Media::ShrinkPicture(*frame, factor.value_or(LargestShrinkFactor));
+}
+
+}
+
 std::optional<Formats::RgbaImage> FirstFrameOfMovie(Formats::ByteView fileBytes, PhotoFileKind kind)
 {
     std::optional<Media::Movie> movie = ReadPlayableMovie(fileBytes, kind);
@@ -50,12 +62,14 @@ std::optional<Formats::RgbaImage> FirstFrameOfMovie(Formats::ByteView fileBytes,
     if (!Formats::IsRangeInside(first.place, first.size, fileBytes.size()))
         return std::nullopt;
 
-    Formats::RgbaImage frame = Media::DecodeMovieFrame(*movie->video, fileBytes.subspan(static_cast<std::size_t>(first.place), first.size));
-    std::optional<int> factor = ShrinkFactorToFit(static_cast<int>(frame.width), static_cast<int>(frame.height), ThumbnailLargestWidth,
-        ThumbnailLargestHeight);
-    return Media::ShrinkPicture(frame, factor.value_or(LargestShrinkFactor));
-}
-
+    try
+    {
+        return Media::DecodeMovieFrame(*movie->video, fileBytes.subspan(static_cast<std::size_t>(first.place), first.size));
+    }
+    catch (const Formats::FormatError&)
+    {
+        return std::nullopt;
+    }
 }
 
 std::optional<int> ShrinkFactorToFit(int width, int height, int largestWidth, int largestHeight)
@@ -127,7 +141,7 @@ std::optional<Formats::RgbaImage> MakeThumbnail(Formats::ByteView fileBytes, Pho
     try
     {
         if (kind != PhotoFileKind::Photo)
-            return FirstFrameOfMovie(fileBytes, kind);
+            return ShrinkToThumbnail(FirstFrameOfMovie(fileBytes, kind));
 
         Media::ExifInformation exif = Media::ReadExifInformation(fileBytes);
         std::optional<Formats::RgbaImage> thumbnail;

@@ -28,6 +28,9 @@ public:
     // Opacity from 0 (not seen) to 1. The picture is magnified by zoom around the middle of the box.
     void DrawInside(const PictureBox& box, float opacity = 1, float zoom = 1) const;
 
+    // Draws a part of the picture into the whole box. The part is given in shares of the picture, from 0 to 1, from the top left.
+    void DrawPart(const PictureBox& box, Formats::Vector2 partTopLeft, Formats::Vector2 partBottomRight) const;
+
 private:
     Graphics::GraphicsDevice& device;
     Graphics::TextureHandle texture;

@@ -51,6 +51,9 @@ struct LoadedChannel
     // What WeeOS does instead of the script, and the numbers of the animations icon_Rso0 to icon_Rso15 that the icon has for it.
     IconScript iconScript = IconScript::None;
     std::vector<int> scriptAnimationNumbers;
+
+    // The photo that the Photo Channel posted to the Wii Menu, which its icon shows.
+    std::optional<Formats::RgbaImage> postedPhoto;
 };
 
 // The animation of an icon, as the grid chooses it: an icon that a script drives plays icon_Start, when it has it, and the script
@@ -96,6 +99,10 @@ public:
     // The channel at the place starts now (0x813B97FC): the menu opens on its page when it comes back, and a downloaded channel goes to the
     // front of the list of started titles. Saves the file.
     void RememberChannelThatStarts(SlotPosition position);
+
+    // Whether the SD Card Menu has still to explain itself. Marking it seen saves the file (0x813DDCD8).
+    bool IsSdCardMenuIntroPending() const;
+    void MarkSdCardMenuIntroSeen();
 
     // The files of the title at the place, read the first time they are asked for. Throws a MenuError for a place without a title.
     const LoadedChannel& LoadChannel(SlotPosition position);

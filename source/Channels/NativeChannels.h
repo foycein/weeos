@@ -2,6 +2,7 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
+#include "Channels/Manual/ManualViewer.h"
 
 #include "SystemMenu/TitleContents.h"
 
@@ -37,9 +38,12 @@ struct ChannelSharedFiles
     std::string_view homeMenuFolder;
     bool isHomeMenuPacked;
 
-    // The big buttons of the HOME menu that WeeOS offers: "Wii Menu" and "Reset". The third one of HomeButton3 opens the channel's
-    // manual, which is not built (CHN-13), so it is left out.
+    // The big buttons of the HOME menu that WeeOS offers: "Wii Menu" and "Reset", and for the channels of HomeButton3 the third one,
+    // "Operations Guide", which opens the channel's manual.
     std::size_t offeredHomeMenuButtons;
+
+    // Where the manual is, for a channel whose HOME menu offers it.
+    std::optional<ManualLocation> manual;
 };
 
 std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId);

@@ -32,6 +32,7 @@ constexpr std::uint16_t ConsoleFontsContentIndex = 5;
 // The big buttons of the HOME menu of a channel.
 constexpr std::size_t WiiMenuButton = 0;
 constexpr std::size_t ResetButton = 1;
+constexpr std::size_t ManualButton = 2;
 
 ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 {
@@ -117,6 +118,14 @@ void ChannelSystem::Update()
     }
     FollowHomeButtonPermission();
 
+    if (manual)
+    {
+        UpdateManual();
+        channel->Hands().Update(input);
+        fader.Calculate();
+        return;
+    }
+
     // The HOME button is seen before the channel moves on, so a press stops the channel in the step it came.
     bool wasHomeMenuOpen = homeButton->IsOpen();
     homeButton->Update();
@@ -144,7 +153,11 @@ void ChannelSystem::Draw()
 // The HOME menu lies over the channel and draws the hands; while it is closed it draws the hands of the channel.
 void ChannelSystem::DrawScene()
 {
-    channel->Draw();
+    if (manual)
+        manual->Draw();
+    else
+        channel->Draw();
+
     homeButton->Draw();
     if (IsAskingToTurnOff())
     {
@@ -172,6 +185,11 @@ Channel& ChannelSystem::RunningChannel()
 bool ChannelSystem::IsHomeMenuOpen() const
 {
     return homeButton->IsOpen();
+}
+
+ManualViewer* ChannelSystem::OpenManualViewer()
+{
+    return manual.get();
 }
 
 void ChannelSystem::AskToTurnOff()
@@ -242,11 +260,50 @@ SystemMenu::HomeButtonConnections ChannelSystem::ConnectHomeButton()
 void ChannelSystem::LeaveThroughHomeMenu(std::size_t bigButton)
 {
     fader.SetCovered();
+    if (bigButton == ManualButton)
+    {
+        OpenChannelManual();
+        return;
+    }
+
     hasAskedForMenu = true;
     if (bigButton == ResetButton)
         titleLaunch.Request(runningTitle);
     else if (bigButton == WiiMenuButton)
         titleLaunch.Request(Ios::SystemMenuTitleId);
+}
+
+// "Operations Guide" of the HOME menu: the menu has made the picture black, and the manual fades in from black.
+void ChannelSystem::OpenChannelManual()
+{
+    if (!sharedFiles.manual)
+        return;
+
+    manual = OpenManual(services, *sharedFiles.manual);
+    isClosingManual = false;
+    homeButton->ShowPictureAgain();
+    fader.StartFadeIn();
+}
+
+// HOME in the manual fades it out; then the channel fades in where it stood.
+void ChannelSystem::UpdateManual()
+{
+    if (!isClosingManual)
+        manual->Update();
+
+    bool canStartClosing = manual->WantsToClose() && !isClosingManual && fader.GetStatus() == SystemMenu::FaderStatus::Clear;
+    if (canStartClosing)
+    {
+        fader.StartFadeOut();
+        isClosingManual = true;
+    }
+
+    if (isClosingManual && fader.GetStatus() == SystemMenu::FaderStatus::Covered)
+    {
+        manual.reset();
+        isClosingManual = false;
+        fader.StartFadeIn();
+    }
 }
 
 // A channel can keep the HOME menu shut for a while; HOME then shows the picture that says so.

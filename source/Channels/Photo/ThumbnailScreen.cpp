@@ -41,7 +41,7 @@ public:
     ThumbnailScreen(PhotoSession& photoSession, int firstShownFile)
         : session(photoSession)
         , buttons(session.MakeLayout("thumb"))
-        , quitQuestion(session.MakeLayout("thumb_quit1"))
+        , quitQuestion(session.MakeLayout(session.HasChangedPhotos() ? "thumb_quit2" : "thumb_quit1"))
         , unsupportedMarker(MakeUnsupportedMarker(session.Services().display.Device()))
     {
         firstRow = firstShownFile / Columns();
@@ -143,7 +143,7 @@ private:
     void MakeThumbnail(int index)
     {
         const PhotoFile& file = session.library.files[index];
-        std::optional<Formats::Bytes> bytes = ReadCardFile(session.Services().storage.sdCard, file.path);
+        std::optional<Formats::Bytes> bytes = session.FileBytes(index);
         std::optional<Formats::RgbaImage> picture;
         if (bytes)
             picture = Channels::MakeThumbnail(*bytes, file.kind);
