@@ -5,6 +5,7 @@ add_library(Media STATIC
     InverseDct.cpp
     JpegBitReader.cpp
     JpegDecoder.cpp
+    JpegEncoder.cpp
     JpegFrame.cpp
     JpegHuffmanTable.cpp
     JpegPicture.cpp
