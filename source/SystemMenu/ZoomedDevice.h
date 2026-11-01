@@ -25,6 +25,10 @@ public:
     void SetScissor(const Graphics::ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Graphics::Quad& quad, const Graphics::Material& material) override;
+
+    // The lists of channels draw no meshes; a mesh is drawn as it is.
+    void DrawMesh(std::span<const Graphics::MeshVertex> triangleCorners, const Graphics::MeshPlacement& placement,
+        const Graphics::Material& material) override;
     Graphics::TextureHandle BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;

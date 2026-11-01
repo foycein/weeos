@@ -34,10 +34,6 @@ struct BannerContent
     bool isIconDrivenByCode = false;
     bool isBannerDrivenByCode = false;
 
-    // The channel works only with a connection to the Internet: the menu asks for the Internet settings before it starts it
-    // when no connection has passed its test.
-    bool needsInternetConnection = false;
-
     U8Archive files;
 };
 

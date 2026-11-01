@@ -9,6 +9,7 @@
 #include "SystemMenu/DataManagement/DataManagementServices.h"
 #include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
+#include "SystemMenu/MenuSound.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -36,11 +37,12 @@ class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
-        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener)
+        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound)
         : window(programWindow)
+        , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote())
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound)
         , wiiMenuConsole(iosServices)
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
@@ -56,6 +58,7 @@ public:
 
     ~Session()
     {
+        sound.StopAllSounds();
         window.SetListener(nullptr);
     }
 
@@ -68,12 +71,20 @@ public:
         return menu.get();
     }
 
+    // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
     void Update()
     {
         if (menu)
+        {
             menu->Update();
+            PlaySoundsOfTheStep();
+        }
         else
+        {
             channel->Update();
+        }
+
+        virtualRemote.TakeSpeakerSounds();
     }
 
     void Draw()
@@ -111,6 +122,19 @@ private:
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
             SystemMenu::ReadMenuCertificates(menu->Services().program)});
         menu->Services().dataManagement = dataManagement.get();
+
+        Sound::SoundSystem* soundSystem = sound.Start(menu->Services().files.ReadFile(SystemMenu::MenuSoundArchivePath));
+        if (soundSystem != nullptr)
+            menuSound.emplace(*soundSystem);
+    }
+
+    // What the screens asked to hear in the step that has just run, in the sound mode of the console's settings, which the Sound page
+    // of Wii Settings changes at once.
+    void PlaySoundsOfTheStep()
+    {
+        sound.SetSoundMode(wiiSettings.SoundMode());
+        if (menuSound)
+            menuSound->PlayRequests(menu->Services().sounds);
     }
 
     void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
@@ -120,6 +144,7 @@ private:
     }
 
     Platform::Window& window;
+    ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
     WiiSettingsServices wiiSettings;
@@ -132,13 +157,15 @@ private:
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
+    std::optional<SystemMenu::MenuSound> menuSound;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders)
+Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)
     : folders(iosFolders)
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
+    , sound(isSilent)
     , pacer(timer.ElapsedSeconds())
 {
     console.PowerOn();
@@ -150,7 +177,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -358,6 +385,11 @@ SystemMenu::MenuSystem& Application::GetMenu()
 Ios::TitleId Application::RunningTitle() const
 {
     return console.GetBootInformation().titleId;
+}
+
+ProgramSound& Application::GetSound()
+{
+    return sound;
 }
 
 Input::VirtualRemote& Application::GetVirtualRemote()

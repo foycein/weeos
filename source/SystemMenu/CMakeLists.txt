@@ -22,6 +22,7 @@ add_library(SystemMenu STATIC
     MenuFonts.cpp
     MenuLayout.cpp
     MenuSettings.cpp
+    MenuSound.cpp
     MenuStateFile.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
@@ -43,7 +44,7 @@ add_library(SystemMenu STATIC
     ZoomedWindow.cpp
 )
 
-target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings)
+target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound)
 
 add_subdirectory(WiiSettings)
 add_subdirectory(BackgroundServices)

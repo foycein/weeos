@@ -32,7 +32,25 @@ std::u16string FriendlyNameOf(IMMDevice& device)
     return text;
 }
 
-std::vector<std::u16string> ListWithCom()
+std::wstring IdentifierOf(IMMDevice& device)
+{
+    LPWSTR identifier = nullptr;
+    if (FAILED(device.GetId(&identifier)))
+        return {};
+
+    std::wstring text = identifier;
+    CoTaskMemFree(identifier);
+    return text;
+}
+
+// The devices that are switched on and plugged in, each with its name and its identifier.
+struct PlaybackDevice
+{
+    std::u16string name;
+    std::wstring identifier;
+};
+
+std::vector<PlaybackDevice> ListWithCom()
 {
     ComPtr<IMMDeviceEnumerator> enumerator;
     if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator))))
@@ -45,7 +63,7 @@ std::vector<std::u16string> ListWithCom()
     UINT deviceCount = 0;
     devices->GetCount(&deviceCount);
 
-    std::vector<std::u16string> names;
+    std::vector<PlaybackDevice> found;
     for (UINT deviceNumber = 0; deviceNumber < deviceCount; ++deviceNumber)
     {
         ComPtr<IMMDevice> device;
@@ -54,24 +72,44 @@ std::vector<std::u16string> ListWithCom()
 
         std::u16string name = FriendlyNameOf(*device.Get());
         if (!name.empty())
-            names.push_back(name);
+            found.push_back({name, IdentifierOf(*device.Get())});
     }
 
-    return names;
+    return found;
+}
+
+std::vector<PlaybackDevice> ListPlaybackDevices()
+{
+    HRESULT started = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    std::vector<PlaybackDevice> devices = ListWithCom();
+
+    // A thread that has COM already in another mode keeps it; only a start that worked is ended again.
+    if (SUCCEEDED(started))
+        CoUninitialize();
+
+    return devices;
 }
 
 }
 
 std::vector<std::u16string> ListPlaybackDeviceNames()
 {
-    HRESULT started = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    std::vector<std::u16string> names = ListWithCom();
-
-    // A thread that has COM already in another mode keeps it; only a start that worked is ended again.
-    if (SUCCEEDED(started))
-        CoUninitialize();
+    std::vector<std::u16string> names;
+    for (const PlaybackDevice& device : ListPlaybackDevices())
+        names.push_back(device.name);
 
     return names;
+}
+
+std::optional<std::wstring> FindPlaybackDeviceId(std::u16string_view deviceName)
+{
+    for (const PlaybackDevice& device : ListPlaybackDevices())
+    {
+        if (device.name == deviceName)
+            return device.identifier;
+    }
+
+    return std::nullopt;
 }
 
 }

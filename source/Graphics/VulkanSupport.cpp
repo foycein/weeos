@@ -30,7 +30,7 @@ void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const ImageTr
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = image,
-        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        .subresourceRange = {transition.aspect, 0, 1, 0, 1},
     };
 
     VkDependencyInfo dependencyInfo = {

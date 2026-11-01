@@ -55,6 +55,12 @@ void ZoomedDevice::DrawQuad(const Graphics::Quad& quad, const Graphics::Material
     target.DrawQuad(zoomedQuad, material);
 }
 
+void ZoomedDevice::DrawMesh(std::span<const Graphics::MeshVertex> triangleCorners, const Graphics::MeshPlacement& placement,
+    const Graphics::Material& material)
+{
+    target.DrawMesh(triangleCorners, placement, material);
+}
+
 Graphics::TextureHandle ZoomedDevice::BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height)
 {
     return target.BeginOffscreen(canvas, width, height);

@@ -82,7 +82,6 @@ constexpr std::string_view SetSound = "WIPL_SE_CH_SET";
 constexpr std::string_view NotMovedSound = "WIPL_SE_CH_NOT_MOVE";
 constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 constexpr std::string_view StartSound = "WIPL_SE_WII_START";
-constexpr std::string_view MenuMusic = "WIPL_BGM_MENU";
 
 // While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
@@ -235,7 +234,7 @@ void ChannelGridScreen::OnStart()
         return;
 
     services.sounds.Request(StartSound);
-    services.sounds.Request(MenuMusic);
+    services.sounds.StartMusic();
     services.wiiMenu.hasMusicStarted = true;
 }
 
@@ -504,6 +503,7 @@ void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
     services.sounds.Request(PressSound);
+    services.sounds.StopMusic(MusicStopStepsOfAChannel);
     Tile(position).SetFocused(false);
     BottomBarScreen* bar = Bar();
     if (bar != nullptr)
@@ -564,7 +564,7 @@ void ChannelGridScreen::RunZoom()
     zoom.reset();
     state = GridState::Idle;
     ShowTheArrowsOfThePage();
-    services.sounds.Request(MenuMusic);
+    services.sounds.StartMusic();
 }
 
 bool ChannelGridScreen::RunLeaving()

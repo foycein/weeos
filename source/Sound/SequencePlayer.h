@@ -47,6 +47,12 @@ public:
     // Lets go of all the notes and ends all the tracks. The voices fade out by their envelopes.
     void Stop();
 
+    // The volume of the whole sequence, from 0 to 1. The notes take it from the next sound frame on.
+    void SetVolume(float sequenceVolume);
+
+    // A held sequence stands still: its ticks do not move on, and the voices of its notes are held where they are.
+    void SetHeld(bool held);
+
     // True when no track runs any more. The voices of the notes can still be sounding.
     bool HasEnded() const;
 
@@ -134,6 +140,7 @@ private:
     std::array<SequenceTrack, MaximumTrackCount> tracks;
     std::array<std::int16_t, VariableCount> variables;
 
+    bool isHeld = false;
     int tempo = StartTempo;
     std::uint8_t mainVolume = StartMainVolume;
 
