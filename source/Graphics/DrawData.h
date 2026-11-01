@@ -13,8 +13,9 @@ namespace Graphics
 // of this size.
 constexpr std::size_t MaximumDrawsPerPicture = 8192;
 constexpr std::size_t MaximumStagesPerPicture = 32768;
-constexpr std::size_t MaximumMeshesPerPicture = 1024;
+constexpr std::size_t MaximumMeshesPerPicture = 8192;
 constexpr std::size_t MaximumMeshCornersPerPicture = 131072;
+constexpr std::size_t MaximumBonesPerPicture = 16384;
 
 // The data of a draw as the shaders read it. The structures in this file have exactly the layout of the structures in
 // Shaders/DrawData.glsl: when one changes, the other has to change the same way.
@@ -93,22 +94,39 @@ struct ShaderMeshRecord
     ShaderColor ambientColor;
     std::uint32_t hasLight;
     std::uint32_t textureCoordinatesFromNormal;
-    std::array<std::uint32_t, 2> unused;
+
+    // The corners are read from the buffer of the stored meshes and not from the corners of the picture.
+    std::uint32_t usesStoredCorners;
+
+    // The bones of the mesh are the bones from this number on in the bone buffer of the picture.
+    std::uint32_t firstBone;
+    std::uint32_t boneCount;
+    std::array<std::uint32_t, 3> unused;
 };
 
-// One corner of a mesh, in two groups of four numbers.
+// The matrices of one bone: the one that moves points and the one that turns normals.
+struct ShaderBone
+{
+    std::array<std::array<float, 4>, 3> pointMatrix;
+    std::array<std::array<float, 4>, 3> normalMatrix;
+};
+
+// One corner of a mesh, in three groups of four numbers.
 struct ShaderMeshCorner
 {
     Formats::Vector3 position;
     float s;
     Formats::Vector3 normal;
     float t;
+    std::uint32_t boneNumber;
+    std::array<std::uint32_t, 3> unused;
 };
 
 static_assert(sizeof(ShaderStage) == 22 * sizeof(std::uint32_t));
 static_assert(sizeof(ShaderDrawRecord) == 352);
-static_assert(sizeof(ShaderMeshRecord) == 224);
-static_assert(sizeof(ShaderMeshCorner) == 32);
+static_assert(sizeof(ShaderMeshRecord) == 240);
+static_assert(sizeof(ShaderMeshCorner) == 48);
+static_assert(sizeof(ShaderBone) == 96);
 static_assert(offsetof(ShaderDrawRecord, constantColors) == 48);
 static_assert(offsetof(ShaderDrawRecord, cornerPositions) == 112);
 static_assert(offsetof(ShaderDrawRecord, cornerColors) == 312);
@@ -120,5 +138,7 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
 ShaderMeshRecord MakeMeshRecord(const MeshPlacement& placement);
 
 ShaderMeshCorner MakeMeshCorner(const MeshVertex& vertex);
+
+ShaderBone MakeBone(const Matrix4& boneMatrix);
 
 }

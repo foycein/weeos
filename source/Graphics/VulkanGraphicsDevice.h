@@ -6,6 +6,7 @@
 #include "Graphics/DrawPipelines.h"
 #include "Graphics/FrameResources.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Graphics/StoredMeshes.h"
 #include "Graphics/Swapchain.h"
 #include "Graphics/TextureStore.h"
 #include "Graphics/VulkanContext.h"
@@ -40,6 +41,9 @@ public:
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
     void DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material) override;
+    MeshHandle CreateMesh(std::span<const MeshVertex> triangleCorners) override;
+    void DestroyMesh(MeshHandle mesh) override;
+    void DrawMesh(MeshHandle mesh, const MeshPlacement& placement, const Material& material) override;
     TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;
@@ -74,6 +78,7 @@ private:
         std::uint32_t stageCount = 0;
         std::uint32_t meshCount = 0;
         std::uint32_t meshCornerCount = 0;
+        std::uint32_t boneCount = 0;
         VkPipeline boundPipeline = VK_NULL_HANDLE;
     };
 
@@ -128,6 +133,11 @@ private:
 
     // Puts the record and the corners of a mesh into the buffers of the picture. Gives the number of the mesh.
     std::uint32_t WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement);
+    std::uint32_t WriteMeshRecord(Recording& recording, const MeshPlacement& placement);
+
+    // Draws corners of the buffer of the picture or of the stored meshes, as the record of the mesh says.
+    void RecordMeshDraw(Recording& recording, std::uint32_t meshNumber, std::uint32_t firstCorner, std::uint32_t cornerCount,
+        const MeshPlacement& placement, const Material& material);
     void ApplyMeshState(const MeshPlacement& placement);
 
     void BindPipeline(Recording& recording, VkPipeline drawPipeline);
@@ -141,6 +151,7 @@ private:
     DrawPipelines pipeline;
     TextureStore textures;
     DepthBuffers depthBuffers;
+    StoredMeshes storedMeshes;
 
     // The pictures of the screen take turns using these. The resources for offscreen pictures that are drawn between
     // two screen pictures are separate, because the card finishes them before the call returns.

@@ -98,10 +98,11 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(const Platform::Window& window)
     , pipeline(context)
     , textures(context, pipeline.TextureSetLayout())
     , depthBuffers(context)
-    , standaloneResources(context, pipeline.DrawDataSetLayout())
+    , storedMeshes(context)
+    , standaloneResources(context, pipeline.DrawDataSetLayout(), storedMeshes.Buffer())
 {
     for (std::size_t frameNumber = 0; frameNumber < FramesInFlight; ++frameNumber)
-        frames.push_back(std::make_unique<FrameResources>(context, pipeline.DrawDataSetLayout()));
+        frames.push_back(std::make_unique<FrameResources>(context, pipeline.DrawDataSetLayout(), storedMeshes.Buffer()));
 }
 
 VulkanGraphicsDevice::~VulkanGraphicsDevice()
@@ -219,15 +220,50 @@ void VulkanGraphicsDevice::DrawMesh(std::span<const MeshVertex> triangleCorners,
 
     std::uint32_t firstCorner = recording->meshCornerCount;
     std::uint32_t meshNumber = WriteMeshData(*recording, triangleCorners, placement);
-    std::uint32_t drawIndex = WriteDrawData(*recording, Quad(), material);
-    recording->resources->DrawRecords()[drawIndex].meshNumber = meshNumber;
+    auto cornerCount = static_cast<std::uint32_t>(triangleCorners.size());
+    RecordMeshDraw(*recording, meshNumber, firstCorner, cornerCount, placement, material);
+}
 
-    BindPipeline(*recording, pipeline.MeshPipelineFor(material.blendMode));
+MeshHandle VulkanGraphicsDevice::CreateMesh(std::span<const MeshVertex> triangleCorners)
+{
+    if (triangleCorners.size() % CornersPerTriangle != 0)
+        throw GraphicsError(std::format("A mesh has {} corners, which is not three per triangle", triangleCorners.size()));
+
+    return storedMeshes.Create(triangleCorners);
+}
+
+void VulkanGraphicsDevice::DestroyMesh(MeshHandle mesh)
+{
+    storedMeshes.Retire(mesh, lastFrameNumber);
+}
+
+void VulkanGraphicsDevice::DrawMesh(MeshHandle mesh, const MeshPlacement& placement, const Material& material)
+{
+    RequireActivePicture("DrawMesh");
+    CheckMaterial(material);
+    CheckTextures(material);
+    StoredMesh stored = storedMeshes.Get(mesh);
+
+    Recording* recording = CurrentRecording();
+    if (recording == nullptr)
+        return;
+
+    std::uint32_t meshNumber = WriteMeshRecord(*recording, placement);
+    recording->resources->MeshRecords()[meshNumber].usesStoredCorners = 1;
+    RecordMeshDraw(*recording, meshNumber, stored.firstCorner, stored.cornerCount, placement, material);
+}
+
+void VulkanGraphicsDevice::RecordMeshDraw(Recording& recording, std::uint32_t meshNumber, std::uint32_t firstCorner,
+    std::uint32_t cornerCount, const MeshPlacement& placement, const Material& material)
+{
+    std::uint32_t drawIndex = WriteDrawData(recording, Quad(), material);
+    recording.resources->DrawRecords()[drawIndex].meshNumber = meshNumber;
+
+    BindPipeline(recording, pipeline.MeshPipelineFor(material.blendMode));
     ApplyMeshState(placement);
     BindTextures(material);
 
     // As for quads, the draw number travels as the first instance. The corners of the mesh start at firstCorner.
-    auto cornerCount = static_cast<std::uint32_t>(triangleCorners.size());
     vkCmdDraw(CurrentCommandBuffer(), cornerCount, 1, firstCorner, drawIndex);
 }
 
@@ -406,6 +442,7 @@ void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
     finishedFrameNumber = std::max(finishedFrameNumber, resources.FrameNumber());
     textures.ReleaseFinished(finishedFrameNumber);
     depthBuffers.ReleaseFinished(finishedFrameNumber);
+    storedMeshes.ReleaseFinished(finishedFrameNumber);
 }
 
 CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const
@@ -660,21 +697,39 @@ void VulkanGraphicsDevice::CheckTextures(const Material& material)
 
 std::uint32_t VulkanGraphicsDevice::WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement)
 {
-    if (recording.meshCount >= MaximumMeshesPerPicture)
-        throw GraphicsError(std::format("A picture holds at most {} meshes", MaximumMeshesPerPicture));
-
     if (recording.meshCornerCount + triangleCorners.size() > MaximumMeshCornersPerPicture)
         throw GraphicsError(std::format("The meshes of a picture have more than the {} corners that fit", MaximumMeshCornersPerPicture));
 
+    std::uint32_t meshNumber = WriteMeshRecord(recording, placement);
     for (const MeshVertex& vertex : triangleCorners)
     {
         recording.resources->MeshCorners()[recording.meshCornerCount] = MakeMeshCorner(vertex);
         ++recording.meshCornerCount;
     }
+    return meshNumber;
+}
+
+std::uint32_t VulkanGraphicsDevice::WriteMeshRecord(Recording& recording, const MeshPlacement& placement)
+{
+    if (recording.meshCount >= MaximumMeshesPerPicture)
+        throw GraphicsError(std::format("A picture holds at most {} meshes", MaximumMeshesPerPicture));
+
+    if (recording.boneCount + placement.boneMatrices.size() > MaximumBonesPerPicture)
+        throw GraphicsError(std::format("The meshes of a picture have more than the {} bones that fit", MaximumBonesPerPicture));
 
     std::uint32_t meshNumber = recording.meshCount;
     ++recording.meshCount;
-    recording.resources->MeshRecords()[meshNumber] = MakeMeshRecord(placement);
+
+    ShaderMeshRecord record = MakeMeshRecord(placement);
+    record.firstBone = recording.boneCount;
+    record.boneCount = static_cast<std::uint32_t>(placement.boneMatrices.size());
+    recording.resources->MeshRecords()[meshNumber] = record;
+
+    for (const Matrix4& boneMatrix : placement.boneMatrices)
+    {
+        recording.resources->Bones()[recording.boneCount] = MakeBone(boneMatrix);
+        ++recording.boneCount;
+    }
     return meshNumber;
 }
 

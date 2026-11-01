@@ -15,13 +15,14 @@ constexpr VkMemoryPropertyFlags ReachableByTheProgram = VK_MEMORY_PROPERTY_HOST_
 
 }
 
-FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescriptorSetLayout drawDataSetLayout)
+FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescriptorSetLayout drawDataSetLayout, VkBuffer storedMeshCorners)
     : context(graphicsContext)
     , drawRecordBuffer(context, MaximumDrawsPerPicture * sizeof(ShaderDrawRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
     , stageBuffer(context, MaximumStagesPerPicture * sizeof(ShaderStage), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
     , meshRecordBuffer(context, MaximumMeshesPerPicture * sizeof(ShaderMeshRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
     , meshCornerBuffer(
           context, MaximumMeshCornersPerPicture * sizeof(ShaderMeshCorner), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
+    , boneBuffer(context, MaximumBonesPerPicture * sizeof(ShaderBone), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
 {
     VkCommandBufferAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -55,7 +56,8 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
 
     // The buffers in the order of their bindings.
     std::array<VkBuffer, DrawDataBindingCount> buffers = {
-        drawRecordBuffer.Handle(), stageBuffer.Handle(), meshRecordBuffer.Handle(), meshCornerBuffer.Handle()};
+        drawRecordBuffer.Handle(), stageBuffer.Handle(), meshRecordBuffer.Handle(), meshCornerBuffer.Handle(), storedMeshCorners,
+        boneBuffer.Handle()};
 
     std::array<VkDescriptorBufferInfo, DrawDataBindingCount> bufferInfos;
     std::array<VkWriteDescriptorSet, DrawDataBindingCount> writes;
@@ -114,6 +116,11 @@ ShaderMeshRecord* FrameResources::MeshRecords() const
 ShaderMeshCorner* FrameResources::MeshCorners() const
 {
     return static_cast<ShaderMeshCorner*>(meshCornerBuffer.MappedBytes());
+}
+
+ShaderBone* FrameResources::Bones() const
+{
+    return static_cast<ShaderBone*>(boneBuffer.MappedBytes());
 }
 
 std::uint64_t FrameResources::FrameNumber() const

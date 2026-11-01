@@ -71,13 +71,23 @@ struct MeshRecord
     vec4 ambientColor;
     uint hasLight;
     uint textureCoordinatesFromNormal;
-    uint unused[2];
+    uint usesStoredCorners;
+    uint firstBone;
+    uint boneCount;
+    uint unused[3];
+};
+
+struct Bone
+{
+    vec4 pointMatrix[3];
+    vec4 normalMatrix[3];
 };
 
 struct MeshCorner
 {
     vec4 positionAndS;
     vec4 normalAndT;
+    uvec4 boneNumberAndUnused;
 };
 
 layout(std430, set = 0, binding = 0) readonly buffer DrawRecords
@@ -98,4 +108,14 @@ layout(std430, set = 0, binding = 2) readonly buffer MeshRecords
 layout(std430, set = 0, binding = 3) readonly buffer MeshCorners
 {
     MeshCorner meshCorners[];
+};
+
+layout(std430, set = 0, binding = 4) readonly buffer StoredMeshCorners
+{
+    MeshCorner storedMeshCorners[];
+};
+
+layout(std430, set = 0, binding = 5) readonly buffer Bones
+{
+    Bone bones[];
 };

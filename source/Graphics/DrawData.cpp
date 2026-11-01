@@ -135,7 +135,19 @@ ShaderMeshRecord MakeMeshRecord(const MeshPlacement& placement)
 
 ShaderMeshCorner MakeMeshCorner(const MeshVertex& vertex)
 {
-    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y};
+    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y, vertex.boneNumber, {}};
+}
+
+ShaderBone MakeBone(const Matrix4& boneMatrix)
+{
+    ShaderBone bone = {};
+    Matrix4 normalMatrix = MakeNormalMatrix(boneMatrix);
+    for (std::size_t row = 0; row < bone.pointMatrix.size(); ++row)
+    {
+        bone.pointMatrix[row] = boneMatrix.rows[row];
+        bone.normalMatrix[row] = normalMatrix.rows[row];
+    }
+    return bone;
 }
 
 }

@@ -50,9 +50,20 @@ void main()
     uint drawNumber = uint(gl_InstanceIndex);
     MeshRecord mesh = meshRecords[drawRecords[drawNumber].meshNumber];
     MeshCorner corner = meshCorners[gl_VertexIndex];
+    if (mesh.usesStoredCorners != 0u)
+        corner = storedMeshCorners[gl_VertexIndex];
 
-    vec3 viewPosition = TransformByRows(mesh.modelView, vec4(corner.positionAndS.xyz, 1.0));
-    vec3 viewNormal = TransformByRows(mesh.normalMatrix, vec4(corner.normalAndT.xyz, 0.0));
+    vec3 meshPosition = corner.positionAndS.xyz;
+    vec3 meshNormal = corner.normalAndT.xyz;
+    if (mesh.boneCount != 0u)
+    {
+        Bone bone = bones[mesh.firstBone + corner.boneNumberAndUnused.x];
+        meshPosition = TransformByRows(bone.pointMatrix, vec4(meshPosition, 1.0));
+        meshNormal = TransformByRows(bone.normalMatrix, vec4(meshNormal, 0.0));
+    }
+
+    vec3 viewPosition = TransformByRows(mesh.modelView, vec4(meshPosition, 1.0));
+    vec3 viewNormal = TransformByRows(mesh.normalMatrix, vec4(meshNormal, 0.0));
 
     vec4 viewPoint = vec4(viewPosition, 1.0);
     vec4 picturePosition = vec4(dot(mesh.projection[0], viewPoint), dot(mesh.projection[1], viewPoint),
