@@ -21,8 +21,9 @@ constexpr std::size_t NumberSize = sizeof(std::uint32_t);
 // the 48 places of 16 bytes, the other data and, in the last 16 bytes, the MD5 digest of everything before it.
 constexpr std::size_t FileSize = 0x4C0;
 constexpr std::size_t HeaderSize = 0x10;
+constexpr std::size_t SlotRecordSize = 0x10;
 constexpr std::size_t SlotRecordPaddingSize = 2;
-constexpr std::size_t OtherDataOffset = HeaderSize + SlotCount * 0x10;
+constexpr std::size_t OtherDataOffset = HeaderSize + SlotCount * SlotRecordSize;
 constexpr std::size_t DigestOffset = FileSize - Formats::Md5DigestSize;
 static_assert(OtherDataOffset + OtherDataSize == DigestOffset, "the other data fills the space between the places and the digest");
 
@@ -97,7 +98,7 @@ std::uint64_t ReadListedTitle(const std::array<Formats::Byte, OtherDataSize>& ot
 {
     std::uint64_t value = 0;
     for (std::size_t byte = 0; byte < TitleIdSize; ++byte)
-        value = (value << 8) | otherData[TitleListOffset + place * TitleIdSize + byte];
+        value = (value << Formats::BitsPerByte) | otherData[TitleListOffset + place * TitleIdSize + byte];
 
     return value;
 }
@@ -106,9 +107,21 @@ void WriteListedTitle(std::array<Formats::Byte, OtherDataSize>& otherData, std::
 {
     for (std::size_t byte = 0; byte < TitleIdSize; ++byte)
     {
-        std::size_t shift = 8 * (TitleIdSize - 1 - byte);
+        std::size_t shift = Formats::BitsPerByte * (TitleIdSize - 1 - byte);
         otherData[TitleListOffset + place * TitleIdSize + byte] = static_cast<Formats::Byte>(value >> shift);
     }
+}
+
+// The place of the title in the list, or the last place when it is not there.
+std::size_t PlaceInTheList(const std::array<Formats::Byte, OtherDataSize>& otherData, Ios::TitleId titleId)
+{
+    std::size_t lastPlace = TitleListLength - 1;
+    for (std::size_t place = 0; place < lastPlace; ++place)
+    {
+        if (ReadListedTitle(otherData, place) == titleId.ToValue())
+            return place;
+    }
+    return lastPlace;
 }
 
 bool BelongsInTheListOfStartedTitles(Ios::TitleId titleId)
@@ -238,10 +251,7 @@ void PutFirstInTheListOfStartedTitles(SaveData& saveData, Ios::TitleId titleId)
     if (!BelongsInTheListOfStartedTitles(titleId))
         return;
 
-    std::size_t oldPlace = 0;
-    while (oldPlace < TitleListLength - 1 && ReadListedTitle(saveData.otherData, oldPlace) != titleId.ToValue())
-        ++oldPlace;
-
+    std::size_t oldPlace = PlaceInTheList(saveData.otherData, titleId);
     for (std::size_t place = oldPlace; place > 0; --place)
         WriteListedTitle(saveData.otherData, place, ReadListedTitle(saveData.otherData, place - 1));
 

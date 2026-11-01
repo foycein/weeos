@@ -33,6 +33,11 @@ constexpr std::string_view NewsShownNewsNumber = "send_id";
 // its line of headlines and the belts behind it.
 constexpr int PhotoDefaultPhotosAnimation = 0;
 constexpr int PhotoPostedPhotoAnimation = 1;
+constexpr int ShopBagAndTitleAnimation = 0;
+constexpr int ForecastLogoAnimation = 0;
+constexpr int NewsHeadlinesAnimation = 1;
+constexpr int NewsBeltsAnimation = 2;
+
 constexpr std::string_view PostedPhotoTexture = "plate1.tpl";
 constexpr std::string_view PostedPhotoPane = "pic_photo";
 
@@ -40,10 +45,6 @@ constexpr std::string_view PostedPhotoPane = "pic_photo";
 // from the byte code: a 4:3 photo as high as the middle photo of the default animation, 55 units (Assumed, CHN-33).
 constexpr float PostedPhotoHeight = 55;
 constexpr float PostedPhotoWidth = PostedPhotoHeight * 4 / 3;
-constexpr int ShopBagAndTitleAnimation = 0;
-constexpr int ForecastLogoAnimation = 0;
-constexpr int NewsHeadlinesAnimation = 1;
-constexpr int NewsBeltsAnimation = 2;
 
 // Photo.icon: without a photo posted to the Wii Menu (noerase/photo_i.dat), the first run starts animation 0: the three photos
 // come one after the other, the belt with the logo follows, everything fades away and it begins again. With a posted photo it starts

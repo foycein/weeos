@@ -56,6 +56,22 @@ Formats::SaveBanner ReadBannerOrFail(Formats::ByteView banner)
     }
 }
 
+// The header goes encrypted before the archive. A file that could not be written whole is deleted again.
+void WriteBackupFile(DataManagementServices& services, const Ios::SdPath& file, const Formats::SaveBackupHeader& header, Formats::ByteView archive)
+{
+    Formats::Bytes backup = EncryptForCard(services.identity, Formats::WriteSaveBackupHeader(header));
+    backup.insert(backup.end(), archive.begin(), archive.end());
+    try
+    {
+        WriteSdFile(services.sdCard, file, backup);
+    }
+    catch (const DataError&)
+    {
+        DeleteSdFileIfPresent(services.sdCard, file);
+        throw;
+    }
+}
+
 SaveCopyReport CopyToCard(DataManagementServices& services, Ios::TitleId titleId)
 {
     Ios::SdPath file = SaveBackupPath(titleId.lowPart);
@@ -86,18 +102,7 @@ SaveCopyReport CopyToCard(DataManagementServices& services, Ios::TitleId titleId
     header.bannerPermissions = PermissionsToByte(bannerAttributes.permissions);
     header.bannerFlags = bannerAttributes.flags;
     header.banner = banner;
-
-    Formats::Bytes backup = EncryptForCard(services.identity, Formats::WriteSaveBackupHeader(header));
-    backup.insert(backup.end(), archive.begin(), archive.end());
-    try
-    {
-        WriteSdFile(services.sdCard, file, backup);
-    }
-    catch (const DataError&)
-    {
-        DeleteSdFileIfPresent(services.sdCard, file);
-        throw;
-    }
+    WriteBackupFile(services, file, header, archive);
 
     Ios::NandPath dataFolder = Ios::DataFolderPath(titleId);
     SaveCopyReport report;
@@ -122,6 +127,7 @@ bool IsFileTaken(const ArchiveFile& file, const Formats::BackupArchiveHeader& he
 
 NandRoomNeeded RoomNeededFor(const std::vector<const ArchiveFile*>& files, std::size_t bannerSize)
 {
+    // The files and banner.bin.
     NandRoomNeeded needed;
     needed.userInodes = static_cast<std::uint32_t>(files.size()) + 1;
     needed.userClusters = ClustersOfBytes(bannerSize);
@@ -151,12 +157,17 @@ Ios::EntryPermissions PermissionsWhileWriting(std::uint8_t permissionsByte)
     return permissions;
 }
 
+Ios::NandPath PathInWorkFolder(const Ios::NandPath& workFolder, const ArchiveFile& file)
+{
+    return MakeNandPath(std::format("{}/{}", workFolder.ToString(), file.header.name));
+}
+
 void PutFilesTogether(const DataManagementServices& services, NandAccess& titleFiles, const Ios::NandPath& workFolder,
     const std::vector<const ArchiveFile*>& files)
 {
     for (const ArchiveFile* file : files)
     {
-        Ios::NandPath path = MakeNandPath(std::format("{}/{}", workFolder.ToString(), file->header.name));
+        Ios::NandPath path = PathInWorkFolder(workFolder, *file);
         Ios::EntryPermissions permissions = PermissionsWhileWriting(file->header.permissions);
 
         if (file->header.kind == Formats::BackupEntryKind::Directory)
@@ -166,10 +177,7 @@ void PutFilesTogether(const DataManagementServices& services, NandAccess& titleF
     }
 
     for (const ArchiveFile* file : files)
-    {
-        Ios::NandPath path = MakeNandPath(std::format("{}/{}", workFolder.ToString(), file->header.name));
-        titleFiles.SetPermissions(path, PermissionsFromByte(file->header.permissions));
-    }
+        titleFiles.SetPermissions(PathInWorkFolder(workFolder, *file), PermissionsFromByte(file->header.permissions));
 }
 
 void MoveIntoDataFolder(NandAccess& titleFiles, const Ios::NandPath& workFolder, const Ios::NandPath& dataFolder)
@@ -215,6 +223,38 @@ void RestoreTitleOfSaveData(DataManagementServices& services, Ios::TitleId title
     Require(restored, std::format("set up the title {} again", titleId.ToString()));
 }
 
+std::vector<const ArchiveFile*> FilesTakenFrom(const BackupArchive& archive, const std::array<Formats::Byte, Formats::TransferIdSize>& transferId)
+{
+    std::vector<const ArchiveFile*> takenFiles;
+    for (const ArchiveFile& file : archive.files)
+    {
+        if (IsFileTaken(file, archive.header, transferId))
+            takenFiles.push_back(&file);
+    }
+    return takenFiles;
+}
+
+// The files are put together in the work folder first, so that the data folder gets all of them or none.
+void WriteIntoDataFolder(const DataManagementServices& services, NandAccess& titleFiles, Ios::TitleId titleId,
+    const Formats::SaveBackupHeader& header, const std::vector<const ArchiveFile*>& takenFiles)
+{
+    Ios::NandPath workFolder = MakeNandPath(WorkFolderPath);
+    titleFiles.DeleteIfPresent(workFolder);
+    titleFiles.CreateDirectory(workFolder, WorkFolderPermissions, NoFlags);
+    try
+    {
+        PutFilesTogether(services, titleFiles, workFolder, takenFiles);
+        titleFiles.WriteNewFile(ChildOf(workFolder, BannerFileName), header.banner, PermissionsFromByte(header.bannerPermissions), header.bannerFlags);
+        MoveIntoDataFolder(titleFiles, workFolder, Ios::DataFolderPath(titleId));
+    }
+    catch (const DataError&)
+    {
+        titleFiles.DeleteIfPresent(workFolder);
+        throw;
+    }
+    titleFiles.DeleteIfPresent(workFolder);
+}
+
 SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t lowPart)
 {
     Formats::Bytes backup = ReadSdFile(services.sdCard, SaveBackupPath(lowPart));
@@ -237,13 +277,7 @@ SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t low
     if (titleFiles.Exists(BannerPath(titleId)))
         throw DataError(DataResult::AlreadyThere, "the NAND has save data of the title");
 
-    std::vector<const ArchiveFile*> takenFiles;
-    for (const ArchiveFile& file : archive.files)
-    {
-        if (IsFileTaken(file, archive.header, transferId))
-            takenFiles.push_back(&file);
-    }
-
+    std::vector<const ArchiveFile*> takenFiles = FilesTakenFrom(archive, transferId);
     if (!HasRoomFor(MeasureNandRoom(services.fileSystem), RoomNeededFor(takenFiles, header.banner.size())))
         throw DataError(DataResult::NotEnoughRoom, "the NAND is full");
 
@@ -253,21 +287,7 @@ SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t low
     if (archive.header.filesSize != 0)
         CheckArchiveSignature(services, archiveBytes, archive.header);
 
-    Ios::NandPath workFolder = MakeNandPath(WorkFolderPath);
-    titleFiles.DeleteIfPresent(workFolder);
-    titleFiles.CreateDirectory(workFolder, WorkFolderPermissions, NoFlags);
-    try
-    {
-        PutFilesTogether(services, titleFiles, workFolder, takenFiles);
-        titleFiles.WriteNewFile(ChildOf(workFolder, BannerFileName), header.banner, PermissionsFromByte(header.bannerPermissions), header.bannerFlags);
-        MoveIntoDataFolder(titleFiles, workFolder, Ios::DataFolderPath(titleId));
-    }
-    catch (const DataError&)
-    {
-        titleFiles.DeleteIfPresent(workFolder);
-        throw;
-    }
-    titleFiles.DeleteIfPresent(workFolder);
+    WriteIntoDataFolder(services, titleFiles, titleId, header, takenFiles);
 
     // An empty directory "notransfer" that stayed behind is no file that was left out.
     SaveRestoreReport report;

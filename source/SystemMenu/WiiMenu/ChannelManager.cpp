@@ -1,11 +1,10 @@
 #include "SystemMenu/WiiMenu/ChannelManager.h"
 
-#include "Formats/PostedPictureFile.h"
-
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/WiiMenu/ChannelPlacement.h"
 
 #include "Formats/FormatError.h"
+#include "Formats/PostedPictureFile.h"
 
 #include <format>
 
@@ -129,7 +128,10 @@ int ChannelManager::UsedSlotCount() const
 {
     int usedSlotCount = 0;
     for (const SavedSlot& slot : saveData.slots)
-        usedSlotCount += slot.kind == SavedSlotKind::Empty ? 0 : 1;
+    {
+        if (slot.kind != SavedSlotKind::Empty)
+            ++usedSlotCount;
+    }
 
     return usedSlotCount;
 }

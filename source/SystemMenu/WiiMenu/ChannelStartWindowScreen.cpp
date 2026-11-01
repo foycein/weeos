@@ -6,6 +6,7 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/BoardInput.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleLaunchRequest.h"
@@ -112,7 +113,6 @@ constexpr std::string_view GraySound = "WIPL_SE_GRAY_BUTTON";
 constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 constexpr std::string_view ChangeSound = "WSD_SELECT";
 
-
 // The original waits 100 ms after Start before it fades out (0x813B9AC0: more than 100 / 16.68 steps).
 constexpr int StepsBeforeTheFadeToStart = 6;
 
@@ -135,13 +135,6 @@ SlotPosition NeighborChannel(const ChannelManager& channels, SlotPosition from, 
             return position;
     }
     return from;
-}
-
-bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
-{
-    bool remoteWentDown = (player.state.buttonsPressed & buttons.remoteButtons) != 0;
-    bool classicWentDown = (player.state.classic.buttonsPressed & buttons.classicButtons) != 0;
-    return remoteWentDown || classicWentDown;
 }
 
 }
@@ -484,7 +477,10 @@ std::optional<int> ChannelStartWindowScreen::ChangeAskedForByTheArrows()
     for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
     {
         const std::optional<PlayerInput>& player = services.input.Player(playerIndex);
-        if (!player || !player->state.pointerIsValid || !WentDown(*player, ArrowPressButtons))
+        if (!player || !player->state.pointerIsValid)
+            continue;
+
+        if (!HasGoneDown(*player, ArrowPressButtons))
             continue;
 
         // The pressed arrow flashes: the window sends the bar the event 0x14 for the left arrow and 0x13 for the right one.

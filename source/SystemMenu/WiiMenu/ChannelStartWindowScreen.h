@@ -76,7 +76,7 @@ public:
     // False when Start is gray: the Disc Channel without a disc.
     bool CanStart() const;
 
-    // The words of the Start button: "Start", or "Update" for a channel whose version is too old (SYS-04).
+    // The words of the Start button. WeeOS has no system update, so they never change to "Update" for an old channel (SYS-04).
     const std::u16string& StartButtonText() const;
 
 protected:
@@ -150,7 +150,7 @@ private:
     std::size_t grayStart = 0;
     std::size_t brightStart = 0;
 
-    // The change to another channel. WeeOS has no system update, so the words of Start never change to Update.
+    // The change to another channel.
     std::size_t changeIn = 0;
     std::size_t changeOut = 0;
 

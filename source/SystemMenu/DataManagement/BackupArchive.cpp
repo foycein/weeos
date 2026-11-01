@@ -4,6 +4,7 @@
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 #include "Formats/Sha1.h"
+#include "Ios/Title/ContentTypes.h"
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>
@@ -19,9 +20,6 @@ namespace
 constexpr std::string_view NoCopyFolder = "nocopy";
 constexpr std::string_view BannerFile = "banner.bin";
 constexpr std::string_view TransferIdPath = "/shared2/succession/transfer.id";
-
-constexpr std::uint16_t SharedContentTypeFlag = 0x8000;
-constexpr std::uint16_t OptionalContentTypeFlag = 0x4000;
 
 // The data of a file is encrypted in whole pieces of 32 bytes.
 constexpr std::size_t FileEncryptionAlignment = 0x20;
@@ -159,19 +157,16 @@ Formats::Bytes AssembleArchive(const DataManagementServices& services, Formats::
     return archive;
 }
 
-bool IsSharedContent(const Formats::ContentRecord& record)
+// The bit of a position inside its byte of the bitmap.
+Formats::Byte BitInItsByte(std::size_t position)
 {
-    return (record.type & SharedContentTypeFlag) != 0;
-}
-
-bool IsOptionalContent(const Formats::ContentRecord& record)
-{
-    return (record.type & OptionalContentTypeFlag) != 0;
+    return static_cast<Formats::Byte>(1 << (position % Formats::BitsPerByte));
 }
 
 void SetBitmapBit(std::array<Formats::Byte, Formats::BackupContentBitmapSize>& bitmap, std::size_t position)
 {
-    bitmap.at(position / Formats::BitsPerByte) |= static_cast<Formats::Byte>(1 << (position % Formats::BitsPerByte));
+    std::size_t byteIndex = position / Formats::BitsPerByte;
+    bitmap.at(byteIndex) |= BitInItsByte(position);
 }
 
 bool IsBitmapBitSet(const std::array<Formats::Byte, Formats::BackupContentBitmapSize>& bitmap, std::size_t position)
@@ -180,7 +175,7 @@ bool IsBitmapBitSet(const std::array<Formats::Byte, Formats::BackupContentBitmap
     if (byteIndex >= bitmap.size())
         return false;
 
-    return (bitmap[byteIndex] & (1 << (position % Formats::BitsPerByte))) != 0;
+    return (bitmap[byteIndex] & BitInItsByte(position)) != 0;
 }
 
 [[noreturn]] void FailAsDamaged(std::string_view problem)
@@ -221,11 +216,11 @@ Formats::Bytes WriteChannelArchive(DataManagementServices& services, Ios::TitleI
     for (std::size_t position = 0; position < metadata.contents.size(); ++position)
     {
         const Formats::ContentRecord& record = metadata.contents[position];
-        if (IsSharedContent(record))
+        if (Ios::IsSharedContent(record))
             continue;
 
         bool isPresent = std::find(presentIds.begin(), presentIds.end(), record.id) != presentIds.end();
-        if (!isPresent && IsOptionalContent(record))
+        if (!isPresent && Ios::IsOptionalContent(record))
             continue;
 
         if (!isPresent)

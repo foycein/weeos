@@ -99,6 +99,29 @@ std::u16string NumberText(int number)
     return std::u16string(digits.begin(), digits.end());
 }
 
+float WeekdayFrameOf(BoardDay day)
+{
+    int weekday = WeekdayOf(day);
+    if (weekday == Saturday)
+        return FrameOfSaturday;
+
+    if (weekday == Sunday)
+        return FrameOfSunday;
+
+    return FrameOfAWeekday;
+}
+
+std::optional<std::size_t> CellUnder(const std::array<std::unique_ptr<CalendarDayView>, CalendarCellCount>& cells, Formats::Vector2 place)
+{
+    std::optional<std::size_t> cellUnder;
+    for (std::size_t index = 0; index < CalendarCellCount; ++index)
+    {
+        if (cells[index]->IsPointedAt(place))
+            cellUnder = index;
+    }
+    return cellUnder;
+}
+
 std::unique_ptr<FramePlayer> MakePartPlayer(MenuLayout& layout, const Layout::LayoutArchive& archive, std::string_view paneName)
 {
     std::vector<Formats::Pane*> panes = {&layout.PaneNamed(paneName)};
@@ -133,9 +156,7 @@ void CalendarDayView::ShowDay(BoardDay shownDay, bool isOfTheMonth, bool isToday
     }
     else
     {
-        int weekday = WeekdayOf(day);
-        float weekdayFrame = weekday == Saturday ? FrameOfSaturday : (weekday == Sunday ? FrameOfSunday : FrameOfAWeekday);
-        weekdayPart->Show(weekdayFrame);
+        weekdayPart->Show(WeekdayFrameOf(day));
         todayPart->Show(isToday ? FrameOfToday : FrameOfAnotherDay);
     }
 
@@ -274,7 +295,8 @@ BottomBarScreen* CalendarScreen::Bar()
 void CalendarScreen::ShowTheMonth(int shownYear, int shownMonth, std::array<std::unique_ptr<CalendarDayView>, CalendarCellCount>& monthCells,
     std::string_view gridLetter)
 {
-    std::u16string title = services.messages.Find(static_cast<std::uint16_t>(JanuaryMessage + shownMonth - 1)) + u" " + NumberText(shownYear);
+    std::uint16_t monthMessage = static_cast<std::uint16_t>(JanuaryMessage + shownMonth - 1);
+    std::u16string title = services.messages.Find(monthMessage) + u" " + NumberText(shownYear);
     layout->SetText(std::format("T_CalMonth_{}", gridLetter), title);
 
     BoardDay today = DayOf(services.wiiMenu.console.GetLocalTime());
@@ -413,11 +435,8 @@ void CalendarScreen::FocusTheCellsUnderThePointers()
     {
         std::optional<Formats::Vector2> place = PointerPlaceOf(services.input, services.display, playerIndex);
         std::optional<std::size_t> underThePointer;
-        for (std::size_t index = 0; place && index < CalendarCellCount; ++index)
-        {
-            if (cells[index]->IsPointedAt(*place))
-                underThePointer = index;
-        }
+        if (place)
+            underThePointer = CellUnder(cells, *place);
 
         std::optional<std::size_t>& focused = focusedCells[playerIndex];
         if (underThePointer == focused)

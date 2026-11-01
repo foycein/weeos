@@ -7,6 +7,7 @@
 #include "SystemMenu/DataManagement/TitleKinds.h"
 
 #include "Formats/SdCardBackup.h"
+#include "Ios/Title/ContentTypes.h"
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>
@@ -20,7 +21,6 @@ namespace SystemMenu
 namespace
 {
 
-constexpr std::uint16_t OptionalContentTypeFlag = 0x4000;
 constexpr std::string_view CardTitlesFolder = "/private/wii/title";
 constexpr std::size_t MostEntriesOnCard = 2400;
 
@@ -87,7 +87,7 @@ bool IsChannelComplete(const Ios::TitleService& titles, Ios::TitleId titleId)
 
     for (const Formats::ContentRecord& record : metadata.Value().contents)
     {
-        bool isOptional = (record.type & OptionalContentTypeFlag) != 0;
+        bool isOptional = Ios::IsOptionalContent(record);
         bool isPresent = std::find(presentIds.Value().begin(), presentIds.Value().end(), record.id) != presentIds.Value().end();
         if (!isPresent && !isOptional)
             return false;

@@ -66,8 +66,8 @@ enum class GridState
 class ChannelGridScreen : public Screen
 {
 public:
-    // The original also knows the arguments 1 and 2, with which the Message Board opens the grid; they are not built.
     // The argument 1 brings the grid back from the Message Board (0x813935D4 opens it so), 0 is the start of the Wii Menu.
+    // The original also knows the argument 2, with which the Message Board opens the grid; it is not built.
     ChannelGridScreen(MenuServices& menuServices, int argument);
 
     void Load() override;

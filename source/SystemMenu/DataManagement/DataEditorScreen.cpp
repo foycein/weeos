@@ -361,11 +361,11 @@ void DataEditorScreen::PlaceSlots()
 
 void DataEditorScreen::PlaceBalloon(Balloon& balloon, std::size_t slotIndex)
 {
-    std::optional<Formats::Vector2> place = listLayout->PointOfPaneInPicture(SlotPaneName(slotIndex), {0, 0});
-    if (!place)
+    std::optional<Formats::Vector2> slotPlace = listLayout->PointOfPaneInPicture(SlotPaneName(slotIndex), {0, 0});
+    if (!slotPlace)
         return;
 
-    balloon.PlaceAt({place->x, place->y - BalloonDepthBelowItsPlace}, BalloonMarginOnAWideScreen);
+    balloon.PlaceAt({slotPlace->x, slotPlace->y - BalloonDepthBelowItsPlace}, BalloonMarginOnAWideScreen);
 
     bool wasShown = balloon.IsShown();
     balloon.Calculate();
@@ -389,7 +389,8 @@ void DataEditorScreen::ShowFreeBlocks()
     else
     {
         Ios::Result<std::uint64_t> freeBytes = services.dataManagement->sdCard.GetFreeBytes();
-        freeBlocks = freeBytes.Succeeded() ? std::min(freeBytes.Value() / BlockBytes, MostCardBlocksShown) : 0;
+        if (freeBytes.Succeeded())
+            freeBlocks = std::min(freeBytes.Value() / BlockBytes, MostCardBlocksShown);
     }
 
     std::u16string text = services.messages.Find(BlocksOpenMessage);
@@ -795,7 +796,8 @@ void DataEditorScreen::ReadOutcomeDialog()
     chosenAction.reset();
     std::size_t firstItem = firstItemOfPage;
     ReadItems();
-    firstItemOfPage = firstItem >= items.size() && firstItem >= SlotsPerPage ? firstItem - SlotsPerPage : firstItem;
+    bool isPageEmptyNow = firstItem >= items.size() && firstItem >= SlotsPerPage;
+    firstItemOfPage = isPageEmptyNow ? firstItem - SlotsPerPage : firstItem;
     ShowPage();
     ShowFreeBlocks();
     CloseWindow();

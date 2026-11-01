@@ -4,6 +4,7 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/BoardInput.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
@@ -12,8 +13,8 @@
 
 #include "Formats/Ash0.h"
 #include "Formats/FormatError.h"
-#include "Layout/LayoutError.h"
 #include "Formats/U8Archive.h"
+#include "Layout/LayoutError.h"
 #include "Text/MessageCatalog.h"
 
 #include <algorithm>
@@ -98,20 +99,6 @@ constexpr std::string_view StartSound = "WIPL_SE_WII_START";
 
 // While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
-
-bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
-{
-    bool remoteWentDown = (player.state.buttonsPressed & buttons.remoteButtons) != 0;
-    bool classicWentDown = (player.state.classic.buttonsPressed & buttons.classicButtons) != 0;
-    return remoteWentDown || classicWentDown;
-}
-
-bool IsHeld(const PlayerInput& player, const ButtonSet& buttons)
-{
-    bool remoteHeld = (player.state.buttonsHeld & buttons.remoteButtons) != 0;
-    bool classicHeld = (player.state.classic.buttonsHeld & buttons.classicButtons) != 0;
-    return remoteHeld || classicHeld;
-}
 
 std::size_t TileNumber(SlotPosition position)
 {
@@ -398,14 +385,14 @@ bool ChannelGridScreen::HandlePageButtons()
 bool ChannelGridScreen::HandlePressOfPlayer(int playerIndex, Formats::Vector2 place)
 {
     const PlayerInput& player = *services.input.Player(playerIndex);
-    if (!WentDown(player, PressButtons))
+    if (!HasGoneDown(player, PressButtons))
         return false;
 
     std::optional<int> slotIndex = SlotIndexAt(place);
     if (slotIndex)
     {
         SlotPosition position = {CurrentPage(), *slotIndex};
-        bool wantsToPickUp = IsHeld(player, PickUpHoldButtons);
+        bool wantsToPickUp = IsHeldDown(player, PickUpHoldButtons);
         if (wantsToPickUp && services.wiiMenu.channels.CanPickUp(position))
         {
             PickUpChannel(playerIndex, position);
@@ -532,7 +519,7 @@ void ChannelGridScreen::PickUpChannel(int playerIndex, SlotPosition position)
 void ChannelGridScreen::RunHolding()
 {
     const std::optional<PlayerInput>& player = services.input.Player(holdingPlayer);
-    if (!player || !IsHeld(*player, PressButtons))
+    if (!player || !IsHeldDown(*player, PressButtons))
     {
         DropChannel();
         return;
@@ -540,7 +527,10 @@ void ChannelGridScreen::RunHolding()
 
     std::optional<Formats::Vector2> place = PointerPlaceOf(holdingPlayer);
     BottomBarScreen* bar = Bar();
-    std::optional<BarButton> button = place && bar ? bar->ButtonAt(*place) : std::nullopt;
+    std::optional<BarButton> button;
+    if (place && bar)
+        button = bar->ButtonAt(*place);
+
     if (button == BarButton::PreviousPage)
         TurnToPreviousPage();
     else if (button == BarButton::NextPage)

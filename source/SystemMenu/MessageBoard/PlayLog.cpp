@@ -58,12 +58,18 @@ std::u16string NameLinesOf(const Formats::PlayRecord& play)
     return firstLine + std::u16string(LineBreak) + secondLine;
 }
 
+bool HasPlayLogAttachment(const Formats::BoardMessage& message)
+{
+    const std::optional<Formats::BoardAttachment>& attachment = message.attachments[0];
+    return attachment && attachment->kind == Formats::BoardAttachmentKind::PlayLog;
+}
+
 std::optional<StoredMessage> FindPlayLogOfDay(MessageStore& store, BoardDay day)
 {
     for (StoredMessage& stored : store.MessagesOfDay(day))
     {
         bool isPlayLog = stored.place.kindFolder == KindFolder::PlayLog && stored.message.kind == Formats::BoardMessageKind::PlayLog;
-        if (isPlayLog && stored.message.attachments[0] && stored.message.attachments[0]->kind == Formats::BoardAttachmentKind::PlayLog)
+        if (isPlayLog && HasPlayLogAttachment(stored.message))
             return stored;
     }
     return std::nullopt;
@@ -139,6 +145,7 @@ std::u16string MakePlayLogText(const Formats::PlayLogAttachment& playLog, const 
 
 void PutPlayOnTheBoard(MessageStore& store, const Formats::PlayRecord& play, const Text::MessageCatalog& messages, const LocalTime& now)
 {
+    // A play that ended after 2035 goes onto the last day of the board.
     LocalTime endOfThePlay = TimeOfSeconds(SecondsSince2000(TimeOfTicks(play.lastTime)));
     std::optional<StoredMessage> existing = FindPlayLogOfDay(store, DayOf(endOfThePlay));
     if (existing)

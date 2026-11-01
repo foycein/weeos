@@ -1,5 +1,7 @@
 #include "SystemMenu/DataManagement/NandRoom.h"
 
+#include "Formats/Alignment.h"
+
 #include <array>
 #include <string_view>
 
@@ -42,12 +44,12 @@ std::uint32_t Remaining(std::uint32_t limit, std::uint32_t used)
 
 std::uint32_t BlocksOfBytes(std::uint64_t bytes)
 {
-    return static_cast<std::uint32_t>((bytes + BlockBytes - 1) / BlockBytes);
+    return static_cast<std::uint32_t>(Formats::DivideRoundingUp(bytes, BlockBytes));
 }
 
 std::uint32_t ClustersOfBytes(std::uint64_t bytes)
 {
-    return static_cast<std::uint32_t>((bytes + ClusterBytes - 1) / ClusterBytes);
+    return static_cast<std::uint32_t>(Formats::DivideRoundingUp(bytes, ClusterBytes));
 }
 
 NandRoom MeasureNandRoom(const Ios::FileSystemService& fileSystem)
@@ -76,7 +78,8 @@ NandRoom MeasureNandRoom(const Ios::FileSystemService& fileSystem)
     std::uint32_t lostClusters = volume.badClusters + volume.reservedClusters + SystemAreaKeptFreeClusters;
     std::uint32_t systemClusters = Remaining(volume.usedClusters, room.userClusters);
     std::uint32_t systemInodes = Remaining(volume.usedInodes, room.userInodes);
-    room.freeSystemClusters = Remaining(Remaining(SystemAreaClusters, lostClusters), systemClusters);
+    std::uint32_t usableSystemClusters = Remaining(SystemAreaClusters, lostClusters);
+    room.freeSystemClusters = Remaining(usableSystemClusters, systemClusters);
     room.freeSystemInodes = Remaining(SystemAreaInodes, systemInodes);
     return room;
 }

@@ -13,13 +13,15 @@ namespace SystemMenu
 namespace
 {
 
+// The first content of a stub, the empty stand-in of a system channel, has only 64 bytes.
 constexpr std::uint64_t StubBannerSize = 0x40;
 
 // The version of the empty stand-in that the console has instead of the first Photo Channel.
 constexpr std::uint16_t StandInVersion = 0xFF00;
 
 // The channels that the menu puts on a new console. A new title of one of these families comes before the other new titles.
-constexpr std::array<std::uint32_t, 5> DefaultFamilies = {0x48414300, 0x48414100, 0x48414200, 0x48414600, 0x48414700};
+constexpr std::array<std::uint32_t, 5> DefaultFamilies = {
+    MiiChannelFamily, FirstPhotoChannelFamily, ShopChannelFamily, ForecastChannelFamily, NewsChannelFamily};
 
 using TitleIds = std::vector<Ios::TitleId>;
 using Titles = std::vector<InstalledTitle>;
@@ -85,8 +87,11 @@ bool IsConsideredByTheGrid(const InstalledTitle& title)
 // The first Photo Channel as a channel that works, not only as the empty stand-in that the console has until Photo Channel 1.1 comes.
 bool HasRealFirstPhotoChannel(const Titles& titles)
 {
-    return std::any_of(titles.begin(), titles.end(),
-        [](const InstalledTitle& title) { return IsFirstPhotoChannel(title.id) && title.version != StandInVersion && title.isInstalledProperly; });
+    auto isRealFirstPhotoChannel = [](const InstalledTitle& title) {
+        bool isStandIn = title.version == StandInVersion;
+        return IsFirstPhotoChannel(title.id) && !isStandIn && title.isInstalledProperly;
+    };
+    return std::any_of(titles.begin(), titles.end(), isRealFirstPhotoChannel);
 }
 
 // The Photo Channel exists in three versions, and the grid shows one of them. The later versions win, as the original decides:
@@ -242,7 +247,8 @@ TitleIds ListNewTitles(const Titles& titles, const TitleIds& candidates)
             AddNewTitle(newTitles, candidate);
     }
 
-    std::stable_sort(newTitles.begin(), newTitles.end(), [](Ios::TitleId first, Ios::TitleId second) { return DefaultOrderOf(first) < DefaultOrderOf(second); });
+    auto comesFirst = [](Ios::TitleId first, Ios::TitleId second) { return DefaultOrderOf(first) < DefaultOrderOf(second); };
+    std::stable_sort(newTitles.begin(), newTitles.end(), comesFirst);
     return newTitles;
 }
 

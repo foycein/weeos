@@ -8,6 +8,7 @@
 #include "SystemMenu/DataManagement/DataRemoval.h"
 #include "SystemMenu/DataManagement/TitleKinds.h"
 
+#include "Ios/Title/ContentTypes.h"
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>
@@ -29,7 +30,6 @@ constexpr std::uint32_t CodeWithoutLastLetterMask = 0xFFFFFF00;
 constexpr std::uint32_t NeverCleanedCode = 0x55500000;
 
 constexpr std::string_view BannerFileName = "banner.bin";
-constexpr std::uint16_t SharedContentTypeFlag = 0x8000;
 constexpr std::string_view NoEraseFolderName = "noerase";
 
 // How much of a channel is on the NAND (0x81351BB0): nothing, a part, or every content that is not optional.
@@ -50,7 +50,7 @@ bool HasOwnContents(const Ios::TitleService& titles, Ios::TitleId titleId)
 
     for (const Formats::ContentRecord& record : metadata.Value().contents)
     {
-        bool isShared = (record.type & SharedContentTypeFlag) != 0;
+        bool isShared = Ios::IsSharedContent(record);
         bool isPresent = std::find(presentIds.Value().begin(), presentIds.Value().end(), record.id) != presentIds.Value().end();
         if (!isShared && isPresent)
             return true;
@@ -95,7 +95,10 @@ bool HasCopyOfAnotherRegion(const Ios::TitleService& titles, const std::vector<I
 {
     for (Ios::TitleId otherTitleId : installed)
     {
-        if (IsTheSameChannelOfAnotherRegion(titleId, otherTitleId) && ContentStateOf(titles, otherTitleId) != ContentState::Nothing)
+        if (!IsTheSameChannelOfAnotherRegion(titleId, otherTitleId))
+            continue;
+
+        if (ContentStateOf(titles, otherTitleId) != ContentState::Nothing)
             return true;
     }
     return false;

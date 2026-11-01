@@ -9,6 +9,7 @@
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
+#include "Formats/Alignment.h"
 #include "Text/MessageCatalog.h"
 
 #include <algorithm>
@@ -67,7 +68,7 @@ LocalTime NoonOf(BoardDay day)
 
 std::size_t PageCountOf(std::size_t messageCount)
 {
-    return (messageCount + LettersPerPage - 1) / LettersPerPage;
+    return Formats::DivideRoundingUp(messageCount, LettersPerPage);
 }
 
 }
@@ -366,7 +367,8 @@ bool BoardView::HandleLetterPress(int playerIndex, Formats::Vector2 place)
     holdingPlayer = playerIndex;
     Formats::Vector2 dayPlace = PlaceOfTheDay();
     Formats::Vector2 letterPlace = letters[heldLetter]->PlaceOnTheDay();
-    grabOffset = Formats::Vector2{letterPlace.x - (place.x - dayPlace.x), letterPlace.y - (place.y - dayPlace.y)};
+    Formats::Vector2 pointerOnTheDay{place.x - dayPlace.x, place.y - dayPlace.y};
+    grabOffset = Formats::Vector2{letterPlace.x - pointerOnTheDay.x, letterPlace.y - pointerOnTheDay.y};
     grabStart = place;
     isDragging = false;
     services.sounds.Request(HoldSound);
@@ -391,7 +393,8 @@ void BoardView::RunHolding()
         if (isDragging)
         {
             Formats::Vector2 dayPlace = PlaceOfTheDay();
-            letter.MoveOnTheDay(Formats::Vector2{place->x - dayPlace.x + grabOffset.x, place->y - dayPlace.y + grabOffset.y});
+            Formats::Vector2 pointerOnTheDay{place->x - dayPlace.x, place->y - dayPlace.y};
+            letter.MoveOnTheDay(Formats::Vector2{pointerOnTheDay.x + grabOffset.x, pointerOnTheDay.y + grabOffset.y});
         }
     }
 

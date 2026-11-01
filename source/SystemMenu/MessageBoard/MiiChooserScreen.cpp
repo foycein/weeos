@@ -5,6 +5,8 @@
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/SoundRequests.h"
 
+#include "Formats/Alignment.h"
+
 #include <array>
 #include <format>
 
@@ -93,7 +95,7 @@ std::optional<Formats::Vector2> MiiChooserScreen::PlaceOfMii(std::size_t miiPlac
 
 int MiiChooserScreen::PageCount() const
 {
-    return static_cast<int>((miis.size() + MiisPerPage - 1) / MiisPerPage);
+    return static_cast<int>(Formats::DivideRoundingUp(miis.size(), MiisPerPage));
 }
 
 // The ten places of the page show the faces of their Miis; a place without a Mii is empty. The page number reads "1/3".
@@ -162,20 +164,27 @@ void MiiChooserScreen::RunChoosing()
             return;
         }
 
-        for (const Formats::Pane* button : layout->BoundingPanesAt(*place))
+        if (HandleArrowPress(*place))
+            return;
+    }
+}
+
+bool MiiChooserScreen::HandleArrowPress(Formats::Vector2 place)
+{
+    for (const Formats::Pane* button : layout->BoundingPanesAt(place))
+    {
+        if (button->name == NextPageButton && page + 1 < PageCount())
         {
-            if (button->name == NextPageButton && page + 1 < PageCount())
-            {
-                TurnPage(1);
-                return;
-            }
-            if (button->name == PreviousPageButton && page > 0)
-            {
-                TurnPage(-1);
-                return;
-            }
+            TurnPage(1);
+            return true;
+        }
+        if (button->name == PreviousPageButton && page > 0)
+        {
+            TurnPage(-1);
+            return true;
         }
     }
+    return false;
 }
 
 std::optional<std::size_t> MiiChooserScreen::MiiPlaceAt(Formats::Vector2 place)

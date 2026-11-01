@@ -373,13 +373,13 @@ void FullBoardProcedure::CopyToTheCard(const RecordPlace& place)
 
 Formats::AesBlock FullBoardProcedure::MakeInitializationVector()
 {
-    Formats::AesBlock vector{};
-    for (Formats::Byte& byte : vector)
+    Formats::AesBlock initializationVector{};
+    for (Formats::Byte& byte : initializationVector)
     {
         randomState = randomState * RandomMultiplier + RandomIncrement;
         byte = static_cast<Formats::Byte>(randomState >> RandomByteShift);
     }
-    return vector;
+    return initializationVector;
 }
 
 // How far the work has come: the room it freed against all the room that was taken at the start (0x8135B1C0).
