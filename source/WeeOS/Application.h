@@ -86,6 +86,7 @@ private:
     void CarryOutRequestsOfTheMenu();
     void ResetConsole();
     void LaunchTitle(Ios::TitleId titleId);
+    void RecordReturnToTheMenu();
     void ForgetReportedProblems();
     void ToggleSdCard();
     void ReportProblems();

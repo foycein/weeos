@@ -10,6 +10,7 @@
 #include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
+#include "SystemMenu/MenuStateFile.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -126,6 +127,7 @@ private:
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
+        menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
 
         dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
@@ -148,8 +150,9 @@ private:
 
     void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
     {
+        Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
 
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
         {
@@ -346,10 +349,24 @@ void Application::LaunchTitle(Ios::TitleId titleId)
         throw std::runtime_error(std::format("The title {} has no ticket and cannot start", titleId.ToString()));
 
     Ios::TicketView ticketView = ticketViews.Value().front();
+    bool isChannelReturning = session->Menu() == nullptr && titleId == Ios::SystemMenuTitleId;
     session.reset();
     console.LaunchTitle(titleId, ticketView);
+    if (isChannelReturning)
+        RecordReturnToTheMenu();
+
     StartSession();
     ForgetReportedProblems();
+}
+
+// A channel that goes back to the menu leaves the state of a return in the menu's state.dat, as the operating system of a title does
+// (OSReturnToMenu writes the type 3), so that the menu shows Back to Wii Menu and not Health and Safety. WeeOS writes it as the menu,
+// right after IOS has started the menu again.
+void Application::RecordReturnToTheMenu()
+{
+    Ios::IosServices& services = console.GetServices();
+    SystemMenu::IosNandFiles nandFiles(services.GetFileSystem(), services.GetTitles());
+    SystemMenu::RecordMenuLeft(nandFiles, Formats::StateTypeReturnToMenu);
 }
 
 void Application::ForgetReportedProblems()

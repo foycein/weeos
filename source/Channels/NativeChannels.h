@@ -23,12 +23,14 @@ constexpr Ios::TitleId WiiShopChannelTitleId = {0x00010002, 0x48414241};
 constexpr Ios::TitleId ForecastChannelTitleId = {0x00010002, 0x48414645};
 constexpr Ios::TitleId NewsChannelTitleId = {0x00010002, 0x48414745};
 constexpr Ios::TitleId InternetChannelTitleId = {0x00010001, 0x48414445};
+constexpr Ios::TitleId PhotoChannelTitleId = {0x00010002, 0x48415941};
 
 // The shared contents that the channel system reads for a channel: the two bitmap fonts of the console and the channel's copy of the
 // HOME Button Menu, in the folder of the version that the channel's program opens.
 struct ChannelSharedFiles
 {
-    std::uint16_t fontContentIndex;
+    // Nothing for a channel without the shared content of the fonts (the Photo Channel has its own font).
+    std::optional<std::uint16_t> fontContentIndex;
     std::uint16_t homeMenuContentIndex;
     std::string_view homeMenuFolder;
     bool isHomeMenuPacked;

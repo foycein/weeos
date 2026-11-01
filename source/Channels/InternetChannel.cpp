@@ -75,7 +75,7 @@ constexpr float AlertOkMargin = 131;
 constexpr float ButtonMargin = 37;
 constexpr PageTextStyle MessageStyle = {22, {0, 0, 0, 255}, Text::HorizontalAlignment::Left};
 
-// The page under a dialog is darkened (CHN-29, Assumed: #dialogBackground is black, how much of the page shows through is not known).
+// The page under a dialog is darkened (CHN-31, Assumed: #dialogBackground is black, how much of the page shows through is not known).
 constexpr Formats::Rgba8Color DialogShade = {0, 0, 0, 128};
 
 // The pictures hold their states one under the other: the state of a place that the pointer is on is the second one.

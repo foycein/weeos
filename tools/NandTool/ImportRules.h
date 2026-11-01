@@ -15,6 +15,9 @@ enum class ImportAction
     // The entry is a system configuration (SYSCONF). It is imported with the settings of the owner set back to the factory values.
     ImportWithPersonalSettingsReset,
 
+    // The entry is the network configuration (config.dat). The owner's networks stay out; WeeOS's one connection takes their place.
+    ImportWithWeeOSConnection,
+
     Skip,
 };
 

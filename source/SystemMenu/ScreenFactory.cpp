@@ -3,6 +3,7 @@
 #include "SystemMenu/BackToWiiMenuScreen.h"
 #include "SystemMenu/DataManagement/DataEditorScreen.h"
 #include "SystemMenu/SdCardMenu/SdCardMenuScreens.h"
+#include "SystemMenu/SdCardMenu/SdChannelWindowScreen.h"
 #include "SystemMenu/HealthAndSafetyScreen.h"
 #include "SystemMenu/LimitOverScreen.h"
 #include "SystemMenu/ParentalDialogScreen.h"
@@ -12,6 +13,7 @@
 #include "SystemMenu/WiiOptionsChoicesScreen.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/ChannelGridScreen.h"
+#include "SystemMenu/WiiMenu/ChannelStartWindowScreen.h"
 #include "SystemMenu/WiiMenu/MainFrameScreen.h"
 #include "SystemMenu/WiiSettings/SettingsScreen.h"
 
@@ -36,6 +38,9 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::ChannelGrid:
         return std::make_unique<ChannelGridScreen>(services);
+
+    case ScreenId::ChannelStartWindow:
+        return std::make_unique<ChannelStartWindowScreen>(services);
 
     case ScreenId::BackToWiiMenu:
         return std::make_unique<BackToWiiMenuScreen>(services);
@@ -69,6 +74,9 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::SdChannelList:
         return std::make_unique<SdChannelListScreen>(services);
+
+    case ScreenId::SdChannelWindow:
+        return std::make_unique<SdChannelWindowScreen>(services);
 
     case ScreenId::SdCardMenuBar:
         return std::make_unique<SdCardMenuBarScreen>(services);

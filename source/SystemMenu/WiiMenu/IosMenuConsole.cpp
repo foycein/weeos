@@ -1,5 +1,7 @@
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/PlayTimeLog.h"
 #include "SystemMenu/BackgroundServices/SharedFlagsFile.h"
 #include "SystemMenu/MenuError.h"
 
@@ -55,6 +57,7 @@ IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock 
     : titles(iosServices.GetTitles())
     , fileSystem(iosServices.GetFileSystem())
     , pcClock(std::move(clockOfThePc))
+    , networkConfig(iosServices.GetNetworkConfig())
 {
 }
 
@@ -83,6 +86,7 @@ InstalledTitle IosMenuConsole::DescribeTitle(Ios::TitleId titleId)
         return installedTitle;
 
     installedTitle.version = view.Value().titleVersion;
+    installedTitle.groupId = view.Value().groupId;
     for (const Ios::ContentView& content : view.Value().contents)
     {
         if (content.index == BannerContentIndex)
@@ -159,6 +163,26 @@ Ios::Result<Ios::OpenFile> IosMenuConsole::MakeFileAndOpenIt(const Ios::NandPath
         FailWith(std::format("The file {} cannot be made", path.ToString()), created.Error());
 
     return fileSystem.Open(path, Ios::OpenMode::ReadWrite, caller);
+}
+
+bool IosMenuConsole::HasTestedInternetConnection()
+{
+    Ios::Result<Ios::NetworkConfiguration> configuration = networkConfig.ReadConfiguration();
+    if (configuration.Failed())
+        return false;
+
+    for (const Ios::ConnectionProfile& profile : configuration.Value().profiles)
+    {
+        if (profile.isEnabled && profile.hasPassedConnectionTest)
+            return true;
+    }
+    return false;
+}
+
+void IosMenuConsole::WritePlayRecord(const Formats::PlayRecord& record)
+{
+    NandFileAccess files(fileSystem, titles);
+    SystemMenu::WritePlayRecord(files, record);
 }
 
 LocalTime IosMenuConsole::GetLocalTime()

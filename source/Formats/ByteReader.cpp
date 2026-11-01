@@ -81,6 +81,16 @@ float ByteReader::ReadFloat()
     return std::bit_cast<float>(ReadUint32());
 }
 
+std::uint16_t ByteReader::ReadLittleEndianUint16()
+{
+    return static_cast<std::uint16_t>(ReadLittleEndianNumber(sizeof(std::uint16_t)));
+}
+
+std::uint32_t ByteReader::ReadLittleEndianUint32()
+{
+    return static_cast<std::uint32_t>(ReadLittleEndianNumber(sizeof(std::uint32_t)));
+}
+
 ByteView ByteReader::ReadBytes(std::size_t count)
 {
     RequireBytes(count);
@@ -138,6 +148,17 @@ std::uint64_t ByteReader::ReadBigEndianNumber(std::size_t byteCount)
     std::uint64_t number = 0;
     for (Byte numberByte : numberBytes)
         number = (number << BitsPerByte) | numberByte;
+    return number;
+}
+
+std::uint64_t ByteReader::ReadLittleEndianNumber(std::size_t byteCount)
+{
+    ByteView numberBytes = ReadBytes(byteCount);
+
+    std::uint64_t number = 0;
+    for (std::size_t byteIndex = byteCount; byteIndex > 0; --byteIndex)
+        number = (number << BitsPerByte) | numberBytes[byteIndex - 1];
+
     return number;
 }
 
