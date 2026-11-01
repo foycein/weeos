@@ -92,6 +92,13 @@ constexpr Graphics::TextureMatrix PlazaPavingMatrix = {{{{PavingRepeat, 0.0f, Pa
 constexpr float RoadScaledTurn = 4.9497475f;
 constexpr Graphics::TextureMatrix RoadMatrix = {{{{RoadScaledTurn, -RoadScaledTurn, 0.0f}, {RoadScaledTurn, RoadScaledTurn, 0.0f}}}};
 
+// The second texture of mt_road, alpha_tex, is scaled by 2 about the middle of the road and clamped at its edges (the SRT of the
+// material: scale 2, no turn; CHN-84), so the road shows in the middle half of road_model and fades to white at its sides.
+constexpr std::string_view SideFadeTexture = "alpha_tex";
+constexpr float SideFadeScale = 2.0f;
+constexpr float SideFadeShift = 0.5f - SideFadeScale * 0.5f;
+constexpr Graphics::TextureMatrix SideFadeMatrix = {{{{SideFadeScale, 0.0f, SideFadeShift}, {0.0f, SideFadeScale, SideFadeShift}}}};
+
 class FileView
 {
 public:
@@ -341,9 +348,9 @@ std::optional<Formats::TexturePalette> ReadPalette(FileView& file, std::string_v
     return colors;
 }
 
-Formats::RgbaImage ReadPaving(FileView& file, const GroundNames& names)
+Formats::RgbaImage ReadPicture(FileView& file, std::string_view textureName, std::string_view paletteName)
 {
-    std::optional<std::size_t> texture = Formats::FindResource(file.All(), TextureGroup, names.texture);
+    std::optional<std::size_t> texture = Formats::FindResource(file.All(), TextureGroup, textureName);
     if (!texture)
         file.Fail("the picture of the ground is missing");
 
@@ -353,7 +360,7 @@ Formats::RgbaImage ReadPaving(FileView& file, const GroundNames& names)
     if (!format)
         file.Fail("the picture of the ground has a format that is not known");
 
-    std::optional<Formats::TexturePalette> palette = ReadPalette(file, names.palette);
+    std::optional<Formats::TexturePalette> palette = ReadPalette(file, paletteName);
     std::size_t data = file.Offset(*texture, *texture + TextureDataPosition);
     Formats::ByteView pixels = file.Bytes(data, Formats::EncodedImageSize(*format, width, height));
     return Formats::DecodeTexture(*format, width, height, pixels, palette);
@@ -373,7 +380,7 @@ PlazaGroundModel ReadGroundModel(Formats::ByteView brres, const GroundNames& nam
 
     PlazaGroundModel ground;
     ground.triangleCorners = ReadTriangles(file, FirstEntryOfSection(file, *model, ObjectSection), arrays);
-    ground.paving = ReadPaving(file, names);
+    ground.paving = ReadPicture(file, names.texture, names.palette);
     return ground;
 }
 
@@ -391,6 +398,8 @@ PlazaGroundModel ReadPlazaGroundModel(Formats::ByteView brres)
 PlazaGroundModel ReadParadeRoadModel(Formats::ByteView brres)
 {
     PlazaGroundModel road = ReadGroundModel(brres, ParadeRoadNames);
+    FileView file(brres);
+    road.sideFade = ReadPicture(file, SideFadeTexture, "");
     road.pavingMatrix = RoadMatrix;
     road.pavingWrap = Graphics::WrapMode::Repeat;
     road.fade = WhiteFade::WhereAlphaIsLow;
@@ -410,12 +419,25 @@ PlazaGround::PlazaGround(Graphics::GraphicsDevice& graphicsDevice, const PlazaGr
     description.horizontalWrap = model.pavingWrap;
     description.verticalWrap = model.pavingWrap;
     paving = device.CreateTexture(description);
+
+    if (!model.sideFade)
+        return;
+
+    Graphics::TextureDescription fadeDescription;
+    fadeDescription.width = model.sideFade->width;
+    fadeDescription.height = model.sideFade->height;
+    fadeDescription.pixels = model.sideFade->pixels;
+    fadeDescription.horizontalWrap = Graphics::WrapMode::Clamp;
+    fadeDescription.verticalWrap = Graphics::WrapMode::Clamp;
+    sideFade = device.CreateTexture(fadeDescription);
 }
 
 PlazaGround::~PlazaGround()
 {
     device.DestroyMesh(mesh);
     device.DestroyTexture(paving);
+    if (sideFade)
+        device.DestroyTexture(*sideFade);
 }
 
 void PlazaGround::Draw(const Graphics::Matrix4& modelView, const Graphics::Matrix4& projection) const
@@ -437,6 +459,20 @@ void PlazaGround::Draw(const Graphics::Matrix4& modelView, const Graphics::Matri
     material.blendMode = Graphics::BlendMode::Replace;
     material.textures = {{paving, pavingMatrix}};
     material.stages = {stage};
+
+    // The sides fade into white: white x (1 - fade) + the first stage x fade (the second stage of mt_road).
+    if (sideFade)
+    {
+        Graphics::TevStage fadeStage;
+        fadeStage.textureIndex = 1;
+        fadeStage.usesRasterColor = false;
+        fadeStage.color.inputA = Graphics::TevColorInput::One;
+        fadeStage.color.inputB = Graphics::TevColorInput::PreviousColor;
+        fadeStage.color.inputC = Graphics::TevColorInput::TextureColor;
+        fadeStage.alpha.inputD = Graphics::TevAlphaInput::PreviousAlpha;
+        material.textures.push_back({*sideFade, SideFadeMatrix});
+        material.stages.push_back(fadeStage);
+    }
 
     Graphics::MeshPlacement placement;
     placement.modelView = modelView;

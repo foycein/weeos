@@ -17,6 +17,19 @@ namespace Channels
 constexpr std::string_view MiiDatabasePath = "/shared2/menu/FaceLib/RFL_DB.dat";
 constexpr std::string_view MiiChannelSavePath = "/title/00010002/48414341/data/NigaoeCh.dat";
 
+// The flags of NigaoeCh.dat that WeeOS uses (the word the program keeps at 0x18 of its record and writes at 0x40 of the file, 8001A984).
+enum class ChannelFlag : std::uint32_t
+{
+    // The parade scene has introduced itself (51 to 600302, 0x80059074).
+    ParadeIntroduced = 0x40,
+
+    // The plaza has announced the Mii Parade (600000 to 600005, 0x80043920).
+    ParadeAnnounced = 0x200,
+
+    // The plaza has told that the parade is almost full (600400); cleared when the parade has room again (0x80042B54).
+    ParadeAlmostFullTold = 0x400,
+};
+
 // A Mii of the plaza: its slot in the database and the Mii itself.
 struct StoredMii
 {
@@ -79,9 +92,14 @@ public:
     // Writes NigaoeCh.dat, so that the next start is not the first.
     void RememberStarted();
 
+    // The flags word of NigaoeCh.dat, which remembers what the channel has told once. Setting one writes the file at once.
+    bool HasFlag(ChannelFlag flag) const;
+    void SetFlag(ChannelFlag flag, bool isSet);
+
 private:
     void CreateDatabaseFolders();
     void WriteDatabase();
+    std::uint32_t Flags() const;
 
     Ios::FileSystemService& fileSystem;
     Ios::Caller fileSystemCaller;
@@ -90,6 +108,9 @@ private:
     Mii::MiiDatabase database;
     DatabaseState state = DatabaseState::Ready;
     bool isFirstStart = false;
+
+    // NigaoeCh.dat as it was read, or as WeeOS made it; only its flags word changes.
+    Formats::Bytes channelSave;
 };
 
 }

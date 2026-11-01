@@ -29,6 +29,8 @@ public:
     static constexpr std::string_view SlipDust = "Nc_bodyslip01";
     static constexpr std::string_view SneezeSplash = "Nc_sneeze01";
     static constexpr std::string_view SleepingZzz = "Nc_zzz01";
+    static constexpr std::string_view SlapSmoke = "Nc_slapsmoke01";
+    static constexpr std::string_view LastSlapSmoke = "Nc_slapsmoke02";
     static constexpr std::string_view ChangedPartSparkles = "Nc_change_parts01";
     static constexpr std::string_view FavoriteSparkles = "Nc_favor_pants01";
     static constexpr std::string_view FavoriteSparklesOfAWoman = "Nc_favor_pants01fm";
@@ -84,7 +86,7 @@ private:
     std::uint16_t nextSeed = 1;
 };
 
-// The effects of the moments of the Miis of a plaza or a parade, and the Zzz of the Miis that nap.
-void ShowPlazaMoments(MiiEffects& effects, MiiPlaza& plaza, const MiiFigures& figures);
+// The effects of the moments of the Miis of a plaza or a parade, and the Zzz of the Miis that nap. Gives the moments, for their sounds.
+std::vector<PlazaMomentOfMii> ShowPlazaMoments(MiiEffects& effects, MiiPlaza& plaza, const MiiFigures& figures);
 
 }

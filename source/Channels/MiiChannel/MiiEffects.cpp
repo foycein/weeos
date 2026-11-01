@@ -66,6 +66,15 @@ void ShowMoment(MiiEffects& effects, const PlazaMomentOfMii& moment, const Plaza
     case PlazaMoment::FallsAsleep:
         effects.StartFollowing(MiiEffects::SleepingZzz, moment.slot, FrameUnderTheHead(plazaMii, figures));
         break;
+    case PlazaMoment::RaisesSlapSmoke:
+        effects.Start(MiiEffects::SlapSmoke, Graphics::MakeTranslation({plazaMii.position.x, 0, plazaMii.position.y}));
+        break;
+    case PlazaMoment::RaisesLastSlapSmoke:
+        effects.Start(MiiEffects::LastSlapSmoke, Graphics::MakeTranslation({plazaMii.position.x, 0, plazaMii.position.y}));
+        break;
+    case PlazaMoment::HitsTheGround:
+    case PlazaMoment::BouncesOnTheGround:
+        break;
     }
 }
 
@@ -197,9 +206,10 @@ std::size_t MiiEffects::CountAmongModels(std::string_view name) const
         [name](const PlayingEffect& playing) { return playing.name == name; }));
 }
 
-void ShowPlazaMoments(MiiEffects& effects, MiiPlaza& plaza, const MiiFigures& figures)
+std::vector<PlazaMomentOfMii> ShowPlazaMoments(MiiEffects& effects, MiiPlaza& plaza, const MiiFigures& figures)
 {
-    for (const PlazaMomentOfMii& moment : plaza.TakeMoments())
+    std::vector<PlazaMomentOfMii> moments = plaza.TakeMoments();
+    for (const PlazaMomentOfMii& moment : moments)
     {
         const PlazaMii* plazaMii = plaza.FindMii(moment.slot);
         if (plazaMii != nullptr)
@@ -215,6 +225,7 @@ void ShowPlazaMoments(MiiEffects& effects, MiiPlaza& plaza, const MiiFigures& fi
         else
             effects.FadeOut(slot);
     }
+    return moments;
 }
 
 }

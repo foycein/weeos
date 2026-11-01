@@ -85,15 +85,16 @@ private:
         Erase,
         ReturnToWiiMenu,
         BeginDs,
-        ParadeWelcome,
-        ParadeExplained,
         SendToParade,
+        ParadeAnnouncements,
+        ParadeAlmostFull,
     };
 
     void HandleButtons();
     void HandleHand();
     void HandleCamera();
     void HandleMessageAnswer();
+    void TellWhatIsNew();
     void DropHeldMii(Formats::Vector2 pointer);
     void ShowNameBalloon(std::size_t slot);
     void UpdateWaits();
@@ -122,7 +123,7 @@ private:
     Pending pending = Pending::Nothing;
     bool areSortButtonsShown = false;
     bool isArranged = false;
-    bool hasSeenParade = false;
+    bool shouldTellWhatIsNew = false;
     std::optional<std::size_t> balloonMii;
     int balloonSteps = 0;
     int loadSteps = 0;

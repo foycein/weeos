@@ -3,6 +3,7 @@
 #include "Mii/MiiBody.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 
@@ -56,6 +57,32 @@ constexpr float SneezeAnimationFrames = 121.0f;
 constexpr float AfterSneezeAnimationFrames = 51.0f;
 constexpr float SlipAnimationFrames = 56.0f;
 constexpr float GetUpAnimationFrames = 69.0f;
+constexpr float GetDownAnimationFrames = 34.0f;
+constexpr float LandingAnimationFrames = 96.0f;
+constexpr float LandingFromHighAnimationFrames = 135.0f;
+constexpr float GetUpFromLanding01Frames = 116.0f;
+constexpr float GetUpFromLanding02Frames = 116.0f;
+constexpr float GetUpFromLanding04Frames = 105.0f;
+constexpr float GetUpFromLanding05Frames = 131.0f;
+
+// The frames at which a falling Mii hits the ground (the animation events of 0x80022584, the floats 803BE420 to 803BE468): a smoke
+// comes a frame before each hit, the third one larger; the sounds come with the hits. bodySlap_03 falls from higher and hits later. The
+// program names a fourth hit at 120 (159), after the end of the animation, so it never comes. A Mii that gets down raises a smoke at frame 5.
+struct GroundHits
+{
+    std::array<float, 3> smokeFrames;
+    std::array<float, 3> hitFrames;
+};
+
+constexpr GroundHits LandingHits = {{29, 58, 79}, {30, 59, 80}};
+constexpr GroundHits LandingFromHighHits = {{69, 97, 118}, {70, 98, 119}};
+constexpr float GetDownSmokeFrame = 5;
+
+// The camera is high from this zoom level on, and a Mii falls in from higher (0x8001F4D4).
+constexpr int HighZoomLevel = 2;
+
+// The three ways to get up after a landing; the second one is bodySlap_02 for a woman and bodySlap_04 for a man (0x8001F7A8 state 7).
+constexpr int WaysUp = 3;
 
 // The idle moments (8002B840): every step a Mii that stands or walks draws a number below 30000. Below 7 it talks to a Mii that
 // stands or walks within 240 units in front of it (it looks for one within 600, 90 degrees to each side, among a third of the Miis);
@@ -377,9 +404,25 @@ void MiiPlaza::Drop()
     for (PlazaMii& plazaMii : miis)
     {
         if (heldSlot == plazaMii.mii.slot)
-            StartWaiting(plazaMii);
+            StartActivity(plazaMii, PlazaActivity::GettingDown);
     }
     heldSlot.reset();
+}
+
+void MiiPlaza::DropIn(std::size_t slot)
+{
+    for (PlazaMii& plazaMii : miis)
+    {
+        if (plazaMii.mii.slot != slot)
+            continue;
+
+        bool isTheCameraHigh = camera.zoomLevel >= HighZoomLevel;
+        StartActivity(plazaMii, isTheCameraHigh ? PlazaActivity::LandingFromHigh : PlazaActivity::Landing);
+        plazaMii.position = {0, 0};
+        plazaMii.facingDegrees = 0;
+        plazaMii.speed = 0;
+        plazaMii.staysAtTarget = false;
+    }
 }
 
 std::optional<std::size_t> MiiPlaza::HeldMii() const
@@ -614,7 +657,65 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
     case PlazaActivity::GettingUp:
         PlayOnce(plazaMii, PlazaActivity::Waiting);
         return;
+
+    case PlazaActivity::GettingDown:
+    {
+        float frameBefore = plazaMii.animationFrame;
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
+        NoteFrameMoment(plazaMii, frameBefore, GetDownSmokeFrame, PlazaMoment::RaisesSlapSmoke);
+        return;
     }
+
+    case PlazaActivity::Landing:
+    case PlazaActivity::LandingFromHigh:
+        Land(plazaMii);
+        return;
+
+    case PlazaActivity::GettingUpFromLanding01:
+    case PlazaActivity::GettingUpFromLanding02:
+    case PlazaActivity::GettingUpFromLanding04:
+    case PlazaActivity::GettingUpFromLanding05:
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
+        return;
+    }
+}
+
+// The falling Mii's smokes and hits come at their frames; at the end it gets up.
+void MiiPlaza::Land(PlazaMii& plazaMii)
+{
+    const GroundHits& hits = plazaMii.activity == PlazaActivity::Landing ? LandingHits : LandingFromHighHits;
+    float frameBefore = plazaMii.animationFrame;
+    plazaMii.animationFrame += 1;
+
+    NoteFrameMoment(plazaMii, frameBefore, hits.smokeFrames[0], PlazaMoment::RaisesSlapSmoke);
+    NoteFrameMoment(plazaMii, frameBefore, hits.smokeFrames[1], PlazaMoment::RaisesSlapSmoke);
+    NoteFrameMoment(plazaMii, frameBefore, hits.smokeFrames[2], PlazaMoment::RaisesLastSlapSmoke);
+    NoteFrameMoment(plazaMii, frameBefore, hits.hitFrames[0], PlazaMoment::HitsTheGround);
+    for (std::size_t bounce = 1; bounce < hits.hitFrames.size(); ++bounce)
+        NoteFrameMoment(plazaMii, frameBefore, hits.hitFrames[bounce], PlazaMoment::BouncesOnTheGround);
+
+    if (plazaMii.animationFrame >= AnimationFramesOf(plazaMii.activity))
+        GetUpFromLanding(plazaMii);
+}
+
+// The first Mii gets up in any of the three ways, every later one in one of the two others than the Mii before (0x8001F7A8 state 7).
+void MiiPlaza::GetUpFromLanding(PlazaMii& plazaMii)
+{
+    int way = 0;
+    if (!lastWayUp)
+        way = std::uniform_int_distribution<int>(0, WaysUp - 1)(random);
+    else
+        way = (*lastWayUp + 1 + std::uniform_int_distribution<int>(0, WaysUp - 2)(random)) % WaysUp;
+    lastWayUp = way;
+
+    constexpr int SecondWay = 1;
+    constexpr int ThirdWay = 2;
+    PlazaActivity wayUp = PlazaActivity::GettingUpFromLanding01;
+    if (way == SecondWay)
+        wayUp = plazaMii.mii.record.gender == Mii::Gender::Female ? PlazaActivity::GettingUpFromLanding02 : PlazaActivity::GettingUpFromLanding04;
+    if (way == ThirdWay)
+        wayUp = PlazaActivity::GettingUpFromLanding05;
+    StartActivity(plazaMii, wayUp);
 }
 
 void MiiPlaza::StartWaiting(PlazaMii& plazaMii)
@@ -639,6 +740,7 @@ void MiiPlaza::StartRunning(PlazaMii& plazaMii, Formats::Vector2 target)
 
 void MiiPlaza::StartActivity(PlazaMii& plazaMii, PlazaActivity activity)
 {
+    plazaMii.talkPartner.reset();
     plazaMii.activity = activity;
     plazaMii.animationFrame = 0;
     plazaMii.stepsInActivity = 0;
@@ -646,6 +748,13 @@ void MiiPlaza::StartActivity(PlazaMii& plazaMii, PlazaActivity activity)
 
 void MiiPlaza::Walk(PlazaMii& plazaMii)
 {
+    if (plazaMii.talkPartner)
+    {
+        WalkToTheTalkPartner(plazaMii);
+        if (plazaMii.activity != PlazaActivity::Walking)
+            return;
+    }
+
     float remaining = Distance(plazaMii.position, plazaMii.target);
     if (remaining < ArrivalDistance && kind == PlazaKind::Parade)
     {
@@ -751,6 +860,9 @@ void MiiPlaza::FinishActivity(PlazaMii& plazaMii)
 
 void MiiPlaza::ChooseIdleMoment(PlazaMii& plazaMii)
 {
+    if (plazaMii.talkPartner)
+        return;
+
     int chance = std::uniform_int_distribution<int>(0, IdleChances - 1)(random);
     if (chance < TalkChances && !plazaMii.staysAtTarget)
     {
@@ -772,7 +884,8 @@ void MiiPlaza::ChooseIdleMoment(PlazaMii& plazaMii)
 }
 
 // The talker looks for a Mii in front of it among a third of the Miis; when the one it finds is near, the two turn to each other
-// and talk. Miis that the whistle lined up keep their places (Assumed, CHN-81).
+// and talk, else the talker walks to it first (8002B840 marks it with the partner, 0x728 = 3). Miis that the whistle lined up keep
+// their places (Assumed, CHN-81).
 void MiiPlaza::StartTalk(PlazaMii& talker)
 {
     if (miis.size() < 2)
@@ -792,25 +905,63 @@ void MiiPlaza::StartTalk(PlazaMii& talker)
         bool isInFront = std::abs(TurnBetween(talker.facingDegrees, direction)) < TalkSearchDegrees;
         if (distance >= TalkSearchDistance || !isInFront)
             continue;
+
         if (distance >= TalkDistance)
+        {
+            StartWalking(talker, listener.position);
+            talker.talkPartner = listener.mii.slot;
             return;
+        }
 
-        int talkSteps = std::uniform_int_distribution<int>(ShortestTalkSteps, LongestTalkSteps)(random);
-        StartActivity(talker, PlazaActivity::Talking);
-        talker.facingDegrees = direction;
-        talker.stepsOfActivity = talkSteps;
-        talker.speed = 0;
-
-        StartActivity(listener, PlazaActivity::Answering);
-        listener.facingDegrees = direction + HalfTurnDegrees;
-        listener.stepsOfActivity = talkSteps;
-        listener.speed = 0;
-
-        talker.stepsSinceTalkBalloon = 0;
-        listener.stepsSinceTalkBalloon = AnswerTalkBalloonStart;
-        moments.push_back({PlazaMoment::Talks, talker.mii.slot});
+        BeginTalk(talker, listener);
         return;
     }
+}
+
+// The talker keeps walking toward its partner while the partner is free; near it, they talk (Assumed, CHN-81: the partner that gets
+// busy on the way is given up and the talker walks on to where it saw it).
+void MiiPlaza::WalkToTheTalkPartner(PlazaMii& talker)
+{
+    PlazaMii* partner = FindMiiInSlot(*talker.talkPartner);
+    bool isFree = partner != nullptr && (partner->activity == PlazaActivity::Waiting || partner->activity == PlazaActivity::Walking);
+    if (!isFree || partner->staysAtTarget)
+    {
+        talker.talkPartner.reset();
+        return;
+    }
+
+    talker.target = partner->position;
+    if (Distance(talker.position, partner->position) < TalkDistance)
+        BeginTalk(talker, *partner);
+}
+
+PlazaMii* MiiPlaza::FindMiiInSlot(std::size_t slot)
+{
+    for (PlazaMii& plazaMii : miis)
+    {
+        if (plazaMii.mii.slot == slot)
+            return &plazaMii;
+    }
+    return nullptr;
+}
+
+void MiiPlaza::BeginTalk(PlazaMii& talker, PlazaMii& listener)
+{
+    float direction = std::atan2(listener.position.x - talker.position.x, listener.position.y - talker.position.y) * DegreesPerRadian;
+    int talkSteps = std::uniform_int_distribution<int>(ShortestTalkSteps, LongestTalkSteps)(random);
+    StartActivity(talker, PlazaActivity::Talking);
+    talker.facingDegrees = direction;
+    talker.stepsOfActivity = talkSteps;
+    talker.speed = 0;
+
+    StartActivity(listener, PlazaActivity::Answering);
+    listener.facingDegrees = direction + HalfTurnDegrees;
+    listener.stepsOfActivity = talkSteps;
+    listener.speed = 0;
+
+    talker.stepsSinceTalkBalloon = 0;
+    listener.stepsSinceTalkBalloon = AnswerTalkBalloonStart;
+    moments.push_back({PlazaMoment::Talks, talker.mii.slot});
 }
 
 void MiiPlaza::CountTalkBalloon(PlazaMii& plazaMii)
@@ -987,6 +1138,20 @@ std::string_view AnimationOf(PlazaActivity activity)
         return "bodySlip_00";
     case PlazaActivity::GettingUp:
         return "bodySlip_01";
+    case PlazaActivity::GettingDown:
+        return "bodyGetDown";
+    case PlazaActivity::Landing:
+        return "bodySlap_00";
+    case PlazaActivity::LandingFromHigh:
+        return "bodySlap_03";
+    case PlazaActivity::GettingUpFromLanding01:
+        return "bodySlap_01";
+    case PlazaActivity::GettingUpFromLanding02:
+        return "bodySlap_02";
+    case PlazaActivity::GettingUpFromLanding04:
+        return "bodySlap_04";
+    case PlazaActivity::GettingUpFromLanding05:
+        return "bodySlap_05";
     }
     return "bodyWait";
 }
@@ -1043,6 +1208,20 @@ float AnimationFramesOf(PlazaActivity activity)
         return SlipAnimationFrames;
     case PlazaActivity::GettingUp:
         return GetUpAnimationFrames;
+    case PlazaActivity::GettingDown:
+        return GetDownAnimationFrames;
+    case PlazaActivity::Landing:
+        return LandingAnimationFrames;
+    case PlazaActivity::LandingFromHigh:
+        return LandingFromHighAnimationFrames;
+    case PlazaActivity::GettingUpFromLanding01:
+        return GetUpFromLanding01Frames;
+    case PlazaActivity::GettingUpFromLanding02:
+        return GetUpFromLanding02Frames;
+    case PlazaActivity::GettingUpFromLanding04:
+        return GetUpFromLanding04Frames;
+    case PlazaActivity::GettingUpFromLanding05:
+        return GetUpFromLanding05Frames;
     }
     return WaitAnimationFrames;
 }

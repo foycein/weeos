@@ -15,6 +15,7 @@ namespace
 constexpr std::string_view LayoutName = "MsgNigaoe_00";
 constexpr int QuestionWindow = 0;
 constexpr int NoticeWindow = 1;
+constexpr int TitledNoticeWindow = 3;
 constexpr int ThreeChoicesWindow = 4;
 constexpr std::array<int, 5> AllWindows = {0, 1, 2, 3, 4};
 constexpr std::uint8_t Shown = 255;
@@ -23,6 +24,7 @@ constexpr std::uint8_t Hidden = 0;
 constexpr std::string_view YesButton = "frmMsgYes_00";
 constexpr std::string_view NoButton = "frmMsgNo_00";
 constexpr std::string_view OkButton = "frmMsgOk_01";
+constexpr std::string_view TitledOkButton = "frmMsgOk_03";
 constexpr std::array<std::string_view, 3> ChoiceButtons = {"frm1Msg_04", "frm2Msg_04", "frm3Msg_04"};
 constexpr std::array<MessageAnswer, 3> ChoiceAnswers = {MessageAnswer::FirstChoice, MessageAnswer::SecondChoice, MessageAnswer::ThirdChoice};
 
@@ -55,6 +57,29 @@ void MessageWindow::ShowNotice(std::uint32_t messageNumber, std::uint32_t okNumb
     Open(NoticeWindow, messageNumber);
     layout->SetText("textMsg_01", MessageText(texts, messageNumber));
     layout->SetText("frmMsgOkTx_01", MessageText(texts, okNumber));
+}
+
+void MessageWindow::ShowNoticePages(std::vector<NoticePage> pages)
+{
+    if (pages.empty())
+        return;
+
+    waitingPages.assign(pages.begin() + 1, pages.end());
+    ShowPage(pages.front());
+}
+
+void MessageWindow::ShowPage(const NoticePage& page)
+{
+    if (!page.titleNumber)
+    {
+        ShowNotice(page.textNumber, page.buttonNumber);
+        return;
+    }
+
+    Open(TitledNoticeWindow, page.textNumber);
+    layout->SetText("textMsg_03", MessageText(texts, *page.titleNumber));
+    layout->SetText("text_03", MessageText(texts, page.textNumber));
+    layout->SetText("frmMsgOkTx_03", MessageText(texts, page.buttonNumber));
 }
 
 void MessageWindow::OfferThreeChoices(std::uint32_t firstNumber, std::uint32_t secondNumber, std::uint32_t thirdNumber)
@@ -115,8 +140,20 @@ void MessageWindow::Update()
         return;
     }
 
-    if (IsPressed(OkButton))
+    std::string_view okButton = shownWindow == TitledNoticeWindow ? TitledOkButton : OkButton;
+    if (!IsPressed(okButton))
+        return;
+
+    if (waitingPages.empty())
+    {
         Close(MessageAnswer::Ok, OkSound);
+        return;
+    }
+
+    services.sounds.Request(OkSound);
+    NoticePage next = waitingPages.front();
+    waitingPages.pop_front();
+    ShowPage(next);
 }
 
 void MessageWindow::Draw()
