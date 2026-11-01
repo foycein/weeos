@@ -86,9 +86,9 @@ void IosNandFiles::WriteFile(std::string_view path, Formats::ByteView bytes)
 Ios::NandPath IosNandFiles::MakeSafeSaveFolder(std::string_view pathForErrors)
 {
     Ios::NandPath safeSaveFolder = ParsePath(SafeSaveFolderPath);
-    Ios::Result<void> sharedFolderMade = fileSystem.CreateDirectory(safeSaveFolder, EverybodyReadsAndWrites, NoAttributeFlags, CurrentCaller());
-    if (sharedFolderMade.Failed() && sharedFolderMade.Error() != Ios::IosError::AlreadyExists)
-        throw MakeNandError("prepare the safe save of", pathForErrors, sharedFolderMade.Error());
+    Ios::Result<void> safeSaveFolderMade = fileSystem.CreateDirectory(safeSaveFolder, EverybodyReadsAndWrites, NoAttributeFlags, CurrentCaller());
+    if (safeSaveFolderMade.Failed() && safeSaveFolderMade.Error() != Ios::IosError::AlreadyExists)
+        throw MakeNandError("prepare the safe save of", pathForErrors, safeSaveFolderMade.Error());
 
     std::uint32_t folderNumber = nextSafeSaveNumber++;
     Ios::NandPath waitingFolder = safeSaveFolder.Child(std::format("{:08x}", folderNumber)).Value();
