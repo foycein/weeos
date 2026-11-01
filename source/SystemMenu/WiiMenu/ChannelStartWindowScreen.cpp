@@ -258,8 +258,7 @@ void ChannelStartWindowScreen::BuildTheFrame()
     changeIn = frame->BindAnimationToPane(std::string(ChangeInAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
     changeOut = frame->BindAnimationToPane(std::string(ChangeOutAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
 
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        UseTheWideFrame();
+    UseTheWideFrame();
 
     buttons = std::make_unique<ButtonGroup>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
 }

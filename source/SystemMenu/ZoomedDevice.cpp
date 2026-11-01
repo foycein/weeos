@@ -45,9 +45,14 @@ void ZoomedDevice::DestroyTexture(Graphics::TextureHandle texture)
     target.DestroyTexture(texture);
 }
 
-void ZoomedDevice::BeginFrame(const Graphics::Canvas& canvas, Platform::ScreenShape screenShape)
+void ZoomedDevice::BeginFrame(const Graphics::Canvas& canvas)
 {
-    target.BeginFrame(canvas, screenShape);
+    target.BeginFrame(canvas);
+}
+
+Graphics::ScissorRectangle ZoomedDevice::WholeArea() const
+{
+    return target.WholeArea();
 }
 
 void ZoomedDevice::SetScissor(const Graphics::ScissorRectangle& scissor)

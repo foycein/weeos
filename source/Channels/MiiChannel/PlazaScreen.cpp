@@ -128,7 +128,7 @@ PlazaScreen::PlazaScreen(ChannelServices& channelServices, const Layout::LayoutA
     , data(channelData)
     , layout(std::make_unique<SystemMenu::MenuLayout>(channelServices.display, layouts, std::string(LayoutName)))
     , heads(channelServices.display.Device(), faceParts)
-    , plaza(channelServices.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine, randomSeed)
+    , plaza(randomSeed)
 {
     FillTextsFromUserData(*layout, messages);
 

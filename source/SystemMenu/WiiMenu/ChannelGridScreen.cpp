@@ -66,8 +66,7 @@ constexpr std::array<std::string_view, 5> MaskPictures = {"Picture_00", "Picture
 constexpr std::array<std::string_view, 5> EdgePictures = {"Edge0", "Edge1", "Edge2", "Edge3", "Edge4"};
 
 // Half the size of a television of the grid, in the units of the picture (the constructor 0x813AA4CC takes them from a table by the
-// shape of the screen): 128 by 96 units on a 4:3 screen, 170 by 96 on a 16:9 screen.
-constexpr float HalfWidthOfAStandardTelevision = 64;
+// shape of the screen): 170 by 96 units on the 16:9 screen (128 by 96 on a 4:3 screen, which WeeOS does not show).
 constexpr float HalfWidthOfAWideTelevision = 85;
 constexpr float HalfHeightOfATelevision = 48;
 
@@ -149,8 +148,7 @@ void ChannelGridScreen::Build()
     stripSlide->Show(FrameAtRest);
     if (state == GridState::ComingFromTheBoard)
         stripSlide->PlayOnce(FirstFrameOfComingBack, LastFrameOfComingBack);
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        UseTheWideMasks();
+    UseTheWideMasks();
 
     ListTheSlotsOfTheStrip();
     MakeTheTiles();
@@ -822,13 +820,9 @@ void ChannelGridScreen::DrawTiles(const PlacedPanes& placedPanes)
 // their own script moves into view.
 PictureArea ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
 {
-    float halfWidth = HalfWidthOfAStandardTelevision;
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        halfWidth = HalfWidthOfAWideTelevision;
-
     PictureArea area;
-    area.left = place.x - halfWidth;
-    area.right = place.x + halfWidth;
+    area.left = place.x - HalfWidthOfAWideTelevision;
+    area.right = place.x + HalfWidthOfAWideTelevision;
     area.bottom = place.y - HalfHeightOfATelevision;
     area.top = place.y + HalfHeightOfATelevision;
     return area;
