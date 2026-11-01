@@ -153,14 +153,17 @@ MiiHead::MiiHead(Graphics::GraphicsDevice& graphicsDevice, const MiiResources& r
     MiiExpression expression, std::uint32_t faceTextureSize)
     : device(graphicsDevice)
     , record(miiRecord)
-    , model(BuildMiiHead(resources, miiRecord))
 {
+    MiiHeadModel model = BuildMiiHead(resources, miiRecord);
+    StoreParts(model);
+    hairIsMirrored = model.hairIsMirrored;
+
     faceTexture = DrawMiiFaceTexture(device, resources, ApplyExpression(record, expression), faceTextureSize);
 
     MiiTexture makeUp = resources.ReadTexture(TexturePart::FacelineMakeUp, record.face.facialFeature);
     makeUpTexture = UploadTexture(device, SwapGreenAndAlpha(makeUp.image), makeUp);
 
-    if (!model.cap.empty())
+    if (parts.cap.IsValid())
         capTexture = UploadPartTexture(device, resources, TexturePart::Cap, record.hair.type);
 
     noselineTexture = UploadPartTexture(device, resources, TexturePart::Noseline, record.nose.type);
@@ -175,37 +178,65 @@ MiiHead::~MiiHead()
         device.DestroyTexture(capTexture);
     device.DestroyTexture(noselineTexture);
     device.DestroyTexture(glassesTexture);
+
+    for (Graphics::MeshHandle part : {parts.faceline, parts.cap, parts.hair, parts.forehead, parts.beard, parts.nose, parts.noseline,
+             parts.mask, parts.glasses})
+    {
+        if (part.IsValid())
+            device.DestroyMesh(part);
+    }
 }
 
 void MiiHead::Draw(const Graphics::MeshPlacement& placement) const
 {
     FaceCulling hairCulling = FaceCulling::Back;
-    if (model.hairIsMirrored)
+    if (hairIsMirrored)
         hairCulling = FaceCulling::Front;
 
     Formats::Rgba8Color skinColor = SkinColors[record.face.skinColor];
 
-    DrawPart(model.beard, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeColorMaterial(HairColors[record.facialHair.color]));
-    DrawPart(model.nose, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeColorMaterial(skinColor));
-    DrawPart(model.forehead, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(skinColor));
-    DrawPart(model.hair, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(HairColors[record.hair.color]));
+    DrawPart(parts.beard, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeColorMaterial(HairColors[record.facialHair.color]));
+    DrawPart(parts.nose, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeColorMaterial(skinColor));
+    DrawPart(parts.forehead, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(skinColor));
+    DrawPart(parts.hair, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(HairColors[record.hair.color]));
     if (capTexture.IsValid())
     {
         Graphics::Material capMaterial = MakeCapMaterial(FavoriteColors[record.favoriteColor], capTexture);
-        DrawPart(model.cap, placement, hairCulling, DepthMode::TestAndWrite, capMaterial);
+        DrawPart(parts.cap, placement, hairCulling, DepthMode::TestAndWrite, capMaterial);
     }
-    DrawPart(model.faceline, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeFacelineMaterial(skinColor, makeUpTexture));
+    DrawPart(parts.faceline, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeFacelineMaterial(skinColor, makeUpTexture));
 
-    DrawPart(model.mask, placement, FaceCulling::Back, DepthMode::TestOnly, MakeMaskMaterial(faceTexture));
-    DrawPart(model.noseline, placement, FaceCulling::Back, DepthMode::TestOnly, MakeNoselineMaterial(noselineTexture));
-    DrawPart(model.glasses, placement, FaceCulling::None, DepthMode::TestOnly,
+    DrawPart(parts.mask, placement, FaceCulling::Back, DepthMode::TestOnly, MakeMaskMaterial(faceTexture));
+    DrawPart(parts.noseline, placement, FaceCulling::Back, DepthMode::TestOnly, MakeNoselineMaterial(noselineTexture));
+    DrawPart(parts.glasses, placement, FaceCulling::None, DepthMode::TestOnly,
         MakeGlassesMaterial(GlassesColors[record.glasses.color], glassesTexture));
 }
 
-void MiiHead::DrawPart(const std::vector<Graphics::MeshVertex>& corners, const Graphics::MeshPlacement& placement,
-    Graphics::FaceCulling culling, Graphics::DepthMode depth, Graphics::Material material) const
+void MiiHead::StoreParts(const MiiHeadModel& model)
+{
+    parts.faceline = StorePart(model.faceline);
+    parts.cap = StorePart(model.cap);
+    parts.hair = StorePart(model.hair);
+    parts.forehead = StorePart(model.forehead);
+    parts.beard = StorePart(model.beard);
+    parts.nose = StorePart(model.nose);
+    parts.noseline = StorePart(model.noseline);
+    parts.mask = StorePart(model.mask);
+    parts.glasses = StorePart(model.glasses);
+}
+
+Graphics::MeshHandle MiiHead::StorePart(const std::vector<Graphics::MeshVertex>& corners)
 {
     if (corners.empty())
+        return {};
+
+    return device.CreateMesh(corners);
+}
+
+void MiiHead::DrawPart(Graphics::MeshHandle part, const Graphics::MeshPlacement& placement, Graphics::FaceCulling culling,
+    Graphics::DepthMode depth, Graphics::Material material) const
+{
+    if (!part.IsValid())
         return;
 
     Graphics::MeshPlacement partPlacement = placement;
@@ -215,7 +246,7 @@ void MiiHead::DrawPart(const std::vector<Graphics::MeshVertex>& corners, const G
     if (placement.light)
         AddLightStage(material);
 
-    device.DrawMesh(corners, partPlacement, material);
+    device.DrawMesh(part, partPlacement, material);
 }
 
 }

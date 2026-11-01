@@ -2,11 +2,7 @@
 
 #include "Mii/MiiColors.h"
 
-#include "Formats/FormatError.h"
-#include "Graphics/Matrix4.h"
-
 #include <cmath>
-#include <map>
 #include <set>
 #include <string>
 
@@ -20,12 +16,15 @@ using Graphics::Matrix4;
 using Graphics::TevAlphaInput;
 using Graphics::TevColorInput;
 
-// The bones the Mii Channel treats in their own way while it sizes a body.
+// The bones the Mii Channel treats in their own way while it sizes and turns a body.
 constexpr std::string_view SlopeBone = "aslope_root";
 constexpr std::string_view PositionBone = "position_root";
 constexpr std::string_view HeadBone = "head";
 const std::set<std::string_view> UnsizedBones = {"all_root", "aslope_root", "position_root", "shadow_model"};
 const std::set<std::string_view> WristAndAnkleBones = {"wrist_l", "wrist_r", "ankle_l", "ankle_r"};
+
+// The lean of aslope_root in the animations of the plaza, about x.
+constexpr float PlazaLeanDegrees = -45.0f;
 
 // Height and weight run from 0 to 128.
 constexpr float SizeUnit = 128.0f;
@@ -48,36 +47,32 @@ constexpr Formats::Rgba8Color FavoritePants = {112, 32, 16, 255};
 constexpr Formats::Rgba8Color ForeignPants = {40, 64, 120, 255};
 constexpr Formats::Rgba8Color SpecialPants = {192, 160, 48, 255};
 
-struct BodySize
-{
-    float length;
-    float thickness;
-};
-
-BodySize SizeOf(const MiiRecord& record)
-{
-    float height = static_cast<float>(record.height) / SizeUnit;
-    float weight = static_cast<float>(record.weight) / SizeUnit;
-
-    BodySize size;
-    size.length = SmallestLength + LengthPerHeight * height;
-    size.thickness = SmallestThickness + ThicknessPerHeight * height + weight * (ThicknessPerWeight + ThicknessPerWeightAndHeight * height);
-    return size;
-}
-
-// The standing pose of a bone, upright (without the backward lean that the plaza's camera wants) and sized to the Mii.
-BoneTransform StandingTransform(const MiiBodyFile& file, const BodyBone& bone, BodySize size)
+// The transform of a bone in the stance: the animation's (bodyWait frame 0 without one), without the lean when the body stands upright,
+// turned toward the facing direction and sized to the Mii.
+BoneTransform PosedTransform(const MiiBodyFile& file, const BodyBone& bone, BodySize size, const BodyStance& stance)
 {
     BoneTransform transform = bone.restTransform;
-    auto posed = file.standingPose.find(bone.name);
-    if (posed != file.standingPose.end())
-        transform = posed->second;
+    if (stance.animation != nullptr)
+    {
+        auto animated = stance.animation->bones.find(bone.name);
+        if (animated != stance.animation->bones.end())
+            transform = AnimatedTransform(animated->second, BoneTransform(), stance.frame);
+    }
+    else
+    {
+        auto posed = file.standingPose.find(bone.name);
+        if (posed != file.standingPose.end())
+            transform = posed->second;
+    }
 
-    if (bone.name == SlopeBone)
+    if (bone.name == SlopeBone && !stance.leansBack)
         transform.rotationDegrees = {0, 0, 0};
 
     if (bone.name == PositionBone)
+    {
         transform.translation.y += LiftPerLength * (size.length - 1) + LiftPerThickness * (size.thickness - 1);
+        transform.rotationDegrees.y += stance.facingDegrees;
+    }
 
     if (WristAndAnkleBones.contains(bone.name))
         transform.scale = {size.thickness, size.thickness, size.thickness};
@@ -104,48 +99,65 @@ Matrix4 LocalMatrix(const BoneTransform& transform, Formats::Vector3 parentScale
     return translation * Graphics::MakeScale(inverseScale) * rotationAndScale;
 }
 
-std::vector<Graphics::MeshVertex> PoseCorners(const BodyPart& part, const std::map<int, Matrix4>& matrixOfId)
+std::vector<Graphics::MeshVertex> PoseCorners(const BodyPart& part, const std::vector<Matrix4>& boneMatrices)
 {
-    std::map<int, Matrix4> normalMatrixOfId;
-    for (const auto& [matrixId, matrix] : matrixOfId)
-        normalMatrixOfId[matrixId] = Graphics::MakeNormalMatrix(matrix);
+    std::vector<Matrix4> normalMatrices;
+    for (const Matrix4& boneMatrix : boneMatrices)
+        normalMatrices.push_back(Graphics::MakeNormalMatrix(boneMatrix));
 
     std::vector<Graphics::MeshVertex> corners;
     for (const BodyCorner& corner : part.triangleCorners)
     {
-        Formats::Vector3 normal = Graphics::TransformDirection(normalMatrixOfId.at(corner.matrixId), part.normals.at(corner.normal));
+        Formats::Vector3 normal = Graphics::TransformDirection(normalMatrices.at(corner.matrixId), part.normals.at(corner.normal));
         float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
 
         Graphics::MeshVertex vertex = {};
-        vertex.position = Graphics::TransformPoint(matrixOfId.at(corner.matrixId), part.positions.at(corner.position));
+        vertex.position = Graphics::TransformPoint(boneMatrices.at(corner.matrixId), part.positions.at(corner.position));
         vertex.normal = {normal.x / length, normal.y / length, normal.z / length};
         corners.push_back(vertex);
     }
     return corners;
 }
 
-const MiiBodyFile& FileFor(const MiiBodyFiles& files, const MiiRecord& record)
+// The corners in the space of their bones, each with the number of its bone, for the graphics card.
+std::vector<Graphics::MeshVertex> CornersOnBones(const BodyPart& part)
 {
-    if (record.gender == Gender::Female)
-        return files.female;
-
-    return files.male;
+    std::vector<Graphics::MeshVertex> corners;
+    for (const BodyCorner& corner : part.triangleCorners)
+    {
+        Graphics::MeshVertex vertex = {};
+        vertex.position = part.positions.at(corner.position);
+        vertex.normal = part.normals.at(corner.normal);
+        vertex.boneNumber = static_cast<std::uint32_t>(corner.matrixId);
+        corners.push_back(vertex);
+    }
+    return corners;
 }
 
 }
 
-PosedBody PoseStandingBody(const MiiBodyFile& file, const MiiRecord& record)
+BodySize SizeOf(const MiiRecord& record)
+{
+    float height = static_cast<float>(record.height) / SizeUnit;
+    float weight = static_cast<float>(record.weight) / SizeUnit;
+
+    BodySize size;
+    size.length = SmallestLength + LengthPerHeight * height;
+    size.thickness = SmallestThickness + ThicknessPerHeight * height + weight * (ThicknessPerWeight + ThicknessPerWeightAndHeight * height);
+    return size;
+}
+
+BodyPose PoseBody(const MiiBodyFile& file, const MiiRecord& record, const BodyStance& stance)
 {
     BodySize size = SizeOf(record);
 
     std::vector<Matrix4> worldMatrices;
     std::vector<Formats::Vector3> usedScales;
-    std::map<int, Matrix4> matrixOfId;
-    PosedBody posed = {};
+    BodyPose pose;
 
     for (const BodyBone& bone : file.bones)
     {
-        BoneTransform transform = StandingTransform(file, bone, size);
+        BoneTransform transform = PosedTransform(file, bone, size, stance);
 
         Matrix4 world;
         if (bone.parent < 0)
@@ -155,14 +167,35 @@ PosedBody PoseStandingBody(const MiiBodyFile& file, const MiiRecord& record)
 
         worldMatrices.push_back(world);
         usedScales.push_back(transform.scale);
-        matrixOfId[bone.matrixId] = world;
+
+        auto matrixId = static_cast<std::size_t>(bone.matrixId);
+        if (pose.boneMatrices.size() <= matrixId)
+            pose.boneMatrices.resize(matrixId + 1);
+        pose.boneMatrices[matrixId] = world;
 
         if (bone.name == HeadBone)
-            posed.headPosition = Graphics::TransformPoint(world, {0, 0, 0});
+            pose.headPosition = Graphics::TransformPoint(world, {0, 0, 0});
     }
+    return pose;
+}
 
-    posed.shirt = PoseCorners(file.shirt, matrixOfId);
-    posed.pants = PoseCorners(file.pants, matrixOfId);
+Matrix4 HeadMatrixOf(const BodyPose& pose, const BodyStance& stance)
+{
+    Matrix4 lean;
+    if (stance.leansBack)
+        lean = Graphics::MakeRotationAroundX(PlazaLeanDegrees);
+
+    return Graphics::MakeTranslation(pose.headPosition) * lean * Graphics::MakeRotationAroundY(stance.facingDegrees);
+}
+
+PosedBody PoseStandingBody(const MiiBodyFile& file, const MiiRecord& record)
+{
+    BodyPose pose = PoseBody(file, record, BodyStance());
+
+    PosedBody posed;
+    posed.shirt = PoseCorners(file.shirt, pose.boneMatrices);
+    posed.pants = PoseCorners(file.pants, pose.boneMatrices);
+    posed.headPosition = pose.headPosition;
     return posed;
 }
 
@@ -180,14 +213,13 @@ Formats::Rgba8Color PantsColorFor(const MiiRecord& record, std::uint32_t console
     return OwnPants;
 }
 
-MiiBody::MiiBody(
-    Graphics::GraphicsDevice& graphicsDevice, const MiiBodyFiles& files, const MiiRecord& record, std::uint32_t consoleSystemId)
+MiiBodyModels::MiiBodyModels(Graphics::GraphicsDevice& graphicsDevice, const MiiBodyFiles& bodyFiles)
     : device(graphicsDevice)
-    , body(PoseStandingBody(FileFor(files, record), record))
-    , shirtColor(FavoriteColors[record.favoriteColor])
-    , pantsColor(PantsColorFor(record, consoleSystemId))
+    , files(bodyFiles)
+    , male(MakeModel(bodyFiles.male))
+    , female(MakeModel(bodyFiles.female))
 {
-    const Formats::RgbaImage& sphere = FileFor(files, record).environmentTexture;
+    const Formats::RgbaImage& sphere = bodyFiles.male.environmentTexture;
 
     Graphics::TextureDescription description;
     description.width = sphere.width;
@@ -196,25 +228,51 @@ MiiBody::MiiBody(
     environmentTexture = device.CreateTexture(description);
 }
 
-MiiBody::~MiiBody()
+MiiBodyModels::~MiiBodyModels()
 {
     device.DestroyTexture(environmentTexture);
+    for (const GenderModel& model : {male, female})
+    {
+        device.DestroyMesh(model.shirt);
+        device.DestroyMesh(model.pants);
+    }
 }
 
-Formats::Vector3 MiiBody::HeadPosition() const
+const MiiBodyFile& MiiBodyModels::FileFor(Gender gender) const
 {
-    return body.headPosition;
+    if (gender == Gender::Female)
+        return files.female;
+
+    return files.male;
 }
 
-void MiiBody::Draw(const Graphics::MeshPlacement& placement) const
+void MiiBodyModels::Draw(const MiiRecord& record, std::uint32_t consoleSystemId, const BodyPose& pose,
+    const Graphics::MeshPlacement& placement) const
 {
-    DrawPart(body.shirt, placement, shirtColor);
-    DrawPart(body.pants, placement, pantsColor);
+    const GenderModel& model = ModelFor(record.gender);
+    DrawPart(model.shirt, pose, placement, FavoriteColors[record.favoriteColor]);
+    DrawPart(model.pants, pose, placement, PantsColorFor(record, consoleSystemId));
+}
+
+MiiBodyModels::GenderModel MiiBodyModels::MakeModel(const MiiBodyFile& file)
+{
+    GenderModel model;
+    model.shirt = device.CreateMesh(CornersOnBones(file.shirt));
+    model.pants = device.CreateMesh(CornersOnBones(file.pants));
+    return model;
+}
+
+const MiiBodyModels::GenderModel& MiiBodyModels::ModelFor(Gender gender) const
+{
+    if (gender == Gender::Female)
+        return female;
+
+    return male;
 }
 
 // color = part color + sphere x sphere, limited to white.
-void MiiBody::DrawPart(
-    const std::vector<Graphics::MeshVertex>& corners, const Graphics::MeshPlacement& placement, Formats::Rgba8Color color) const
+void MiiBodyModels::DrawPart(Graphics::MeshHandle part, const BodyPose& pose, const Graphics::MeshPlacement& placement,
+    Formats::Rgba8Color color) const
 {
     Graphics::TevStage stage;
     stage.textureIndex = 0;
@@ -235,8 +293,9 @@ void MiiBody::DrawPart(
     partPlacement.textureCoordinatesFromNormal = true;
     partPlacement.culling = Graphics::FaceCulling::Back;
     partPlacement.depth = Graphics::DepthMode::TestAndWrite;
+    partPlacement.boneMatrices = pose.boneMatrices;
 
-    device.DrawMesh(corners, partPlacement, material);
+    device.DrawMesh(part, partPlacement, material);
 }
 
 }
