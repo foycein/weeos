@@ -1,5 +1,6 @@
 #include "Formats/NandFileSystem.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
@@ -34,9 +35,6 @@ constexpr std::size_t ClusterChainsOffset = 0x0C;
 constexpr std::size_t TreeOffset = ClusterChainsOffset + NandClusterCount * sizeof(std::uint16_t);
 constexpr std::size_t TreeRecordCount = 0x17FF;
 constexpr std::size_t NameFieldSize = 12;
-
-// The last four bytes of a tree record are not known. They only go into the HMAC of the clusters.
-constexpr std::size_t UnknownFieldSize = 4;
 
 // In front of the data of a cluster, the HMAC covers 64 bytes: the owner, the name, the place of the cluster in the file,
 // the number of the tree record and the unknown field of the record, then zeros. The superblock has the number of its first cluster
@@ -86,7 +84,7 @@ struct TreeRecord
     std::uint32_t size;
     std::uint32_t userId;
     std::uint16_t groupId;
-    std::array<Byte, UnknownFieldSize> unknownField;
+    std::array<Byte, NandUnknownFieldSize> unknownField;
 };
 
 // Gives the generation of the superblock that starts at the cluster, or nothing when there is none.
@@ -157,7 +155,7 @@ TreeRecord ReadTreeRecord(ByteReader& reader)
     record.size = reader.ReadUint32();
     record.userId = reader.ReadUint32();
     record.groupId = reader.ReadUint16();
-    record.unknownField = reader.ReadByteArray<UnknownFieldSize>();
+    record.unknownField = reader.ReadByteArray<NandUnknownFieldSize>();
     return record;
 }
 
@@ -189,7 +187,7 @@ bool IsValidName(const std::string& name)
 
 // The 64 bytes that the HMAC of a cluster covers in front of its data.
 Bytes MakeHmacSalt(std::uint32_t userId, const std::string& name, std::uint32_t clusterField, std::uint32_t recordNumber,
-    const std::array<Byte, UnknownFieldSize>& unknownField)
+    const std::array<Byte, NandUnknownFieldSize>& unknownField)
 {
     Bytes nameField(NameFieldSize, Byte(0));
     std::copy(name.begin(), name.end(), nameField.begin());
@@ -223,9 +221,9 @@ std::string JoinPath(const std::string& directoryPath, const std::string& name)
 class TreeBuilder
 {
 public:
-    explicit TreeBuilder(const std::vector<TreeRecord>& fstRecords)
-        : records(fstRecords)
-        , isReached(fstRecords.size(), false)
+    explicit TreeBuilder(const std::vector<TreeRecord>& treeRecords)
+        : records(treeRecords)
+        , isReached(treeRecords.size(), false)
     {
     }
 
@@ -456,7 +454,7 @@ std::size_t NandFileSystem::CountClustersWithWrongHmac(const NandEntry& file, By
     if (file.kind != NandEntryKind::File)
         throw FormatError(std::format("NAND file system: {} is a directory, not a file", file.path));
 
-    std::uint32_t clusterCount = (file.size + NandClusterSize - 1) / NandClusterSize;
+    std::uint32_t clusterCount = static_cast<std::uint32_t>(DivideRoundingUp(file.size, NandClusterSize));
     std::size_t wrongCount = 0;
 
     std::uint32_t cluster = file.firstCluster;
@@ -500,12 +498,12 @@ bool NandFileSystem::StoredHmacMatches(std::uint32_t clusterNumber, const Sha1Di
     Bytes firstPageSpare = image.ReadPageSpare(hmacPage);
     Bytes nextPageSpare = image.ReadPageSpare(hmacPage + 1);
 
-    Bytes firstCopy(firstPageSpare.begin() + FirstCopyOffset, firstPageSpare.begin() + FirstCopyOffset + Sha1DigestSize);
+    ByteView firstCopy = ByteView(firstPageSpare).subspan(FirstCopyOffset, Sha1DigestSize);
 
     constexpr std::size_t secondCopySizeInNextPage = Sha1DigestSize - SecondCopySizeInFirstPage;
-    Bytes secondCopy(firstPageSpare.begin() + SecondCopyOffset, firstPageSpare.begin() + SecondCopyOffset + SecondCopySizeInFirstPage);
-    secondCopy.insert(secondCopy.end(), nextPageSpare.begin() + SecondCopyOffsetInNextPage,
-        nextPageSpare.begin() + SecondCopyOffsetInNextPage + secondCopySizeInNextPage);
+    ByteView secondCopyStart = ByteView(firstPageSpare).subspan(SecondCopyOffset, SecondCopySizeInFirstPage);
+    ByteView secondCopyEnd = ByteView(nextPageSpare).subspan(SecondCopyOffsetInNextPage, secondCopySizeInNextPage);
+    Bytes secondCopy = JoinBytes(secondCopyStart, secondCopyEnd);
 
     bool firstCopyFits = std::equal(hmac.begin(), hmac.end(), firstCopy.begin());
     bool secondCopyFits = std::equal(hmac.begin(), hmac.end(), secondCopy.begin());

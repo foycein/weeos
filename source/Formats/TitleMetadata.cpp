@@ -9,8 +9,6 @@ namespace
 {
 
 constexpr std::size_t IssuerSize = 64;
-constexpr std::size_t RatingsSize = 16;
-constexpr std::size_t InputOutputMaskSize = 12;
 constexpr std::size_t UnusedAfterGroupIdSize = 2;
 constexpr std::size_t UnusedAfterRatingsSize = 12;
 constexpr std::size_t UnusedAfterInputOutputMaskSize = 18;
@@ -55,9 +53,9 @@ TitleMetadata ReadTitleMetadata(ByteView bytes)
     metadata.groupId = reader.ReadUint16();
     reader.Skip(UnusedAfterGroupIdSize);
     metadata.region = static_cast<Region>(reader.ReadUint16());
-    metadata.ratings = reader.ReadByteArray<RatingsSize>();
+    metadata.ratings = reader.ReadByteArray<TitleRatingsSize>();
     reader.Skip(UnusedAfterRatingsSize);
-    metadata.inputOutputMask = reader.ReadByteArray<InputOutputMaskSize>();
+    metadata.inputOutputMask = reader.ReadByteArray<TitleInputOutputMaskSize>();
     reader.Skip(UnusedAfterInputOutputMaskSize);
     metadata.accessRights = reader.ReadUint32();
     metadata.titleVersion = reader.ReadUint16();

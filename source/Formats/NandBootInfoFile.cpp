@@ -17,6 +17,7 @@ constexpr std::size_t WordSize = 4;
 constexpr std::size_t ChecksumSize = WordSize;
 
 // The fields at the start of the file. The menu leaves the bytes between them zero.
+constexpr std::size_t UnusedBytesBeforeApplicationType = 2;
 constexpr std::size_t ApplicationTypeOffset = 0x0A;
 constexpr std::size_t UnusedBytesBeforeLauncher = 8;
 constexpr std::size_t ArgumentsStart = 0x20;
@@ -24,6 +25,9 @@ constexpr std::size_t ArgumentsStart = 0x20;
 // The menu builds the file inside a buffer of 0x2000 bytes, at 0xFE0, and the places of the arguments are counted from the start of that
 // buffer. In the file a place is this much smaller.
 constexpr std::size_t BufferStartDistance = 0xFE0;
+
+// A zero word ends the list of the places of the arguments, like the list of arguments of a C program.
+constexpr std::size_t ListEndSize = WordSize;
 
 std::uint32_t SumOfWords(ByteView words)
 {
@@ -44,7 +48,9 @@ void StoreBytes(Bytes& file, std::size_t offset, ByteView bytes)
 // The place in the file of what the menu counts from the start of its buffer.
 std::size_t PlaceInFile(std::uint32_t placeInBuffer, std::string_view what)
 {
-    bool isInside = placeInBuffer >= ArgumentsStart + BufferStartDistance && placeInBuffer < NandBootInfoFileSize + BufferStartDistance;
+    std::size_t firstPlace = ArgumentsStart + BufferStartDistance;
+    std::size_t endPlace = NandBootInfoFileSize + BufferStartDistance;
+    bool isInside = placeInBuffer >= firstPlace && placeInBuffer < endPlace;
     if (!isInside)
         throw FormatError(std::format("NANDBOOTINFO: {} is at {:#x}, outside the arguments", what, placeInBuffer));
 
@@ -96,11 +102,12 @@ std::vector<std::uint32_t> StoreArgumentTexts(Bytes& file, const std::vector<std
 std::uint32_t StoreArgumentList(Bytes& file, const std::vector<std::uint32_t>& textPlaces, std::size_t firstTextStart)
 {
     std::size_t placeAfterTheList = firstTextStart - firstTextStart % WordSize;
-    std::size_t listSize = (textPlaces.size() + 1) * WordSize;
-    if (placeAfterTheList < ArgumentsStart + WordSize + listSize)
+    std::size_t countAndPlacesSize = (1 + textPlaces.size()) * WordSize;
+    std::size_t listSize = countAndPlacesSize + ListEndSize;
+    if (placeAfterTheList < ArgumentsStart + listSize)
         throw FormatError("NANDBOOTINFO: the list of arguments does not fit in the 0x1000 bytes of the file");
 
-    std::size_t countPlace = placeAfterTheList - listSize - WordSize;
+    std::size_t countPlace = placeAfterTheList - listSize;
 
     ByteWriter list;
     list.WriteUint32(static_cast<std::uint32_t>(textPlaces.size()));
@@ -150,9 +157,9 @@ Bytes WriteNandBootInfo(const NandBootInfo& info)
     }
 
     ByteWriter header;
-    header.WriteUint32(0);
+    header.WriteZeros(ChecksumSize);
     header.WriteUint32(listPlaceInBuffer);
-    header.WriteUint16(0);
+    header.WriteZeros(UnusedBytesBeforeApplicationType);
     header.WriteByte(info.applicationType);
     header.WriteByte(info.titleType);
     header.WriteUint32(info.launchCode);

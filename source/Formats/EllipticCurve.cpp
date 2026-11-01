@@ -7,6 +7,7 @@
 #include <array>
 #include <bit>
 #include <cstdint>
+#include <initializer_list>
 #include <utility>
 
 namespace Formats
@@ -52,8 +53,11 @@ int Degree(const Polynomial& polynomial)
     for (int wordIndex = WordCount - 1; wordIndex >= 0; --wordIndex)
     {
         std::uint64_t word = polynomial.words[wordIndex];
-        if (word != 0)
-            return wordIndex * BitsPerWord + (BitsPerWord - 1 - std::countl_zero(word));
+        if (word == 0)
+            continue;
+
+        int highestBitInWord = BitsPerWord - 1 - std::countl_zero(word);
+        return wordIndex * BitsPerWord + highestBitInWord;
     }
     return -1;
 }
@@ -63,6 +67,14 @@ Polynomial Add(const Polynomial& first, const Polynomial& second)
     Polynomial sum;
     for (int index = 0; index < WordCount; ++index)
         sum.words[index] = first.words[index] ^ second.words[index];
+    return sum;
+}
+
+Polynomial Sum(std::initializer_list<Polynomial> terms)
+{
+    Polynomial sum;
+    for (const Polynomial& term : terms)
+        sum = Add(sum, term);
     return sum;
 }
 
@@ -157,8 +169,9 @@ Polynomial PolynomialFromBytes(ByteView bytes)
     for (std::size_t byteNumber = 0; byteNumber < bytes.size(); ++byteNumber)
     {
         std::size_t positionFromTheEnd = bytes.size() - 1 - byteNumber;
-        polynomial.words[positionFromTheEnd / sizeof(std::uint64_t)] |=
-            static_cast<std::uint64_t>(bytes[byteNumber]) << ((positionFromTheEnd % sizeof(std::uint64_t)) * BitsPerByte);
+        std::size_t wordIndex = positionFromTheEnd / sizeof(std::uint64_t);
+        std::size_t shift = (positionFromTheEnd % sizeof(std::uint64_t)) * BitsPerByte;
+        polynomial.words[wordIndex] |= static_cast<std::uint64_t>(bytes[byteNumber]) << shift;
     }
     return polynomial;
 }
@@ -168,9 +181,9 @@ Bytes PolynomialToBytes(const Polynomial& polynomial)
     Bytes bytes(EllipticCurveNumberSize);
     for (std::size_t positionFromTheEnd = 0; positionFromTheEnd < EllipticCurveNumberSize; ++positionFromTheEnd)
     {
-        std::uint64_t word = polynomial.words[positionFromTheEnd / sizeof(std::uint64_t)];
-        bytes[EllipticCurveNumberSize - 1 - positionFromTheEnd] =
-            static_cast<Byte>((word >> ((positionFromTheEnd % sizeof(std::uint64_t)) * BitsPerByte)) & ByteMask);
+        std::size_t wordIndex = positionFromTheEnd / sizeof(std::uint64_t);
+        std::size_t shift = (positionFromTheEnd % sizeof(std::uint64_t)) * BitsPerByte;
+        bytes[EllipticCurveNumberSize - 1 - positionFromTheEnd] = static_cast<Byte>((polynomial.words[wordIndex] >> shift) & ByteMask);
     }
     return bytes;
 }
@@ -216,8 +229,8 @@ Point MakeBasePoint()
 bool IsOnTheCurve(const Point& point)
 {
     Polynomial xSquared = Multiply(point.x, point.x);
-    Polynomial left = Add(Multiply(point.y, point.y), Multiply(point.x, point.y));
-    Polynomial right = Add(Add(Multiply(xSquared, point.x), Multiply(CurveA, xSquared)), CurveB);
+    Polynomial left = Sum({Multiply(point.y, point.y), Multiply(point.x, point.y)});
+    Polynomial right = Sum({Multiply(xSquared, point.x), Multiply(CurveA, xSquared), CurveB});
     return left == right;
 }
 
@@ -238,8 +251,8 @@ Point Double(const Point& point)
         return MakeInfinity();
 
     Polynomial slope = Add(point.x, Multiply(point.y, Invert(point.x)));
-    Polynomial newX = Add(Add(Multiply(slope, slope), slope), CurveA);
-    Polynomial newY = Add(Multiply(point.x, point.x), Multiply(Add(slope, MakeOne()), newX));
+    Polynomial newX = Sum({Multiply(slope, slope), slope, CurveA});
+    Polynomial newY = Sum({Multiply(point.x, point.x), Multiply(Add(slope, MakeOne()), newX)});
     return Point{newX, newY, false};
 }
 
@@ -257,9 +270,10 @@ Point AddPoints(const Point& first, const Point& second)
         return areEqual ? Double(first) : MakeInfinity();
     }
 
-    Polynomial slope = Multiply(Add(first.y, second.y), Invert(Add(first.x, second.x)));
-    Polynomial newX = Add(Add(Add(Multiply(slope, slope), slope), Add(first.x, second.x)), CurveA);
-    Polynomial newY = Add(Add(Multiply(slope, Add(first.x, newX)), newX), first.y);
+    Polynomial xSum = Add(first.x, second.x);
+    Polynomial slope = Multiply(Add(first.y, second.y), Invert(xSum));
+    Polynomial newX = Sum({Multiply(slope, slope), slope, xSum, CurveA});
+    Polynomial newY = Sum({Multiply(slope, Add(first.x, newX)), newX, first.y});
     return Point{newX, newY, false};
 }
 
