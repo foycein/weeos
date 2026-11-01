@@ -146,8 +146,10 @@ void SensorBarPages::BuildSensitivitySet(Page& content)
 
     PageButton& minus = builder.AddPictureButton(ButtonLook::MinusCircle, MinusBounds, "Lower", [this] { ChangeSensitivity(-1); });
     minus.sound = sensitivity > LowestSensitivity ? PageSound::Choose : PageSound::Error;
+    minus.remoteButton = Input::RemoteButtons::One;
     PageButton& plus = builder.AddPictureButton(ButtonLook::PlusCircle, PlusBounds, "Higher", [this] { ChangeSensitivity(1); });
     plus.sound = sensitivity < HighestSensitivity ? PageSound::Choose : PageSound::Error;
+    plus.remoteButton = Input::RemoteButtons::Two;
 
     builder.AddText(HintBounds, TextRole::Message, {u"Press A when done."});
 
