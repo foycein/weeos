@@ -36,6 +36,9 @@ Graphics::Matrix4 WithoutTranslation(const Graphics::Matrix4& matrix);
 // The inverse of a matrix whose fourth row is (0, 0, 0, 1).
 Graphics::Matrix4 InvertAffine(const Graphics::Matrix4& matrix);
 
+// The fourth column of a matrix holds its move.
+constexpr int TranslationColumn = 3;
+
 Vector3 ColumnOf(const Graphics::Matrix4& matrix, int column);
 
 }

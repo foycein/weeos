@@ -21,6 +21,8 @@ namespace
 {
 
 constexpr float PercentPerUnit = 100;
+constexpr int WholePercent = 100;
+constexpr float HighestByte = 255;
 constexpr std::uint32_t LongestLife = 0xFFFF;
 
 // Version 5's size random: size * (a signed 16-bit random number) * percent / (32768 * 100).
@@ -34,13 +36,26 @@ constexpr std::uint16_t TextureWrapMask = 0xF;
 constexpr std::size_t BitsPerTextureReverse = 2;
 constexpr std::uint8_t TextureReverseMask = 0x3;
 
+// The color targets come in pairs: the colors of a register, then its alpha.
+constexpr std::size_t TargetsPerColor = 2;
+
 // The space of a field's numbers (FieldSettings::space) and what it moves (FieldSettings::mode).
 constexpr std::uint8_t FieldInTheWorld = 0;
 constexpr std::uint8_t FieldMovesThePosition = 1;
 
+// Where the numbers of each field begin in its values.
+constexpr std::size_t FieldStrength = 0;
+constexpr std::size_t GravityDirection = 1;
+constexpr std::size_t VortexInnerSpeed = 0;
+constexpr std::size_t VortexOuterSpeed = 1;
+constexpr std::size_t VortexRadius = 2;
+constexpr std::size_t VortexAxisAngles = 3;
+constexpr std::size_t SpinAngle = 0;
+constexpr std::size_t SpinAxisAngles = 1;
+
 std::uint8_t ToByte(float value)
 {
-    return static_cast<std::uint8_t>(std::clamp(value, 0.0f, 255.0f));
+    return static_cast<std::uint8_t>(std::clamp(value, 0.0f, HighestByte));
 }
 
 void SetRgb(Rgba8Color& color, const std::vector<float>& values)
@@ -73,7 +88,7 @@ void SetFirstComponents(Vector3& vector, const std::vector<float>& values)
 std::size_t ColorNumberOf(EffectAnimationTarget target)
 {
     std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(EffectAnimationTarget::Color1PrimaryRgb);
-    return number / 2;
+    return number / TargetsPerColor;
 }
 
 bool IsRgbTarget(EffectAnimationTarget target)
@@ -91,14 +106,16 @@ bool IsAlphaTarget(EffectAnimationTarget target)
 void ApplyTextureTransform(Particle& particle, EffectAnimationTarget target, const std::vector<float>& values)
 {
     constexpr std::size_t TargetsPerTexture = 3;
+    constexpr std::size_t ScalePart = 0;
+    constexpr std::size_t RotationPart = 1;
     std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(EffectAnimationTarget::Texture1Scale);
     std::size_t texture = number / TargetsPerTexture;
     std::size_t part = number % TargetsPerTexture;
     Formats::ParticleTextureTransform& transform = particle.textureTransforms[texture];
 
-    if (part == 0)
+    if (part == ScalePart)
         SetFirstComponents(transform.scale, values);
-    else if (part == 1 && !values.empty())
+    else if (part == RotationPart && !values.empty())
         transform.rotation = values[0];
     else
         SetFirstComponents(transform.translation, values);
@@ -149,6 +166,13 @@ void ApplyValues(Particle& particle, EffectAnimationTarget target, const std::ve
     }
 }
 
+// The bits under mask << shift replaced by the value's lowest bits.
+std::uint32_t WithBitsReplaced(std::uint32_t bits, std::uint32_t mask, std::size_t shift, std::uint32_t value)
+{
+    std::uint32_t cleared = bits & ~(mask << shift);
+    return cleared | ((value & mask) << shift);
+}
+
 void ApplyPattern(Particle& particle, const EffectAnimation& animation, const CurveTime& time)
 {
     const Formats::AnimationKey* key = FindKeyAtOrBefore(animation, time.frame);
@@ -159,12 +183,12 @@ void ApplyPattern(Particle& particle, const EffectAnimation& animation, const Cu
     particle.textureNames[texture] = animation.names[key->textureNameIndex];
 
     std::size_t wrapShift = texture * BitsPerTextureWrap;
-    particle.textureWraps = static_cast<std::uint16_t>(particle.textureWraps & ~(TextureWrapMask << wrapShift));
-    particle.textureWraps = static_cast<std::uint16_t>(particle.textureWraps | ((key->textureWrap & TextureWrapMask) << wrapShift));
+    std::uint32_t wraps = WithBitsReplaced(particle.textureWraps, TextureWrapMask, wrapShift, key->textureWrap);
+    particle.textureWraps = static_cast<std::uint16_t>(wraps);
 
     std::size_t reverseShift = texture * BitsPerTextureReverse;
-    particle.textureReverses = static_cast<std::uint8_t>(particle.textureReverses & ~(TextureReverseMask << reverseShift));
-    particle.textureReverses = static_cast<std::uint8_t>(particle.textureReverses | ((key->textureReverse & TextureReverseMask) << reverseShift));
+    std::uint32_t reverses = WithBitsReplaced(particle.textureReverses, TextureReverseMask, reverseShift, key->textureReverse);
+    particle.textureReverses = static_cast<std::uint8_t>(reverses);
 }
 
 // The numbers of a field: those of its settings, of which the curve's keys replace the first ones.
@@ -186,8 +210,10 @@ Vector3 TurnAroundAxis(Vector3 point, Vector3 axis, float angle)
 {
     float cosine = std::cos(angle);
     float sine = std::sin(angle);
+    Vector3 kept = Multiply(point, cosine);
+    Vector3 around = Multiply(Cross(axis, point), sine);
     Vector3 along = Multiply(axis, Dot(axis, point) * (1 - cosine));
-    return Add(Add(Multiply(point, cosine), Multiply(Cross(axis, point), sine)), along);
+    return Add(Add(kept, around), along);
 }
 
 struct FieldResult
@@ -196,17 +222,22 @@ struct FieldResult
     Vector3 velocityChange = {0, 0, 0};
 };
 
+Vector3 VectorAt(const std::vector<float>& values, std::size_t index)
+{
+    return {ValueAt(values, index), ValueAt(values, index + 1), ValueAt(values, index + 2)};
+}
+
 Vector3 VortexPush(const std::vector<float>& values, Vector3 relativePosition)
 {
-    Vector3 axis = UpTurnedBy({ValueAt(values, 3), ValueAt(values, 4), ValueAt(values, 5)});
+    Vector3 axis = UpTurnedBy(VectorAt(values, VortexAxisAngles));
     Vector3 across = Subtract(relativePosition, Multiply(axis, Dot(axis, relativePosition)));
     float distanceSquared = LengthSquared(across);
     if (distanceSquared <= 0)
         return {0, 0, 0};
 
-    float innerSpeed = ValueAt(values, 0);
-    float outerSpeed = ValueAt(values, 1);
-    float radius = ValueAt(values, 2);
+    float innerSpeed = ValueAt(values, VortexInnerSpeed);
+    float outerSpeed = ValueAt(values, VortexOuterSpeed);
+    float radius = ValueAt(values, VortexRadius);
     float speed = outerSpeed;
     if (distanceSquared < radius * radius)
     {
@@ -218,8 +249,9 @@ Vector3 VortexPush(const std::vector<float>& values, Vector3 relativePosition)
 
 Vector3 SpinPush(const std::vector<float>& values, Vector3 relativePosition)
 {
-    Vector3 axis = UpTurnedBy({ValueAt(values, 1), ValueAt(values, 2), ValueAt(values, 3)});
-    return Subtract(TurnAroundAxis(relativePosition, axis, ValueAt(values, 0)), relativePosition);
+    Vector3 axis = UpTurnedBy(VectorAt(values, SpinAxisAngles));
+    Vector3 turned = TurnAroundAxis(relativePosition, axis, ValueAt(values, SpinAngle));
+    return Subtract(turned, relativePosition);
 }
 
 // Gravity, vortex and spin work out a vector in the world or in the emitter's space, which moves the position or changes the
@@ -229,18 +261,19 @@ void AddField(FieldResult& fields, const EffectAnimation& animation, const std::
 {
     if (animation.target == EffectAnimationTarget::SpeedField)
     {
-        fields.velocityChange = Add(fields.velocityChange, Multiply(startVelocity, ValueAt(values, 0) - 1));
+        float speedFactor = ValueAt(values, FieldStrength);
+        fields.velocityChange = Add(fields.velocityChange, Multiply(startVelocity, speedFactor - 1));
         return;
     }
 
     bool isInEmitterSpace = animation.field.space != FieldInTheWorld;
-    Vector3 relativePosition = Subtract(particle.position, ColumnOf(world, 3));
+    Vector3 relativePosition = Subtract(particle.position, ColumnOf(world, TranslationColumn));
     if (isInEmitterSpace)
         relativePosition = Graphics::TransformPoint(InvertAffine(world), particle.position);
 
     Vector3 result = {0, 0, 0};
     if (animation.target == EffectAnimationTarget::GravityField)
-        result = Multiply({ValueAt(values, 1), ValueAt(values, 2), ValueAt(values, 3)}, ValueAt(values, 0));
+        result = Multiply(VectorAt(values, GravityDirection), ValueAt(values, FieldStrength));
     else if (animation.target == EffectAnimationTarget::VortexField)
         result = VortexPush(values, relativePosition);
     else if (animation.target == EffectAnimationTarget::SpinField)
@@ -283,7 +316,59 @@ Graphics::Matrix4 InheritedParts(const Graphics::Matrix4& world, bool takesScale
 
 std::uint8_t PercentOf(std::uint8_t value, std::uint8_t percent)
 {
-    return static_cast<std::uint8_t>(value * percent / 100);
+    return static_cast<std::uint8_t>(value * percent / WholePercent);
+}
+
+void ApplyEmitterValues(Formats::EmitterSettings& settings, EffectAnimationTarget target, const std::vector<float>& values)
+{
+    float first = ValueAt(values, 0);
+    float second = ValueAt(values, 1);
+    switch (target)
+    {
+    case EffectAnimationTarget::EmitterFormParameters:
+        for (std::size_t number = 0; number < values.size() && number < settings.formParameters.size(); ++number)
+            settings.formParameters[number] = values[number];
+        break;
+    case EffectAnimationTarget::EmitterScale:
+        SetFirstComponents(settings.scale, values);
+        break;
+    case EffectAnimationTarget::EmitterRotation:
+        SetFirstComponents(settings.rotation, values);
+        break;
+    case EffectAnimationTarget::EmitterTranslation:
+        SetFirstComponents(settings.translation, values);
+        break;
+    case EffectAnimationTarget::EmitterRadiationSpeed:
+        settings.radiationSpeed = first;
+        break;
+    case EffectAnimationTarget::EmitterYAxisSpeed:
+        settings.yAxisSpeed = first;
+        break;
+    case EffectAnimationTarget::EmitterRandomDirectionSpeed:
+        settings.randomDirectionSpeed = first;
+        break;
+    case EffectAnimationTarget::EmitterNormalSpeed:
+        settings.normalSpeed = first;
+        settings.normalDiffusion = second;
+        break;
+    case EffectAnimationTarget::EmitterSpecialDirectionSpeed:
+        settings.specialDirectionSpeed = first;
+        settings.specialDirectionDiffusion = second;
+        break;
+    case EffectAnimationTarget::EmitterEmitCount:
+        settings.emitCount = first;
+        break;
+    default:
+        break;
+    }
+}
+
+// An animation that runs only at the start runs while the age is 0; a disabled one never runs.
+bool RunsAtThisAge(const EffectAnimation& animation, bool onlyAtTheStart, std::uint32_t animatedAge)
+{
+    if (onlyAtTheStart && animatedAge != 0)
+        return false;
+    return (animation.flags & Formats::AnimationFlag::Disabled) == 0;
 }
 
 }
@@ -393,36 +478,11 @@ void Emitter::ApplyEmitterAnimations()
     {
         const EffectAnimation& animation = resource.emitterAnimations[index];
         bool onlyAtStart = index < resource.emitterAnimationsAtStart;
-        if (onlyAtStart && age != 0)
-            continue;
-        if ((animation.flags & Formats::AnimationFlag::Disabled) != 0)
+        if (!RunsAtThisAge(animation, onlyAtStart, age))
             continue;
 
         CurveTime time = FindCurveTime(animation, age, settings.emitterLife, resource.version);
-        std::vector<float> values = EvaluateCurve(animation, time, 0, resource.version);
-        switch (animation.target)
-        {
-        case EffectAnimationTarget::EmitterFormParameters:
-            for (std::size_t number = 0; number < values.size() && number < settings.formParameters.size(); ++number)
-                settings.formParameters[number] = values[number];
-            break;
-        case EffectAnimationTarget::EmitterScale: SetFirstComponents(settings.scale, values); break;
-        case EffectAnimationTarget::EmitterRotation: SetFirstComponents(settings.rotation, values); break;
-        case EffectAnimationTarget::EmitterTranslation: SetFirstComponents(settings.translation, values); break;
-        case EffectAnimationTarget::EmitterRadiationSpeed: settings.radiationSpeed = ValueAt(values, 0); break;
-        case EffectAnimationTarget::EmitterYAxisSpeed: settings.yAxisSpeed = ValueAt(values, 0); break;
-        case EffectAnimationTarget::EmitterRandomDirectionSpeed: settings.randomDirectionSpeed = ValueAt(values, 0); break;
-        case EffectAnimationTarget::EmitterNormalSpeed:
-            settings.normalSpeed = ValueAt(values, 0);
-            settings.normalDiffusion = ValueAt(values, 1);
-            break;
-        case EffectAnimationTarget::EmitterSpecialDirectionSpeed:
-            settings.specialDirectionSpeed = ValueAt(values, 0);
-            settings.specialDirectionDiffusion = ValueAt(values, 1);
-            break;
-        case EffectAnimationTarget::EmitterEmitCount: settings.emitCount = ValueAt(values, 0); break;
-        default: break;
-        }
+        ApplyEmitterValues(settings, animation.target, EvaluateCurve(animation, time, 0, resource.version));
     }
 }
 
@@ -458,16 +518,11 @@ bool Emitter::UpdateParticle(Particle& particle, std::vector<ChildBirth>& childQ
     for (std::size_t index = 0; index < resource.particleAnimations.size(); ++index)
     {
         const EffectAnimation& animation = resource.particleAnimations[index];
-        bool onlyAtBirth = index < resource.particleAnimationsAtBirth;
-        if (onlyAtBirth && particle.age != 0)
-            continue;
-        if ((animation.flags & Formats::AnimationFlag::Disabled) != 0)
-            continue;
-
         bool isField = animation.kind == AnimationValueKind::Field;
         bool isChild = animation.kind == AnimationValueKind::Child;
         bool isStartValue = animation.frameCount <= 1 && !isField && !isChild;
-        if (isStartValue && particle.age != 0)
+        bool onlyAtBirth = index < resource.particleAnimationsAtBirth || isStartValue;
+        if (!RunsAtThisAge(animation, onlyAtBirth, particle.age))
             continue;
 
         bool usesEmitterTime = (animation.flags & Formats::AnimationFlag::UsesEmitterTime) != 0;
@@ -476,18 +531,28 @@ bool Emitter::UpdateParticle(Particle& particle, std::vector<ChildBirth>& childQ
         CurveTime time = FindCurveTime(animation, curveAge, curveLife, resource.version);
 
         if (isChild)
+        {
             FireChildren(animation, particle, curveAge, curveLife, childQueue);
-        else if (animation.kind == AnimationValueKind::TexturePattern)
+            continue;
+        }
+        if (animation.kind == AnimationValueKind::TexturePattern)
+        {
             ApplyPattern(particle, animation, time);
-        else if (isField)
-            AddField(fields, animation, FieldValues(animation, time, particle.seed, resource.version), particle, startVelocity, world);
-        else
-            ApplyValues(particle, animation.target, EvaluateCurve(animation, time, particle.seed, resource.version));
+            continue;
+        }
+        if (isField)
+        {
+            std::vector<float> fieldValues = FieldValues(animation, time, particle.seed, resource.version);
+            AddField(fields, animation, fieldValues, particle, startVelocity, world);
+            continue;
+        }
+        ApplyValues(particle, animation.target, EvaluateCurve(animation, time, particle.seed, resource.version));
     }
 
     ++particle.age;
     particle.velocity = Add(particle.velocity, fields.velocityChange);
-    particle.position = Add(particle.position, Multiply(Add(fields.positionPush, particle.velocity), particle.momentum));
+    Vector3 move = Add(fields.positionPush, particle.velocity);
+    particle.position = Add(particle.position, Multiply(move, particle.momentum));
     return true;
 }
 
@@ -496,7 +561,8 @@ void Emitter::FireChildren(const EffectAnimation& animation, const Particle& par
     std::vector<ChildBirth>& childQueue) const
 {
     CurveTime time = FindCurveTime(animation, curveAge, curveLife, resource.version);
-    CurveTime timeBefore = FindCurveTime(animation, curveAge == 0 ? 0 : curveAge - 1, curveLife, resource.version);
+    std::uint32_t ageBefore = curveAge == 0 ? 0 : curveAge - 1;
+    CurveTime timeBefore = FindCurveTime(animation, ageBefore, curveLife, resource.version);
     bool hasEnteredTheFrame = curveAge == 0 || timeBefore.frame != time.frame;
     if (!hasEnteredTheFrame)
         return;
@@ -531,8 +597,7 @@ void Emitter::Emit()
     }
     intervalCounter = settings.emitInterval;
 
-    float amount = EmitAmount();
-    auto count = static_cast<std::uint32_t>(amount);
+    auto count = static_cast<std::uint32_t>(EmitAmount());
     MakeParticles(count);
 }
 
@@ -543,7 +608,10 @@ float Emitter::EmitAmount()
 
     float amount = settings.emitCount;
     if (settings.emitCountRandomPercent != 0)
-        amount += amount * settings.emitCountRandomPercent / PercentPerUnit * (2 * random.NextFraction() - 1);
+    {
+        float signedFraction = 2 * random.NextFraction() - 1;
+        amount += amount * settings.emitCountRandomPercent / PercentPerUnit * signedFraction;
+    }
 
     emitAccumulator += amount;
     if (isFirstEmission && settings.emitCount != 0 && emitAccumulator < 1)
@@ -585,31 +653,49 @@ Particle Emitter::NewParticle(Vector3 localPosition, Vector3 localVelocity)
     particle.firstAlphaReference = start.firstAlphaReference;
     particle.secondAlphaReference = start.secondAlphaReference;
 
-    std::uint32_t life = settings.particleLife;
-    if (settings.particleLifeRandomPercent != 0)
-        life -= static_cast<std::uint32_t>(settings.particleLifeRandomPercent / PercentPerUnit * life * random.NextFraction());
-    particle.life = std::clamp<std::uint32_t>(life, 1, LongestLife);
-
+    particle.life = RandomParticleLife();
     particle.momentum = 1 + settings.momentumRandomPercent / PercentPerUnit * random.NextFraction();
     particle.seed = static_cast<std::uint16_t>(random.NextBits());
-
-    if (start.sizeRandomPercent != 0)
-    {
-        float change = static_cast<float>(random.NextSigned()) * start.sizeRandomPercent / SizeRandomDivisor;
-        particle.size.x += particle.size.x * change;
-        particle.size.y += particle.size.y * change;
-    }
-
-    std::array<float, 3> offset = {start.rotationOffset.x, start.rotationOffset.y, start.rotationOffset.z};
-    for (std::size_t axis = 0; axis < offset.size(); ++axis)
-    {
-        float randomShare = start.rotationOffsetRandomPercent[axis] / PercentPerUnit * (2 * random.NextFraction() - 1);
-        offset[axis] += offset[axis] * randomShare;
-    }
-    particle.rotationOffset = {offset[0], offset[1], offset[2]};
+    RandomizeSize(particle);
+    particle.rotationOffset = RandomRotationOffset();
 
     InheritFromTheSource(particle);
     return particle;
+}
+
+std::uint32_t Emitter::RandomParticleLife()
+{
+    std::uint32_t life = settings.particleLife;
+    if (settings.particleLifeRandomPercent != 0)
+    {
+        float shortening = settings.particleLifeRandomPercent / PercentPerUnit * life * random.NextFraction();
+        life -= static_cast<std::uint32_t>(shortening);
+    }
+    return std::clamp<std::uint32_t>(life, 1, LongestLife);
+}
+
+void Emitter::RandomizeSize(Particle& particle)
+{
+    std::int8_t randomPercent = resource.particle.sizeRandomPercent;
+    if (randomPercent == 0)
+        return;
+
+    float change = static_cast<float>(random.NextSigned()) * randomPercent / SizeRandomDivisor;
+    particle.size.x += particle.size.x * change;
+    particle.size.y += particle.size.y * change;
+}
+
+Vector3 Emitter::RandomRotationOffset()
+{
+    const Formats::ParticleParameters& start = resource.particle;
+    std::array<float, 3> offset = {start.rotationOffset.x, start.rotationOffset.y, start.rotationOffset.z};
+    for (std::size_t axis = 0; axis < offset.size(); ++axis)
+    {
+        float signedFraction = 2 * random.NextFraction() - 1;
+        float randomShare = start.rotationOffsetRandomPercent[axis] / PercentPerUnit * signedFraction;
+        offset[axis] += offset[axis] * randomShare;
+    }
+    return {offset[0], offset[1], offset[2]};
 }
 
 void Emitter::InheritFromTheSource(Particle& particle) const

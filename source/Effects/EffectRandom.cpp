@@ -17,10 +17,16 @@ constexpr std::uint32_t LoopFactor = 0x7B929;
 constexpr std::uint32_t KeyFactor = 0x371097E7;
 constexpr std::uint32_t KeyIncrement = 0x4BF53;
 constexpr std::uint32_t ByteMask = 0xFF;
+constexpr int BitsPerByte = 8;
 
 std::uint32_t ByteOf(std::uint32_t number, int byteNumber)
 {
-    return (number >> (byteNumber * 8)) & ByteMask;
+    return (number >> (byteNumber * BitsPerByte)) & ByteMask;
+}
+
+std::uint32_t PutAtByte(std::uint32_t byte, int byteNumber)
+{
+    return byte << (byteNumber * BitsPerByte);
 }
 
 }
@@ -54,14 +60,17 @@ std::int16_t EffectRandom::NextSigned()
 // Each byte is mixed with the one below it, from the second lowest up to the highest.
 std::uint32_t KeyRandomNumber(std::uint16_t particleSeed, std::uint16_t animationSeed, std::uint32_t loop, std::uint16_t keyValue)
 {
-    std::uint32_t number = particleSeed * ParticleFactor + animationSeed * AnimationFactor + loop * LoopFactor + keyValue * KeyFactor +
-        KeyIncrement;
+    std::uint32_t number = particleSeed * ParticleFactor;
+    number += animationSeed * AnimationFactor;
+    number += loop * LoopFactor;
+    number += keyValue * KeyFactor;
+    number += KeyIncrement;
 
     std::uint32_t lowest = ByteOf(number, 0);
     std::uint32_t second = ByteOf(number, 1) ^ lowest;
     std::uint32_t third = ByteOf(number, 2) ^ second;
     std::uint32_t highest = ByteOf(number, 3) ^ third;
-    return lowest | (second << 8) | (third << 16) | (highest << 24);
+    return PutAtByte(lowest, 0) | PutAtByte(second, 1) | PutAtByte(third, 2) | PutAtByte(highest, 3);
 }
 
 }

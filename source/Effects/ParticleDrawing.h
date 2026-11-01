@@ -33,6 +33,7 @@ std::optional<Graphics::BlendMode> BlendModeOf(const Formats::EffectDrawSetting&
 
 // The texture matrix of one of a particle's textures: its translation, then its rotation and scale around the middle, then the
 // reverse and the mirror of its wrap.
-Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTransform& transform, std::uint8_t wrapBits, std::uint8_t reverseBits);
+Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTransform& transform, std::uint8_t wrapBits,
+    std::uint8_t reverseBits);
 
 }
