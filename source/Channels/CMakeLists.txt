@@ -2,6 +2,7 @@ add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelText.cpp
     EffectHands.cpp
+    HomeMenuWaveSounds.cpp
     ChannelSystem.cpp
     Internet/FavoritesScreen.cpp
     Internet/OperaData.cpp

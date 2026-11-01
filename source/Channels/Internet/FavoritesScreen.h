@@ -59,7 +59,11 @@ public:
     void StartMoving(std::size_t favoriteIndex);
     void StopMoving();
     std::optional<std::size_t> MovingFavorite() const;
-    void SetMovingFavorite(std::size_t favoriteIndex);
+    // The list scrolls with the moving favorite, so that its row is always in view.
+    void SetMovingFavorite(std::size_t favoriteIndex, const PageFrame& frame);
+
+    // The first row of favorites that is in view.
+    int FirstRowInView() const;
 
     // The page above the toolbar.
     void Draw(PagePainter& painter, const PageFrame& frame, const std::vector<Favorite>& favorites, std::optional<std::size_t> focusedIndex,
@@ -67,6 +71,7 @@ public:
 
 private:
     PageRectangle TileOf(std::size_t index, const PageFrame& frame) const;
+    void ScrollToTheRowOf(std::size_t index, const PageFrame& frame);
     PageRectangle EditMenuOf(std::size_t index, const PageFrame& frame) const;
     void DrawTile(PagePainter& painter, const PageFrame& frame, const Favorite& favorite, std::size_t index, bool isFocused) const;
     void DrawEditMenu(PagePainter& painter, const PageFrame& frame, std::size_t favoriteCount, std::optional<EditOption> focusedOption) const;

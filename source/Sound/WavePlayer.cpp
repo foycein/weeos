@@ -52,6 +52,12 @@ bool WavePlayer::IsPlaying(WaveHandle handle)
     return FindPlayingWave(handle) != nullptr;
 }
 
+std::size_t WavePlayer::PlayingWaveCount()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    return playingWaves.size();
+}
+
 double WavePlayer::PlayedSeconds(WaveHandle handle)
 {
     std::lock_guard<std::mutex> lock(mutex);

@@ -40,6 +40,7 @@ public:
     void SetViewSize(const ViewSize& size);
     void SetRedirect(const AddressRedirect& newRedirect);
     void ServeFiles(const std::string& hostName, std::map<std::string, std::vector<std::uint8_t>> files);
+    void AddPageScript(const std::u16string& script);
 
     void Open(const std::string& address);
     void GoBack();

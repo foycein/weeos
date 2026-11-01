@@ -72,6 +72,9 @@ public:
 
         // The picture of the remote with "Controls".
         Controls,
+
+        // "Opera Powered", which shows Opera's about page.
+        OperaLogo,
     };
 
     explicit InternetChannel(ChannelServices& channelServices);
@@ -189,6 +192,7 @@ private:
     void OpenAddress(const std::string& address);
     void Search(const std::u16string& words);
     void OpenOperationsGuide();
+    void OpenOperaAbout();
     void OpenFavorites();
     void OpenSettings();
     void ShowView(View newView);
@@ -262,6 +266,7 @@ private:
     Typing typing = Typing::WebAddress;
     SystemMenu::NetworkStart networkStart;
     bool hasShownNetworkError = false;
+    bool isAboutServed = false;
     std::optional<Place> focusedPlace;
     std::optional<ToolbarButton> focusedToolbarButton;
     std::optional<std::size_t> focusedFavorite;
