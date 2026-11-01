@@ -97,10 +97,12 @@ bool WavePlayer::RenderWave(PlayingWave& playing, std::span<float> interleavedSt
     double step = double(wave.sampleRate) / double(deviceRate);
     double endPosition = double(wave.SampleCount());
     bool isMono = wave.channels.size() == 1;
-    float gain = playing.volume * masterGain * (isMono ? MiddlePanGain : 1.0f);
+    float panGain = isMono ? MiddlePanGain : 1.0f;
+    float gain = playing.volume * masterGain * panGain;
 
+    std::size_t channelForTheRight = isMono ? LeftChannel : RightChannel;
     WaveSamples left{wave.channels[LeftChannel], false, 0};
-    WaveSamples right{wave.channels[isMono ? LeftChannel : RightChannel], false, 0};
+    WaveSamples right{wave.channels[channelForTheRight], false, 0};
 
     std::size_t frameCount = interleavedStereo.size() / StereoChannelCount;
     for (std::size_t frame = 0; frame < frameCount; ++frame)

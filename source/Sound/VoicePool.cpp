@@ -40,7 +40,8 @@ std::optional<VoiceHandle> VoicePool::Start(
 
     Slot& slot = slots[*chosenSlot];
     ++slot.generation;
-    slot.startNumber = voicesStarted++;
+    slot.startNumber = voicesStarted;
+    ++voicesStarted;
     slot.voice.Start(std::move(wave), envelope, priority, settings);
     return VoiceHandle{static_cast<std::uint32_t>(*chosenSlot), slot.generation};
 }

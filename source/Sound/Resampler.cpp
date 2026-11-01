@@ -22,26 +22,26 @@ constexpr int EntriesPerSample = 2048;
 // The sum that defines the Bessel function I0 stops when the terms are smaller than this.
 constexpr double BesselPrecision = 1e-20;
 
-double BesselI0(double x)
+double BesselI0(double value)
 {
     double sum = 1.0;
     double term = 1.0;
-    double halfX = x / 2.0;
+    double halfValue = value / 2.0;
     for (int termNumber = 1; term > BesselPrecision * sum; ++termNumber)
     {
-        double factor = halfX / termNumber;
+        double factor = halfValue / termNumber;
         term *= factor * factor;
         sum += term;
     }
     return sum;
 }
 
-double Sinc(double x)
+double Sinc(double value)
 {
-    if (x == 0.0)
+    if (value == 0.0)
         return 1.0;
 
-    double angle = std::numbers::pi * x;
+    double angle = std::numbers::pi * value;
     return std::sin(angle) / angle;
 }
 

@@ -378,7 +378,7 @@ struct AudioOutput::Implementation
         ThrowIfFailed(stream.client->Start(), "starting the stream");
     }
 
-    // Opens the default device again, which can be the same device as before. Gives false when that is not possible now.
+    // Opens the chosen device, or the default device, again; it can be the same device as before. Gives false when that is not possible now.
     bool TryToOpenAgain()
     {
         CloseStream();
@@ -489,7 +489,7 @@ struct AudioOutput::Implementation
     }
 
     // Plays until the output is stopped or the render function fails. A device that goes away, or a default device that changes,
-    // makes the thread open the default device again, and it tries again every half second while there is none.
+    // makes the thread open the device again, and it tries again every half second while there is none.
     // When the wait runs out the buffer is filled as well: that heals an event that was lost, and shows a device that has gone.
     void RunAudioThread(bool deviceIsOpenAtStart)
     {
@@ -519,9 +519,18 @@ struct AudioOutput::Implementation
             constexpr DWORD WakeEventResult = WAIT_OBJECT_0 + 1;
             DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(std::size(events)), events, WaitForAnyEvent, EventWaitMilliseconds);
             if (waitResult == WakeEventResult)
+            {
                 ResetEvent(wakeEvent);
-            else if (waitResult == WAIT_FAILED || !FillFreeFrames())
+                continue;
+            }
+
+            if (waitResult == WAIT_FAILED)
+            {
                 deviceIsOpen = false;
+                continue;
+            }
+
+            deviceIsOpen = FillFreeFrames();
         }
 
         if (failed && stream.client)
