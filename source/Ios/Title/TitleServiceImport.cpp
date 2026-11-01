@@ -1,6 +1,7 @@
 #include "Ios/Title/TitleService.h"
 
 #include "Formats/FormatError.h"
+#include "Formats/Sha1.h"
 #include "Formats/SignatureVerification.h"
 #include "Formats/TitleEncryption.h"
 #include "Formats/WadFile.h"
@@ -190,6 +191,26 @@ Result<void> TitleService::AddContent(std::uint32_t contentId, Formats::ByteView
     {
         return IosError::ContentHashMismatch;
     }
+
+    if (IsSharedContent(*record))
+        return StoreSharedContent(*record, content);
+
+    return StorePrivateContent(*installation, *record, content);
+}
+
+Result<void> TitleService::AddDecryptedContent(std::uint32_t contentId, Formats::ByteView content)
+{
+    std::lock_guard<std::mutex> lock(installationMutex);
+    if (!installation)
+        return IosError::TitleInvalidArgument;
+
+    const Formats::ContentRecord* record = FindContentById(installation->metadata, contentId);
+    if (record == nullptr)
+        return IosError::TitleInvalidArgument;
+
+    bool hasTheRightContent = content.size() == record->size && Formats::ComputeSha1(content) == record->hash;
+    if (!hasTheRightContent)
+        return IosError::ContentHashMismatch;
 
     if (IsSharedContent(*record))
         return StoreSharedContent(*record, content);
