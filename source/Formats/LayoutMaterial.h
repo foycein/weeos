@@ -69,6 +69,13 @@ constexpr std::size_t TevSwapTableSize = 4;
 // One stage of the graphics chip that combines colors. The format documents no fields, so the 16 bytes are kept as they are.
 using TevStage = std::array<Byte, TevStageSize>;
 
+// An indirect texture matrix (offset, rotation and scale, five floats) and an indirect stage (which coordinates and texture move
+// the picture, and how much).
+constexpr std::size_t IndirectMatrixSize = 20;
+constexpr std::size_t IndirectStageSize = 4;
+using IndirectMatrix = std::array<Byte, IndirectMatrixSize>;
+using IndirectStage = std::array<Byte, IndirectStageSize>;
+
 using TevSwapTable = std::array<Byte, TevSwapTableSize>;
 
 struct AlphaCompare
@@ -107,6 +114,11 @@ struct Material
     std::optional<ChannelControl> channelControl;
     std::optional<Rgba8Color> materialColor;
     std::optional<TevSwapTable> tevSwapTable;
+
+    // Only the water of the Wii Speak Channel's chat room has them; WeeOS draws that material without moving its picture
+    // (docs/audit/WiiSpeak.md).
+    std::vector<IndirectMatrix> indirectMatrices;
+    std::vector<IndirectStage> indirectStages;
     std::vector<TevStage> tevStages;
     std::optional<AlphaCompare> alphaCompare;
     std::optional<BlendMode> blendMode;

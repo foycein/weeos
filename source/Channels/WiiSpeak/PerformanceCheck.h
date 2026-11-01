@@ -44,9 +44,9 @@ CheckResult JudgeLevels(float heardLevel, float reducedLevel);
 // The mean size of the samples, in the units of the check.
 float LevelOf(std::span<const std::int16_t> samples);
 
-// WeeOS's echo reduction for the check: the music that was played is the far end. The delay at which the heard sound looks most
-// like the music (searched up to the longest delay) and the size of that echo are found, and the echo is taken away; what is left is
-// the reduced sound. The original does this in the signal processor of the accessory (CHN-10).
+// WeeOS's echo reduction for the check: the music that was played is the far end. The delay at which the heard sound looks most like
+// the music is searched up to the longest delay, and a short filter around it, fitted by least squares, takes the echo away; what is
+// left is the reduced sound. The original does this in the signal processor of the accessory (CHN-10).
 std::vector<std::int16_t> RemoveEcho(std::span<const std::int16_t> heard, std::span<const std::int16_t> played, std::size_t longestDelay);
 
 }

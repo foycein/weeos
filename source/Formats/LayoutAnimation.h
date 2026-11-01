@@ -18,6 +18,9 @@ enum class AnimationTagKind
     VertexColor,
     MaterialColor,
     TexturePattern,
+
+    // (RLIM) The matrix of an indirect texture: it moves the water of the Wii Speak Channel's chat room.
+    IndirectTransform,
 };
 
 // A step key keeps its value until the next key. A hermite key goes smoothly to the next one, using its slope.

@@ -1,3 +1,4 @@
+#include "ChannelInstaller.h"
 #include "DumpVerification.h"
 #include "FolderFiles.h"
 #include "IdentityImporter.h"
@@ -32,7 +33,8 @@ constexpr std::string_view UsageText =
     "  title <id> <folder>         title.tmd, ticket.tik and all contents of a title into <folder>, like 00000001-00000002\n"
     "  import <folder>             the system part of the NAND into <folder>, as the NAND folder of the IOS part keeps it;\n"
     "                              SYSCONF comes without the nickname, parental controls, Wii Remotes, address and clock bias;\n"
-    "                              BC and MIOS (the GameCube) are left out\n"
+    "                              BC and MIOS (the GameCube) are left out; the system channels that the console lacks\n"
+    "                              (Wii Speak) are installed from assets with the title service\n"
     "  identity <folder>           keys.txt, device.cert and seeprom.bin into <folder>, the identity folder of the IOS part\n"
     "  verify                     the error correction of all pages, the HMAC of all clusters, the contents and the signatures of all titles\n"
     "\n"
@@ -352,6 +354,9 @@ void ImportCommand(Dump& dump, const Arguments& arguments)
     ImportPlan plan = PlanSystemImport(dump.fileSystem);
     WriteImport(dump.fileSystem, plan, arguments[0]);
     PrintImportReport(plan);
+
+    for (const std::string& line : InstallChannelsTheDumpLacks(arguments[0], dump.folder))
+        std::cout << line << "\n";
 }
 
 std::string_view CheckText(Formats::SignatureCheck check)

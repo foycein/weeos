@@ -42,6 +42,7 @@ constexpr TagNameAndKind TagKinds[] = {
     {"RLVC", AnimationTagKind::VertexColor},
     {"RLMC", AnimationTagKind::MaterialColor},
     {"RLTP", AnimationTagKind::TexturePattern},
+    {"RLIM", AnimationTagKind::IndirectTransform},
 };
 
 std::vector<std::uint32_t> ReadOffsets(ByteReader& reader, std::size_t count)
@@ -208,7 +209,12 @@ LayoutAnimation ReadLayoutAnimation(ByteView bytes)
             file.version, SupportedVersion, LaterSupportedVersion));
     }
 
+    // Some animations (those of the Wii Speak Channel) start with the section pat1, which names the animation and the groups it was
+    // made for. Playing the animation does not need it.
     SectionCursor cursor(file.sections, DataDescription);
+    if (cursor.NextIs("pat1"))
+        cursor.Take();
+
     LayoutAnimation animation = ReadAnimationSection(cursor.Take("pai1"));
 
     if (!cursor.IsAtEnd())

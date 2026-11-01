@@ -103,6 +103,7 @@ void ApplyPaneTag(Formats::Pane& pane, const Formats::AnimationTag& tag, float f
     case Formats::AnimationTagKind::TextureTransform:
     case Formats::AnimationTagKind::MaterialColor:
     case Formats::AnimationTagKind::TexturePattern:
+    case Formats::AnimationTagKind::IndirectTransform:
         return;
     }
 }
@@ -143,6 +144,8 @@ void ApplyMaterialTag(LiveMaterial& material, const Formats::LayoutAnimation& an
             ShowTextureOfPattern(material, animation, target, frame);
         return;
 
+    // The indirect stages are not drawn (docs/audit/WiiSpeak.md), so their matrix has nothing to move.
+    case Formats::AnimationTagKind::IndirectTransform:
     case Formats::AnimationTagKind::PaneTransform:
     case Formats::AnimationTagKind::Visibility:
     case Formats::AnimationTagKind::VertexColor:

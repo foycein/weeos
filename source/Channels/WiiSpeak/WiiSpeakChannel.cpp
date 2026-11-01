@@ -10,6 +10,7 @@
 
 #include "Formats/Font.h"
 #include "Formats/FormatError.h"
+#include "Layout/PaneRectangle.h"
 #include "Ios/FileSystem/OpenFile.h"
 #include "Ios/Title/TitlePaths.h"
 #include "Mii/MiiDatabase.h"
@@ -125,10 +126,13 @@ std::optional<Formats::Vector2> WiiSpeakChannel::PlaceOfPane(std::string_view pa
 
     for (auto layout = layouts.rbegin(); layout != layouts.rend(); ++layout)
     {
-        if ((*layout)->Layout().FindPane(paneName) == nullptr)
+        const Formats::Pane* pane = (*layout)->Layout().FindPane(paneName);
+        if (pane == nullptr)
             continue;
 
-        std::optional<Formats::Vector2> place = (*layout)->Layout().PointOfPaneInPicture(paneName, {0, 0});
+        Layout::PaneRectangle rectangle = Layout::RectangleOfPane(*pane);
+        Formats::Vector2 middle = {rectangle.left + rectangle.width / 2, rectangle.top - rectangle.height / 2};
+        std::optional<Formats::Vector2> place = (*layout)->Layout().PointOfPaneInPicture(paneName, middle);
         if (place)
             return place;
     }

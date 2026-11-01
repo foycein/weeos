@@ -155,11 +155,6 @@ void RequireSupportedFlags(ByteReader& reader, std::uint32_t flags, const std::s
 {
     if ((flags & ~KnownFlagBits) != 0)
         reader.Fail(std::format("the material {} has the unknown flags {:#x}", materialName, flags & ~KnownFlagBits));
-
-    bool hasIndirectParts = CountIn(flags, IndirectMatrixCountBit, IndirectMatrixCountBitCount) != 0
-        || CountIn(flags, IndirectStageCountBit, IndirectStageCountBitCount) != 0;
-    if (hasIndirectParts)
-        reader.Fail(std::format("the material {} has indirect textures, which no layout of the System Menu uses", materialName));
 }
 
 Material ReadMaterial(ByteReader& reader)
@@ -192,6 +187,12 @@ Material ReadMaterial(ByteReader& reader)
 
     if (IsSet(flags, HasTevSwapTableBit))
         material.tevSwapTable = reader.ReadByteArray<TevSwapTableSize>();
+
+    for (unsigned count = CountIn(flags, IndirectMatrixCountBit, IndirectMatrixCountBitCount); count > 0; --count)
+        material.indirectMatrices.push_back(reader.ReadByteArray<IndirectMatrixSize>());
+
+    for (unsigned count = CountIn(flags, IndirectStageCountBit, IndirectStageCountBitCount); count > 0; --count)
+        material.indirectStages.push_back(reader.ReadByteArray<IndirectStageSize>());
 
     for (unsigned count = CountIn(flags, TevStageCountBit, TevStageCountBitCount); count > 0; --count)
         material.tevStages.push_back(reader.ReadByteArray<TevStageSize>());

@@ -26,7 +26,6 @@ constexpr std::size_t AlphaInputsABByte = 8;
 constexpr std::size_t AlphaInputsCDByte = 9;
 constexpr std::size_t AlphaOperationByte = 10;
 constexpr std::size_t AlphaOutputByte = 11;
-constexpr std::size_t FirstIndirectByte = 12;
 
 constexpr Formats::Byte NoneNumber = 0xFF;
 constexpr Formats::Byte RasterColorChannel = 4;
@@ -77,15 +76,6 @@ unsigned LowHalf(Formats::Byte byte)
 unsigned HighHalf(Formats::Byte byte)
 {
     return Formats::ExtractBits(byte, HighHalfBit, HalfByteBitCount);
-}
-
-void RequireNoIndirectTexture(const Formats::TevStage& record)
-{
-    for (std::size_t index = FirstIndirectByte; index < record.size(); ++index)
-    {
-        if (record[index] != 0)
-            FailStage("a stage uses an indirect texture");
-    }
 }
 
 void RequireNoSwapTable(const Formats::TevStage& record)
@@ -222,9 +212,10 @@ Graphics::TevConstant ReadConstantAlpha(const Formats::TevStage& record)
 
 }
 
+// The last four bytes are the indirect part, which moves the place where the stage reads its texture. Only the water of the Wii Speak
+// Channel's chat room has one; WeeOS reads the texture where it is, so that water stands still (docs/audit/WiiSpeak.md).
 Graphics::TevStage ConvertTevStage(const Formats::TevStage& record)
 {
-    RequireNoIndirectTexture(record);
     RequireNoSwapTable(record);
 
     Graphics::TevStage stage;

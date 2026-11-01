@@ -35,10 +35,12 @@ std::vector<std::int16_t> MeasuredPartOfTheMusic(const Sound::DecodedWave& music
 {
     std::vector<std::int16_t> part;
     std::size_t sampleCount = std::size_t(MeasureSeconds * Ios::MicrophoneSampleRate);
+    std::size_t firstMicrophoneSample = std::size_t(MeasureStartInMusicSeconds * Ios::MicrophoneSampleRate);
     for (std::size_t sample = 0; sample < sampleCount; ++sample)
     {
-        double seconds = MeasureStartInMusicSeconds + double(sample) / Ios::MicrophoneSampleRate;
-        std::size_t musicSample = std::min(std::size_t(seconds * music.sampleRate), music.SampleCount() - 1);
+        // Whole numbers, so that every microphone sample takes the same sample of the music's own rate.
+        std::size_t microphoneSample = firstMicrophoneSample + sample;
+        std::size_t musicSample = std::min(microphoneSample * music.sampleRate / Ios::MicrophoneSampleRate, music.SampleCount() - 1);
         double sum = 0.0;
         for (const std::vector<float>& channel : music.channels)
             sum += channel[musicSample];

@@ -16,9 +16,8 @@
 namespace Channels
 {
 
-// One layout of the Wii Speak Channel with its buttons. A button is a bounding pane that the hand presses with A. Its light and its
-// press are the animations "<layout>_<button>_onOff" and "<layout>_<button>_down" of the bundle, where <button> is the name of the
-// bounding pane without a leading "B_" (for example "19010_setMenu_nbutton_00_onOff" for the pane "nbutton_00").
+// One layout of the Wii Speak Channel with its buttons. A button is a bounding pane that the hand presses with A. The animations of
+// the bundle are played by the part of their name after "<layout>_".
 class SceneLayout
 {
 public:
@@ -41,7 +40,7 @@ public:
     // Shows one frame of an animation and keeps it there.
     void ShowAnimationFrame(const std::string& animationName, float frame);
 
-    // Once in every step: lights the buttons under the hands, and gives the button that a player pressed with A in this step.
+    // Once in every step: the button that a player pressed with A in this step.
     std::optional<std::string> TakePressedButton(const SystemMenu::InputManager& input);
 
     // The step of the animations, after TakePressedButton.
@@ -53,7 +52,6 @@ public:
 
 private:
     std::optional<std::size_t> FindOrBindAnimation(const std::string& animationName);
-    std::string ButtonAnimationName(const std::string& boundPaneName, std::string_view kind) const;
 
     std::unique_ptr<Layout::LayoutArchive> archive;
     std::string layoutName;
