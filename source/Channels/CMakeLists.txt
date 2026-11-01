@@ -1,8 +1,10 @@
-add_library(Channels STATIC
+﻿add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelSystem.cpp
     NativeChannels.cpp
     OfflineConnection.cpp
+    PagePainter.cpp
+    ShopChannel.cpp
     WiiConnect24Channel.cpp
 )
 
