@@ -187,7 +187,9 @@ WindowPlace Window::WindowedPlace() const
 void Window::SetWindowedPlace(const WindowPlace& place)
 {
     RECT frame = FrameAround(place.clientSize, GetDpiForWindow(handle));
-    RECT normal = {place.left, place.top, place.left + frame.right - frame.left, place.top + frame.bottom - frame.top};
+    LONG windowWidth = frame.right - frame.left;
+    LONG windowHeight = frame.bottom - frame.top;
+    RECT normal = {place.left, place.top, place.left + windowWidth, place.top + windowHeight};
     if (MonitorFromRect(&normal, MONITOR_DEFAULTTONULL) == nullptr)
         return;
 
