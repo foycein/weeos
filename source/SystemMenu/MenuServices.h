@@ -15,6 +15,7 @@ class DialogManager;
 class Display;
 class Fader;
 class FrontPanel;
+class HomeButton;
 class InputManager;
 class MenuClock;
 class MenuFiles;
@@ -24,6 +25,7 @@ class ProgramImage;
 class ScreenManager;
 class SoftKeyboard;
 class SoundRequests;
+struct SettingsFlowServices;
 class TitleLaunchRequest;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
@@ -50,6 +52,12 @@ struct MenuServices
 
     // The POWER and RESET buttons. A screen can press them too, and see whether one was pressed.
     FrontPanel& frontPanel;
+
+    // What Wii Settings works with. Nothing when the menu runs without it (the tests of the other screens).
+    SettingsFlowServices* wiiSettings;
+
+    // The HOME button: the Wii Menu starts it, a screen that must not be interrupted disables it.
+    HomeButton& homeButton;
 
     // How the menu starts a channel: titleLaunch.Request(channelTitleId) once the start window has faded out.
     TitleLaunchRequest& titleLaunch;

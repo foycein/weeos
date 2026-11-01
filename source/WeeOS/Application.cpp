@@ -5,9 +5,11 @@
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
+#include "SystemMenu/BackgroundServices/StartServices.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
+#include "WeeOS/WiiSettingsServices.h"
 
 #include <format>
 #include <iostream>
@@ -22,9 +24,6 @@ namespace
 
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 
-// The picture of the program has the shape of a 16:9 screen. The mouse points into this picture.
-constexpr Platform::ScreenShape PictureShape = Platform::ScreenShape::SixteenByNine;
-
 }
 
 // The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
@@ -38,23 +37,16 @@ public:
         : window(programWindow)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote())
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
     {
         if (runningTitle == Ios::SystemMenuTitleId)
-        {
-            menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
-                iosServices.GetPower(), PictureShape);
-            menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
-        }
+            StartMenu(iosServices, graphicsDevice);
         else
-        {
-            channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-                iosServices.GetNetworkConfig(), iosServices.GetPower(), PictureShape, runningTitle);
-        }
+            StartChannel(iosServices, graphicsDevice, runningTitle);
 
-        virtualRemote.SetScreenShape(PictureShape);
         window.SetListener(&hostKeys);
     }
 
@@ -102,9 +94,25 @@ public:
     }
 
 private:
+    void StartMenu(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice)
+    {
+        menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
+            iosServices.GetPower(), wiiSettings.PictureShape(), &wiiSettings.FlowServices());
+        SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
+        wiiSettings.UseDisplay(menu->Services().display);
+        menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
+    }
+
+    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
+    {
+        channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
+            iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+    }
+
     Platform::Window& window;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
+    WiiSettingsServices wiiSettings;
     std::unique_ptr<SystemMenu::MenuSystem> menu;
     std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;

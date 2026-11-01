@@ -7,6 +7,7 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/FatalError.h"
 #include "SystemMenu/FrontPanel.h"
+#include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
@@ -39,8 +40,9 @@ class MenuSystem
 public:
     // Reads the resources of the menu from the contents of the System Menu title, chooses the first screen from the files of the NAND
     // and starts it. The device, the contents, the files and the services must outlive the menu.
+    // Wii Settings opens only when its services are given; the other screens work without them.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles, Ios::RemoteService& remoteService,
-        Ios::PowerService& powerService, Platform::ScreenShape screenShape);
+        Ios::PowerService& powerService, Platform::ScreenShape screenShape, SettingsFlowServices* wiiSettingsServices = nullptr);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
     // A MenuError that a screen throws ends the menu with the error screen.
@@ -69,6 +71,7 @@ public:
 
 private:
     void RunStep();
+    HomeButtonConnections ConnectHomeButton();
 
     Display display;
     MenuFiles files;
@@ -86,6 +89,7 @@ private:
     DialogManager dialogs;
     ErrorScreen errorScreen;
     FrontPanel frontPanel;
+    HomeButton homeButton;
     NandFiles& nand;
     ParentalAnswer parentalAnswer = ParentalAnswer::None;
     TitleLaunchRequest titleLaunch;
