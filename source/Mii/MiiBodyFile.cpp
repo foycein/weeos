@@ -437,6 +437,21 @@ AnimationKey ReadFloatKey(FileView& file, std::size_t key)
     return {file.Float(key), file.Float(key + sizeof(float)), file.Float(key + 2 * sizeof(float))};
 }
 
+// A packed angle holds less than one turn, so an angle that goes past half a turn comes back from the other side: 171 degrees, then
+// -178 for 182. The slopes of the keys go on in the same direction, so each angle is put within half a turn of the angle before it.
+void UnwrapAngles(std::vector<AnimationKey>& keys)
+{
+    for (std::size_t keyNumber = 1; keyNumber < keys.size(); ++keyNumber)
+    {
+        float previousAngle = keys[keyNumber - 1].value;
+        float& angle = keys[keyNumber].value;
+        while (angle - previousAngle > DegreesPerTurn / 2)
+            angle -= DegreesPerTurn;
+        while (previousAngle - angle > DegreesPerTurn / 2)
+            angle += DegreesPerTurn;
+    }
+}
+
 std::vector<AnimationKey> ReadKeys(FileView& file, std::size_t track, std::uint32_t keyFormat)
 {
     std::uint16_t keyCount = file.Uint16(track + KeyCountPosition);
@@ -463,6 +478,10 @@ std::vector<AnimationKey> ReadKeys(FileView& file, std::size_t track, std::uint3
     }
     if (keys.empty())
         file.Fail("an animation track has no keys");
+
+    bool hasPackedAngles = keyFormat == SmallRotationKeys || keyFormat == MiddleRotationKeys;
+    if (hasPackedAngles)
+        UnwrapAngles(keys);
     return keys;
 }
 

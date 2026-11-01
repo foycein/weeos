@@ -64,6 +64,10 @@ public:
     void DrawStandingMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const PictureRectangle& rectangle, Graphics::Canvas canvas,
         float waitFrame) const;
 
+    // One Mii in any stance, seen as the editor sees it, filling the rectangle.
+    void DrawPosedMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance, const PictureRectangle& rectangle,
+        Graphics::Canvas canvas) const;
+
     // A head alone, seen from the front, filling the rectangle: the faces to choose from in "Choose a look-alike".
     void DrawHead(const Mii::MiiHead& head, const PictureRectangle& rectangle, Graphics::Canvas canvas) const;
 

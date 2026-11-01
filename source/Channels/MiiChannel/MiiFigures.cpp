@@ -157,7 +157,12 @@ void MiiFigures::DrawStandingMii(const Mii::MiiRecord& record, const Mii::MiiHea
     Mii::BodyStance stance;
     stance.animation = &BodyFileOf(bodies, record).animations.at(std::string(StandingAnimation));
     stance.frame = waitFrame;
+    DrawPosedMii(record, head, stance, rectangle, canvas);
+}
 
+void MiiFigures::DrawPosedMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance,
+    const PictureRectangle& rectangle, Graphics::Canvas canvas) const
+{
     float aspect = rectangle.halfSize.x / rectangle.halfSize.y;
     Graphics::Matrix4 projection = Graphics::MakePerspective(StandingViewDegrees, aspect, StandingNear, StandingFar);
     Graphics::Matrix4 view = Graphics::MakeLookAt(StandingEye, StandingTarget, Upward);
