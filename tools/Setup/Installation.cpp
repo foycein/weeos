@@ -228,12 +228,14 @@ void RemoveUninstallerLater(const std::filesystem::path& folder)
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process = {};
     BOOL inheritHandles = FALSE;
-    if (CreateProcessW(nullptr, command.data(), nullptr, nullptr, inheritHandles, CREATE_NO_WINDOW, nullptr, SystemFolder().c_str(),
-            &startup, &process))
-    {
-        CloseHandle(process.hThread);
-        CloseHandle(process.hProcess);
-    }
+    std::filesystem::path workingFolder = SystemFolder();
+    BOOL started = CreateProcessW(nullptr, command.data(), nullptr, nullptr, inheritHandles, CREATE_NO_WINDOW, nullptr,
+        workingFolder.c_str(), &startup, &process);
+    if (!started)
+        return;
+
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
 }
 
 void RemoveConsole(const std::filesystem::path& folder)

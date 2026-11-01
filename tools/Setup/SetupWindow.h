@@ -20,7 +20,7 @@ enum class SetupKind
 class SetupWindow
 {
 public:
-    SetupWindow(SetupKind kind, std::filesystem::path installFolder);
+    SetupWindow(SetupKind setupKind, std::filesystem::path chosenInstallFolder);
     ~SetupWindow();
 
     SetupWindow(const SetupWindow&) = delete;
