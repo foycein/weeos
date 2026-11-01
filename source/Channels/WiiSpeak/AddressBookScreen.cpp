@@ -38,10 +38,14 @@ std::string Numbered(std::string_view name, std::size_t number)
     return std::format("{}_{:02}", name, number);
 }
 
-std::u16string TwoDigits(std::size_t number, std::size_t place)
+std::u16string TensDigit(std::size_t number)
 {
-    std::size_t digit = place == 0 ? number / DigitBase : number % DigitBase;
-    return AsciiToText(std::to_string(digit));
+    return AsciiToText(std::to_string(number / DigitBase % DigitBase));
+}
+
+std::u16string OnesDigit(std::size_t number)
+{
+    return AsciiToText(std::to_string(number % DigitBase));
 }
 
 }
@@ -208,10 +212,10 @@ void AddressBookScreen::ShowPage()
     }
 
     std::size_t shownPage = page + 1;
-    layout.SetText("T_Pno_00", TwoDigits(shownPage, 0));
-    layout.SetText("T_Pno_01", TwoDigits(shownPage, 1));
-    layout.SetText("T_Cno_00", TwoDigits(friends.size(), 0));
-    layout.SetText("T_Cno_01", TwoDigits(friends.size(), 1));
+    layout.SetText("T_Pno_00", TensDigit(shownPage));
+    layout.SetText("T_Pno_01", OnesDigit(shownPage));
+    layout.SetText("T_Cno_00", TensDigit(friends.size()));
+    layout.SetText("T_Cno_01", OnesDigit(friends.size()));
 }
 
 std::size_t AddressBookScreen::PageCount() const

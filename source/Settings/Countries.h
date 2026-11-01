@@ -1,28 +1,27 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
 #include <span>
 #include <string_view>
 
 namespace Settings
 {
 
-// A country of the list that the Wii Settings page "Country" of the USA console offers.
+// A country that a console of the USA can be in: the two letters that Windows gives it (ISO 3166) and the code that the console keeps
+// in its location setting (WiiBrew, page Country Codes).
 struct Country
 {
-    std::u16string_view name;
-
-    // The code that the console keeps in its location setting. The codes are the console's (WiiBrew, page Country Codes).
+    std::string_view letters;
     std::uint8_t code;
 };
 
-// The countries of the page, in the order of the page: sorted by name, with the three that do not belong to the Americas (Saudi Arabia,
-// Singapore and U.A.E.) where their names fall. The page of the original numbers the list from 8 on and the console's codes differ from
-// these numbers behind Peru, so the list holds the code of each country.
-std::span<const Country> SelectableCountries();
+// The country of a console that is not in the list of the USA console (docs/audit/OpenPoints/Settings.md SET-13).
+constexpr std::uint8_t UnitedStatesCode = 49;
 
-// The country with this code, or nothing when the page does not offer it.
-std::optional<Country> FindCountry(std::uint8_t code);
+// The 48 countries that the Country page of a USA console offered, sorted by their letters.
+std::span<const Country> ConsoleCountries();
+
+// The console's code for the country of the PC, given by its two letters. United States for a country the USA console does not have.
+std::uint8_t CountryCodeOfThePc(std::string_view letters);
 
 }

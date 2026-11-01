@@ -203,7 +203,7 @@ void SceneLayout::SetText(std::string_view paneName, std::u16string_view text)
 
 void SceneLayout::ShowMadeTexture(std::string_view paneName, const std::string& textureName, Layout::LoadedTexture texture)
 {
-    layout.Live().UseMadeTexture(textureName, texture);
+    layout.Live().ProvideTexture(textureName, texture);
     Layout::LiveMaterial& material = layout.MaterialOf(layout.PaneNamed(paneName));
     material.textureNames.at(0) = textureName;
 }

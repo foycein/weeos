@@ -21,6 +21,9 @@ public:
     // The device and the files must outlive the font. Throws a MenuError when the font is not in the files.
     PageFont(Graphics::GraphicsDevice& device, const MenuFiles& files);
 
+    // Another font of the menu, drawn the same way. The device must outlive the font.
+    PageFont(Graphics::GraphicsDevice& device, Formats::Font otherFont);
+
     PageFont(const PageFont&) = delete;
     PageFont& operator=(const PageFont&) = delete;
 

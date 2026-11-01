@@ -1,5 +1,7 @@
 #include "Formats/ByteWriter.h"
 
+#include <bit>
+
 namespace Formats
 {
 
@@ -21,6 +23,11 @@ void ByteWriter::WriteUint32(std::uint32_t value)
 void ByteWriter::WriteUint64(std::uint64_t value)
 {
     WriteBigEndianNumber(value, sizeof(value));
+}
+
+void ByteWriter::WriteFloat(float value)
+{
+    WriteUint32(std::bit_cast<std::uint32_t>(value));
 }
 
 void ByteWriter::WriteBytes(ByteView moreBytes)

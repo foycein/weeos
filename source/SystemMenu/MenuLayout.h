@@ -46,6 +46,10 @@ public:
     // The material of a picture pane. Throws a MenuError when the pane is not a picture.
     Layout::LiveMaterial& MaterialOf(const Formats::Pane& pane);
 
+    // The picture pane shows a texture that something else drew, for example the face of a Mii, instead of the texture of the file.
+    // The texture must stay on the device as long as the layout shows it.
+    void ShowTexture(std::string_view pictureName, const Layout::LoadedTexture& texture);
+
     // Puts the text into the text box with this name. Throws a MenuError when the layout has no such text box.
     void SetText(std::string_view paneName, std::u16string_view text);
 

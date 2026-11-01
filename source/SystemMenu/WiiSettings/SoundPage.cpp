@@ -34,7 +34,7 @@ void SoundPage::BuildPage(PageId page, Page& content)
     static_cast<void>(page);
 
     PageBuilder builder(content);
-    builder.SetTitle(1, u"Sound");
+    builder.SetTitle(3, u"Sound Mode");
 
     Settings::SoundMode soundMode = settings.GetSoundMode();
     builder.AddChoice(0, ChoiceCount, u"Mono", soundMode == Settings::SoundMode::Mono, [this] { ChooseSoundMode(Settings::SoundMode::Mono); })
@@ -49,13 +49,13 @@ void SoundPage::BuildPage(PageId page, Page& content)
         [this]
         {
             settings.SetSoundMode(soundModeAtEntry);
-            navigator.GoTo(PageId::FirstIndex);
+            navigator.GoTo(PageId::PcSound);
         });
     builder.AddBottomRight(u"Confirm",
         [this]
         {
             settings.Save();
-            navigator.GoTo(PageId::FirstIndex);
+            navigator.GoTo(PageId::PcSound);
         });
 }
 

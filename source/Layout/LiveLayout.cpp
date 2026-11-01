@@ -150,16 +150,11 @@ const std::string& LiveLayout::FontNameAt(std::size_t fontIndex) const
     return fontNames[fontIndex];
 }
 
-void LiveLayout::UseMadeTexture(const std::string& textureFileName, LoadedTexture texture)
-{
-    madeTextures[textureFileName] = texture;
-}
-
 LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap)
 {
-    auto made = madeTextures.find(textureFileName);
-    if (made != madeTextures.end())
-        return made->second;
+    auto provided = providedTextures.find(textureFileName);
+    if (provided != providedTextures.end())
+        return provided->second;
 
     TextureKey key(textureFileName, horizontalWrap, verticalWrap);
     auto alreadyLoaded = loadedTextures.find(key);
@@ -185,6 +180,11 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
 
     loadedTextures.emplace(key, texture);
     return texture;
+}
+
+void LiveLayout::ProvideTexture(const std::string& textureFileName, LoadedTexture texture)
+{
+    providedTextures[textureFileName] = texture;
 }
 
 }

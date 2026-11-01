@@ -44,13 +44,17 @@ struct BodyPose
 
     // Where the chin of the head goes (the head bone), in the space of the body.
     Formats::Vector3 headPosition;
+
+    // The head bone, from its space into the space of the body.
+    Graphics::Matrix4 headBoneMatrix;
 };
 
 BodyPose PoseBody(const MiiBodyFile& file, const MiiRecord& record, const BodyStance& stance);
 
-// The matrix that places the head of a posed body: the head stands on the head bone in its own size, upright or leaning back with the
-// body, and turned toward the facing direction (the Mii Channel removes the bone's scale and turn, docs/research/Mii.md 10.4).
-Graphics::Matrix4 HeadMatrixOf(const BodyPose& pose, const BodyStance& stance);
+// The matrix that places the head of a posed body: the head stands on the head bone in its own size and turns with the bone, whose x
+// axis is the head's up and whose y axis is the head's front (docs/research/Mii.md 10.4). Upright in a standing body, it leans, nods and
+// falls with the body in the other animations.
+Graphics::Matrix4 HeadMatrixOf(const BodyPose& pose);
 
 // A body in its standing pose (frame 0 of bodyWait, upright) and in the size of its Mii, as triangle corners in the space of the body.
 struct PosedBody
@@ -82,11 +86,16 @@ public:
     // The body has no light of its own, so the light of the placement is not used.
     void Draw(const MiiRecord& record, std::uint32_t consoleSystemId, const BodyPose& pose, const Graphics::MeshPlacement& placement) const;
 
+    // Draws the shadow of a body as its material mt_shadow does: the color of register 0 over the ground, as dark as the picture is
+    // bright. It is tested against the depth and keeps it, so a shadow drawn on the ground lies under the Miis drawn after it.
+    void DrawShadow(Gender gender, const Graphics::MeshPlacement& placement) const;
+
 private:
     struct GenderModel
     {
         Graphics::MeshHandle shirt;
         Graphics::MeshHandle pants;
+        Graphics::MeshHandle shadow;
     };
 
     GenderModel MakeModel(const MiiBodyFile& file);
@@ -98,6 +107,7 @@ private:
     GenderModel male;
     GenderModel female;
     Graphics::TextureHandle environmentTexture;
+    Graphics::TextureHandle shadowTexture;
 };
 
 }

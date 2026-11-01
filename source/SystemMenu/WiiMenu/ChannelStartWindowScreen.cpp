@@ -6,7 +6,6 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
-#include "SystemMenu/MenuSettings.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleLaunchRequest.h"
@@ -51,12 +50,6 @@ constexpr std::string_view ChangePane = "Change";
 constexpr std::string_view ChangeInAnimation = "my_ChTop_a_ChangeIn";
 constexpr std::string_view ChangeOutAnimation = "my_ChTop_a_ChangeOut";
 
-// The words of Start fade out and in when they change between Start and Update.
-constexpr std::string_view WordsOutAnimation = "my_ChTop_a_ChangeTextOut";
-constexpr std::string_view WordsInAnimation = "my_ChTop_a_ChangeTextIn";
-constexpr std::string_view WordsOfStartGroup = "G_ChangeTextB";
-constexpr std::string_view WordsOfStartPane = "T_BtnB";
-
 // On a wide screen the frame around the banner takes the textures of three pictures that the layout keeps for it (0x813B4374): the
 // corners, the sides, and the edges at the top and at the bottom.
 struct WideFramePart
@@ -95,7 +88,6 @@ constexpr std::uint16_t StartMessage = 2;
 constexpr std::uint16_t InsertDiscMessage = 4;
 constexpr std::uint16_t CannotReadDiscMessage = 6;
 constexpr std::uint16_t CannotBeUsedMessage = 19;
-constexpr std::uint16_t UpdateMessage = 20;
 constexpr std::uint16_t QuitMessage = 37;
 constexpr std::uint16_t OkMessage = 46;
 constexpr std::uint16_t InternetRequiredMessage = 323;
@@ -119,12 +111,8 @@ constexpr std::string_view GraySound = "WIPL_SE_GRAY_BUTTON";
 constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 constexpr std::string_view ChangeSound = "WSD_SELECT";
 
-// The pages of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): the Internet settings and the system update.
+// The page of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): Internet.
 constexpr int InternetSettingsPage = 1;
-constexpr int SystemUpdatePage = 3;
-
-// The password dialog says, after a right PIN, that the restrictions are lifted until the user is back at the Wii Menu.
-constexpr int PinDialogArgument = 0;
 
 // The original waits 100 ms after Start before it fades out (0x813B9AC0: more than 100 / 16.68 steps).
 constexpr int StepsBeforeTheFadeToStart = 6;
@@ -148,17 +136,6 @@ SlotPosition NeighborChannel(const ChannelManager& channels, SlotPosition from, 
             return position;
     }
     return from;
-}
-
-// An old Forecast, News or Shop Channel reads Update instead of Start (SYS-04).
-bool IsOldChannelAt(WiiMenuData& wiiMenu, SlotPosition position)
-{
-    const SavedSlot& savedSlot = wiiMenu.channels.SlotAt(position);
-    if (savedSlot.kind != SavedSlotKind::Title)
-        return false;
-
-    std::optional<InstalledTitle> installedTitle = FindInstalledTitle(wiiMenu.console, savedSlot.titleId);
-    return installedTitle && IsOldVersion(savedSlot.titleId, installedTitle->version);
 }
 
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
@@ -215,7 +192,6 @@ void ChannelStartWindowScreen::ReadTheChannel()
 {
     const SavedSlot& savedSlot = services.wiiMenu.channels.SlotAt(slot);
     isDiscChannel = savedSlot.kind == SavedSlotKind::DiscChannel;
-    isOldVersion = false;
     makerCode = 0;
     banner.reset();
     if (isDiscChannel)
@@ -225,7 +201,6 @@ void ChannelStartWindowScreen::ReadTheChannel()
     std::optional<InstalledTitle> installedTitle = FindInstalledTitle(services.wiiMenu.console, titleId);
     if (installedTitle)
     {
-        isOldVersion = IsOldVersion(titleId, installedTitle->version);
         makerCode = installedTitle->groupId;
     }
 
@@ -269,7 +244,7 @@ void ChannelStartWindowScreen::Build()
 void ChannelStartWindowScreen::BuildTheFrame()
 {
     frame = std::make_unique<MenuLayout>(services.display, *windowArchive, std::string(FrameLayout));
-    startButtonText = services.messages.Find(isOldVersion ? UpdateMessage : StartMessage);
+    startButtonText = services.messages.Find(StartMessage);
     frame->SetText("T_BtnA", services.messages.Find(WiiMenuMessage));
     frame->SetText("T_BtnB", startButtonText);
 
@@ -287,8 +262,6 @@ void ChannelStartWindowScreen::BuildTheFrame()
 
     changeIn = frame->BindAnimationToPane(std::string(ChangeInAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
     changeOut = frame->BindAnimationToPane(std::string(ChangeOutAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
-    wordsOfStartOut = frame->BindAnimation(std::string(WordsOutAnimation), WordsOfStartGroup, Layout::PlaybackMode::PlayOnce);
-    wordsOfStartIn = frame->BindAnimation(std::string(WordsInAnimation), WordsOfStartGroup, Layout::PlaybackMode::PlayOnce);
 
     if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
         UseTheWideFrame();
@@ -447,10 +420,6 @@ bool ChannelStartWindowScreen::RunMain()
         ReadAnswerOfInternetQuestion();
         break;
 
-    case StartWindowState::WaitingForPin:
-        ReadAnswerOfPinDialog();
-        break;
-
     case StartWindowState::Starting:
         RunStarting();
         break;
@@ -547,10 +516,6 @@ void ChannelStartWindowScreen::ChangeChannel(int direction)
     slot = NeighborChannel(services.wiiMenu.channels, slot, direction);
     services.wiiMenu.pressedChannel = slot;
 
-    areWordsOfStartChanging = IsOldChannelAt(services.wiiMenu, slot) != isOldVersion;
-    if (areWordsOfStartChanging)
-        frame->StartAnimation(wordsOfStartOut);
-
     frame->StartAnimation(changeIn);
     state = StartWindowState::LeavingTheOldChannel;
 }
@@ -558,8 +523,7 @@ void ChannelStartWindowScreen::ChangeChannel(int direction)
 // When ChangeIn has played, the banner of the new channel takes the place of the old one (0x813B6778).
 void ChannelStartWindowScreen::RunLeavingTheOldChannel()
 {
-    bool isChanging = frame->IsAnimationPlaying(changeIn) || frame->IsAnimationPlaying(wordsOfStartOut);
-    if (isChanging)
+    if (frame->IsAnimationPlaying(changeIn))
         return;
 
     services.sounds.StopBannerSound();
@@ -575,13 +539,6 @@ void ChannelStartWindowScreen::ShowTheNewChannel()
     bannerLayout.reset();
     ReadTheChannel();
     BuildTheBanner();
-
-    if (areWordsOfStartChanging)
-    {
-        startButtonText = services.messages.Find(isOldVersion ? UpdateMessage : StartMessage);
-        frame->SetText(WordsOfStartPane, startButtonText);
-        frame->StartAnimation(wordsOfStartIn);
-    }
 
     if (couldStart && !CanStart())
         frame->StartAnimation(grayStart);
@@ -621,8 +578,9 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonGroupEvent& event)
     }
 }
 
-// What Start does depends on the channel (0x813B9488 and 0x813B6F10): an old channel asks for the system update, a channel that needs the
-// Internet asks for the Internet settings while no connection has passed its test, a restricted channel asks for the PIN.
+// What Start does depends on the channel (0x813B9488 and 0x813B6F10): a channel that needs the Internet asks for the Internet settings
+// while no connection has passed its test. WeeOS has no system update and no parental controls (docs/DECISIONS.md, Settings), so the
+// original's Update button of an old channel and its PIN dialog are not there.
 void ChannelStartWindowScreen::PressStart()
 {
     if (!CanStart())
@@ -634,12 +592,6 @@ void ChannelStartWindowScreen::PressStart()
     frame->StartAnimation(pressOfStart);
     services.sounds.Request(DecideSound);
 
-    if (isOldVersion)
-    {
-        LeaveForSettings(SystemUpdatePage);
-        return;
-    }
-
     if (!services.titleLaunch.HasProgram(titleId))
     {
         ShowMessage(CannotBeUsedMessage);
@@ -649,14 +601,6 @@ void ChannelStartWindowScreen::PressStart()
     if (banner->needsInternetConnection && !services.wiiMenu.console.HasTestedInternetConnection())
     {
         AskForInternetSettings();
-        return;
-    }
-
-    if (IsRestrictedByParentalControls())
-    {
-        services.parentalAnswer = ParentalAnswer::None;
-        services.screens.OpenChild(ScreenId::ParentalDialog, ScreenId::ChannelStartWindow, PinDialogArgument);
-        state = StartWindowState::WaitingForPin;
         return;
     }
 
@@ -700,17 +644,6 @@ void ChannelStartWindowScreen::ReadAnswerOfInternetQuestion()
 
     if (answer == DialogAnswer::ButtonA)
         LeaveForSettings(InternetSettingsPage);
-    else
-        state = StartWindowState::ShowingChannel;
-}
-
-void ChannelStartWindowScreen::ReadAnswerOfPinDialog()
-{
-    if (HasChildren() || services.screens.IsLoadingScreen())
-        return;
-
-    if (services.parentalAnswer == ParentalAnswer::PinCorrect)
-        BeginStart();
     else
         state = StartWindowState::ShowingChannel;
 }
@@ -771,23 +704,6 @@ void ChannelStartWindowScreen::CloseTowardsTheGrid()
         grid->ZoomOutOfPressedChannel();
 
     state = StartWindowState::ZoomingOut;
-}
-
-// The parental controls restrict the News Channel and the Internet Channel when the settings say so (0x813BAB50). The age ratings of
-// games are left out: WeeOS has no games.
-bool ChannelStartWindowScreen::IsRestrictedByParentalControls()
-{
-    std::optional<ParentalControl> parentalControl = services.settings.ReadParentalControl();
-    if (!parentalControl || !parentalControl->isOn)
-        return false;
-
-    if (IsNewsChannel(titleId))
-        return services.settings.IsNewsChannelRestricted();
-
-    if (IsInternetChannel(titleId))
-        return services.settings.IsInternetChannelRestricted();
-
-    return false;
 }
 
 ChannelGridScreen* ChannelStartWindowScreen::Grid()

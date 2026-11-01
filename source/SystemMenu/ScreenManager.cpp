@@ -55,6 +55,17 @@ void ScreenManager::OpenChild(ScreenId screen, ScreenId parent, int argument)
     Post(request);
 }
 
+void ScreenManager::OpenChildBefore(ScreenId screen, ScreenId parent, ScreenId nextSibling, int argument)
+{
+    ScreenRequest request;
+    request.kind = RequestKind::OpenChild;
+    request.screen = screen;
+    request.argument = argument;
+    request.parent = parent;
+    request.nextSibling = nextSibling;
+    Post(request);
+}
+
 void ScreenManager::ReplaceScreen(const Screen& replacedScreen, ScreenId screen, int argument)
 {
     ScreenRequest request;

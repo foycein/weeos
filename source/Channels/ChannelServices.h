@@ -14,6 +14,7 @@
 #include "Ios/SdCard/SdCardService.h"
 #include "Layout/TextFonts.h"
 #include "Sound/WavePlayer.h"
+#include "Settings/ConsoleClock.h"
 
 namespace Channels
 {
@@ -74,6 +75,9 @@ struct ChannelServices
 
     ChannelStorage storage;
     ChannelAudio audio;
+
+    // The time of the console's clock as the PC gives it: what a channel seeds its chances with and the time a Mii is made.
+    Settings::PcClock consoleTime;
 };
 
 }

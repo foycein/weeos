@@ -1,7 +1,5 @@
 #pragma once
 
-#include "SystemMenu/ParentalAnswer.h"
-
 namespace Text
 {
 class MessageCatalog;
@@ -10,8 +8,10 @@ class MessageCatalog;
 namespace SystemMenu
 {
 
+class ConsoleImport;
 class CursorManager;
 struct DataManagementServices;
+struct MessageBoardData;
 class DialogManager;
 class Display;
 class Fader;
@@ -49,9 +49,6 @@ struct MenuServices
     MenuSettings& settings;
     DialogManager& dialogs;
 
-    // Where the password dialog of the parental controls leaves its answer.
-    ParentalAnswer& parentalAnswer;
-
     // The POWER and RESET buttons. A screen can press them too, and see whether one was pressed.
     FrontPanel& frontPanel;
 
@@ -67,6 +64,12 @@ struct MenuServices
 
     // The titles, the NAND, the SD card and the identity for Data Management and the SD Card Menu. Nothing when the menu runs without IOS.
     DataManagementServices* dataManagement = nullptr;
+
+    // The import of a person's own Wii (ConsoleImport.h). Nothing when the program offers none.
+    ConsoleImport* consoleImport = nullptr;
+    // The database of the Message Board, the faces of its Miis and the day it shows. Nothing when the menu runs without it (the tests
+    // of other screens): the envelope of the Wii Menu then does nothing.
+    MessageBoardData* messageBoard = nullptr;
 };
 
 }

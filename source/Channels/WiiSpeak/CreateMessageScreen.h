@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Channels/WiiSpeak/MiiChooser.h"
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/VoiceRecording.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
 
 #include "Sound/WavePlayer.h"
 
+#include <memory>
 #include <optional>
 
 namespace Channels
@@ -50,6 +52,9 @@ public:
     bool ChangesVoice() const;
     bool IsPlayingBack();
 
+    // The Mii of the letter, which Add Mii chooses in the lineup of the Miis.
+    const std::optional<Mii::MiiRecord>& LetterMii() const;
+
 private:
     std::optional<WiiSpeakScreenName> UpdateLetter();
     void UpdateComment();
@@ -59,6 +64,7 @@ private:
     void PlayBack();
     void ShowCommentButtons();
     void ShowLetterVoice();
+    void UpdateMiiChooser();
 
     WiiSpeakSession& session;
     SceneLayout letter;
@@ -73,6 +79,8 @@ private:
     int shownCount = 0;
     Sound::WaveHandle playback;
     double playbackEndSeconds = 0.0;
+    std::unique_ptr<MiiChooser> miiChooser;
+    std::optional<Mii::MiiRecord> letterMii;
 };
 
 }

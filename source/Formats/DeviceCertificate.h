@@ -27,4 +27,24 @@ struct DeviceCertificate
 // Throws a FormatError when the data is not exactly one certificate with an elliptic curve key and a name like "NG0a447b97".
 DeviceCertificate ReadDeviceCertificate(ByteView bytes);
 
+// The name of the certificate of a console: "NG" and the console id in eight small hexadecimal digits.
+std::string DeviceCertificateName(std::uint32_t consoleId);
+
+// The fields of a certificate with an elliptic curve key, signed with an elliptic curve key.
+struct EllipticCurveCertificateFields
+{
+    std::string issuer;
+    std::string name;
+    std::uint32_t keyId = 0;
+
+    // 60 bytes each.
+    Bytes publicKey;
+    Bytes signature;
+};
+
+// The 0x180 bytes of such a certificate, the layout of device.cert. The signature covers the bytes from the issuer to the end
+// (Certificate::signedBytes), so a signer writes the certificate once with any signature, signs those bytes and writes it again.
+// Throws a FormatError when a name does not fit its 64 bytes or a key or signature has the wrong size.
+Bytes WriteEllipticCurveCertificate(const EllipticCurveCertificateFields& fields);
+
 }

@@ -51,6 +51,9 @@ constexpr float FramesPerSecond = 60.0f;
 
 // The sounds of the message, by their names in MicChatSound.brsar.
 constexpr std::string_view FrameSound = "SE_LET_CLK_FRAME_REC";
+constexpr std::string_view MiiFrameSound = "SE_LET_CLK_FRAME_MII";
+constexpr std::string_view MiiToLetterSound = "SE_SEL_CLK_MII_TO_LETTER";
+constexpr std::size_t MiisOfALetter = 1;
 constexpr std::string_view BackSound = "SE_LET_CLK_BTN_RET";
 constexpr std::string_view HelpSound = "SE_LET_CLK_BTN_HELP";
 constexpr std::string_view SendSound = "SE_LET_CLK_BTN_SEND";
@@ -99,6 +102,13 @@ CreateMessageScreen::~CreateMessageScreen()
 
 std::optional<WiiSpeakScreenName> CreateMessageScreen::Update()
 {
+    if (miiChooser)
+    {
+        UpdateMiiChooser();
+        letter.Calculate();
+        return std::nullopt;
+    }
+
     std::optional<WiiSpeakScreenName> nextScreen;
     if (phase == Phase::Letter)
         nextScreen = UpdateLetter();
@@ -112,6 +122,12 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::Update()
 
 void CreateMessageScreen::Draw()
 {
+    if (miiChooser)
+    {
+        miiChooser->Draw();
+        return;
+    }
+
     letter.Draw();
     if (phase != Phase::Letter)
         comment.Draw();
@@ -119,6 +135,9 @@ void CreateMessageScreen::Draw()
 
 std::vector<SceneLayout*> CreateMessageScreen::ShownLayouts()
 {
+    if (miiChooser)
+        return {&miiChooser->Layout()};
+
     if (phase == Phase::Letter)
         return {&letter};
 
@@ -221,7 +240,50 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::UpdateLetter()
         session.services.sounds.Request(FrameSound);
         session.ShowMessage(WiiSpeakText::NoMiisForMessage, {WiiSpeakText::Ok});
     }
+    else if (*pressed == MiiBox)
+    {
+        session.services.sounds.Request(MiiFrameSound);
+        std::vector<Mii::MiiRecord> chosenBefore;
+        if (letterMii)
+            chosenBefore.push_back(*letterMii);
+        miiChooser = std::make_unique<MiiChooser>(session, chosenBefore, MiisOfALetter);
+    }
     return std::nullopt;
+}
+
+// The lineup of the Miis for the letter: one circle. OK puts its Mii in the Mii box of the letter, or empties the box.
+void CreateMessageScreen::UpdateMiiChooser()
+{
+    if (session.dialog.IsOpen())
+    {
+        session.dialog.TakeChoice();
+        miiChooser->Layout().Calculate();
+        return;
+    }
+
+    std::optional<std::vector<Mii::MiiRecord>> chosen = miiChooser->Update();
+    if (!chosen)
+        return;
+
+    miiChooser.reset();
+    bool hadMii = letterMii.has_value();
+    letterMii.reset();
+    if (!chosen->empty())
+        letterMii = chosen->front();
+
+    if (letterMii)
+    {
+        letter.ShowMadeTexture("P_mii_00", MiiFaces::TextureNameOf(*letterMii), session.miiFaces.FaceOf(*letterMii));
+        letter.PlayAnimation("nbtn_03_on");
+        session.services.sounds.Request(MiiToLetterSound);
+    }
+    else if (hadMii)
+        letter.PlayAnimation("nbtn_03_off");
+}
+
+const std::optional<Mii::MiiRecord>& CreateMessageScreen::LetterMii() const
+{
+    return letterMii;
 }
 
 void CreateMessageScreen::UpdateComment()

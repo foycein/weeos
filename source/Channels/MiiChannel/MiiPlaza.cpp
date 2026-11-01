@@ -19,6 +19,11 @@ constexpr float WideHalfWidth = 3050.0f;
 constexpr float FrontLimit = 2050.0f;
 constexpr float BackLimit = -1850.0f;
 
+// The Mii Parade: its Miis walk on the road within 1200 units to each side of its middle and stand for up to a second at the far end
+// before they set out again (Assumed, CHN-84).
+constexpr float ParadeHalfWidth = 1200.0f;
+constexpr int LongestParadeWaitSteps = 60;
+
 // Two Miis closer than this push each other apart (the 120 x 120 of 803BE5DC).
 constexpr float PersonalDistance = 120.0f;
 
@@ -28,10 +33,56 @@ constexpr float SpeedKeptPerStep = 0.95f;
 constexpr float SpeedAddedPerStep = 0.1f;
 constexpr float ArrivalDistance = 5.0f;
 
-// The walk animation runs 0.6 / length of the body frames per unit of distance (80022BD0).
+// Running (state 2): the speed falls to 90 percent and grows by 1.5 every step (15 units a step at most); 10 units from its target
+// a running Mii has arrived.
+constexpr float RunSpeedKeptPerStep = 0.9f;
+constexpr float RunSpeedAddedPerStep = 1.5f;
+constexpr float RunArrivalDistance = 10.0f;
+
+// The walk animation runs 0.6 / length of the body frames per unit of distance (80022BD0); the run animation the same.
 constexpr float WalkFramesPerUnit = 0.6f;
+
+// The lengths of the animations of Character.szs, in frames (AnimationFramesOf; MiiChannelTest compares them with the file).
 constexpr float WalkAnimationFrames = 40.0f;
+constexpr float RunAnimationFrames = 40.0f;
 constexpr float WaitAnimationFrames = 120.0f;
+constexpr float HeldAnimationFrames = 12.0f;
+constexpr float TalkAnimationFrames = 90.0f;
+constexpr float AnswerAnimationFrames = 180.0f;
+constexpr float GreetingAnimationFrames = 96.0f;
+constexpr float NapAnimationFrames = 360.0f;
+constexpr float WakeUpAnimationFrames = 136.0f;
+constexpr float SneezeAnimationFrames = 121.0f;
+constexpr float AfterSneezeAnimationFrames = 51.0f;
+constexpr float SlipAnimationFrames = 56.0f;
+constexpr float GetUpAnimationFrames = 69.0f;
+
+// The idle moments (8002B840): every step a Mii that stands or walks draws a number below 30000. Below 7 it talks to a Mii that
+// stands or walks within 240 units in front of it (it looks for one within 600, 90 degrees to each side, among a third of the Miis);
+// 23 starts a nap of 6 to 17 seconds when it stands, 24 a sneeze.
+constexpr int IdleChances = 30000;
+constexpr int TalkChances = 7;
+constexpr int NapChance = 23;
+constexpr int SneezeChance = 24;
+constexpr float TalkSearchDistance = 600.0f;
+constexpr float TalkDistance = 240.0f;
+constexpr float TalkSearchDegrees = 90.0f;
+constexpr int ShortestNapSeconds = 6;
+constexpr int NapSecondsRange = 12;
+constexpr int StepsPerSecond = 60;
+
+// A talk goes on 140 to 160 steps before the two greet (800213F0 with 140 and 160).
+constexpr int ShortestTalkSteps = 140;
+constexpr int LongestTalkSteps = 160;
+
+// A running Mii slips with a chance of one in 7200 every step while it is more than 200 units from its place (8002AAA8); it slides on
+// with its speed falling to 94 percent every step (8001F7A8, state 10).
+constexpr int SlipChances = 7200;
+constexpr float SlipFreeDistance = 200.0f;
+constexpr float SlideSpeedKeptPerStep = 0.94f;
+
+// The talking mouth opens and closes every 8 steps (Assumed, CHN-82).
+constexpr int MouthSteps = 8;
 
 // Assumed (CHN-63): how long a Mii stands, how far it walks and how fast it turns; the rules that choose them were not traced.
 constexpr int ShortestWaitSteps = 120;
@@ -77,6 +128,7 @@ constexpr float PickHalfWidth = 45.0f;
 constexpr float LeanCosine = 0.70710678f;
 
 constexpr float DegreesPerRadian = 180.0f / std::numbers::pi_v<float>;
+constexpr float HalfTurnDegrees = 180.0f;
 
 Formats::Vector3 Normalized(Formats::Vector3 vector)
 {
@@ -130,8 +182,9 @@ float WalkAnimationRate(float speed, const Mii::MiiRecord& record)
     return speed * WalkFramesPerUnit / Mii::SizeOf(record).length;
 }
 
-MiiPlaza::MiiPlaza(bool isWidePicture, std::uint32_t randomSeed)
+MiiPlaza::MiiPlaza(bool isWidePicture, std::uint32_t randomSeed, PlazaKind plazaKind)
     : isWide(isWidePicture)
+    , kind(plazaKind)
     , random(randomSeed)
 {
     camera.eye = StartingEye;
@@ -195,6 +248,9 @@ const PlazaMii* MiiPlaza::FindMii(std::size_t slot) const
 
 void MiiPlaza::Update()
 {
+    slipsInLastStep = 0;
+    for (PlazaMii& plazaMii : miis)
+        ++plazaMii.stepsInActivity;
     for (PlazaMii& plazaMii : miis)
         MoveMii(plazaMii);
 
@@ -235,7 +291,7 @@ void MiiPlaza::Arrange(PlazaArrangement arrangement)
                 continue;
 
             plazaMii.staysAtTarget = true;
-            StartWalking(plazaMii, {x, z});
+            StartRunning(plazaMii, {x, z});
         }
     }
 }
@@ -319,6 +375,28 @@ void MiiPlaza::Drop()
 std::optional<std::size_t> MiiPlaza::HeldMii() const
 {
     return heldSlot;
+}
+
+void MiiPlaza::SetParadeRunning(bool isRunning)
+{
+    isParadeRunning = isRunning;
+    for (PlazaMii& plazaMii : miis)
+    {
+        if (isRunning && plazaMii.activity == PlazaActivity::Walking)
+            plazaMii.activity = PlazaActivity::Running;
+        else if (!isRunning && plazaMii.activity == PlazaActivity::Running)
+            plazaMii.activity = PlazaActivity::Walking;
+    }
+}
+
+bool MiiPlaza::IsParadeRunning() const
+{
+    return isParadeRunning;
+}
+
+int MiiPlaza::SlipsInLastStep() const
+{
+    return slipsInLastStep;
 }
 
 const PlazaCamera& MiiPlaza::Camera() const
@@ -438,6 +516,9 @@ std::optional<std::size_t> MiiPlaza::MiiAt(Formats::Vector2 picturePlace, float 
 
 float MiiPlaza::HalfWidth() const
 {
+    if (kind == PlazaKind::Parade)
+        return ParadeHalfWidth;
+
     return isWide ? WideHalfWidth : StandardHalfWidth;
 }
 
@@ -456,42 +537,103 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
     switch (plazaMii.activity)
     {
     case PlazaActivity::Held:
+        plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, HeldAnimationFrames);
         return;
 
     case PlazaActivity::Waiting:
         plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, WaitAnimationFrames);
-        if (plazaMii.staysAtTarget)
-            return;
-
         --plazaMii.stepsToWait;
-        if (plazaMii.stepsToWait <= 0)
+        if (kind == PlazaKind::Parade && plazaMii.stepsToWait <= 0)
+            WalkAlongTheParade(plazaMii);
+        else if (!plazaMii.staysAtTarget && plazaMii.stepsToWait <= 0)
             StartWalking(plazaMii, RandomPlace());
+        else
+            ChooseIdleMoment(plazaMii);
         return;
 
     case PlazaActivity::Walking:
         Walk(plazaMii);
+        if (plazaMii.activity == PlazaActivity::Walking)
+            ChooseIdleMoment(plazaMii);
+        return;
+
+    case PlazaActivity::Running:
+        Run(plazaMii);
+        return;
+
+    case PlazaActivity::Talking:
+        PlayForSteps(plazaMii, PlazaActivity::Greeting);
+        return;
+
+    case PlazaActivity::Answering:
+        PlayForSteps(plazaMii, PlazaActivity::Greeting);
+        return;
+
+    case PlazaActivity::Greeting:
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
+        return;
+
+    case PlazaActivity::Napping:
+        PlayForSteps(plazaMii, PlazaActivity::WakingUp);
+        return;
+
+    case PlazaActivity::WakingUp:
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
+        return;
+
+    case PlazaActivity::Sneezing:
+        PlayOnce(plazaMii, PlazaActivity::AfterSneeze);
+        return;
+
+    case PlazaActivity::AfterSneeze:
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
+        return;
+
+    case PlazaActivity::Slipping:
+        Slide(plazaMii);
+        PlayOnce(plazaMii, PlazaActivity::GettingUp);
+        return;
+
+    case PlazaActivity::GettingUp:
+        PlayOnce(plazaMii, PlazaActivity::Waiting);
         return;
     }
 }
 
 void MiiPlaza::StartWaiting(PlazaMii& plazaMii)
 {
-    plazaMii.activity = PlazaActivity::Waiting;
+    StartActivity(plazaMii, PlazaActivity::Waiting);
     plazaMii.speed = 0;
     plazaMii.stepsToWait = RandomWait();
-    plazaMii.animationFrame = 0;
 }
 
 void MiiPlaza::StartWalking(PlazaMii& plazaMii, Formats::Vector2 target)
 {
-    plazaMii.activity = PlazaActivity::Walking;
+    StartActivity(plazaMii, PlazaActivity::Walking);
     plazaMii.target = target;
+}
+
+void MiiPlaza::StartRunning(PlazaMii& plazaMii, Formats::Vector2 target)
+{
+    StartActivity(plazaMii, PlazaActivity::Running);
+    plazaMii.target = target;
+}
+
+void MiiPlaza::StartActivity(PlazaMii& plazaMii, PlazaActivity activity)
+{
+    plazaMii.activity = activity;
     plazaMii.animationFrame = 0;
+    plazaMii.stepsInActivity = 0;
 }
 
 void MiiPlaza::Walk(PlazaMii& plazaMii)
 {
     float remaining = Distance(plazaMii.position, plazaMii.target);
+    if (remaining < ArrivalDistance && kind == PlazaKind::Parade)
+    {
+        ReturnToTheFarEnd(plazaMii);
+        return;
+    }
     if (remaining < ArrivalDistance)
     {
         StartWaiting(plazaMii);
@@ -500,18 +642,152 @@ void MiiPlaza::Walk(PlazaMii& plazaMii)
         return;
     }
 
+    TurnAndStep(plazaMii, SpeedKeptPerStep, SpeedAddedPerStep, remaining);
+    float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
+    plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, WalkAnimationFrames);
+}
+
+void MiiPlaza::Run(PlazaMii& plazaMii)
+{
+    float remaining = Distance(plazaMii.position, plazaMii.target);
+    if (remaining < RunArrivalDistance && kind == PlazaKind::Parade)
+    {
+        ReturnToTheFarEnd(plazaMii);
+        return;
+    }
+    if (remaining < RunArrivalDistance)
+    {
+        StartWaiting(plazaMii);
+        plazaMii.facingDegrees = 0;
+        return;
+    }
+
+    bool slips = remaining > SlipFreeDistance && std::uniform_int_distribution<int>(0, SlipChances - 1)(random) == 0;
+    if (slips)
+    {
+        StartActivity(plazaMii, PlazaActivity::Slipping);
+        ++slipsInLastStep;
+        return;
+    }
+
+    TurnAndStep(plazaMii, RunSpeedKeptPerStep, RunSpeedAddedPerStep, remaining);
+    float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
+    plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, RunAnimationFrames);
+}
+
+// The Mii turns a little toward its target and moves on at a speed that settles where what it keeps and what it adds balance.
+void MiiPlaza::TurnAndStep(PlazaMii& plazaMii, float speedKept, float speedAdded, float remaining)
+{
     float wantedFacing = std::atan2(plazaMii.target.x - plazaMii.position.x, plazaMii.target.y - plazaMii.position.y) * DegreesPerRadian;
     float turn = std::clamp(TurnBetween(plazaMii.facingDegrees, wantedFacing), -TurnDegreesPerStep, TurnDegreesPerStep);
     plazaMii.facingDegrees += turn;
 
-    plazaMii.speed = plazaMii.speed * SpeedKeptPerStep + SpeedAddedPerStep;
+    plazaMii.speed = plazaMii.speed * speedKept + speedAdded;
     float step = std::min(plazaMii.speed, remaining);
     float facingRadians = plazaMii.facingDegrees / DegreesPerRadian;
     plazaMii.position.x += std::sin(facingRadians) * step;
     plazaMii.position.y += std::cos(facingRadians) * step;
+}
 
-    float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
-    plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, WalkAnimationFrames);
+// A Mii that slipped slides on in the direction it ran, slower every step.
+void MiiPlaza::Slide(PlazaMii& plazaMii)
+{
+    plazaMii.speed *= SlideSpeedKeptPerStep;
+    float facingRadians = plazaMii.facingDegrees / DegreesPerRadian;
+    plazaMii.position.x += std::sin(facingRadians) * plazaMii.speed;
+    plazaMii.position.y += std::cos(facingRadians) * plazaMii.speed;
+}
+
+// The animation plays to its end, then the next activity begins.
+void MiiPlaza::PlayOnce(PlazaMii& plazaMii, PlazaActivity nextActivity)
+{
+    plazaMii.animationFrame += 1;
+    if (plazaMii.animationFrame < AnimationFramesOf(plazaMii.activity))
+        return;
+
+    if (nextActivity == PlazaActivity::Waiting)
+        FinishActivity(plazaMii);
+    else
+        StartActivity(plazaMii, nextActivity);
+}
+
+// The animation loops until the steps of the activity are over, then the next activity begins.
+void MiiPlaza::PlayForSteps(PlazaMii& plazaMii, PlazaActivity nextActivity)
+{
+    plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, AnimationFramesOf(plazaMii.activity));
+    if (plazaMii.stepsInActivity >= plazaMii.stepsOfActivity)
+        StartActivity(plazaMii, nextActivity);
+}
+
+// After an idle moment a Mii stands; a Mii that the whistle called runs on to its place.
+void MiiPlaza::FinishActivity(PlazaMii& plazaMii)
+{
+    bool isOnItsWay = plazaMii.staysAtTarget && Distance(plazaMii.position, plazaMii.target) >= RunArrivalDistance;
+    if (isOnItsWay)
+    {
+        StartRunning(plazaMii, plazaMii.target);
+        return;
+    }
+    StartWaiting(plazaMii);
+}
+
+void MiiPlaza::ChooseIdleMoment(PlazaMii& plazaMii)
+{
+    int chance = std::uniform_int_distribution<int>(0, IdleChances - 1)(random);
+    if (chance < TalkChances && !plazaMii.staysAtTarget)
+    {
+        StartTalk(plazaMii);
+        return;
+    }
+
+    if (chance == NapChance && plazaMii.activity == PlazaActivity::Waiting)
+    {
+        StartActivity(plazaMii, PlazaActivity::Napping);
+        int napSeconds = ShortestNapSeconds + std::uniform_int_distribution<int>(0, NapSecondsRange - 1)(random);
+        plazaMii.stepsOfActivity = napSeconds * StepsPerSecond;
+        return;
+    }
+
+    if (chance == SneezeChance)
+        StartActivity(plazaMii, PlazaActivity::Sneezing);
+}
+
+// The talker looks for a Mii in front of it among a third of the Miis; when the one it finds is near, the two turn to each other
+// and talk. Miis that the whistle lined up keep their places (Assumed, CHN-81).
+void MiiPlaza::StartTalk(PlazaMii& talker)
+{
+    if (miis.size() < 2)
+        return;
+
+    int tries = static_cast<int>(miis.size()) / 3 + 1;
+    std::uniform_int_distribution<std::size_t> anyMii(0, miis.size() - 1);
+    for (int tryNumber = 0; tryNumber < tries; ++tryNumber)
+    {
+        PlazaMii& listener = miis[anyMii(random)];
+        bool isFree = listener.activity == PlazaActivity::Waiting || listener.activity == PlazaActivity::Walking;
+        if (&listener == &talker || !isFree || listener.staysAtTarget)
+            continue;
+
+        float distance = Distance(talker.position, listener.position);
+        float direction = std::atan2(listener.position.x - talker.position.x, listener.position.y - talker.position.y) * DegreesPerRadian;
+        bool isInFront = std::abs(TurnBetween(talker.facingDegrees, direction)) < TalkSearchDegrees;
+        if (distance >= TalkSearchDistance || !isInFront)
+            continue;
+        if (distance >= TalkDistance)
+            return;
+
+        int talkSteps = std::uniform_int_distribution<int>(ShortestTalkSteps, LongestTalkSteps)(random);
+        StartActivity(talker, PlazaActivity::Talking);
+        talker.facingDegrees = direction;
+        talker.stepsOfActivity = talkSteps;
+        talker.speed = 0;
+
+        StartActivity(listener, PlazaActivity::Answering);
+        listener.facingDegrees = direction + HalfTurnDegrees;
+        listener.stepsOfActivity = talkSteps;
+        listener.speed = 0;
+        return;
+    }
 }
 
 // Each of two Miis that stand too close moves away from the other by half of what is missing.
@@ -537,6 +813,9 @@ void MiiPlaza::PushApart()
                 distance = 1;
             }
 
+            WakeWhenBumped(one);
+            WakeWhenBumped(other);
+
             float push = (PersonalDistance - distance) / 2;
             one.position.x -= away.x / distance * push;
             one.position.y -= away.y / distance * push;
@@ -544,6 +823,17 @@ void MiiPlaza::PushApart()
             other.position.y += away.y / distance * push;
         }
     }
+}
+
+// A Mii that is bumped in the first part of an idle moment goes on to its second part (80027A24).
+void MiiPlaza::WakeWhenBumped(PlazaMii& plazaMii)
+{
+    if (plazaMii.activity == PlazaActivity::Napping)
+        StartActivity(plazaMii, PlazaActivity::WakingUp);
+    else if (plazaMii.activity == PlazaActivity::Sneezing)
+        StartActivity(plazaMii, PlazaActivity::AfterSneeze);
+    else if (plazaMii.activity == PlazaActivity::Slipping)
+        StartActivity(plazaMii, PlazaActivity::GettingUp);
 }
 
 void MiiPlaza::KeepInside(PlazaMii& plazaMii)
@@ -555,6 +845,24 @@ void MiiPlaza::KeepInside(PlazaMii& plazaMii)
     plazaMii.position.y = std::clamp(plazaMii.position.y, BackLimit, FrontLimit);
 }
 
+// A Mii of the parade walks (or runs, in fast forward) straight toward the camera, to the near end of the road.
+void MiiPlaza::WalkAlongTheParade(PlazaMii& plazaMii)
+{
+    Formats::Vector2 nearEnd = {plazaMii.position.x, FrontLimit};
+    if (isParadeRunning)
+        StartRunning(plazaMii, nearEnd);
+    else
+        StartWalking(plazaMii, nearEnd);
+}
+
+// At the near end a Mii of the parade leaves the picture and comes again from the far end.
+void MiiPlaza::ReturnToTheFarEnd(PlazaMii& plazaMii)
+{
+    plazaMii.position = {plazaMii.position.x, BackLimit};
+    plazaMii.facingDegrees = 0;
+    StartWaiting(plazaMii);
+}
+
 Formats::Vector2 MiiPlaza::RandomPlace()
 {
     std::uniform_real_distribution<float> across(-HalfWidth(), HalfWidth());
@@ -564,6 +872,9 @@ Formats::Vector2 MiiPlaza::RandomPlace()
 
 int MiiPlaza::RandomWait()
 {
+    if (kind == PlazaKind::Parade)
+        return std::uniform_int_distribution<int>(0, LongestParadeWaitSteps)(random);
+
     return std::uniform_int_distribution<int>(ShortestWaitSteps, LongestWaitSteps)(random);
 }
 
@@ -583,6 +894,96 @@ void MiiPlaza::LimitCameraDestination()
 
     camera.destination.x = std::clamp(camera.destination.x, -sideLimit, sideLimit);
     camera.destination.z = std::clamp(camera.destination.z, middleZ - depthLimit, middleZ + depthLimit);
+}
+
+std::string_view AnimationOf(PlazaActivity activity)
+{
+    switch (activity)
+    {
+    case PlazaActivity::Waiting:
+        return "bodyWait";
+    case PlazaActivity::Walking:
+        return "bodyWalk";
+    case PlazaActivity::Running:
+        return "bodyRun";
+    case PlazaActivity::Held:
+        return "bodyWallow";
+    case PlazaActivity::Talking:
+        return "bodyTalk";
+    case PlazaActivity::Answering:
+        return "bodyTalk_01";
+    case PlazaActivity::Greeting:
+        return "bodyGreeting";
+    case PlazaActivity::Napping:
+        return "bodyCatnap_00";
+    case PlazaActivity::WakingUp:
+        return "bodyCatnap_01";
+    case PlazaActivity::Sneezing:
+        return "bodysnart_00";
+    case PlazaActivity::AfterSneeze:
+        return "bodysnart_01";
+    case PlazaActivity::Slipping:
+        return "bodySlip_00";
+    case PlazaActivity::GettingUp:
+        return "bodySlip_01";
+    }
+    return "bodyWait";
+}
+
+Mii::MiiExpression ExpressionOf(const PlazaMii& plazaMii)
+{
+    switch (plazaMii.activity)
+    {
+    case PlazaActivity::Napping:
+    case PlazaActivity::Sneezing:
+        return Mii::MiiExpression::Blink;
+
+    case PlazaActivity::Talking:
+    case PlazaActivity::Answering:
+    {
+        bool isMouthOpen = plazaMii.stepsInActivity / MouthSteps % 2 == 1;
+        if (isMouthOpen)
+            return Mii::MiiExpression::OpenMouth;
+        return Mii::MiiExpression::Normal;
+    }
+
+    default:
+        return Mii::MiiExpression::Normal;
+    }
+}
+
+float AnimationFramesOf(PlazaActivity activity)
+{
+    switch (activity)
+    {
+    case PlazaActivity::Waiting:
+        return WaitAnimationFrames;
+    case PlazaActivity::Walking:
+        return WalkAnimationFrames;
+    case PlazaActivity::Running:
+        return RunAnimationFrames;
+    case PlazaActivity::Held:
+        return HeldAnimationFrames;
+    case PlazaActivity::Talking:
+        return TalkAnimationFrames;
+    case PlazaActivity::Answering:
+        return AnswerAnimationFrames;
+    case PlazaActivity::Greeting:
+        return GreetingAnimationFrames;
+    case PlazaActivity::Napping:
+        return NapAnimationFrames;
+    case PlazaActivity::WakingUp:
+        return WakeUpAnimationFrames;
+    case PlazaActivity::Sneezing:
+        return SneezeAnimationFrames;
+    case PlazaActivity::AfterSneeze:
+        return AfterSneezeAnimationFrames;
+    case PlazaActivity::Slipping:
+        return SlipAnimationFrames;
+    case PlazaActivity::GettingUp:
+        return GetUpAnimationFrames;
+    }
+    return WaitAnimationFrames;
 }
 
 }

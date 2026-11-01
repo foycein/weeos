@@ -76,6 +76,18 @@ Layout::LiveMaterial& MenuLayout::MaterialOf(const Formats::Pane& pane)
     return layout.MaterialAt(pane.picture->materialIndex);
 }
 
+// The name under which the layout finds the texture cannot be the name of a file of an archive.
+void MenuLayout::ShowTexture(std::string_view pictureName, const Layout::LoadedTexture& texture)
+{
+    Layout::LiveMaterial& material = MaterialOf(PaneNamed(pictureName));
+    if (material.textureNames.empty())
+        throw MenuError(std::format("The picture {} of the layout {} has no texture to replace", pictureName, layoutName));
+
+    std::string providedName = std::format("<texture {}>", texture.handle.number);
+    layout.ProvideTexture(providedName, texture);
+    material.textureNames[0] = providedName;
+}
+
 void MenuLayout::SetText(std::string_view paneName, std::u16string_view text)
 {
     Formats::Pane& pane = PaneNamed(paneName);

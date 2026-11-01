@@ -17,6 +17,8 @@ namespace
 constexpr std::string_view SaveFileName = "mic_chat.dat";
 constexpr std::size_t VersionOffset = 0;
 constexpr std::uint8_t NoFlags = 0;
+constexpr int BitsPerByte = 8;
+constexpr std::uint16_t LowByteMask = 0xFF;
 
 // The channel's files are its own: the owner reads and writes, nobody else (as the save files of the console's titles are).
 constexpr Ios::EntryPermissions SaveFilePermissions = {Ios::AccessRights::ReadWrite, Ios::AccessRights::None, Ios::AccessRights::None};
@@ -102,9 +104,10 @@ void WiiSpeakSaveData::SetChosenMiis(const std::vector<Mii::MiiRecord>& miis)
         std::size_t start = ChosenMiisOffset + entry * ChosenMiiEntrySize;
         std::span<Formats::Byte, Mii::MiiRecordSize> record(bytes.data() + start, Mii::MiiRecordSize);
         Mii::WriteMiiRecord(miis[entry], record);
+        // The checksum follows the Mii, big endian.
         std::uint16_t checksum = Mii::CalculateMiiChecksum(record);
-        bytes[start + Mii::MiiRecordSize] = static_cast<Formats::Byte>(checksum >> 8);
-        bytes[start + Mii::MiiRecordSize + 1] = static_cast<Formats::Byte>(checksum & 0xFF);
+        bytes[start + Mii::MiiRecordSize] = static_cast<Formats::Byte>(checksum >> BitsPerByte);
+        bytes[start + Mii::MiiRecordSize + 1] = static_cast<Formats::Byte>(checksum & LowByteMask);
     }
 }
 
