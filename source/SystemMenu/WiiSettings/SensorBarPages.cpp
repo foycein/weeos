@@ -89,10 +89,13 @@ void SensorBarPages::BuildSensorBarIndex(Page& content)
     PageBuilder builder(content);
     builder.SetTitle(1, u"Sensor Bar");
 
-    builder.AddChoice(0, ChoiceCount, u"Sensor Bar Position", false, [this] { navigator.GoTo(PageId::SensorBarPositionSet); })
-        .sound = PageSound::Decide;
-    builder.AddChoice(1, ChoiceCount, u"Sensitivity", false, [this] { navigator.GoTo(PageId::SensitivityIntroduction); })
-        .sound = PageSound::Decide;
+    PageButton& position = builder.AddChoice(0, ChoiceCount, u"Sensor Bar Position", false,
+        [this] { navigator.GoTo(PageId::SensorBarPositionSet); });
+    position.sound = PageSound::Decide;
+
+    PageButton& sensitivity = builder.AddChoice(1, ChoiceCount, u"Sensitivity", false,
+        [this] { navigator.GoTo(PageId::SensitivityIntroduction); });
+    sensitivity.sound = PageSound::Decide;
     builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
 }
 
@@ -141,8 +144,8 @@ void SensorBarPages::BuildSensitivitySet(Page& content)
 
     int sensitivity = settings.GetPointerSensitivity();
     builder.AddPicture("FIX/COMMON/BG/DPD_PMGauge.gif", GaugeBounds);
-    builder.AddPicture(MarkerPicturePath(sensitivity),
-        {FirstMarkerLeft + (sensitivity - LowestSensitivity) * MarkerDistance, MarkerTop, MarkerSize, MarkerSize});
+    int markerLeft = FirstMarkerLeft + (sensitivity - LowestSensitivity) * MarkerDistance;
+    builder.AddPicture(MarkerPicturePath(sensitivity), {markerLeft, MarkerTop, MarkerSize, MarkerSize});
 
     PageButton& minus = builder.AddPictureButton(ButtonLook::MinusCircle, MinusBounds, "Lower", [this] { ChangeSensitivity(-1); });
     minus.sound = sensitivity > LowestSensitivity ? PageSound::Choose : PageSound::Error;

@@ -18,7 +18,9 @@ namespace SystemMenu
 namespace
 {
 
-constexpr std::array<std::string_view, 2> PlacesFilePaths = {"/private/wii/loc.dat", "/private/wii/loc.bak"};
+constexpr std::string_view MainPlacesFilePath = "/private/wii/loc.dat";
+constexpr std::string_view CopyPlacesFilePath = "/private/wii/loc.bak";
+constexpr std::array<std::string_view, 2> PlacesFilePaths = {MainPlacesFilePath, CopyPlacesFilePath};
 
 // The Photo Channel 1.1, which the SD Card Menu leaves out.
 constexpr std::uint32_t PhotoChannelOneOne = 0x48415A41;
@@ -63,8 +65,8 @@ SdCardChannels PlaceChannelsOfCard(DataManagementServices& services)
 {
     SdCardChannels channels;
 
-    std::optional<Formats::ChannelPlaces> mainFile = ReadPlacesFile(services, PlacesFilePaths[0]);
-    std::optional<Formats::ChannelPlaces> copyFile = ReadPlacesFile(services, PlacesFilePaths[1]);
+    std::optional<Formats::ChannelPlaces> mainFile = ReadPlacesFile(services, MainPlacesFilePath);
+    std::optional<Formats::ChannelPlaces> copyFile = ReadPlacesFile(services, CopyPlacesFilePath);
     channels.mustBeWritten = !mainFile || !copyFile;
     if (mainFile)
         channels.places = *mainFile;
@@ -83,7 +85,8 @@ SdCardChannels PlaceChannelsOfCard(DataManagementServices& services)
 
     for (std::uint32_t code : codes)
     {
-        if (std::find(channels.places.begin(), channels.places.end(), code) != channels.places.end())
+        bool hasPlace = std::find(channels.places.begin(), channels.places.end(), code) != channels.places.end();
+        if (hasPlace)
             continue;
 
         auto emptyPlace = std::find(channels.places.begin(), channels.places.end(), EmptyPlace);

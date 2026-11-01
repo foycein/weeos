@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <chrono>
+#include <format>
 #include <limits>
 #include <vector>
 
@@ -160,7 +161,7 @@ ServerReply OwnServer::Ask(std::string_view path)
     if (connection.answer != ServerAnswer::Answered)
         return reply;
 
-    std::string request = "GET " + std::string(path) + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
+    std::string request = std::format("GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n", path, host);
     if (sockets.SendTo(connection.socket, BytesOf(request), nullptr).Failed())
     {
         Close(connection.socket);

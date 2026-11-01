@@ -2,6 +2,7 @@
 
 #include "SystemMenu/WiiSettings/NumberText.h"
 
+#include "Formats/Alignment.h"
 #include "Settings/PcKeys.h"
 
 #include <algorithm>
@@ -29,7 +30,8 @@ constexpr auto WindowSizes = std::to_array<WindowSizeChoice>({
     {2560, 1440},
 });
 
-// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries of a Wii.
+// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries of
+// a Wii.
 constexpr int ListLeft = 88;
 constexpr int ListTop = 76;
 constexpr int RowWidth = 432;
@@ -39,6 +41,11 @@ constexpr int ListArrowLeft = 528;
 constexpr int ListArrowUpTop = 76;
 constexpr int ListArrowDownTop = 282;
 constexpr int ListArrowSize = 72;
+constexpr PageRectangle ListArrowUpBounds = {ListArrowLeft, ListArrowUpTop, ListArrowSize, ListArrowSize};
+constexpr PageRectangle ListArrowDownBounds = {ListArrowLeft, ListArrowDownTop, ListArrowSize, ListArrowSize};
+
+// The mouse page offers two ways round for the buttons.
+constexpr int MouseChoiceCount = 2;
 
 // The volume goes in steps of ten percent, shown in large digits between a minus and a plus button, below the two buttons of the page.
 constexpr int VolumeStep = 10;
@@ -81,7 +88,8 @@ std::u16string KeyNameOf(int virtualKeyCode)
 
 int ListPageCount(int rowCount)
 {
-    return std::max(1, (rowCount + RowsOnListPage - 1) / RowsOnListPage);
+    int pageCount = static_cast<int>(Formats::DivideRoundingUp(static_cast<std::uint64_t>(rowCount), RowsOnListPage));
+    return std::max(1, pageCount);
 }
 
 PageRectangle RowBounds(int rowOnPage)
@@ -174,11 +182,15 @@ void PcPages::BuildWindow(PageBuilder& builder)
     const Settings::PcSettings& values = pcSettings.Values();
 
     builder.SetTitle(2, u"Window");
-    builder.AddMenuItem(0, u"Window Size: " + SizeText(values.windowWidth, values.windowHeight), [this] { navigator.GoTo(PageId::PcWindowSize); })
-        .name = "Window Size";
-    builder.AddMenuItem(1, u"Fullscreen: " + OnOffText(values.isFullscreen),
-        [this] { Change([](Settings::PcSettings& changed) { changed.isFullscreen = !changed.isFullscreen; }); })
-        .name = "Fullscreen";
+
+    std::u16string sizeText = u"Window Size: " + SizeText(values.windowWidth, values.windowHeight);
+    PageButton& size = builder.AddMenuItem(0, sizeText, [this] { navigator.GoTo(PageId::PcWindowSize); });
+    size.name = "Window Size";
+
+    std::u16string fullscreenText = u"Fullscreen: " + OnOffText(values.isFullscreen);
+    PageButton& fullscreen = builder.AddMenuItem(1, fullscreenText,
+        [this] { Change([](Settings::PcSettings& changed) { changed.isFullscreen = !changed.isFullscreen; }); });
+    fullscreen.name = "Fullscreen";
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
 }
 
@@ -192,7 +204,8 @@ void PcPages::BuildWindowSize(PageBuilder& builder)
         WindowSizeChoice size = WindowSizes[sizeNumber];
         std::u16string text = SizeText(size.width, size.height);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(static_cast<int>(sizeNumber)), NameOfText(text),
+        PageRectangle bounds = RowBounds(static_cast<int>(sizeNumber));
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, bounds, NameOfText(text),
             [this, size]
             {
                 Change(
@@ -222,10 +235,12 @@ void PcPages::BuildSound(PageBuilder& builder)
     builder.AddText(VolumeLabelBounds, TextRole::Message, {u"Volume"});
     builder.AddText(VolumeNumberBounds, TextRole::BigNumber, {NumberText(values.volume)});
 
-    PageButton& lower = builder.AddPictureButton(ButtonLook::MinusCircle, VolumeLowerBounds, "Quieter", [this] { ChangeVolume(-VolumeStep); });
+    PageButton& lower =
+        builder.AddPictureButton(ButtonLook::MinusCircle, VolumeLowerBounds, "Quieter", [this] { ChangeVolume(-VolumeStep); });
     lower.isShown = values.volume > Settings::LowestVolume;
     lower.repeatsWhenHeld = true;
-    PageButton& higher = builder.AddPictureButton(ButtonLook::PlusCircle, VolumeHigherBounds, "Louder", [this] { ChangeVolume(VolumeStep); });
+    PageButton& higher =
+        builder.AddPictureButton(ButtonLook::PlusCircle, VolumeHigherBounds, "Louder", [this] { ChangeVolume(VolumeStep); });
     higher.isShown = values.volume < Settings::HighestVolume;
     higher.repeatsWhenHeld = true;
 
@@ -244,9 +259,12 @@ void PcPages::BuildSoundDevice(PageBuilder& builder)
     int lastRow = std::min(firstRow + RowsOnListPage, static_cast<int>(rows.size()));
     for (int rowNumber = firstRow; rowNumber < lastRow; ++rowNumber)
     {
-        std::u16string device = rowNumber == 0 ? u"" : rows[rowNumber];
+        // The setting keeps no name for the default device.
+        bool isDefaultDevice = rowNumber == 0;
+        std::u16string device = isDefaultDevice ? std::u16string() : rows[rowNumber];
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), NameOfText(rows[rowNumber]),
+        PageRectangle bounds = RowBounds(rowNumber - firstRow);
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, bounds, NameOfText(rows[rowNumber]),
             [this, device] { Change([device](Settings::PcSettings& changed) { changed.audioDevice = device; }); });
         row.text = rows[rowNumber];
         row.isChosen = pcSettings.Values().audioDevice == device;
@@ -278,7 +296,8 @@ void PcPages::BuildKeys(PageBuilder& builder)
         const Settings::RemoteButtonName& button = buttons[rowNumber];
         int key = Settings::KeyOfButton(pcSettings.Values(), button.button);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), "Key " + NameOfText(button.name),
+        PageRectangle bounds = RowBounds(rowNumber - firstRow);
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, bounds, "Key " + NameOfText(button.name),
             [this, mask = button.button] { ChangeKey(mask, 1); });
         row.text = std::u16string(button.name) + u":  " + KeyNameOf(key);
         row.repeatsWhenHeld = true;
@@ -293,18 +312,19 @@ void PcPages::BuildMouse(PageBuilder& builder)
     bool isSwapped = pcSettings.Values().areMouseButtonsSwapped;
 
     builder.SetTitle(3, u"Mouse");
-    builder.AddChoice(0, 2, u"Left button A, right button B", !isSwapped,
-        [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = false; }); })
-        .name = "Left Is A";
-    builder.AddChoice(1, 2, u"Left button B, right button A", isSwapped,
-        [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = true; }); })
-        .name = "Left Is B";
+    PageButton& leftIsA = builder.AddChoice(0, MouseChoiceCount, u"Left button A, right button B", !isSwapped,
+        [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = false; }); });
+    leftIsA.name = "Left Is A";
+
+    PageButton& leftIsB = builder.AddChoice(1, MouseChoiceCount, u"Left button B, right button A", isSwapped,
+        [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = true; }); });
+    leftIsB.name = "Left Is B";
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcControls); });
 }
 
 void PcPages::AddListArrows(PageBuilder& builder, int& shownListPage, int listPageCount)
 {
-    PageButton& up = builder.AddPictureButton(ButtonLook::ArrowUp, {ListArrowLeft, ListArrowUpTop, ListArrowSize, ListArrowSize}, "PreviousRows",
+    PageButton& up = builder.AddPictureButton(ButtonLook::ArrowUp, ListArrowUpBounds, "PreviousRows",
         [this, &shownListPage]
         {
             --shownListPage;
@@ -313,7 +333,7 @@ void PcPages::AddListArrows(PageBuilder& builder, int& shownListPage, int listPa
     up.isShown = shownListPage > 0;
     up.sound = PageSound::Scroll;
 
-    PageButton& down = builder.AddPictureButton(ButtonLook::ArrowDown, {ListArrowLeft, ListArrowDownTop, ListArrowSize, ListArrowSize}, "NextRows",
+    PageButton& down = builder.AddPictureButton(ButtonLook::ArrowDown, ListArrowDownBounds, "NextRows",
         [this, &shownListPage]
         {
             ++shownListPage;
@@ -343,15 +363,22 @@ void PcPages::ToggleRumble()
 
 void PcPages::ChangeVolume(int change)
 {
-    Change([change](Settings::PcSettings& changed)
-        { changed.volume = std::clamp(changed.volume + change, Settings::LowestVolume, Settings::HighestVolume); });
+    Change(
+        [change](Settings::PcSettings& changed)
+        {
+            int newVolume = changed.volume + change;
+            changed.volume = std::clamp(newVolume, Settings::LowestVolume, Settings::HighestVolume);
+        });
 }
 
 void PcPages::ChangeKey(Input::ButtonMask button, int change)
 {
     Change(
         [button, change](Settings::PcSettings& changed)
-        { Settings::SetKeyOfButton(changed, button, Settings::NextFreeKey(changed, button, change)); });
+        {
+            int nextKey = Settings::NextFreeKey(changed, button, change);
+            Settings::SetKeyOfButton(changed, button, nextKey);
+        });
 }
 
 }

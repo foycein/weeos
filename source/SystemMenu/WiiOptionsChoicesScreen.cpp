@@ -466,7 +466,8 @@ void WiiOptionsChoicesScreen::LeaveWiiOptions()
     MoveToState(State::FadingOut);
 }
 
-// The button that led to the page they come from comes back, the other button of that page appears again, and the buttons of the page they leave go away.
+// The button that led to the page they come from comes back, the other button of that page appears again, and the buttons of the
+// page they leave go away.
 void WiiOptionsChoicesScreen::ReturnToPage(Page page)
 {
     EnableButtonsOfPage(page);

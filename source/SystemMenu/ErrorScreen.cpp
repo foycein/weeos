@@ -3,6 +3,7 @@
 #include "SystemMenu/MenuError.h"
 
 #include "Formats/Ash0.h"
+#include "Formats/ByteReader.h"
 #include "Formats/U8Archive.h"
 
 #include <format>
@@ -20,7 +21,6 @@ constexpr std::uint32_t EnglishTextsAddress = 0x81639900;
 
 // The size of a message file stands in its header, after the eight letters of the tag.
 constexpr std::size_t MessageFileSizeOffset = 8;
-constexpr std::size_t MessageFileSizeLength = 4;
 
 constexpr std::string_view LayoutName = "my_Fatal";
 constexpr std::string_view TextBoxName = "TextBox_00";
@@ -31,9 +31,9 @@ Formats::MessageFile ReadEnglishTexts(const ProgramImage& program)
 {
     Formats::ByteView bytes = program.BytesAt(EnglishTextsAddress);
 
-    std::size_t fileSize = 0;
-    for (std::size_t index = 0; index < MessageFileSizeLength; ++index)
-        fileSize = fileSize * 256 + bytes[MessageFileSizeOffset + index];
+    Formats::ByteReader reader(bytes, "the English texts of the error screen");
+    reader.MoveTo(MessageFileSizeOffset);
+    std::size_t fileSize = reader.ReadUint32();
 
     return Formats::ReadMessageFile(bytes.subspan(0, fileSize));
 }

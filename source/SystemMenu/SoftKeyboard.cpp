@@ -2,6 +2,8 @@
 
 #include "SystemMenu/UsKeyboardLayout.h"
 
+#include "Formats/Alignment.h"
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -26,8 +28,8 @@ constexpr ButtonSet DownButtons = {Input::RemoteButtons::Down, Input::ClassicBut
 
 int PageCountOfSymbols()
 {
-    int symbolCount = static_cast<int>(SymbolsOfTheSymbolWindow().size());
-    return (symbolCount + KeyboardView::SymbolsPerPage - 1) / KeyboardView::SymbolsPerPage;
+    std::size_t symbolCount = SymbolsOfTheSymbolWindow().size();
+    return static_cast<int>(Formats::DivideRoundingUp(symbolCount, KeyboardView::SymbolsPerPage));
 }
 
 }
@@ -233,8 +235,11 @@ void SoftKeyboard::PressKey(KeyId key)
         Finish(true);
         break;
     case KeyKind::Symbol:
-        Type(SymbolsOfTheSymbolWindow().at(symbolPage * KeyboardView::SymbolsPerPage + key.number));
+    {
+        int symbolIndex = symbolPage * KeyboardView::SymbolsPerPage + key.number;
+        Type(SymbolsOfTheSymbolWindow().at(symbolIndex));
         break;
+    }
     case KeyKind::CloseSymbols:
         view.OpenSymbolWindow(false);
         sounds.Request(KeyboardSoundName::ButtonPressed);
@@ -284,8 +289,7 @@ void SoftKeyboard::ApplyTypingCommand(const TypingCommand& command)
         DeleteBeforeCursor();
         break;
     case TypingCommandKind::Delete:
-        sounds.Request(field->DeleteAtCursor() ? KeyboardSoundName::CharacterDeleted : KeyboardSoundName::NothingToDelete);
-        NoteThatTheFieldChanged();
+        DeleteAtCursor();
         break;
     case TypingCommandKind::MoveLeft:
         MoveCursor(CursorMove::OneCharacterLeft, command.extendsSelection);
@@ -334,7 +338,15 @@ void SoftKeyboard::Type(char16_t character)
 
 void SoftKeyboard::DeleteBeforeCursor()
 {
-    sounds.Request(field->DeleteBeforeCursor() ? KeyboardSoundName::CharacterDeleted : KeyboardSoundName::NothingToDelete);
+    bool hasDeleted = field->DeleteBeforeCursor();
+    sounds.Request(hasDeleted ? KeyboardSoundName::CharacterDeleted : KeyboardSoundName::NothingToDelete);
+    NoteThatTheFieldChanged();
+}
+
+void SoftKeyboard::DeleteAtCursor()
+{
+    bool hasDeleted = field->DeleteAtCursor();
+    sounds.Request(hasDeleted ? KeyboardSoundName::CharacterDeleted : KeyboardSoundName::NothingToDelete);
     NoteThatTheFieldChanged();
 }
 

@@ -13,7 +13,8 @@ namespace SystemMenu
 namespace
 {
 
-// The two small fonts of the menu are the files of an archive that is a shared content of the title. The first one has every letter and digit.
+// The two small fonts of the menu are the files of an archive that is a shared content of the title. The first one has every letter
+// and digit.
 constexpr std::uint16_t SmallFontsContentIndex = 5;
 constexpr std::string_view FontFilePath = "wbf1.brfna";
 

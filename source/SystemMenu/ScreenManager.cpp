@@ -3,6 +3,7 @@
 #include "SystemMenu/LauncherScreen.h"
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -81,8 +82,9 @@ void ScreenManager::ReplaceScreen(const Screen& replacedScreen, ScreenId screen,
 
         auto position = std::find_if(parent->children.begin(), parent->children.end(),
             [&](const std::unique_ptr<Screen>& child) { return child.get() == &replacedScreen; });
-        if (position != parent->children.end() && position + 1 != parent->children.end())
-            request.nextSibling = (*(position + 1))->Id();
+        bool hasNextSibling = position != parent->children.end() && std::next(position) != parent->children.end();
+        if (hasNextSibling)
+            request.nextSibling = (*std::next(position))->Id();
     }
     Post(request);
 }

@@ -33,13 +33,16 @@ constexpr int AlphaPerPageStep = (FullAlpha + PageFadeSteps - 1) / PageFadeSteps
 
 constexpr std::size_t BackButtonIndex = 1;
 
+// The animation of the picture of a page is the first animation of its layout.
+constexpr std::size_t PictureAnimationSlot = 0;
+
 struct WindowDescription
 {
     std::string_view layoutName;
     std::size_t buttonCount;
 };
 
-constexpr std::array<WindowDescription, 5> WindowDescriptions = {{
+constexpr std::array<WindowDescription, DialogLayoutCount> WindowDescriptions = {{
     {"my_DialogWindow_a0", 0},
     {"my_DialogWindow_a1", 1},
     {"my_DialogWindow_a2", 2},
@@ -48,8 +51,8 @@ constexpr std::array<WindowDescription, 5> WindowDescriptions = {{
 }};
 
 // The buttons are numbered in this order: the first button of every window is B, the second is A.
-constexpr std::array<std::string_view, 3> ButtonLetters = {"B", "A", "C"};
-constexpr std::array<DialogAnswer, 3> ButtonAnswers = {DialogAnswer::ButtonB, DialogAnswer::ButtonA, DialogAnswer::ButtonC};
+constexpr std::array<std::string_view, MostButtonsOfADialog> ButtonLetters = {"B", "A", "C"};
+constexpr std::array<DialogAnswer, MostButtonsOfADialog> ButtonAnswers = {DialogAnswer::ButtonB, DialogAnswer::ButtonA, DialogAnswer::ButtonC};
 
 std::size_t FocusOnSlot(std::size_t buttonIndex)
 {
@@ -194,7 +197,7 @@ void DialogManager::OpenPage(std::size_t pageIndex)
     ShowBackButton(page.hasBackButton);
     FadePage(page, page, FullAlpha);
     if (page.picture != nullptr && page.playsPictureAnimation)
-        page.picture->StartAnimation(0);
+        page.picture->StartAnimation(PictureAnimationSlot);
 }
 
 void DialogManager::ShowPageTexts(const DialogPage& page)
@@ -326,7 +329,8 @@ void DialogManager::UpdateMessageWindow()
     if (!showsProgress)
         return;
 
-    shownPercentage = std::min(shownPercentage + ProgressPerStep, std::max(targetPercentage, shownPercentage));
+    int percentageToReach = std::max(targetPercentage, shownPercentage);
+    shownPercentage = std::min(shownPercentage + ProgressPerStep, percentageToReach);
     openWindow->layout->ShowAnimationFrame(ProgressSlot, static_cast<float>(shownPercentage));
     if (shownPercentage == FullProgress)
         StartClosing(DialogAnswer::ProgressDone);
@@ -381,7 +385,7 @@ void DialogManager::EndTheChoice()
 
     const DialogPage& page = pages[shownPage];
     if (page.picture != nullptr && page.playsPictureAnimation)
-        page.picture->StopAnimation(0);
+        page.picture->StopAnimation(PictureAnimationSlot);
 
     previousPage = shownPage;
     shownPage = turnsForward ? shownPage + 1 : shownPage - 1;
@@ -415,7 +419,8 @@ void DialogManager::UpdateTurningPage()
         return;
     }
 
-    if (newPage.hasBackButton && !oldPage.hasBackButton && pageAlpha == 0)
+    bool backButtonComesBack = newPage.hasBackButton && !oldPage.hasBackButton && pageAlpha == 0;
+    if (backButtonComesBack)
         ShowBackButton(true);
 
     pageAlpha = std::min(pageAlpha + AlphaPerPageStep, FullAlpha);
@@ -424,7 +429,7 @@ void DialogManager::UpdateTurningPage()
         return;
 
     if (newPage.picture != nullptr && newPage.playsPictureAnimation)
-        newPage.picture->StartAnimation(0);
+        newPage.picture->StartAnimation(PictureAnimationSlot);
     state = State::Waiting;
 }
 

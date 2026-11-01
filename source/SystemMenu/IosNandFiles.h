@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstdint>
+
 namespace SystemMenu
 {
 

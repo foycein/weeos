@@ -3,16 +3,16 @@
 namespace SystemMenu
 {
 
-ZoomedDevice::ZoomedDevice(Graphics::GraphicsDevice& targetDevice)
-    : target(targetDevice)
-{
-}
-
 namespace
 {
 
 constexpr int FullAlpha = 255;
 
+}
+
+ZoomedDevice::ZoomedDevice(Graphics::GraphicsDevice& targetDevice)
+    : target(targetDevice)
+{
 }
 
 void ZoomedDevice::Show(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t shownAlpha)
@@ -32,7 +32,11 @@ Formats::Vector2 ZoomedDevice::Moved(Formats::Vector2 point) const
 {
     float scaleX = (shown.right - shown.left) / (seen.right - seen.left);
     float scaleY = (shown.top - shown.bottom) / (seen.top - seen.bottom);
-    return {shown.left + (point.x - seen.left) * scaleX, shown.bottom + (point.y - seen.bottom) * scaleY};
+
+    Formats::Vector2 moved;
+    moved.x = shown.left + (point.x - seen.left) * scaleX;
+    moved.y = shown.bottom + (point.y - seen.bottom) * scaleY;
+    return moved;
 }
 
 Graphics::TextureHandle ZoomedDevice::CreateTexture(const Graphics::TextureDescription& description)

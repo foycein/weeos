@@ -73,8 +73,9 @@ struct KeyboardAnswer
 class SoftKeyboard
 {
 public:
-    // The keyboard fades in and out in this many seconds.
-    static constexpr double SecondsToFade = 10 * MenuClock::SecondsPerStep;
+    // The keyboard fades in and out in ten steps.
+    static constexpr int FadeStepCount = 10;
+    static constexpr double SecondsToFade = FadeStepCount * MenuClock::SecondsPerStep;
 
     // The display, the files, the messages, the clock, the input and the sounds must stay alive as long as the keyboard.
     SoftKeyboard(Display& display, const MenuFiles& files, const Text::MessageCatalog& messages, const MenuClock& clock, InputManager& input,
@@ -130,6 +131,7 @@ private:
 
     void Type(char16_t character);
     void DeleteBeforeCursor();
+    void DeleteAtCursor();
     void MoveCursor(CursorMove move, bool extendsSelection);
     void PressEnter();
     void ToggleShift();

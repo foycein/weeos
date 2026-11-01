@@ -18,6 +18,10 @@ constexpr int ResumedSetupPage = 5;
 constexpr int FirstUpdateTypeThatResumes = 1;
 constexpr int LastUpdateTypeThatResumes = 2;
 
+// What a title that starts the menu with arguments asks for.
+constexpr int LaunchCodeSettingsCountryPage = 1;
+constexpr int LaunchCodeWiiOptions = 2;
+
 // The file with which a title starts the menu with arguments.
 constexpr std::string_view BootInformationPath = "/shared2/sys/NANDBOOTINFO";
 
@@ -100,10 +104,10 @@ FirstScreen ChooseByBootType(const StartFacts& facts)
         break;
     }
 
-    if (facts.launchCode == 1)
+    if (facts.launchCode == LaunchCodeSettingsCountryPage)
         return {ScreenId::StartupRouter, RouterToSettingsCountryPage};
 
-    if (facts.launchCode == 2)
+    if (facts.launchCode == LaunchCodeWiiOptions)
         return {ScreenId::StartupRouter, RouterToWiiOptions};
 
     return {ScreenId::HealthAndSafety, 0};

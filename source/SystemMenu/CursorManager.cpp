@@ -94,8 +94,8 @@ void CursorManager::UpdateHand(int playerIndex, const std::optional<PlayerInput>
     if (!playerInput || !playerInput->state.pointerIsValid)
         return;
 
-    bool hasGrabbingHand = grabbingHands[playerIndex] != nullptr;
-    MenuLayout& handLayout = hand.isGrabbing && hasGrabbingHand ? *grabbingHands[playerIndex] : *pointingHands[playerIndex];
+    bool showsGrabbingHand = hand.isGrabbing && grabbingHands[playerIndex] != nullptr;
+    MenuLayout& handLayout = showsGrabbingHand ? *grabbingHands[playerIndex] : *pointingHands[playerIndex];
     PlaceHand(handLayout, playerInput->state);
     handLayout.Calculate();
     hand.shownLayout = &handLayout;

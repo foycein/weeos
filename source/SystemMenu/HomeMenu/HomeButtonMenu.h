@@ -189,6 +189,9 @@ private:
 
     // Animations and panes (HomeButtonMenu.cpp)
     void BindAllAnimations();
+    void BindAnimationsOfTheBars();
+    void BindAnimationsOfTheButtons();
+    void BindAnimationsOfVolumeAndBatteries();
     void HideBigButtonsNotOffered();
     void BindAnimation(const std::string& suffix, const std::string& groupName);
     HomeMenuAnimation& Animation(const AnimationName& name);

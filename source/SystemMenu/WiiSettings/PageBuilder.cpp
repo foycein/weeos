@@ -15,7 +15,8 @@ constexpr int MenuItemDistance = 72;
 constexpr int MenuItemWidth = 400;
 constexpr int MenuItemHeight = 60;
 
-// A choice: 394 by 70 points, one below the other every 96 points. Fewer choices than three are moved down so that they stay in the middle.
+// A choice: 394 by 70 points, one below the other every 96 points. Fewer choices than three are moved down so that they stay in the
+// middle.
 constexpr int ChoiceLeft = 107;
 constexpr int ChoiceFirstTopOfThree = 85;
 constexpr int ChoiceDistance = 96;
@@ -42,7 +43,10 @@ std::string NameOfText(std::u16string_view text)
 {
     std::string name;
     for (char16_t character : text)
-        name.push_back(character < FirstCharacterBeyondAscii ? static_cast<char>(character) : '?');
+    {
+        bool isAscii = character < FirstCharacterBeyondAscii;
+        name.push_back(isAscii ? static_cast<char>(character) : '?');
+    }
 
     return name;
 }

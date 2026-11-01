@@ -155,7 +155,8 @@ void HomeButton::Update()
     UpdateIcon();
 }
 
-// The open HOME menu draws the hands itself. Otherwise the hands of the cursor manager come over the picture that says that HOME does nothing.
+// The open HOME menu draws the hands itself. Otherwise the hands of the cursor manager come over the picture that says that HOME
+// does nothing.
 void HomeButton::Draw()
 {
     if (isOpen)
@@ -230,13 +231,16 @@ void HomeButton::UpdateIcon()
     switch (*iconPhase)
     {
     case IconPhase::FadingIn:
-        iconAlpha = static_cast<std::uint8_t>(HighestIconAlpha * std::min(milliseconds / IconFadeMilliseconds, 1.0));
+    {
+        double shareFadedIn = std::min(milliseconds / IconFadeMilliseconds, 1.0);
+        iconAlpha = static_cast<std::uint8_t>(HighestIconAlpha * shareFadedIn);
         if (milliseconds >= IconFadeMilliseconds)
         {
             iconPhase = IconPhase::Showing;
             iconPhaseSteps = 0;
         }
         break;
+    }
 
     case IconPhase::Showing:
         if (milliseconds >= IconShowMilliseconds)
@@ -247,10 +251,13 @@ void HomeButton::UpdateIcon()
         break;
 
     case IconPhase::FadingOut:
-        iconAlpha = static_cast<std::uint8_t>(HighestIconAlpha * std::max(1.0 - milliseconds / IconFadeMilliseconds, 0.0));
+    {
+        double shareLeft = std::max(1.0 - milliseconds / IconFadeMilliseconds, 0.0);
+        iconAlpha = static_cast<std::uint8_t>(HighestIconAlpha * shareLeft);
         if (milliseconds >= IconFadeMilliseconds)
             iconPhase.reset();
         break;
+    }
     }
 }
 

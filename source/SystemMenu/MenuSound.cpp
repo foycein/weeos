@@ -17,7 +17,7 @@ constexpr std::string_view GrayButton = "WIPL_SE_GRAY_BUTTON";
 
 double SecondsOf(int steps)
 {
-    return double(steps) * MenuClock::SecondsPerStep;
+    return static_cast<double>(steps) * MenuClock::SecondsPerStep;
 }
 
 }

@@ -109,7 +109,8 @@ struct PageText
     std::vector<std::u16string> lines;
 };
 
-// A picture of the pages' own pictures, at a place. The path is the one inside the archive of the pages, for example "FIX/COMMON/BTN/4_3_off.png".
+// A picture of the pages' own pictures, at a place. The path is the one inside the archive of the pages, for example
+// "FIX/COMMON/BTN/4_3_off.png".
 struct PagePicture
 {
     std::string imagePath;
@@ -119,7 +120,8 @@ struct PagePicture
 // One page: the tabs at the top, the buttons, the texts and the pictures.
 struct Page
 {
-    // How many small tabs are in front of the large one that holds the title: 0 for the index page, 1 for the pages it leads to, and so on.
+    // How many small tabs are in front of the large one that holds the title: 0 for the index page, 1 for the pages it leads to,
+    // and so on.
     int tabDepth = 0;
     std::u16string title;
 
