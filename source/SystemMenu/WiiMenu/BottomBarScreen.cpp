@@ -1,13 +1,18 @@
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 
+#include "SystemMenu/Fader.h"
+#include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 
+#include "Ios/SdCard/SdCardService.h"
 #include "Layout/LiveLayout.h"
+#include "SystemMenu/DataManagement/DataManagementServices.h"
+#include "Text/MessageCatalog.h"
 
 #include <algorithm>
-#include <array>
 #include <string>
 
 namespace SystemMenu
@@ -17,12 +22,13 @@ namespace
 {
 
 constexpr std::string_view BundleName = "cmnBtn";
+constexpr std::string_view BalloonBundleName = "balloon";
 constexpr std::string_view LayoutName = "my_IplTop_e";
 constexpr std::string_view AnimationName = "my_IplTop_e";
 
 // One animation file holds every state of the bar, each in its own frames. The groups below show frame 0, the look of the Wii Menu.
-constexpr std::array<std::string_view, 8> GroupsOfTheBar = {
-    "G_Bbs", "G_Ch", "G_Set", "G_Cal", "G_Add", "G_AddExit", "G_ArwR_Focus", "G_ArwL_Focus"};
+// The groups of the buttons that answer to the hands are in FocusButtons.
+constexpr std::array<std::string_view, 1> StillGroupsOfTheBar = {"G_AddExit"};
 constexpr float FrameOfTheWiiMenu = 0;
 
 // The group that moves the buttons of the bar from one look into another, and the parts of the file for each change (0x8160F7B8).
@@ -51,15 +57,6 @@ constexpr std::array<ChangeFrames, 13> FramesOfTheChanges = {{
     {BarChange::LetterShowsWithButton, 3640, 3653},
 }};
 
-// A pressed button of the bar flashes (0x8139CB58 with 0x1B, 0x1C and 0x1D).
-constexpr std::string_view BackFlashGroup = "G_CalExit";
-constexpr std::string_view TrashFlashGroup = "G_Dust";
-constexpr std::string_view RightFlashGroup = "G_Cmn_R";
-constexpr float FirstFrameOfAButtonFlash = 3000;
-constexpr float LastFrameOfAButtonFlash = 3020;
-constexpr float FirstFrameOfTheTrashFlash = 2800;
-constexpr float LastFrameOfTheTrashFlash = 2820;
-
 // The number of the messages of today on the envelope blinks in frames 1 to 400 of its group (0x8139D004).
 constexpr std::string_view MessageSignalGroup = "G_BbsSignal";
 constexpr std::string_view MessageCountText = "T_BbsMark1";
@@ -70,6 +67,35 @@ constexpr int LargestMessageCount = 99;
 constexpr std::string_view BackText = "T_CalExit";
 constexpr std::string_view RightText = "T_CalAdd_R";
 constexpr std::string_view TrashText = "T_Dust";
+
+// A button that a hand comes onto grows to 110 percent in the first frames of its part of the file and shrinks back in the second
+// (the table 0x8160F918 of the original), on the panes of its group.
+struct FocusButton
+{
+    BarButton button;
+    std::string_view paneName;
+    std::string_view group;
+    float firstFrameOfFocusIn;
+    float lastFrameOfFocusIn;
+    float firstFrameOfFocusOut;
+    float lastFrameOfFocusOut;
+
+    // The message of the balloon: 15 "Wii Message Board", 14 "Wii Options" (the table 0x8160F9C8). The arrows have none.
+    std::optional<std::uint16_t> balloonMessage;
+};
+
+constexpr std::array<FocusButton, 10> FocusButtons = {{
+    {BarButton::MessageBoardButton, "B_Bbs", "G_Bbs", 900, 906, 930, 938, 15},
+    {BarButton::WiiButton, "B_Set", "G_Set", 6900, 6906, 6930, 6938, 14},
+    {BarButton::NextPage, "B_ArwR", "G_ArwR_Focus", 10600, 10615, 10800, 10815, std::nullopt},
+    {BarButton::PreviousPage, "B_ArwL", "G_ArwL_Focus", 10600, 10615, 10800, 10815, std::nullopt},
+    {BarButton::ChannelsButton, "B_Ch", "G_Ch", 5900, 5906, 5930, 5938, std::nullopt},
+    {BarButton::CalendarButton, "B_Cal", "G_Cal", 1900, 1906, 1930, 1938, std::nullopt},
+    {BarButton::CreateMessageButton, "B_Add", "G_Add", 3900, 3906, 3930, 3938, std::nullopt},
+    {BarButton::BackButton, "B_CalExit", "G_CalExit", 2900, 2906, 2930, 2938, std::nullopt},
+    {BarButton::RightButton, "B_Add_R", "G_Cmn_R", 2900, 2906, 2930, 2938, std::nullopt},
+    {BarButton::TrashButton, "B_Dust", "G_Dust", 2900, 2909, 2930, 2938, std::nullopt},
+}};
 
 // The arrows bob sideways in frames 10000 to 10055 of the file, again and again.
 constexpr std::string_view ArrowLoopGroup = "G_ArwRoop";
@@ -84,33 +110,45 @@ constexpr float LastFrameOfSlidingOut = 10110;
 constexpr float FirstFrameOfSlidingIn = 10150;
 constexpr float LastFrameOfSlidingIn = 10160;
 
+// A pressed arrow flashes in frames 10700 to 10730 (the bar events 0x13 and 0x14).
+constexpr std::string_view PreviousPageFlashGroup = "G_ArwL_Ac";
+constexpr std::string_view NextPageFlashGroup = "G_ArwR_Ac";
+constexpr float FirstFrameOfTheFlash = 10700;
+constexpr float LastFrameOfTheFlash = 10730;
+
 // The bar never draws its arrows: they would lie under the channel grid. The bar overlay draws them over it.
 constexpr std::string_view PreviousPageArrow = "ArwL";
 constexpr std::string_view NextPageArrow = "ArwR";
 
-struct ButtonPane
-{
-    std::string_view paneName;
-    BarButton button;
-};
+// A balloon of the bar appears 17 steps after the hand came (0x813D18F8), 50 units above its button (0x8139CF4C), and keeps
+// 120 units from the edges of a 16:9 picture or 30 units from those of a 4:3 picture (0x813D1AB8).
+constexpr int StepsBeforeABalloonAppears = 17;
+constexpr float BalloonHeightAboveTheButton = 50;
+constexpr float BalloonMarginOnAWideScreen = 120;
+constexpr float BalloonMarginOnANarrowScreen = 30;
 
-constexpr std::array<ButtonPane, 10> ButtonPanes = {{
-    {"B_Set", BarButton::WiiButton},
-    {"B_Bbs", BarButton::MessageBoardButton},
-    {"B_ArwL", BarButton::PreviousPage},
-    {"B_ArwR", BarButton::NextPage},
-    {"B_Cal", BarButton::CalendarButton},
-    {"B_Add", BarButton::CreateMessageButton},
-    {"B_Ch", BarButton::ChannelsButton},
-    {"B_CalExit", BarButton::BackButton},
-    {"B_Dust", BarButton::TrashButton},
-    {"B_Add_R", BarButton::RightButton},
-}};
+constexpr std::string_view TargetedSound = "WIPL_SE_BT_TARGETTING";
+constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
+constexpr std::string_view CardInSound = "WIPL_SE_SDCARD_IN";
+constexpr std::string_view CardOutSound = "WIPL_SE_SDCARD_OUT";
+
+// The message "SD Card Menu" (0x81694BA0).
+constexpr std::uint16_t SdCardMenuMessage = 161;
 
 std::u16string NumberText(int number)
 {
     std::string digits = std::to_string(number);
     return std::u16string(digits.begin(), digits.end());
+}
+
+std::size_t NumberOf(BarButton button)
+{
+    for (std::size_t number = 0; number < FocusButtons.size(); ++number)
+    {
+        if (FocusButtons[number].button == button)
+            return number;
+    }
+    return 0;
 }
 
 }
@@ -124,42 +162,62 @@ BottomBarScreen::BottomBarScreen(MenuServices& menuServices)
 void BottomBarScreen::Load()
 {
     archive = services.files.OpenLayoutBundle(BundleName);
+    balloonArchive = services.files.OpenLayoutBundle(BalloonBundleName);
 }
 
 void BottomBarScreen::Build()
 {
     layout = std::make_unique<MenuLayout>(services.display, *archive, std::string(LayoutName));
 
-    for (std::string_view group : GroupsOfTheBar)
+    for (std::string_view group : StillGroupsOfTheBar)
     {
-        stillGroups.push_back(MakeGroupPlayer(group));
+        stillGroups.push_back(std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(group)));
         stillGroups.back()->Show(FrameOfTheWiiMenu);
     }
+    MakeTheFocusStates();
 
-    seenChange = MakeGroupPlayer(LookGroup);
-    backFlash = MakeGroupPlayer(BackFlashGroup);
-    trashFlash = MakeGroupPlayer(TrashFlashGroup);
-    rightFlash = MakeGroupPlayer(RightFlashGroup);
-    messageSignal = MakeGroupPlayer(MessageSignalGroup);
-    for (FramePlayer* player : {seenChange.get(), backFlash.get(), trashFlash.get(), rightFlash.get(), messageSignal.get()})
-        player->Show(FrameOfTheWiiMenu);
+    seenChange = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(LookGroup));
+    seenChange->Show(FrameOfTheWiiMenu);
+    messageSignal = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(MessageSignalGroup));
+    messageSignal->Show(FrameOfTheWiiMenu);
 
-    arrowLoop = MakeGroupPlayer(ArrowLoopGroup);
+    arrowLoop = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(ArrowLoopGroup));
     arrowLoop->Loop(FirstFrameOfTheArrowLoop, LastFrameOfTheArrowLoop);
 
-    previousPageArrow = MakeGroupPlayer(PreviousPageArrowGroup);
-    nextPageArrow = MakeGroupPlayer(NextPageArrowGroup);
+    previousPageArrow = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(PreviousPageArrowGroup));
+    nextPageArrow = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(NextPageArrowGroup));
     previousPageArrow->Show(LastFrameOfSlidingOut);
     nextPageArrow->Show(LastFrameOfSlidingOut);
+
+    previousPageFlash = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(PreviousPageFlashGroup));
+    nextPageFlash = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(NextPageFlashGroup));
+    previousPageFlash->Show(FrameOfTheWiiMenu);
+    nextPageFlash->Show(FrameOfTheWiiMenu);
 
     layout->PaneNamed(PreviousPageArrow).isVisible = false;
     layout->PaneNamed(NextPageArrow).isVisible = false;
     layout->Calculate();
+
+    sdCardButton = std::make_unique<SdCardButton>(services.display, *archive, *balloonArchive, services.messages.Find(SdCardMenuMessage));
+    wasCardInTheSlot = IsCardInTheSlot();
+    sdCardButton->ShowCardInserted(wasCardInTheSlot);
+    sdCardButton->Appear();
 }
 
-std::unique_ptr<FramePlayer> BottomBarScreen::MakeGroupPlayer(std::string_view groupName)
+void BottomBarScreen::MakeTheFocusStates()
 {
-    return std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(groupName));
+    for (const FocusButton& focusButton : FocusButtons)
+    {
+        FocusState state;
+        state.focus = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(focusButton.group));
+        state.focus->Show(FrameOfTheWiiMenu);
+        if (focusButton.balloonMessage)
+        {
+            state.balloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABalloonAppears);
+            state.balloon->SetText(services.messages.Find(*focusButton.balloonMessage));
+        }
+        focusStates.push_back(std::move(state));
+    }
 }
 
 void BottomBarScreen::Draw(DrawPass pass)
@@ -168,12 +226,24 @@ void BottomBarScreen::Draw(DrawPass pass)
         return;
 
     layout->Draw();
+    if (mode == BarMode::WiiMenu)
+        sdCardButton->Draw();
 }
 
 void BottomBarScreen::DrawPageArrows()
 {
     DrawArrow(PreviousPageArrow);
     DrawArrow(NextPageArrow);
+}
+
+void BottomBarScreen::DrawBalloons()
+{
+    for (FocusState& state : focusStates)
+    {
+        if (state.balloon)
+            state.balloon->Draw();
+    }
+    sdCardButton->DrawBalloon();
 }
 
 void BottomBarScreen::DrawArrow(std::string_view arrowName)
@@ -195,6 +265,7 @@ void BottomBarScreen::ShowPageArrows(bool hasPreviousPage, bool hasNextPage)
     SlideArrow(*nextPageArrow, isNextPageArrowShown, hasNextPage);
 }
 
+// An arrow that slides out loses its focus first (the bar events 0x19 and 0x1A).
 void BottomBarScreen::SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown)
 {
     if (isShown == shouldBeShown)
@@ -202,9 +273,14 @@ void BottomBarScreen::SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldB
 
     isShown = shouldBeShown;
     if (isShown)
+    {
         arrow.PlayOnce(FirstFrameOfSlidingIn, LastFrameOfSlidingIn);
-    else
-        arrow.PlayOnce(FirstFrameOfSlidingOut, LastFrameOfSlidingOut);
+        return;
+    }
+
+    BarButton button = &arrow == previousPageArrow.get() ? BarButton::PreviousPage : BarButton::NextPage;
+    SetFocused(NumberOf(button), false);
+    arrow.PlayOnce(FirstFrameOfSlidingOut, LastFrameOfSlidingOut);
 }
 
 bool BottomBarScreen::IsPreviousPageArrowShown() const
@@ -217,40 +293,55 @@ bool BottomBarScreen::IsNextPageArrowShown() const
     return isNextPageArrowShown;
 }
 
-// A bar that is changing its look has no buttons.
-std::optional<BarButton> BottomBarScreen::ButtonAt(Formats::Vector2 place)
+void BottomBarScreen::FlashPageArrow(BarButton arrow)
 {
-    if (IsChanging())
-        return std::nullopt;
-
-    for (const Formats::Pane* pane : layout->BoundingPanesAt(place))
-    {
-        for (const ButtonPane& buttonPane : ButtonPanes)
-        {
-            if (pane->name != buttonPane.paneName || !HasButtonInThisMode(buttonPane.button))
-                continue;
-
-            if (buttonPane.button == BarButton::PreviousPage && !isPreviousPageArrowShown)
-                continue;
-
-            if (buttonPane.button == BarButton::NextPage && !isNextPageArrowShown)
-                continue;
-
-            return buttonPane.button;
-        }
-    }
-    return std::nullopt;
+    FramePlayer& flash = arrow == BarButton::PreviousPage ? *previousPageFlash : *nextPageFlash;
+    flash.PlayOnce(FirstFrameOfTheFlash, LastFrameOfTheFlash);
 }
 
-Formats::Vector2 BottomBarScreen::PlaceOfButton(BarButton button)
+void BottomBarScreen::PressSdCardButton()
 {
-    PlacedPanes placedPanes(*layout);
-    for (const ButtonPane& buttonPane : ButtonPanes)
-    {
-        if (buttonPane.button == button)
-            return placedPanes.PlaceOf(buttonPane.paneName).value_or(Formats::Vector2{0, 0});
-    }
-    return {0, 0};
+    sdCardButton->PlayPress();
+}
+
+// The original takes the focus away from every button when it disables them (0x8139C5C0).
+void BottomBarScreen::SetButtonsEnabled(bool shouldBeEnabled)
+{
+    areButtonsEnabled = shouldBeEnabled;
+    if (areButtonsEnabled)
+        return;
+
+    for (std::size_t number = 0; number < FocusButtons.size(); ++number)
+        SetFocused(number, false);
+
+    sdCardButton->SetFocused(false);
+}
+
+bool BottomBarScreen::IsFocused(BarButton button) const
+{
+    if (button == BarButton::SdCardButton)
+        return sdCardButton->IsFocused();
+
+    return focusStates.at(NumberOf(button)).isFocused;
+}
+
+const Balloon* BottomBarScreen::BalloonOf(BarButton button) const
+{
+    if (button == BarButton::SdCardButton)
+        return &sdCardButton->NameBalloon();
+
+    return focusStates.at(NumberOf(button)).balloon.get();
+}
+
+bool BottomBarScreen::IsShown(BarButton button) const
+{
+    if (button == BarButton::PreviousPage)
+        return isPreviousPageArrowShown;
+
+    if (button == BarButton::NextPage)
+        return isNextPageArrowShown;
+
+    return true;
 }
 
 bool BottomBarScreen::HasButtonInThisMode(BarButton button) const
@@ -259,7 +350,7 @@ bool BottomBarScreen::HasButtonInThisMode(BarButton button) const
     switch (mode)
     {
     case BarMode::WiiMenu:
-        return isPageArrow || button == BarButton::WiiButton || button == BarButton::MessageBoardButton;
+        return isPageArrow || button == BarButton::WiiButton || button == BarButton::MessageBoardButton || button == BarButton::SdCardButton;
 
     case BarMode::MessageBoard:
         return isPageArrow || button == BarButton::CalendarButton || button == BarButton::CreateMessageButton ||
@@ -281,6 +372,27 @@ bool BottomBarScreen::HasButtonInThisMode(BarButton button) const
         return button == BarButton::BackButton || button == BarButton::RightButton;
     }
     return false;
+}
+
+// A bar that is changing its look has no buttons.
+std::optional<BarButton> BottomBarScreen::ButtonAt(Formats::Vector2 place)
+{
+    if (IsChanging())
+        return std::nullopt;
+
+    if (HasButtonInThisMode(BarButton::SdCardButton) && sdCardButton->IsAt(place))
+        return BarButton::SdCardButton;
+
+    for (const Formats::Pane* pane : layout->BoundingPanesAt(place))
+    {
+        for (const FocusButton& focusButton : FocusButtons)
+        {
+            bool isThisButton = pane->name == focusButton.paneName && HasButtonInThisMode(focusButton.button);
+            if (isThisButton && IsShown(focusButton.button))
+                return focusButton.button;
+        }
+    }
+    return std::nullopt;
 }
 
 void BottomBarScreen::SetMode(BarMode newMode)
@@ -318,16 +430,6 @@ void BottomBarScreen::SetTrashText(std::u16string_view text)
     layout->SetText(TrashText, text);
 }
 
-void BottomBarScreen::FlashButton(BarButton button)
-{
-    if (button == BarButton::BackButton)
-        backFlash->PlayOnce(FirstFrameOfAButtonFlash, LastFrameOfAButtonFlash);
-    else if (button == BarButton::RightButton)
-        rightFlash->PlayOnce(FirstFrameOfAButtonFlash, LastFrameOfAButtonFlash);
-    else if (button == BarButton::TrashButton)
-        trashFlash->PlayOnce(FirstFrameOfTheTrashFlash, LastFrameOfTheTrashFlash);
-}
-
 void BottomBarScreen::ShowMessageCount(int count)
 {
     int shownCount = std::min(count, LargestMessageCount);
@@ -352,25 +454,139 @@ void BottomBarScreen::StartTheNextChange()
     }
 }
 
+Formats::Vector2 BottomBarScreen::PlaceOfButton(BarButton button)
+{
+    if (button == BarButton::SdCardButton)
+        return sdCardButton->Place();
+
+    PlacedPanes placedPanes(*layout);
+    return placedPanes.PlaceOf(FocusButtons[NumberOf(button)].paneName).value_or(Formats::Vector2{0, 0});
+}
+
 bool BottomBarScreen::RunMain()
 {
     StartTheNextChange();
-
-    // A flash that has ended leaves its button as the Wii Menu shows it.
-    for (FramePlayer* flash : {backFlash.get(), trashFlash.get(), rightFlash.get()})
-    {
-        if (!flash->IsPlaying() && flash->Frame() != FrameOfTheWiiMenu)
-            flash->Show(FrameOfTheWiiMenu);
-        flash->Step();
-    }
-
     seenChange->Step();
     messageSignal->Step();
+    FocusTheButtonsUnderThePointers();
+    PlaceTheBalloons();
+    FollowTheSdCard();
+
     arrowLoop->Step();
     previousPageArrow->Step();
     nextPageArrow->Step();
+    previousPageFlash->Step();
+    nextPageFlash->Step();
+    for (FocusState& state : focusStates)
+    {
+        state.focus->Step();
+        if (!state.balloon)
+            continue;
+
+        bool wasBalloonShown = state.balloon->IsShown();
+        state.balloon->Calculate();
+        if (!wasBalloonShown && state.balloon->IsShown())
+            services.sounds.Request(BalloonSound);
+    }
+
     layout->Calculate();
+    bool hasSdBalloonAppeared = sdCardButton->Calculate();
+    if (hasSdBalloonAppeared)
+        services.sounds.Request(BalloonSound);
+
     return false;
+}
+
+// The button turns white when a card comes, rings once and says so; it turns grey when the card goes (0x813AAA38, 0x813EB330).
+void BottomBarScreen::FollowTheSdCard()
+{
+    bool isCardInTheSlot = IsCardInTheSlot();
+    if (isCardInTheSlot == wasCardInTheSlot)
+        return;
+
+    wasCardInTheSlot = isCardInTheSlot;
+    sdCardButton->ShowCardInserted(isCardInTheSlot);
+    if (isCardInTheSlot)
+    {
+        sdCardButton->PlayInsert();
+        services.sounds.Request(CardInSound);
+        return;
+    }
+
+    services.sounds.Request(CardOutSound);
+}
+
+bool BottomBarScreen::IsCardInTheSlot() const
+{
+    return services.dataManagement != nullptr && services.dataManagement->sdCard.GetStatus().isInserted;
+}
+
+// The buttons answer only while the picture is fully in view and no channel is starting.
+void BottomBarScreen::FocusTheButtonsUnderThePointers()
+{
+    std::array<bool, FocusButtons.size()> isPointedAt = {};
+    bool isSdCardButtonPointedAt = false;
+    bool canBeFocused = areButtonsEnabled && services.fader.GetStatus() == FaderStatus::Clear;
+    for (int playerIndex = 0; playerIndex < PlayerCount && canBeFocused; ++playerIndex)
+    {
+        const std::optional<PlayerInput>& player = services.input.Player(playerIndex);
+        if (!player || !player->state.pointerIsValid)
+            continue;
+
+        std::optional<BarButton> button = ButtonAt(services.display.PointerToCanvas(player->state.pointer));
+        if (button == BarButton::SdCardButton)
+            isSdCardButtonPointedAt = true;
+        else if (button)
+            isPointedAt[NumberOf(*button)] = true;
+    }
+
+    for (std::size_t number = 0; number < FocusButtons.size(); ++number)
+        SetFocused(number, isPointedAt[number]);
+
+    if (isSdCardButtonPointedAt && !sdCardButton->IsFocused())
+        services.sounds.Request(TargetedSound);
+
+    sdCardButton->SetFocused(isSdCardButtonPointedAt);
+}
+
+// The first hand that comes plays the growing part and WIPL_SE_BT_TARGETTING; when the last hand goes the button shrinks (0x8139C690, 0x8139C7EC).
+void BottomBarScreen::SetFocused(std::size_t buttonNumber, bool shouldBeFocused)
+{
+    FocusState& state = focusStates.at(buttonNumber);
+    if (state.isFocused == shouldBeFocused)
+        return;
+
+    state.isFocused = shouldBeFocused;
+    const FocusButton& focusButton = FocusButtons[buttonNumber];
+    if (state.isFocused)
+    {
+        state.focus->PlayOnce(focusButton.firstFrameOfFocusIn, focusButton.lastFrameOfFocusIn);
+        services.sounds.Request(TargetedSound);
+    }
+    else
+    {
+        state.focus->PlayOnce(focusButton.firstFrameOfFocusOut, focusButton.lastFrameOfFocusOut);
+    }
+
+    if (state.balloon && state.isFocused)
+        state.balloon->PointerArrived();
+    else if (state.balloon)
+        state.balloon->PointerLeft();
+}
+
+void BottomBarScreen::PlaceTheBalloons()
+{
+    bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
+    float margin = isWide ? BalloonMarginOnAWideScreen : BalloonMarginOnANarrowScreen;
+    for (std::size_t number = 0; number < FocusButtons.size(); ++number)
+    {
+        FocusState& state = focusStates[number];
+        if (!state.balloon)
+            continue;
+
+        Formats::Vector2 button = PlaceOfButton(FocusButtons[number].button);
+        state.balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, margin);
+    }
 }
 
 BarOverlayScreen::BarOverlayScreen(MenuServices& menuServices)
@@ -385,8 +601,11 @@ void BarOverlayScreen::Draw(DrawPass pass)
         return;
 
     auto* bar = dynamic_cast<BottomBarScreen*>(services.screens.FindScreen(ScreenId::BottomBar));
-    if (bar != nullptr)
-        bar->DrawPageArrows();
+    if (bar == nullptr)
+        return;
+
+    bar->DrawPageArrows();
+    bar->DrawBalloons();
 }
 
 }

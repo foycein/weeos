@@ -382,7 +382,6 @@ void CalendarScreen::RunChoosing()
         std::optional<BarButton> button = bar ? bar->ButtonAt(*place) : std::nullopt;
         if (button == BarButton::BackButton)
         {
-            bar->FlashButton(BarButton::BackButton);
             services.sounds.Request(SoundName::Cancel);
             Close(false);
             return;

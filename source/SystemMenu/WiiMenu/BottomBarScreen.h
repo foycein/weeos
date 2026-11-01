@@ -3,10 +3,13 @@
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/WiiMenu/Balloon.h"
 #include "SystemMenu/WiiMenu/FramePlayer.h"
+#include "SystemMenu/WiiMenu/SdCardButton.h"
 
 #include "Layout/LayoutArchive.h"
 
+#include <array>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -27,6 +30,9 @@ enum class BarButton
 
     PreviousPage,
     NextPage,
+
+    // The SD card at the left: the SD Card Menu.
+    SdCardButton,
 
     // The buttons of the Message Board: the calendar and "Create Message" on the left, the way back to the channels on the right.
     CalendarButton,
@@ -73,8 +79,9 @@ enum class BarChange
 };
 
 // The bar at the bottom of the Wii Menu (screen 0x05, docs/research/SystemMenuStructure.md 4.3): the Wii button, the Message Board
-// button and the arrows that turn the pages. The bar only draws; the channel grid asks it which button lies under a pointer and
-// answers the presses itself, as in the original.
+// button and the arrows that turn the pages. The bar answers to the hands itself: a button that a hand comes onto grows and glows,
+// plays WIPL_SE_BT_TARGETTING and, after a moment, shows a balloon with its name. The channel grid asks the bar which button lies
+// under a pointer and answers the presses, as in the original.
 class BottomBarScreen : public Screen
 {
 public:
@@ -89,8 +96,21 @@ public:
     bool IsPreviousPageArrowShown() const;
     bool IsNextPageArrowShown() const;
 
-    // The bar overlay draws the arrows over the channel grid.
+    // A pressed arrow flashes.
+    void FlashPageArrow(BarButton arrow);
+
+    // The SD card button plays its press.
+    void PressSdCardButton();
+
+    // While a channel starts or the menu leaves, the buttons do not answer to the hands.
+    void SetButtonsEnabled(bool shouldBeEnabled);
+
+    bool IsFocused(BarButton button) const;
+    const Balloon* BalloonOf(BarButton button) const;
+
+    // The bar overlay draws the arrows and the balloons over the channel grid.
     void DrawPageArrows();
+    void DrawBalloons();
 
     // The button under a place of the picture, in layout units. An arrow that is hidden is no button.
     std::optional<BarButton> ButtonAt(Formats::Vector2 place);
@@ -98,11 +118,12 @@ public:
     // The middle of the area of a button in the picture, in layout units.
     Formats::Vector2 PlaceOfButton(BarButton button);
 
-    // Which buttons the bar has.
+    // Which buttons the bar has. The SD card button belongs to the Wii Menu only.
     void SetMode(BarMode newMode);
     BarMode Mode() const;
 
     // The bar moves into another look. A change that is asked for while another one plays waits for it, in order.
+    // While the bar changes, it has no buttons.
     void Change(BarChange change);
     bool IsChanging() const;
 
@@ -111,9 +132,6 @@ public:
     void SetRightText(std::u16string_view text);
     void SetTrashText(std::u16string_view text);
 
-    // The buttons of the bar flash when they are pressed (G_CalExit, G_Dust and G_Cmn_R, frames 3000 to 3020 and 2800 to 2820).
-    void FlashButton(BarButton button);
-
     // The number of the day's messages on the envelope, 0 to 99. Without messages the mark is hidden (0x8138F168, 0x8139D004).
     void ShowMessageCount(int count);
 
@@ -121,31 +139,49 @@ protected:
     bool RunMain() override;
 
 private:
+    // A button that answers to the hands: its animation of focus, and its balloon.
+    struct FocusState
+    {
+        std::unique_ptr<FramePlayer> focus;
+        std::unique_ptr<Balloon> balloon;
+        bool isFocused = false;
+    };
+
+    void MakeTheFocusStates();
+    void FocusTheButtonsUnderThePointers();
+    void SetFocused(std::size_t buttonNumber, bool shouldBeFocused);
+    void PlaceTheBalloons();
+    void FollowTheSdCard();
+    bool IsCardInTheSlot() const;
     void DrawArrow(std::string_view arrowName);
     void SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown);
+    bool IsShown(BarButton button) const;
     bool HasButtonInThisMode(BarButton button) const;
     void StartTheNextChange();
-    std::unique_ptr<FramePlayer> MakeGroupPlayer(std::string_view groupName);
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
+    std::unique_ptr<Layout::LayoutArchive> balloonArchive;
     std::unique_ptr<MenuLayout> layout;
     std::vector<std::unique_ptr<FramePlayer>> stillGroups;
+    std::vector<FocusState> focusStates;
     std::unique_ptr<FramePlayer> arrowLoop;
     std::unique_ptr<FramePlayer> previousPageArrow;
     std::unique_ptr<FramePlayer> nextPageArrow;
+    std::unique_ptr<FramePlayer> previousPageFlash;
+    std::unique_ptr<FramePlayer> nextPageFlash;
+    std::unique_ptr<SdCardButton> sdCardButton;
     std::unique_ptr<FramePlayer> seenChange;
-    std::unique_ptr<FramePlayer> backFlash;
-    std::unique_ptr<FramePlayer> trashFlash;
-    std::unique_ptr<FramePlayer> rightFlash;
     std::unique_ptr<FramePlayer> messageSignal;
     std::deque<BarChange> waitingChanges;
     BarMode mode = BarMode::WiiMenu;
+    bool wasCardInTheSlot = false;
     bool isPreviousPageArrowShown = false;
     bool isNextPageArrowShown = false;
+    bool areButtonsEnabled = true;
 };
 
-// Draws the page arrows of the bar over the channel grid (screen 0x06). It opens last, so it is drawn after the grid.
+// Draws the page arrows and the balloons of the bar over the channel grid (screen 0x06). It opens last, so it is drawn after the grid.
 class BarOverlayScreen : public Screen
 {
 public:

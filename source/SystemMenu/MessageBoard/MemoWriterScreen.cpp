@@ -261,7 +261,6 @@ void MemoWriterScreen::OpenTheMiiChooser()
 void MemoWriterScreen::Post()
 {
     BottomBarScreen* bar = Bar();
-    bar->FlashButton(BarButton::RightButton);
     services.sounds.Request(SoundName::Decide);
 
     LocalTime now = services.wiiMenu.console.GetLocalTime();
@@ -281,7 +280,6 @@ void MemoWriterScreen::Post()
 void MemoWriterScreen::Cancel()
 {
     BottomBarScreen* bar = Bar();
-    bar->FlashButton(BarButton::BackButton);
     services.sounds.Request(SoundName::Cancel);
     bar->Change(BarChange::MemoWriterCloses);
     bar->Change(BarChange::BackToTheBoard);

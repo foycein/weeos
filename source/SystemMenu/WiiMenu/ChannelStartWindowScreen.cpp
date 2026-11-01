@@ -188,15 +188,14 @@ void ChannelStartWindowScreen::BuildTheFrame()
     buttons = std::make_unique<ButtonGroup>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
 }
 
-// A banner without a script plays banner_Start once and then banner_Loop, or banner over and over. A banner that a script or a module
-// drives shows its English panes and what the script shows while the channel has no data of its own: its start, or its first animation
-// on the group Rso0 (docs/research/Channels.md 1.6, the same choice as for the icons, SYS-85).
+// Every banner shows its English panes (0x813B63EC calls 0x813B24C0). A banner without a script plays banner_Start once and then
+// banner_Loop, or banner over and over. A banner that a script or a module drives shows what the script shows while the channel has
+// no data of its own: its start, or its first animation on the group Rso0 (docs/research/Channels.md 1.6, SYS-92).
 void ChannelStartWindowScreen::BuildTheBanner()
 {
     bannerLayout = std::make_unique<MenuLayout>(services.display, *bannerArchive, std::string(BannerLayout));
     const BannerAnimations& animations = bannerAnimations;
-    if (banner->isBannerDrivenByCode)
-        ShowOnlyTheEnglishPanes(*bannerLayout, *bannerArchive, std::string(BannerLayout));
+    ShowOnlyTheEnglishPanes(*bannerLayout, *bannerArchive, std::string(BannerLayout));
 
     if (animations.start)
         bannerStart = bannerLayout->BindAnimationToPane(*animations.start, RootPaneName, Layout::PlaybackMode::PlayOnce);

@@ -53,6 +53,10 @@ public:
     // The same, but the sound is dropped when a sound with the same number is still playing at that time.
     SoundHandle PlayIfNotPlaying(std::size_t soundNumber);
 
+    // Plays a wave that is not in the archive, for example the sound of a channel's banner, in the middle at the volume given, to its
+    // end or, when it loops, until it is stopped. It plays outside the players of the archive.
+    SoundHandle PlayWave(std::shared_ptr<const DecodedWave> wave, float volume);
+
     // Lets the sound fade out as its envelope says. With a fade time, the sound first falls to silence in that time.
     // Nothing happens when the sound has ended.
     void Stop(SoundHandle handle, double fadeSeconds = 0.0);
@@ -72,6 +76,11 @@ public:
     // over the next buffer that is rendered.
     void SetMasterVolume(float volume);
     float MasterVolume() const;
+
+    // The master volume of the console (the AX master volume of the original), which multiplies the master volume of the PC: the HOME
+    // menu fades it out with its picture when it ends the program under it. 1 is full. A change moves smoothly as the master volume does.
+    void SetConsoleVolume(float volume);
+    float ConsoleVolume() const;
 
     // A paused system makes silence and does not move on.
     void SetPaused(bool paused);
@@ -105,6 +114,8 @@ private:
     struct RunningSound
     {
         SoundHandle handle;
+
+        // FreeWaveNumber for a wave that PlayWave plays.
         std::size_t soundNumber;
         std::uint64_t startNumber;
         VoiceHandle voice;
@@ -137,6 +148,7 @@ private:
     void UpdateFades(RunningSound& sound);
     void StartSound(const SoundCommand& command);
     void StartWaveSound(const SoundCommand& command, const SoundInfo& info);
+    void StartFreeWave(const SoundCommand& command);
     void StartSequenceSound(const SoundCommand& command, const SoundInfo& info);
     bool HasEnded(const RunningSound& sound);
     bool MakeRoomInPlayer(const SoundInfo& info);
@@ -162,6 +174,7 @@ private:
 
     std::atomic<std::uint32_t> lastHandleNumber{0};
     std::atomic<float> masterVolume{1.0f};
+    std::atomic<float> consoleVolume{1.0f};
 
     // The master volume that the last rendered buffer ended with. The first buffer takes the master volume at once.
     float renderedMasterVolume = 1.0f;

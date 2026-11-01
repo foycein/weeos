@@ -310,7 +310,7 @@ bool LetterView::HandlePicturePress(Formats::Vector2 place)
     return false;
 }
 
-// The zoomed picture goes back with Back, or with A anywhere.
+// The zoomed picture goes back with A anywhere, also on Back.
 void LetterView::RunViewingThePicture()
 {
     if (layout.IsAnimationPlaying(*zoomInAnimation))
@@ -322,9 +322,6 @@ void LetterView::RunViewingThePicture()
         if (!player || !HasGoneDown(*player, BoardPressButtons))
             continue;
 
-        std::optional<Formats::Vector2> place = PointerPlaceOf(services.input, services.display, playerIndex);
-        if (place && bar.ButtonAt(*place) == BarButton::BackButton)
-            bar.FlashButton(BarButton::BackButton);
         services.sounds.Request(ZoomOutSound);
         layout.StartAnimation(*zoomOutAnimation);
         state = ViewState::Reading;
@@ -356,7 +353,6 @@ bool LetterView::HandleBarPress(Formats::Vector2 place)
     std::optional<BarButton> button = bar.ButtonAt(place);
     if (button == BarButton::BackButton)
     {
-        bar.FlashButton(BarButton::BackButton);
         services.sounds.Request(UnselectSound);
         layout.StartAnimation(closeAnimation);
         bar.Change(BarChange::BackToTheBoard);
@@ -366,7 +362,6 @@ bool LetterView::HandleBarPress(Formats::Vector2 place)
 
     if (button == BarButton::TrashButton)
     {
-        bar.FlashButton(BarButton::TrashButton);
         services.sounds.Request(SoundName::ButtonPushed);
         DialogRequest question;
         question.layout = DialogLayout::TwoButtons;

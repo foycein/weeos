@@ -2,7 +2,6 @@
 
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 
-#include <algorithm>
 #include <array>
 
 namespace SystemMenu
@@ -21,15 +20,28 @@ constexpr std::string_view DiscAnimation = "my_DiskCh_b";
 constexpr std::string_view FocusFrameLayout = "my_IplTop_d";
 constexpr std::string_view FocusOnAnimation = "my_IplTop_d_FocusOn";
 constexpr std::string_view FocusOffAnimation = "my_IplTop_d_FocusOff";
-constexpr std::string_view RootPaneName = "RootPane";
+constexpr std::string_view SelectAnimation = "my_IplTop_d_Select";
 
-// The groups of an icon that hold the words of one language each, and the group of the first animation of its script.
-constexpr std::string_view EnglishGroup = "ENG";
-constexpr std::array<std::string_view, 8> OtherLanguageGroups = {"JPN", "GER", "FRA", "SPA", "ITA", "NED", "KOR", "CHN"};
-constexpr std::string_view ScriptGroup = "Rso0";
+// The animations of the disc and of a damaged channel, and the icons that a script drives, start at their first frame.
+constexpr std::uint32_t NoRandomNumber = 0;
 
-// The balloon hangs below the television of the place, which is 96 units high.
+// The groups of the languages that a console of the USA looks for, in this order. The menu speaks English.
+constexpr std::array<std::string_view, 3> LanguagesInTheOrderOfTheUsa = {"ENG", "FRA", "SPA"};
+
+// The balloon hangs below the television of the place, which is 96 units high, 20 steps after the pointer came (0x816949E0).
 constexpr float HalfHeightOfAPlace = 48;
+constexpr int StepsBeforeTheBalloonAppears = 20;
+
+// The groups Rso0 to Rso15 belong to the animations of a script.
+bool IsGroupOfAScript(std::string_view groupName)
+{
+    for (int number = 0; number < ScriptAnimationCount; ++number)
+    {
+        if (groupName == ScriptGroupName(number))
+            return true;
+    }
+    return false;
+}
 
 }
 
@@ -41,26 +53,28 @@ ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_pt
 {
     focusOn = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, FocusOnAnimation);
     focusOff = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, FocusOffAnimation);
-    lastFrameOfFocusOn = focusOn->LastFrameOfTheFile();
-    lastFrameOfFocusOff = focusOff->LastFrameOfTheFile();
+    select = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, SelectAnimation);
 }
 
-// The icons that a script drives get from the menu what the script shows while the channel has no data of its own:
-// the panes of the language of the console and the first animation of the script (docs/research/Channels.md 1.6, CHN-03).
+// Every icon shows the panes of its language (0x813B2B18 calls 0x813B24C0). An icon that a script drives then gets what its script
+// does, run once when the tile is made (docs/research/Channels.md 1.6, CHN-03).
 std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
-    const std::u16string& name)
+    const std::u16string& name, std::uint32_t randomNumber)
 {
     const Layout::LayoutArchive& icon = *channel.icon;
     auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
+    ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
+
+    std::uint32_t randomNumberOfTheIcon = channel.isIconDrivenByCode ? NoRandomNumber : randomNumber;
     if (channel.iconAnimation)
-        tile->PlayAnimation(icon, *channel.iconAnimation);
+        tile->PlayAnimation(icon, *channel.iconAnimation, randomNumberOfTheIcon);
 
     if (channel.isIconDrivenByCode)
-        ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
-
-    if (channel.scriptAnimation)
-        tile->PlayScriptAnimation(icon, *channel.scriptAnimation);
+    {
+        tile->scriptAnimations = std::make_unique<ScriptAnimations>(*tile->picture, icon, channel.scriptAnimationNumbers);
+        RunIconScript(channel.iconScript, *tile->picture, *tile->scriptAnimations);
+    }
 
     tile->AddBalloon(archives, name);
     return tile;
@@ -70,7 +84,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeDamagedChannel(Display& display, c
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.damagedIcon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::DamagedChannel, std::move(picture), archives));
-    tile->PlayAnimation(archives.damagedIcon, std::string(IconAnimation));
+    tile->PlayAnimation(archives.damagedIcon, std::string(IconAnimation), NoRandomNumber);
     return tile;
 }
 
@@ -78,16 +92,16 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeDiscChannel(Display& display, cons
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.discThumbnail, std::string(DiscLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::DiscChannel, std::move(picture), archives));
-    tile->PlayAnimation(archives.discThumbnail, std::string(DiscAnimation));
+    tile->PlayAnimation(archives.discThumbnail, std::string(DiscAnimation), NoRandomNumber);
     tile->AddBalloon(archives, name);
     return tile;
 }
 
-std::unique_ptr<ChannelTile> ChannelTile::MakeEmptySlot(Display& display, const TileArchives& archives)
+std::unique_ptr<ChannelTile> ChannelTile::MakeEmptySlot(Display& display, const TileArchives& archives, std::uint32_t randomNumber)
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.channelSelection, std::string(EmptySlotLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::EmptySlot, std::move(picture), archives));
-    tile->PlayAnimation(archives.channelSelection, std::string(EmptySlotAnimation));
+    tile->PlayAnimation(archives.channelSelection, std::string(EmptySlotAnimation), randomNumber);
     return tile;
 }
 
@@ -104,9 +118,9 @@ void ChannelTile::SetFocused(bool shouldBeFocused)
 
     isFocused = shouldBeFocused;
     if (isFocused)
-        focusOn->PlayOnce(0, lastFrameOfFocusOn);
+        focusOn->PlayOnce(0, focusOn->LastFrameOfTheFile());
     else
-        focusOff->PlayOnce(0, lastFrameOfFocusOff);
+        focusOff->PlayOnce(0, focusOff->LastFrameOfTheFile());
 
     if (balloon && isFocused)
         balloon->PointerArrived();
@@ -119,6 +133,16 @@ bool ChannelTile::IsFocused() const
     return isFocused;
 }
 
+void ChannelTile::ShowPressed()
+{
+    select->PlayOnce(0, select->LastFrameOfTheFile());
+}
+
+float ChannelTile::FrameOfThePicture() const
+{
+    return pictureAnimation ? pictureAnimation->Frame() : 0;
+}
+
 const Balloon* ChannelTile::NameBalloon() const
 {
     return balloon.get();
@@ -126,9 +150,16 @@ const Balloon* ChannelTile::NameBalloon() const
 
 bool ChannelTile::Calculate()
 {
+    if (pictureAnimation)
+        pictureAnimation->Step();
+
+    if (scriptAnimations)
+        scriptAnimations->Step();
+
     picture->Calculate();
     focusOn->Step();
     focusOff->Step();
+    select->Step();
     focusFrame->Calculate();
     if (!balloon)
         return false;
@@ -156,21 +187,50 @@ void ChannelTile::DrawBalloonAt(Formats::Vector2 place)
     balloon->Draw();
 }
 
-// The original starts the animations of the tiles at a frame that depends on the time, so that the televisions do not flicker
-// together. WeeOS starts them at frame 0.
-void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName)
+// A loop starts at the random number modulo the length of the animation (0x813B2B18, 0x813B2E8C); an animation that plays once starts at its first frame.
+void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName, std::uint32_t randomNumber)
 {
-    Layout::PlaybackMode mode = ModeOfAnimationFile(archive, animationName);
-    std::size_t slot = picture->BindAnimationToPane(animationName, RootPaneName, mode);
-    picture->StartAnimation(slot);
+    pictureAnimation = std::make_unique<FramePlayer>(*picture, archive, animationName);
+    float lastFrame = pictureAnimation->LastFrameOfTheFile();
+    if (ModeOfAnimationFile(archive, animationName) == Layout::PlaybackMode::PlayOnce)
+    {
+        pictureAnimation->PlayOnce(0, lastFrame);
+        return;
+    }
+
+    std::uint32_t frameCount = static_cast<std::uint32_t>(lastFrame) + 1;
+    float startFrame = static_cast<float>(randomNumber % frameCount);
+    pictureAnimation->LoopFrom(0, lastFrame + 1, startFrame);
 }
 
-// The script plays its first animation on the group of the same name, Rso0.
-void ChannelTile::PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName)
+// The menu hides the panes of every group except the groups of the script, Rso0 to Rso15, and then shows the panes of the group of
+// its language again, so a pane that two languages share stays shown. Without an English group the first of French and Spanish
+// shows, the order of a console of the USA (0x813B24C0 with the table 0x8164E368).
+void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName)
 {
-    Layout::PlaybackMode mode = ModeOfAnimationFile(archive, animationName);
-    std::size_t slot = picture->BindAnimation(animationName, ScriptGroup, mode);
-    picture->StartAnimation(slot);
+    Formats::Layout file = archive.ReadLayout(layoutName);
+    if (!file.rootGroup)
+        return;
+
+    for (const Formats::Group& group : file.rootGroup->children)
+    {
+        if (IsGroupOfAScript(group.name))
+            continue;
+
+        for (const std::string& paneName : group.paneNames)
+            layout.PaneNamed(paneName).isVisible = false;
+    }
+
+    for (std::string_view languageName : LanguagesInTheOrderOfTheUsa)
+    {
+        const Formats::Group* languageGroup = FindTopGroup(file, languageName);
+        if (!languageGroup)
+            continue;
+
+        for (const std::string& paneName : languageGroup->paneNames)
+            layout.PaneNamed(paneName).isVisible = true;
+        return;
+    }
 }
 
 void ChannelTile::AddBalloon(const TileArchives& archives, const std::u16string& name)
@@ -178,38 +238,8 @@ void ChannelTile::AddBalloon(const TileArchives& archives, const std::u16string&
     if (name.empty())
         return;
 
-    balloon = std::make_unique<Balloon>(display, archives.channelSelection);
+    balloon = std::make_unique<Balloon>(display, archives.channelSelection, StepsBeforeTheBalloonAppears);
     balloon->SetText(name);
-}
-
-// A layout of a channel holds its words in every language, each language in a group named after it. The panes of the other languages
-// are hidden, except those that English uses as well.
-void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName)
-{
-    Formats::Layout file = archive.ReadLayout(layoutName);
-    if (!file.rootGroup)
-        return;
-
-    std::vector<std::string> englishPanes;
-    for (const Formats::Group& group : file.rootGroup->children)
-    {
-        if (group.name == EnglishGroup)
-            englishPanes = group.paneNames;
-    }
-
-    for (const Formats::Group& group : file.rootGroup->children)
-    {
-        bool isOtherLanguage = std::find(OtherLanguageGroups.begin(), OtherLanguageGroups.end(), group.name) != OtherLanguageGroups.end();
-        if (!isOtherLanguage)
-            continue;
-
-        for (const std::string& paneName : group.paneNames)
-        {
-            bool isEnglishToo = std::find(englishPanes.begin(), englishPanes.end(), paneName) != englishPanes.end();
-            if (!isEnglishToo)
-                layout.PaneNamed(paneName).isVisible = false;
-        }
-    }
 }
 
 }

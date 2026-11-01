@@ -103,4 +103,17 @@ Layout::PlaybackMode ModeOfAnimationFile(const Layout::LayoutArchive& archive, s
     return isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
 }
 
+const Formats::Group* FindTopGroup(const Formats::Layout& file, std::string_view groupName)
+{
+    if (!file.rootGroup)
+        return nullptr;
+
+    for (const Formats::Group& group : file.rootGroup->children)
+    {
+        if (group.name == groupName)
+            return &group;
+    }
+    return nullptr;
+}
+
 }

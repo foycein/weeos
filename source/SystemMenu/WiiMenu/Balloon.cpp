@@ -18,9 +18,6 @@ constexpr std::string_view BasePane = "W_Base";
 constexpr std::string_view ShadePane = "W_Shade";
 constexpr std::string_view BalloonPane = "N_Balloon";
 
-// The pointer rests on the thing for this many steps before the balloon appears.
-constexpr int StepsBeforeTheBalloonAppears = 20;
-
 // The animation has 7 frames. The balloon shows the first one when it is gone and the last one when it is there.
 constexpr float LastFrameOfTheAnimation = 6;
 
@@ -38,9 +35,10 @@ constexpr float MarginToThePictureEdge = 60;
 
 }
 
-Balloon::Balloon(Display& menuDisplay, const Layout::LayoutArchive& archive)
+Balloon::Balloon(Display& menuDisplay, const Layout::LayoutArchive& archive, int stepsBeforeTheBalloonAppears)
     : display(menuDisplay)
     , layout(std::make_unique<MenuLayout>(menuDisplay, archive, std::string(LayoutName)))
+    , stepsBeforeAppearing(stepsBeforeTheBalloonAppears)
 {
     growing = std::make_unique<FramePlayer>(*layout, archive, AnimationName);
     BecomeHidden();
@@ -81,18 +79,22 @@ void Balloon::PlaceBelow(Formats::Vector2 targetMiddle, float targetHalfHeight)
 {
     float halfHeight = layout->PaneNamed(BasePane).height / 2;
     float y = targetMiddle.y - (targetHalfHeight + halfHeight - OverlapWithTheTarget);
+    PlaceAt({targetMiddle.x, y}, MarginToThePictureEdge);
+}
 
+void Balloon::PlaceAt(Formats::Vector2 middle, float marginToTheEdge)
+{
     float pictureHalfWidth = display.GetCanvas().width / 2;
-    float spaceAtTheLeft = (targetMiddle.x - balloonWidth / 2) + pictureHalfWidth;
-    float spaceAtTheRight = pictureHalfWidth - (targetMiddle.x + balloonWidth / 2);
+    float spaceAtTheLeft = (middle.x - balloonWidth / 2) + pictureHalfWidth;
+    float spaceAtTheRight = pictureHalfWidth - (middle.x + balloonWidth / 2);
 
-    float x = targetMiddle.x;
-    if (spaceAtTheLeft < MarginToThePictureEdge)
-        x += MarginToThePictureEdge - spaceAtTheLeft;
-    else if (spaceAtTheRight < MarginToThePictureEdge)
-        x -= MarginToThePictureEdge - spaceAtTheRight;
+    float x = middle.x;
+    if (spaceAtTheLeft < marginToTheEdge)
+        x += marginToTheEdge - spaceAtTheLeft;
+    else if (spaceAtTheRight < marginToTheEdge)
+        x -= marginToTheEdge - spaceAtTheRight;
 
-    MoveLayoutTo(*layout, {x, y});
+    MoveLayoutTo(*layout, {x, middle.y});
 }
 
 void Balloon::PointerArrived()
@@ -141,7 +143,7 @@ void Balloon::Calculate()
         {
             BecomeHidden();
         }
-        else if (stepsWaited >= StepsBeforeTheBalloonAppears)
+        else if (stepsWaited >= stepsBeforeAppearing)
         {
             state = State::Appearing;
             layout->PaneNamed(BalloonPane).isVisible = true;

@@ -72,8 +72,9 @@ const std::u16string& TextOfButton(const DialogRequest& request, std::size_t but
 
 }
 
-DialogManager::DialogManager(Display& menuDisplay, const MenuFiles& files)
+DialogManager::DialogManager(Display& menuDisplay, const MenuFiles& files, SoundRequests& menuSounds)
     : display(menuDisplay)
+    , sounds(menuSounds)
     , archive(files.OpenLayoutBundle(BundleName))
 {
     for (std::size_t kind = 0; kind < windows.size(); ++kind)
@@ -128,8 +129,11 @@ bool DialogManager::Open(const DialogRequest& request)
     stepsBeforeClosing = request.stepsBeforeClosing;
     stepsWaited = 0;
     showsProgress = request.showsProgress;
+    soundsBusy = request.showsWaitIcon || request.showsProgress;
+    cancelButton = request.cancelButton;
     targetPercentage = 0;
     shownPercentage = 0;
+    sounds.Request(soundsBusy ? SoundName::Busy : SoundName::InfoWindow);
 
     ShowTexts(request);
     if (request.layout == DialogLayout::Message)
@@ -266,7 +270,10 @@ void DialogManager::ReactToButton(const ButtonGroupEvent& event)
     MenuLayout& layout = *openWindow->layout;
 
     if (event.kind == ButtonGroupEventKind::Focused)
+    {
+        sounds.Request(SoundName::ButtonTargeted);
         layout.StartAnimation(FocusOnSlot(event.buttonIndex));
+    }
 
     if (event.kind == ButtonGroupEventKind::Unfocused)
         layout.StartAnimation(FocusOffSlot(event.buttonIndex));
@@ -274,14 +281,26 @@ void DialogManager::ReactToButton(const ButtonGroupEvent& event)
     if (event.kind == ButtonGroupEventKind::Pressed)
     {
         closingAnswer = ButtonAnswers[event.buttonIndex];
+        sounds.Request(SoundOfPress(closingAnswer));
         choiceSlot = SelectSlot(event.buttonIndex);
         layout.StartAnimation(choiceSlot);
         state = State::ShowingChoice;
     }
 }
 
+// A window with one button has nothing to cancel.
+std::string_view DialogManager::SoundOfPress(DialogAnswer pressed) const
+{
+    bool cancels = openWindow->buttonCount > 1 && pressed == cancelButton;
+    return cancels ? SoundName::Cancel : SoundName::Decide;
+}
+
 void DialogManager::StartClosing(DialogAnswer reason)
 {
+    if (soundsBusy)
+        sounds.Request(SoundName::BusyFinished);
+
+    soundsBusy = false;
     closingAnswer = reason;
     openWindow->layout->StartAnimation(DialogOutSlot);
     state = State::Closing;
