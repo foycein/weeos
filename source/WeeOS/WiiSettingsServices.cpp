@@ -13,39 +13,24 @@ namespace
 // The System Menu reads and writes the settings of the console as its own user.
 constexpr Ios::Caller SystemMenuCaller = {Ios::SystemMenuUserId, Ios::SystemMenuGroupId};
 
-Platform::ScreenShape ShapeOf(Settings::AspectRatio aspectRatio)
-{
-    if (aspectRatio == Settings::AspectRatio::FourByThree)
-        return Platform::ScreenShape::FourByThree;
-
-    return Platform::ScreenShape::SixteenByNine;
-}
-
 }
 
 WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, ProgramSound& programSound,
-    const Platform::RegionalSettings& regionalSettings, const std::filesystem::path& pcSettingsFile)
+    const Platform::RegionalSettings& regionalSettings, Settings::PcSettingsStore& pcSettingsStore)
     : window(programWindow)
     , remotes(iosServices.GetRemote())
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
-    , pcSettings(pcSettingsFile)
-    , flowServices{systemSettings, iosServices.GetNetworkConfig(), pcSettings, *this}
+    , flowServices{systemSettings, iosServices.GetNetworkConfig(), pcSettingsStore, *this}
 {
     TakeTheCountryOfThePc(regionalSettings);
-    ApplyPcSettings(pcSettings.Values());
+    ApplyControlsAndSound(pcSettingsStore.Values());
     ApplyRumble(systemSettings.IsRumbleOn());
-    remotes.GetVirtualRemote().SetScreenShape(PictureShape());
 }
 
 SystemMenu::SettingsFlowServices& WiiSettingsServices::FlowServices()
 {
     return flowServices;
-}
-
-Platform::ScreenShape WiiSettingsServices::PictureShape() const
-{
-    return ShapeOf(systemSettings.GetAspectRatio());
 }
 
 Settings::SoundMode WiiSettingsServices::SoundMode() const
@@ -60,7 +45,11 @@ void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
         window.ToggleFullscreen();
 
     window.SetClientSize({settings.windowWidth, settings.windowHeight});
+    ApplyControlsAndSound(settings);
+}
 
+void WiiSettingsServices::ApplyControlsAndSound(const Settings::PcSettings& settings)
+{
     Input::VirtualRemote& remote = remotes.GetVirtualRemote();
     remote.SetKeyMap(settings.keyMap);
     remote.SetMouseMap(Settings::MouseMapOf(settings));

@@ -4,8 +4,8 @@
 #include "Settings/PcSettings.h"
 #include "Settings/SystemSettings.h"
 #include "Sound/AudioOutput.h"
-#include "Sound/PcmStream.h"
 #include "Sound/SoundSystem.h"
+#include "Sound/WavePlayer.h"
 
 #include <atomic>
 #include <cstdint>
@@ -31,6 +31,9 @@ float GainOfVolume(int volumePercent);
 class ProgramSound
 {
 public:
+    // The rate the wave player assumes until the output tells it the rate of the device.
+    static constexpr std::uint32_t DefaultWaveSampleRate = 48000;
+
     explicit ProgramSound(bool silent);
 
     ProgramSound(const ProgramSound&) = delete;
@@ -47,11 +50,8 @@ public:
     // same output. Gives nothing before Start or when the PC cannot play sound.
     Sound::SoundSystem* StartTitleArchive(Formats::ByteView titleSoundArchive);
 
-    // The channel has ended: the sound systems of its archives go, and its own stream.
+    // The channel has ended: the sound systems of its archives go.
     void StopTitleArchives();
-
-    // The sound that the running channel decodes itself (CHN-30). The stream must stay until StopTitleArchives.
-    void StartChannelStream(Sound::PcmStream& channelStream);
 
     // The sound mode of the console, IPL.SND. The sounds follow it from the next sound frame on.
     void SetSoundMode(Settings::SoundMode mode);
@@ -60,6 +60,10 @@ public:
     void StopAllSounds();
 
     bool IsSilent() const;
+
+    // The waves that a channel makes itself (a recorded voice, a stream file) play beside the archives, at the same volume.
+    // The player exists from the start; nothing is heard before Start or when the PC cannot play sound.
+    Sound::WavePlayer& Waves();
 
     // Nothing before Start, or when the PC cannot play sound.
     Sound::SoundSystem* Sounds();
@@ -86,7 +90,8 @@ private:
     std::mutex titleSoundsMutex;
     std::vector<std::unique_ptr<Sound::SoundSystem>> titleSounds;
     std::vector<float> titleMixBuffer;
-    Sound::PcmStream* channelStream = nullptr;
+
+    Sound::WavePlayer waves{DefaultWaveSampleRate};
 
     // The output comes last, so that it goes first: its audio thread stops before the sound system that it renders goes.
     std::unique_ptr<Sound::SoundSystem> sounds;

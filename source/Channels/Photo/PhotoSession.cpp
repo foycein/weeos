@@ -200,6 +200,37 @@ bool PhotoSession::IsPhotoChanged(int fileIndex) const
     return changedPhotos.contains(fileIndex);
 }
 
+void PhotoSession::PlayDecodedSound(const Media::PcmSound& sound)
+{
+    constexpr float LargestSixteenBitValue = 32768.0f;
+    StopDecodedSound();
+    if (sound.channelCount <= 0)
+        return;
+
+    auto wave = std::make_shared<Sound::DecodedWave>();
+    wave->sampleRate = static_cast<std::uint32_t>(sound.sampleRate);
+    wave->loops = false;
+    wave->loopStartSample = 0;
+    wave->channels.assign(sound.channelCount, std::vector<float>(sound.FrameCount()));
+    for (std::size_t frame = 0; frame < sound.FrameCount(); ++frame)
+    {
+        for (int channel = 0; channel < sound.channelCount; ++channel)
+            wave->channels[channel][frame] = sound.samples[frame * sound.channelCount + channel] / LargestSixteenBitValue;
+    }
+    decodedSound = services.audio.waves.Play(wave);
+}
+
+void PhotoSession::StopDecodedSound()
+{
+    services.audio.waves.Stop(decodedSound);
+    decodedSound = {};
+}
+
+bool PhotoSession::IsDecodedSoundPlaying()
+{
+    return services.audio.waves.IsPlaying(decodedSound);
+}
+
 const Layout::DrawableFont& PhotoSession::Font() const
 {
     return fonts.Fonts().Find(std::string(FontName));

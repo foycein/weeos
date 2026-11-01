@@ -6,14 +6,13 @@ namespace Ios
 namespace
 {
 
-// The window of the program starts like this (docs/DECISIONS.md). The program tells the virtual remote the real size and shape.
+// The window of the program starts like this (docs/DECISIONS.md). The program tells the virtual remote the real size.
 constexpr Platform::WindowSize StartingWindowSize = {1280, 720};
-constexpr Platform::ScreenShape StartingScreenShape = Platform::ScreenShape::SixteenByNine;
 
 }
 
 RemoteService::RemoteService()
-    : virtualRemote(StartingWindowSize, StartingScreenShape)
+    : virtualRemote(StartingWindowSize)
 {
     channels.Attach(VirtualRemoteChannel, virtualRemote);
     NoticeConnection(VirtualRemoteChannel);

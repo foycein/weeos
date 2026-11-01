@@ -11,10 +11,9 @@ constexpr std::uint8_t FullyShown = 255;
 
 }
 
-Display::Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape)
-    : device(graphicsDevice)
-    , zoomedDevice(graphicsDevice)
-    , screenShape(initialScreenShape)
+Display::Display(Graphics::GraphicsDevice& graphicsDevice)
+    : edgeDevice(graphicsDevice, WideCanvas)
+    , zoomedDevice(edgeDevice)
 {
 }
 
@@ -59,22 +58,9 @@ const Layout::TextFonts* Display::TextFonts() const
     return textFonts;
 }
 
-Platform::ScreenShape Display::GetScreenShape() const
-{
-    return screenShape;
-}
-
-void Display::SetScreenShape(Platform::ScreenShape newScreenShape)
-{
-    screenShape = newScreenShape;
-}
-
 Graphics::Canvas Display::GetCanvas() const
 {
-    if (screenShape == Platform::ScreenShape::SixteenByNine)
-        return WideCanvas;
-
-    return StandardCanvas;
+    return WideCanvas;
 }
 
 PictureArea Display::WholePicture() const
@@ -98,7 +84,7 @@ void Display::FillArea(const PictureArea& area, Formats::Rgba8Color color)
 
 void Display::BeginPicture()
 {
-    device.BeginFrame(GetCanvas(), screenShape);
+    edgeDevice.BeginFrame(GetCanvas());
 }
 
 Formats::Vector2 Display::LayoutStretch() const

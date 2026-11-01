@@ -40,6 +40,25 @@ add_library(Channels STATIC
     Photo/ViewScreen.cpp
     ShopChannel.cpp
     WiiConnect24Channel.cpp
+    WiiSpeak/AddressBookScreen.cpp
+    WiiSpeak/ChatRoomScreen.cpp
+    WiiSpeak/CreateMessageScreen.cpp
+    WiiSpeak/MicrophoneLevel.cpp
+    WiiSpeak/MiiChooser.cpp
+    WiiSpeak/MiiFaces.cpp
+    WiiSpeak/PerformanceCheck.cpp
+    WiiSpeak/PerformanceCheckScreen.cpp
+    WiiSpeak/SceneLayout.cpp
+    WiiSpeak/SettingsScreens.cpp
+    WiiSpeak/ShowPhotosScreen.cpp
+    WiiSpeak/VoiceRecording.cpp
+    WiiSpeak/WiiSpeakChannel.cpp
+    WiiSpeak/WiiSpeakDialog.cpp
+    WiiSpeak/WiiSpeakFiles.cpp
+    WiiSpeak/WiiSpeakFriends.cpp
+    WiiSpeak/WiiSpeakMessages.cpp
+    WiiSpeak/WiiSpeakSaveData.cpp
+    WiiSpeak/WiiSpeakSession.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Mii Media Sound)
+target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound)

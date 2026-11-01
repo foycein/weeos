@@ -42,4 +42,8 @@ std::size_t TextureCoordinateSetOf(const Formats::Material& material, std::size_
 // or no change at all when the generator names none.
 Graphics::TextureMatrix TextureMatrixOf(const Formats::Material& material, std::size_t textureMapIndex);
 
+// The indirect texture of a material whose stages are moved by one: the texture map of its first indirect stage and its first
+// indirect matrix, built from offset, rotation and scale as the layout library builds it.
+Graphics::IndirectTexture IndirectTextureOf(const Formats::Material& material);
+
 }

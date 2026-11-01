@@ -80,7 +80,7 @@ public:
 
     ~SlideShowScreen() override
     {
-        session.Services().stream.Stop();
+        session.StopDecodedSound();
     }
 
     void Update() override
@@ -183,14 +183,14 @@ private:
             if (!music)
                 continue;
 
-            session.Services().stream.Play(music->samples, music->channelCount, music->sampleRate, 0);
+            session.PlayDecodedSound(*music);
             return;
         }
     }
 
     void KeepTheMusicGoing()
     {
-        if (musicFiles.empty() || session.Services().stream.IsPlaying())
+        if (musicFiles.empty() || session.IsDecodedSoundPlaying())
             return;
 
         PlayNextMusicFile();

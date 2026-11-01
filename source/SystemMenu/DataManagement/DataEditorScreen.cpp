@@ -79,7 +79,7 @@ constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::C
 // The panes of the window that the editors of the original never show.
 constexpr std::array<std::string_view, 4> UnusedWindowPanes = {"T_Block_01", "T_Move_off", "T_Move_off_00", "N_Wait"};
 
-// The window of a channel has a part for each shape of the screen.
+// The window of a channel has a part for each shape of the screen. WeeOS shows the 16:9 part.
 struct ChannelWindowPanes
 {
     std::string_view shownPart;
@@ -90,10 +90,10 @@ struct ChannelWindowPanes
     std::string_view iconPlace;
 };
 
-constexpr ChannelWindowPanes StandardChannelWindow = {"N_Mask4x3", "N_Mask16x9", "T_Title_00", "T_Title_01", "T_Block_00", "N_Atari4x3"};
 constexpr ChannelWindowPanes WideChannelWindow = {"N_Mask16x9", "N_Mask4x3", "T_Title_02", "T_Title_03", "T_Block_02", "N_Atari16x9"};
 
-// A slot of the channels has a frame for each shape of the screen, with its own button and its own place for the icon.
+// A slot of the channels has a frame for each shape of the screen, with its own button and its own place for the icon. WeeOS shows
+// the 16:9 frame.
 struct ChannelSlotPanes
 {
     std::string_view shownFrame;
@@ -102,7 +102,6 @@ struct ChannelSlotPanes
     std::string_view iconPlace;
 };
 
-constexpr ChannelSlotPanes StandardChannelSlot = {"N_Data4x3", "N_Data16x9", "B_Data_00", "N_Atari4x3"};
 constexpr ChannelSlotPanes WideChannelSlot = {"N_Data16x9", "N_Data4x3", "B_Data_01", "N_Atari16x9"};
 constexpr std::string_view SaveSlotButton = "B_Data_00";
 
@@ -260,8 +259,7 @@ void DataEditorScreen::MakeSlot(std::size_t itemIndex)
 {
     const DataItem& item = items[itemIndex];
     const EditorNames& names = NamesOf(kind);
-    bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-    const ChannelSlotPanes& channelPanes = isWide ? WideChannelSlot : StandardChannelSlot;
+    const ChannelSlotPanes& channelPanes = WideChannelSlot;
 
     Slot slot;
     slot.itemIndex = itemIndex;
@@ -320,11 +318,10 @@ void DataEditorScreen::PlaceIcon(ChannelIconLayout& icon, MenuLayout& layout, st
 // Every slot sits on its place of the middle page of the list, which moves when the pages turn.
 void DataEditorScreen::PlaceSlots()
 {
-    bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-    const ChannelSlotPanes& channelPanes = isWide ? WideChannelSlot : StandardChannelSlot;
+    const ChannelSlotPanes& channelPanes = WideChannelSlot;
 
     if (windowIcon)
-        PlaceIcon(*windowIcon, *windowLayout, isWide ? WideChannelWindow.iconPlace : StandardChannelWindow.iconPlace);
+        PlaceIcon(*windowIcon, *windowLayout, WideChannelWindow.iconPlace);
 
     for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex)
     {
@@ -600,8 +597,7 @@ void DataEditorScreen::OpenWindow(std::size_t itemIndex)
 
     if (kind == DataKind::Channels)
     {
-        bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-        const ChannelWindowPanes& panes = isWide ? WideChannelWindow : StandardChannelWindow;
+        const ChannelWindowPanes& panes = WideChannelWindow;
         windowLayout->PaneNamed(panes.shownPart).isVisible = true;
         windowLayout->PaneNamed(panes.hiddenPart).isVisible = false;
         windowLayout->SetText(panes.firstLine, firstLine);

@@ -44,7 +44,7 @@ public:
 
     ~ViewScreen() override
     {
-        session.Services().stream.Stop();
+        session.StopDecodedSound();
     }
 
     void Update() override
@@ -92,7 +92,7 @@ private:
         shown = nullptr;
         movie = std::nullopt;
         movieSound = std::nullopt;
-        session.Services().stream.Stop();
+        session.StopDecodedSound();
         fileBytes.clear();
         zoom = 0;
         quarterTurns = 0;
@@ -183,11 +183,11 @@ private:
         if (!movieSound)
             return;
 
-        std::vector<std::int16_t> samples = movieSound->samples;
+        Media::PcmSound sound = *movieSound;
         if (backward)
-            ReverseFrames(samples, movieSound->channelCount);
+            ReverseFrames(sound.samples, sound.channelCount);
 
-        session.Services().stream.Play(samples, movieSound->channelCount, movieSound->sampleRate, 0);
+        session.PlayDecodedSound(sound);
     }
 
     static void ReverseFrames(std::vector<std::int16_t>& samples, int channelCount)

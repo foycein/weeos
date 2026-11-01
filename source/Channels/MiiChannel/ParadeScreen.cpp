@@ -82,7 +82,7 @@ ParadeScreen::ParadeScreen(ChannelServices& channelServices, const Layout::Layou
     , data(channelData)
     , layout(std::make_unique<SystemMenu::MenuLayout>(channelServices.display, layouts, std::string(LayoutName)))
     , heads(channelServices.display.Device(), faceParts)
-    , parade(channelServices.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine, randomSeed, PlazaKind::Parade)
+    , parade(randomSeed, PlazaKind::Parade)
 {
     FillTextsFromUserData(*layout, messages);
     for (const ParadeButton& button : ParadeButtons)

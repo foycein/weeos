@@ -31,6 +31,7 @@ public:
     void OnMouseMoved(int x, int y) override;
     void OnMouseLeft() override;
     void OnMouseButton(Platform::MouseButton button, bool isPressed) override;
+    void OnMouseWheel(int notches) override;
 
     // The window does not repeat keys. A key that is down already stays as it is.
     void OnKey(int virtualKeyCode, bool isPressed) override;

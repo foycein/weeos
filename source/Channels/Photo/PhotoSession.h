@@ -14,6 +14,8 @@
 #include "Layout/LayoutArchive.h"
 
 #include "Formats/TplTexture.h"
+#include "Media/PcmSound.h"
+#include "Sound/WavePlayer.h"
 
 #include <map>
 #include <memory>
@@ -99,6 +101,12 @@ public:
     bool HasChangedPhotos() const;
     bool IsPhotoChanged(int fileIndex) const;
 
+    // Plays sound that the channel decoded itself (the sound of a movie, the user's music) through the channel's wave player, in
+    // place of what played before. Stop ends it.
+    void PlayDecodedSound(const Media::PcmSound& sound);
+    void StopDecodedSound();
+    bool IsDecodedSoundPlaying();
+
     // The font of the channel, font_photo.brfnt.
     const Layout::DrawableFont& Font() const;
 
@@ -122,6 +130,7 @@ private:
     std::map<int, Formats::RgbaImage> decodedTextures;
     std::unique_ptr<SystemMenu::IosNandFiles> boardFiles;
     std::unique_ptr<SystemMenu::MessageStore> boardStore;
+    Sound::WaveHandle decodedSound;
 };
 
 // The screens. Each one is made when the channel goes to it.

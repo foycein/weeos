@@ -5,7 +5,6 @@
 
 #include "Formats/RgbaImage.h"
 #include "Formats/Vectors.h"
-#include "Platform/ScreenShape.h"
 
 #include <array>
 #include <cstddef>
@@ -155,6 +154,15 @@ enum class BlendMode : std::uint8_t
 
 constexpr std::size_t BlendModeCount = 5;
 
+// An indirect texture moves the place where a stage reads its own texture, as the water of the Wii Speak Channel's chat room does.
+// Its texel at the place of the pixel gives three numbers (its alpha, blue and green, each less 128, from -128 to 127), and the
+// matrix turns them into how many texels the stage's texture is read away in S and T.
+struct IndirectTexture
+{
+    std::uint8_t textureIndex = 0;
+    std::array<std::array<float, 3>, 2> matrix = {};
+};
+
 // A material says how a quad gets its colors.
 struct Material
 {
@@ -181,6 +189,9 @@ struct Material
     // The alpha test of the Wii's graphics chip as the Mii face library uses it: a pixel whose alpha is 0 is not drawn at all,
     // so it changes neither the colors nor the depth.
     bool skipsTransparentPixels = false;
+
+    // Only for the stages that are moved by it (TevStage::isMovedByIndirectTexture).
+    std::optional<IndirectTexture> indirectTexture;
 };
 
 // ---- Meshes (3D)
@@ -293,8 +304,14 @@ public:
     virtual void DestroyTexture(TextureHandle texture) = 0;
 
     // Starts a new picture of the screen and clears it to black. Everything drawn until Present is part of it.
-    virtual void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) = 0;
+    // The canvas is the 16:9 picture. It lies in the middle of the screen, as large as it fits.
+    virtual void BeginFrame(const Canvas& canvas) = 0;
 
+    // The part of the plane of the canvas that the picture shows, in canvas units: the canvas, and on a screen of another shape also the
+    // space beside it or above and below it. It is the canvas itself in an offscreen picture.
+    virtual ScissorRectangle WholeArea() const = 0;
+
+    // Without a scissor only the canvas is drawn. A scissor may reach beyond the canvas into the whole area.
     // The scissor holds until ClearScissor or until the next picture or offscreen picture starts.
     // Every picture has a scissor of its own: an offscreen picture starts without one, and after EndOffscreen
     // the screen picture goes on with the scissor it had before.
