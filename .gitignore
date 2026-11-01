@@ -10,3 +10,6 @@ __pycache__/
 Worktrees/
 reference/
 tools/jdk/
+
+# Pictures written by end-to-end runs
+EndToEndPictures/
