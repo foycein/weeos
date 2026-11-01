@@ -185,7 +185,9 @@ std::u16string_view PageHelperScript()
            u"  var isLine = tag === 'input' && textInputTypes.indexOf(type) >= 0;"
            u"  if (!isLines && !isLine) return;"
            u"  if (field.disabled || field.readOnly) return;"
-           u"  var kind = isLines ? 'Lines' : (type === 'password' ? 'Password' : 'Line');"
+           u"  var kind = 'Line';"
+           u"  if (isLines) kind = 'Lines';"
+           u"  else if (type === 'password') kind = 'Password';"
            u"  window.chrome.webview.postMessage('TextField\\n' + kind + '\\n' + field.value);"
            u" }, true);"
            u"})();";

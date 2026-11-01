@@ -30,6 +30,7 @@ constexpr int UnusableOffset = 2;
 // The lock and the sign of the page information have two pictures: usable and unusable.
 constexpr int LockPicture = 52;
 constexpr int InformationPicture = 54;
+constexpr int UnusableInformationOffset = 1;
 
 // The blue bar of the loading progress, 800 by 8 pixels.
 constexpr int ProgressBarPicture = 51;
@@ -120,26 +121,27 @@ void PageToolbar::Draw(PagePainter& painter, const PageFrame& frame, const Toolb
 std::vector<PageToolbar::PlacedButton> PageToolbar::PlaceButtons(const PageFrame& frame) const
 {
     std::vector<PlacedButton> placed;
-    float totalWidth = 0;
+    float nextLeft = 0;
     for (ToolbarButton button : shownButtons)
     {
         const PagePicture& picture = *pictures[FirstPictureOf(button, false)];
         if (button == ToolbarButton::PageInfo)
-            totalWidth += GapBeforePageInfo;
-        placed.push_back({button, {totalWidth, ButtonTop, picture.Width(), picture.Height()}});
-        totalWidth += picture.Width();
+            nextLeft += GapBeforePageInfo;
+        placed.push_back({button, {nextLeft, ButtonTop, picture.Width(), picture.Height()}});
+        nextLeft += picture.Width();
         if (button == ToolbarButton::Forward)
-            totalWidth += GapAfterForward;
+            nextLeft += GapAfterForward;
     }
 
+    float totalWidth = nextLeft;
     float left = (frame.width - totalWidth) / 2;
     float top = frame.height - Height;
-    for (PlacedButton& button : placed)
+    for (PlacedButton& placedButton : placed)
     {
-        button.place.left += left;
-        button.place.top += top;
-        if (button.button == ToolbarButton::PageInfo)
-            button.place.top = top + PageInfoTop;
+        placedButton.place.left += left;
+        placedButton.place.top += top;
+        if (placedButton.button == ToolbarButton::PageInfo)
+            placedButton.place.top = top + PageInfoTop;
     }
     return placed;
 }
@@ -150,7 +152,9 @@ const PagePicture& PageToolbar::PictureOf(ToolbarButton button, const ToolbarSta
     if (button == ToolbarButton::PageInfo)
     {
         int picture = state.isSecure ? LockPicture : InformationPicture;
-        return *pictures[isUnusable ? picture + 1 : picture];
+        if (isUnusable)
+            picture += UnusableInformationOffset;
+        return *pictures[picture];
     }
 
     int first = FirstPictureOf(button, state.isLoading);

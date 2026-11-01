@@ -25,6 +25,11 @@ using Microsoft::WRL::ComPtr;
 // Two buffers: Windows fills one while the capture copies the other.
 constexpr int FramesInPool = 2;
 constexpr DirectX::DirectXPixelFormat CapturedFormat = DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized;
+constexpr std::uint32_t BytesPerCapturedPixel = 4;
+constexpr std::size_t BlueByte = 0;
+constexpr std::size_t GreenByte = 1;
+constexpr std::size_t RedByte = 2;
+constexpr std::uint8_t OpaqueAlpha = 0xFF;
 
 ComPtr<ID3D11Device> MakeGraphicsDevice(ComPtr<ID3D11DeviceContext>& context)
 {
@@ -75,8 +80,8 @@ void CopyRowAsRgba(const std::uint8_t* blueGreenRedAlpha, Formats::Rgba8Pixel* r
 {
     for (std::uint32_t x = 0; x < width; ++x)
     {
-        const std::uint8_t* pixel = blueGreenRedAlpha + x * 4;
-        row[x] = {pixel[2], pixel[1], pixel[0], 255};
+        const std::uint8_t* pixel = blueGreenRedAlpha + x * BytesPerCapturedPixel;
+        row[x] = {pixel[RedByte], pixel[GreenByte], pixel[BlueByte], OpaqueAlpha};
     }
 }
 
@@ -149,7 +154,9 @@ void PageCapture::Parts::TakeFrame()
     try
     {
         ComPtr<ID3D11Texture2D> texture = TextureOf(frame);
-        receiver(ReadPixels(*texture.Get(), static_cast<std::uint32_t>(contentSize.Width), static_cast<std::uint32_t>(contentSize.Height)));
+        std::uint32_t width = static_cast<std::uint32_t>(contentSize.Width);
+        std::uint32_t height = static_cast<std::uint32_t>(contentSize.Height);
+        receiver(ReadPixels(*texture.Get(), width, height));
     }
     catch (const BrowserError&)
     {
@@ -174,7 +181,11 @@ Formats::RgbaImage PageCapture::Parts::ReadPixels(ID3D11Texture2D& texture, std:
     Formats::RgbaImage picture{width, height, std::vector<Formats::Rgba8Pixel>(static_cast<std::size_t>(width) * height)};
     const std::uint8_t* firstRow = static_cast<const std::uint8_t*>(mapped.pData);
     for (std::uint32_t y = 0; y < height; ++y)
-        CopyRowAsRgba(firstRow + static_cast<std::size_t>(y) * mapped.RowPitch, &picture.pixels[static_cast<std::size_t>(y) * width], width);
+    {
+        const std::uint8_t* capturedRow = firstRow + static_cast<std::size_t>(y) * mapped.RowPitch;
+        Formats::Rgba8Pixel* pictureRow = &picture.pixels[static_cast<std::size_t>(y) * width];
+        CopyRowAsRgba(capturedRow, pictureRow, width);
+    }
 
     context->Unmap(readableCopy.Get(), 0);
     return picture;

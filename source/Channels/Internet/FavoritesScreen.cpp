@@ -3,6 +3,7 @@
 #include "Channels/ChannelFiles.h"
 #include "Channels/Internet/PageToolbar.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/PngImage.h"
 
 #include <algorithm>
@@ -42,7 +43,8 @@ constexpr float EditRowGap = 2;
 constexpr float EditRowRightEndWidth = 21;
 constexpr float EditIconLeft = 15;
 constexpr float EditIconWidth = 30;
-constexpr float EditTextLeft = EditIconLeft + 37;
+constexpr float IconToTextDistance = 37;
+constexpr float EditTextLeft = EditIconLeft + IconToTextDistance;
 constexpr float EditTextTop = 11;
 constexpr float EditMenuGap = 4;
 
@@ -73,8 +75,29 @@ constexpr std::array<std::string_view, 4> EditOptionTexts = {
     "S_FAVORITES_BUTTON_DELETE", "S_FAVORITES_BUTTON_RENAME", "S_FAVORITES_BUTTON_MOVE", "DI_OPERA_QT_BUTTON_CLOSE"};
 constexpr std::array<std::string_view, 4> EditOptionIcons = {"trashIcon.png", "editIcon.png", "moveIcon.png", "closeIcon.png"};
 
-// The arrows around a moving favorite: up, right, down, left.
+// The arrows around a moving favorite, in the order of MoveArrow.
 constexpr std::array<std::string_view, 4> MoveArrowFiles = {"moveArrowUp.png", "moveArrowRight.png", "moveArrowDown.png", "moveArrowLeft.png"};
+
+enum MoveArrow
+{
+    ArrowUp,
+    ArrowRight,
+    ArrowDown,
+    ArrowLeft,
+};
+
+// Move needs another favorite to move past.
+bool CanMove(std::size_t favoriteCount)
+{
+    return favoriteCount > 1;
+}
+
+// The row of an edit option in the menu.
+PageRectangle EditRowOf(const PageRectangle& menu, std::size_t row)
+{
+    float top = menu.top + EditRowsTop + row * (EditRowHeight + EditRowGap);
+    return {menu.left + EditRowsLeft, top, menu.width - 2 * EditRowsLeft, EditRowHeight};
+}
 
 std::unique_ptr<PagePicture> ReadPicture(Graphics::GraphicsDevice& device, const Formats::U8Archive& pages, std::string_view name)
 {
@@ -125,7 +148,7 @@ void FavoritesScreen::SetThumbnails(std::map<int, std::unique_ptr<PagePicture>> 
 
 void FavoritesScreen::ScrollRows(int rows, std::size_t favoriteCount)
 {
-    int rowCount = static_cast<int>((favoriteCount + TilesPerRow - 1) / TilesPerRow);
+    int rowCount = static_cast<int>(Formats::DivideRoundingUp(favoriteCount, TilesPerRow));
     firstRow = std::clamp(firstRow + rows, 0, std::max(0, rowCount - 1));
 }
 
@@ -166,14 +189,11 @@ std::optional<FavoritesScreen::EditOption> FavoritesScreen::EditOptionAt(Formats
     PageRectangle menu = EditMenuOf(*editedFavorite, frame);
     for (std::size_t row = 0; row < EditOptionTexts.size(); ++row)
     {
-        PageRectangle rowPlace = {menu.left + EditRowsLeft, menu.top + EditRowsTop + row * (EditRowHeight + EditRowGap),
-            menu.width - 2 * EditRowsLeft, EditRowHeight};
-        if (!rowPlace.Contains(pagePoint))
+        if (!EditRowOf(menu, row).Contains(pagePoint))
             continue;
 
         EditOption option = static_cast<EditOption>(row);
-        bool canMove = favoriteCount > 1;
-        if (option == EditOption::Move && !canMove)
+        if (option == EditOption::Move && !CanMove(favoriteCount))
             return std::nullopt;
         return option;
     }
@@ -303,12 +323,12 @@ void FavoritesScreen::DrawEditMenu(PagePainter& painter, const PageFrame& frame,
 
     for (std::size_t row = 0; row < EditOptionTexts.size(); ++row)
     {
-        PageRectangle rowPlace = {menu.left + EditRowsLeft, menu.top + EditRowsTop + row * (EditRowHeight + EditRowGap),
-            menu.width - 2 * EditRowsLeft, EditRowHeight};
+        PageRectangle rowPlace = EditRowOf(menu, row);
         bool isFocused = focusedOption == static_cast<EditOption>(row);
         float stateTop = isFocused ? EditRowHeight : 0;
         float rowBodyWidth = rowPlace.width - EditRowRightEndWidth;
-        painter.DrawPicturePart(*editHighlight, {rowPlace.left, rowPlace.top, rowBodyWidth, EditRowHeight}, {0, stateTop, rowBodyWidth, EditRowHeight});
+        painter.DrawPicturePart(*editHighlight, {rowPlace.left, rowPlace.top, rowBodyWidth, EditRowHeight},
+            {0, stateTop, rowBodyWidth, EditRowHeight});
         painter.DrawPicturePart(*editHighlight, {rowPlace.left + rowBodyWidth, rowPlace.top, EditRowRightEndWidth, EditRowHeight},
             {editHighlight->Width() - EditRowRightEndWidth, stateTop, EditRowRightEndWidth, EditRowHeight});
         painter.DrawPicturePart(*editIcons[row], {rowPlace.left + EditIconLeft, rowPlace.top, EditIconWidth, EditRowHeight},
@@ -316,7 +336,7 @@ void FavoritesScreen::DrawEditMenu(PagePainter& painter, const PageFrame& frame,
         painter.DrawText(texts.Find(EditOptionTexts[row]), EditRowStyle,
             {rowPlace.left + EditTextLeft, rowPlace.top + EditTextTop, rowPlace.width - EditTextLeft, EditRowHeight});
 
-        bool isFaint = static_cast<EditOption>(row) == EditOption::Move && favoriteCount < 2;
+        bool isFaint = static_cast<EditOption>(row) == EditOption::Move && !CanMove(favoriteCount);
         if (isFaint)
             painter.FillRectangle(rowPlace, FaintRowCover);
     }
@@ -327,10 +347,10 @@ void FavoritesScreen::DrawMoveArrows(PagePainter& painter, const PageFrame& fram
     PageRectangle place = TileOf(*movingFavorite, frame);
     float middleX = place.left + place.width / 2 - ArrowSize / 2;
     float middleY = place.top + place.height / 2 - ArrowSize / 2;
-    painter.DrawPicture(*moveArrows[0], {middleX, place.top - ArrowSize / 2, ArrowSize, ArrowSize});
-    painter.DrawPicture(*moveArrows[1], {place.left + place.width - ArrowSize / 2, middleY, ArrowSize, ArrowSize});
-    painter.DrawPicture(*moveArrows[2], {middleX, place.top + place.height - ArrowSize / 2, ArrowSize, ArrowSize});
-    painter.DrawPicture(*moveArrows[3], {place.left - ArrowSize / 2, middleY, ArrowSize, ArrowSize});
+    painter.DrawPicture(*moveArrows[ArrowUp], {middleX, place.top - ArrowSize / 2, ArrowSize, ArrowSize});
+    painter.DrawPicture(*moveArrows[ArrowRight], {place.left + place.width - ArrowSize / 2, middleY, ArrowSize, ArrowSize});
+    painter.DrawPicture(*moveArrows[ArrowDown], {middleX, place.top + place.height - ArrowSize / 2, ArrowSize, ArrowSize});
+    painter.DrawPicture(*moveArrows[ArrowLeft], {place.left - ArrowSize / 2, middleY, ArrowSize, ArrowSize});
 }
 
 }

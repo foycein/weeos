@@ -53,7 +53,11 @@ bool BelongsTo(std::string_view host, std::string_view name)
         return true;
 
     bool isLonger = host.size() > name.size();
-    return isLonger && host.ends_with(name) && host[host.size() - name.size() - 1] == '.';
+    if (!isLonger || !host.ends_with(name))
+        return false;
+
+    std::size_t placeBeforeName = host.size() - name.size() - 1;
+    return host[placeBeforeName] == '.';
 }
 
 RedirectDecision DecideRedirect(std::string_view address, const AddressRedirect& redirect)

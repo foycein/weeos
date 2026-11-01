@@ -13,6 +13,7 @@
 #include <wrl/event.h>
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 
 namespace Browser
@@ -26,7 +27,6 @@ using Microsoft::WRL::ComPtr;
 
 constexpr wchar_t HostWindowClass[] = L"WeeOSWebPage";
 
-
 // The steps of a load, as parts of the whole (PageState::loadingProgress, Assumed: the engine does not count bytes).
 constexpr double ProgressWhenStarted = 0.1;
 constexpr double ProgressWhenContentComes = 0.4;
@@ -38,7 +38,8 @@ constexpr wchar_t EnglishLanguage[] = L"en-US";
 // The engine stops drawing a window that Windows calls hidden behind other windows; the window of the page must always be drawn.
 constexpr wchar_t BrowserArguments[] = L"--disable-features=CalculateNativeWinOcclusion";
 
-constexpr std::string_view SecureScheme = "https://";
+constexpr int HttpOk = 200;
+constexpr int HttpNotFound = 404;
 
 std::string TakeWideText(LPWSTR text)
 {
@@ -181,8 +182,10 @@ void PageEngine::MakeHostWindow()
 // The window has the size of the page's picture. It is never shown: the engine draws into the visual.
 void PageEngine::PlaceHostWindow()
 {
-    int width = std::max(1, static_cast<int>(viewSize.pageWidth * viewSize.pixelsPerPagePixel + 0.5));
-    int height = std::max(1, static_cast<int>(viewSize.pageHeight * viewSize.pixelsPerPagePixel + 0.5));
+    int pictureWidth = static_cast<int>(std::lround(viewSize.pageWidth * viewSize.pixelsPerPagePixel));
+    int pictureHeight = static_cast<int>(std::lround(viewSize.pageHeight * viewSize.pixelsPerPagePixel));
+    int width = std::max(1, pictureWidth);
+    int height = std::max(1, pictureHeight);
     SetWindowPos(hostWindow, HWND_BOTTOM, 0, 0, width, height, SWP_NOACTIVATE | SWP_NOMOVE | SWP_HIDEWINDOW);
 }
 
@@ -258,6 +261,8 @@ HRESULT PageEngine::OnControllerMade(HRESULT result, ICoreWebView2CompositionCon
     SetViewSize(viewSize);
     controller->put_IsVisible(TRUE);
     CallDevTools(L"Emulation.setFocusEmulationEnabled", FocusEmulationParameters());
+
+    // Without a capture the start error is reported already, and the engine never becomes ready.
     if (!capture)
         return S_OK;
 
@@ -315,52 +320,29 @@ void PageEngine::ListenToPageEvents()
 {
     EventRegistrationToken token;
     webView->add_SourceChanged(Callback<ICoreWebView2SourceChangedEventHandler>([this](ICoreWebView2*, ICoreWebView2SourceChangedEventArgs*) {
-        LPWSTR source = nullptr;
-        webView->get_Source(&source);
-        std::lock_guard<std::mutex> guard(report.lock);
-        report.state.address = TakeWideText(source);
+        OnSourceChanged();
         return S_OK;
     }).Get(), &token);
 
     webView->add_DocumentTitleChanged(Callback<ICoreWebView2DocumentTitleChangedEventHandler>([this](ICoreWebView2*, IUnknown*) {
-        LPWSTR title = nullptr;
-        webView->get_DocumentTitle(&title);
-        std::lock_guard<std::mutex> guard(report.lock);
-        report.state.title = TakeText(title);
+        OnTitleChanged();
         return S_OK;
     }).Get(), &token);
 
     webView->add_HistoryChanged(Callback<ICoreWebView2HistoryChangedEventHandler>([this](ICoreWebView2*, IUnknown*) {
-        BOOL canGoBack = FALSE;
-        BOOL canGoForward = FALSE;
-        webView->get_CanGoBack(&canGoBack);
-        webView->get_CanGoForward(&canGoForward);
-        std::lock_guard<std::mutex> guard(report.lock);
-        report.state.canGoBack = canGoBack == TRUE;
-        report.state.canGoForward = canGoForward == TRUE;
+        OnHistoryChanged();
         return S_OK;
     }).Get(), &token);
 
-    // The channel has one page, as the original: a link that asks for a new window opens in it.
     webView->add_NewWindowRequested(Callback<ICoreWebView2NewWindowRequestedEventHandler>(
         [this](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* arguments) {
-            LPWSTR address = nullptr;
-            arguments->get_Uri(&address);
-            arguments->put_Handled(TRUE);
-            Open(TakeWideText(address));
+            OnNewWindowRequested(*arguments);
             return S_OK;
         }).Get(), &token);
 
     webView->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
         [this](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* arguments) {
-            LPWSTR message = nullptr;
-            if (FAILED(arguments->TryGetWebMessageAsString(&message)))
-                return S_OK;
-
-            std::optional<TextFieldRequest> request = ReadTextFieldMessage(TakeText(message));
-            std::lock_guard<std::mutex> guard(report.lock);
-            if (request)
-                report.textField = request;
+            OnWebMessage(*arguments);
             return S_OK;
         }).Get(), &token);
 
@@ -369,6 +351,56 @@ void PageEngine::ListenToPageEvents()
             ServeRequest(*arguments);
             return S_OK;
         }).Get(), &token);
+}
+
+void PageEngine::OnSourceChanged()
+{
+    LPWSTR source = nullptr;
+    webView->get_Source(&source);
+    std::lock_guard<std::mutex> guard(report.lock);
+    report.state.address = TakeWideText(source);
+}
+
+void PageEngine::OnTitleChanged()
+{
+    LPWSTR title = nullptr;
+    webView->get_DocumentTitle(&title);
+    std::lock_guard<std::mutex> guard(report.lock);
+    report.state.title = TakeText(title);
+}
+
+void PageEngine::OnHistoryChanged()
+{
+    BOOL canGoBack = FALSE;
+    BOOL canGoForward = FALSE;
+    webView->get_CanGoBack(&canGoBack);
+    webView->get_CanGoForward(&canGoForward);
+    std::lock_guard<std::mutex> guard(report.lock);
+    report.state.canGoBack = canGoBack == TRUE;
+    report.state.canGoForward = canGoForward == TRUE;
+}
+
+// The channel has one page, as the original: a link that asks for a new window opens in it.
+void PageEngine::OnNewWindowRequested(ICoreWebView2NewWindowRequestedEventArgs& arguments)
+{
+    LPWSTR address = nullptr;
+    arguments.get_Uri(&address);
+    arguments.put_Handled(TRUE);
+    Open(TakeWideText(address));
+}
+
+void PageEngine::OnWebMessage(ICoreWebView2WebMessageReceivedEventArgs& arguments)
+{
+    LPWSTR message = nullptr;
+    if (FAILED(arguments.TryGetWebMessageAsString(&message)))
+        return;
+
+    std::optional<TextFieldRequest> request = ReadTextFieldMessage(TakeText(message));
+    if (!request)
+        return;
+
+    std::lock_guard<std::mutex> guard(report.lock);
+    report.textField = request;
 }
 
 void PageEngine::ListenToLoadEvents()
@@ -421,21 +453,32 @@ void PageEngine::ListenToQuestions()
     EventRegistrationToken token;
     webView->add_ScriptDialogOpening(Callback<ICoreWebView2ScriptDialogOpeningEventHandler>(
         [this](ICoreWebView2*, ICoreWebView2ScriptDialogOpeningEventArgs* arguments) {
-            COREWEBVIEW2_SCRIPT_DIALOG_KIND kind = COREWEBVIEW2_SCRIPT_DIALOG_KIND_ALERT;
-            LPWSTR message = nullptr;
-            LPWSTR defaultText = nullptr;
-            arguments->get_Kind(&kind);
-            arguments->get_Message(&message);
-            arguments->get_DefaultText(&defaultText);
-
-            openDialog = arguments;
-            arguments->GetDeferral(&openDialogDeferral);
-
-            std::lock_guard<std::mutex> guard(report.lock);
-            report.dialog = ScriptDialog{DialogKindOf(kind), TakeText(message), TakeText(defaultText)};
+            OnScriptDialog(*arguments);
             return S_OK;
         }).Get(), &token);
 
+    RefuseEdgeQuestions();
+}
+
+void PageEngine::OnScriptDialog(ICoreWebView2ScriptDialogOpeningEventArgs& arguments)
+{
+    COREWEBVIEW2_SCRIPT_DIALOG_KIND kind = COREWEBVIEW2_SCRIPT_DIALOG_KIND_ALERT;
+    LPWSTR message = nullptr;
+    LPWSTR defaultText = nullptr;
+    arguments.get_Kind(&kind);
+    arguments.get_Message(&message);
+    arguments.get_DefaultText(&defaultText);
+
+    openDialog = &arguments;
+    arguments.GetDeferral(&openDialogDeferral);
+
+    std::lock_guard<std::mutex> guard(report.lock);
+    report.dialog = ScriptDialog{DialogKindOf(kind), TakeText(message), TakeText(defaultText)};
+}
+
+void PageEngine::RefuseEdgeQuestions()
+{
+    EventRegistrationToken token;
     webView->add_PermissionRequested(Callback<ICoreWebView2PermissionRequestedEventHandler>(
         [](ICoreWebView2*, ICoreWebView2PermissionRequestedEventArgs* arguments) {
             arguments->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
@@ -540,7 +583,7 @@ void PageEngine::ServeRequest(ICoreWebView2WebResourceRequestedEventArgs& argume
     auto file = host->second.find(path);
     if (file == host->second.end())
     {
-        environment->CreateWebResourceResponse(nullptr, 404, L"Not Found", L"", &response);
+        environment->CreateWebResourceResponse(nullptr, HttpNotFound, L"Not Found", L"", &response);
         arguments.put_Response(response.Get());
         return;
     }
@@ -548,7 +591,7 @@ void PageEngine::ServeRequest(ICoreWebView2WebResourceRequestedEventArgs& argume
     const std::vector<std::uint8_t>& bytes = file->second;
     ComPtr<IStream> stream;
     stream.Attach(SHCreateMemStream(bytes.data(), static_cast<UINT>(bytes.size())));
-    environment->CreateWebResourceResponse(stream.Get(), 200, L"OK", ContentTypeOf(path).c_str(), &response);
+    environment->CreateWebResourceResponse(stream.Get(), HttpOk, L"OK", ContentTypeOf(path).c_str(), &response);
     arguments.put_Response(response.Get());
 }
 

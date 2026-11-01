@@ -20,6 +20,7 @@ constexpr float ListWidth = 461;
 constexpr float HeaderTop = 22;
 constexpr float HeaderHeight = 30;
 constexpr float TitleIconSize = 23;
+constexpr float TitleIconDrop = 3;
 constexpr float TitleIndent = 33;
 constexpr float ListTop = 64;
 constexpr float RowHeight = 45;
@@ -63,11 +64,31 @@ struct EntryTexts
 // The settings in the order of preferences/menu.js, with the values of their choices.
 constexpr std::array<EntryTexts, 3> Entries = {{
     {SettingsScreen::Entry::ToolbarDisplay, "S_SETTING_TOOLBAR", {"S_SETTING_TOOLBAR_ON", "S_SETTING_TOOLBAR_AUTO", "S_SETTING_TOOLBAR_TOGGLE"},
-        {static_cast<int>(ToolbarMode::AlwaysShown), static_cast<int>(ToolbarMode::HiddenUntilPointedAt), static_cast<int>(ToolbarMode::ToggledWithOne)}},
+        {
+            static_cast<int>(ToolbarMode::AlwaysShown),
+            static_cast<int>(ToolbarMode::HiddenUntilPointedAt),
+            static_cast<int>(ToolbarMode::ToggledWithOne),
+        }},
     {SettingsScreen::Entry::SearchEngine, "S_SE_PREF", {"S_HOKKAIDO_GOOGLE", "S_HOKKAIDO_YAHOO", ""},
         {static_cast<int>(SearchEngine::Google), static_cast<int>(SearchEngine::Yahoo), 0}},
     {SettingsScreen::Entry::DeleteCookies, "", {"", "", ""}, {0, 0, 0}},
 }};
+
+float ArrowTopOf(bool isOpen, bool isFocused)
+{
+    if (isOpen)
+        return isFocused ? ArrowOpenPointedAtTop : ArrowOpenTop;
+
+    return isFocused ? ArrowClosedPointedAtTop : ArrowClosedTop;
+}
+
+float RadioTopOf(bool isChosen, bool isFocused)
+{
+    if (isChosen)
+        return isFocused ? RadioChosenPointedAtTop : RadioChosenTop;
+
+    return isFocused ? RadioPointedAtTop : RadioTop;
+}
 
 const EntryTexts& TextsOf(SettingsScreen::Entry entry)
 {
@@ -119,7 +140,7 @@ void SettingsScreen::Draw(PagePainter& painter, const PageFrame& frame, const Op
     painter.FillRectangle({0, 0, frame.width, frame.height}, PageColor);
 
     float left = (frame.width - ListWidth) / 2;
-    painter.DrawPicture(*titleIcon, {left, HeaderTop + 3, TitleIconSize, TitleIconSize});
+    painter.DrawPicture(*titleIcon, {left, HeaderTop + TitleIconDrop, TitleIconSize, TitleIconSize});
     painter.DrawText(texts.Find(SettingsTitle), TitleStyle, {left + TitleIndent, HeaderTop, ListWidth, HeaderHeight});
 
     for (const PlacedItem& placed : PlaceItems(frame))
@@ -182,7 +203,7 @@ void SettingsScreen::DrawEntry(PagePainter& painter, const PlacedItem& placed, b
     if (!isDeleteCookies)
     {
         bool isOpen = openEntry == placed.item.entry;
-        float arrowTop = isOpen ? (isFocused ? ArrowOpenPointedAtTop : ArrowOpenTop) : (isFocused ? ArrowClosedPointedAtTop : ArrowClosedTop);
+        float arrowTop = ArrowTopOf(isOpen, isFocused);
         painter.DrawPicturePart(*arrow, {place.left + ArrowLeft, place.top, ArrowWidth, RowHeight}, {0, arrowTop, ArrowWidth, RowHeight});
     }
 
@@ -195,7 +216,7 @@ void SettingsScreen::DrawChoice(PagePainter& painter, const PlacedItem& placed, 
     const PageRectangle& place = placed.place;
     painter.FillRectangle(place, ChoicesColor);
 
-    float radioTop = isChosen ? (isFocused ? RadioChosenPointedAtTop : RadioChosenTop) : (isFocused ? RadioPointedAtTop : RadioTop);
+    float radioTop = RadioTopOf(isChosen, isFocused);
     painter.DrawPicturePart(*radio, {place.left + ChoiceIndent, place.top, radio->Width(), RowHeight}, {0, radioTop, radio->Width(), RowHeight});
 
     const EntryTexts& entry = TextsOf(placed.item.entry);
@@ -205,7 +226,8 @@ void SettingsScreen::DrawChoice(PagePainter& painter, const PlacedItem& placed, 
             continue;
 
         float textLeft = place.left + ChoiceIndent + RadioWidth;
-        painter.DrawText(texts.Find(entry.choices[index]), RowStyle, {textLeft, place.top + TextTop, place.width - textLeft + place.left, RowHeight});
+        float textWidth = place.width - textLeft + place.left;
+        painter.DrawText(texts.Find(entry.choices[index]), RowStyle, {textLeft, place.top + TextTop, textWidth, RowHeight});
     }
 }
 

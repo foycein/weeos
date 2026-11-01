@@ -55,6 +55,9 @@ constexpr std::u16string_view OperaVersionScript =
 // 456 / 450 layout units and the page is as wide as the picture.
 constexpr float WidePageHeight = 450;
 
+// The pages, the favorites, the settings and the toolbar are drawn with one layout unit per CSS pixel (BRW-19, Assumed).
+constexpr float FlatPageScale = 1;
+
 // The places of the widescreen startpage.css, in pixels of the page, from the left edge of #frontcontainer, which is 547 pixels wide
 // and stands in the middle. The tops follow from the heights and margins of the blocks above them.
 constexpr float ContainerWidth = 547;
@@ -88,6 +91,9 @@ constexpr PageRectangle ControllerPlace = {446, 97, 67, 223};
 constexpr PageRectangle ControllerPart = {0, 0, 67, 223};
 constexpr PageRectangle ControlsTextBox = {412, 320, 120, 25};
 
+// The gloss of an orb lies one pixel lower than the orb.
+constexpr float GlossDrop = 1;
+
 constexpr float BackgroundTop = 4;
 constexpr Formats::Rgba8Color White = {255, 255, 255, 255};
 
@@ -110,7 +116,7 @@ constexpr float AlertOkMargin = 131;
 constexpr float ButtonMargin = 37;
 constexpr PageTextStyle MessageStyle = {22, {0, 0, 0, 255}, Text::HorizontalAlignment::Left};
 
-// The page under a dialog is darkened (CHN-31, Assumed: #dialogBackground is black, how much of the page shows through is not known).
+// The page under a dialog is darkened (CHN-29, Assumed: #dialogBackground is black, how much of the page shows through is not known).
 constexpr Formats::Rgba8Color DialogShade = {0, 0, 0, 128};
 
 // The pictures hold their states one under the other: the state of a place that the pointer is on is the second one.
@@ -120,11 +126,14 @@ constexpr int FocusedState = 1;
 constexpr std::string_view NetworkErrorCodeMark = "%06d";
 constexpr std::string_view SearchEngineMark = "%s";
 
-constexpr std::array<std::string_view, 3> OrbTitles = {"S_HOKKAIDO_LABEL_SEARCH", "S_FAV_PAGE_FAV", "S_ENTER_WEB_ADDRESS"};
-constexpr std::array<std::string_view, 3> OrbSymbolFiles = {"symSearch.png", "symFavorites.png", "symURL.png"};
-constexpr std::array<std::string_view, 3> ButtonTitles = {
+constexpr std::array<std::string_view, InternetChannel::OrbCount> OrbTitles = {
+    "S_HOKKAIDO_LABEL_SEARCH", "S_FAV_PAGE_FAV", "S_ENTER_WEB_ADDRESS"};
+constexpr std::array<std::string_view, InternetChannel::OrbCount> OrbSymbolFiles = {"symSearch.png", "symFavorites.png", "symURL.png"};
+constexpr std::array<std::string_view, InternetChannel::ButtonCount> ButtonTitles = {
     "S_HOKKAIDO_LABEL_OPERATIONS_GUIDE", "S_HOKKAIDO_LABEL_SETTINGS", "S_HOKKAIDO_LABEL_WII_MENU"};
-constexpr std::array<std::string_view, 3> ButtonIconFiles = {"link_help.png", "link_settings.png", "link_wiimenu.png"};
+constexpr std::array<std::string_view, InternetChannel::ButtonCount> ButtonIconFiles = {"link_help.png", "link_settings.png", "link_wiimenu.png"};
+constexpr std::string_view StartPageTitleText = "S_START";
+constexpr std::string_view ControlsLabelText = "S_HOKKAIDO_LABEL_USE_WII_REMOTE";
 
 // The texts that the program asks for by their ids (0x800338B0 for the network error; the others have no name in the pages).
 constexpr std::int32_t NetworkErrorTextId = static_cast<std::int32_t>(0xF5525EA9);
@@ -172,28 +181,38 @@ constexpr std::string_view ZoomBackToNormal = "WOP_SE_ZOOM_100";
 
 }
 
-// The longest title of a favorite (the original's "Edit Title" prompt, favorites.js).
-constexpr std::size_t LongestFavoriteTitle = 64;
-
 // The help of the remote that "Controls" shows (helpRemoteDialogTemplate of startpage.js): the sign of the button in the console's font
-// and its text. The line of Single Column Mode is left out, because WeeOS has no such mode (BRW-16).
+// and its text.
 struct ControlsLine
 {
     std::u16string_view buttonSigns;
     std::string_view text;
 };
 
-constexpr std::array<ControlsLine, 3> ControlsLines = {{
+constexpr std::array<ControlsLine, 4> ControlsLines = {{
     {u"\uE042", "S_HOKKAIDO_HELP_SELECT"},
     {u"\uE043", "S_HOKKAIDO_HELP_SCROLL"},
     {u"\uE045\uE046", "S_HOKKAIDO_HELP_ZOOM"},
+    {u"\uE048", "S_HOKKAIDO_HELP_SINGLE_COL"},
 }};
 constexpr std::string_view DeleteFavoriteText = "D_DELETE_FAV";
 constexpr std::string_view GoogleText = "S_HOKKAIDO_GOOGLE";
 constexpr std::string_view YahooText = "S_HOKKAIDO_YAHOO";
 
-// The longest address and search text of the keyboard (Assumed: the original's limits were not read).
+// The longest address and search text of the keyboard (BRW-09, Assumed: the original's limits were not read).
 constexpr std::size_t LongestTypedText = 1024;
+
+constexpr std::string_view SecureScheme = "https://";
+
+// The test helpers PlaceOf... find a part of a screen by trying points of the page in steps, and give a point a little inside it.
+constexpr float ToolbarScanStep = 1;
+constexpr float FavoriteScanStep = 4;
+constexpr Formats::Vector2 IntoTheFavorite = {40, 40};
+constexpr float SettingsScanStep = 4;
+constexpr float IntoTheSettingsItem = 10;
+constexpr float EditOptionScanStepDown = 2;
+constexpr float EditOptionScanStepAcross = 8;
+constexpr Formats::Vector2 IntoTheEditOption = {30, 20};
 
 // Scrolling with the +Control Pad, and with B held while the remote moves (the manual, page 3; Assumed speeds).
 constexpr double ScrollPixelsPerStep = 12;
@@ -220,6 +239,11 @@ std::u16string ReplaceCodeMark(std::u16string text, std::uint32_t code)
 PageRectangle Shifted(const PageRectangle& place, float left, float top)
 {
     return {place.left + left, place.top + top, place.width, place.height};
+}
+
+Formats::Vector2 MiddleOf(const PageRectangle& place)
+{
+    return {place.left + place.width / 2, place.top + place.height / 2};
 }
 
 bool HasButton(Input::ButtonMask buttons, Input::ButtonMask button)
@@ -269,15 +293,41 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
     frame.scale = canvas.height / WidePageHeight;
     frame.width = canvas.width / frame.scale;
     frame.height = WidePageHeight;
-    flatFrame = {canvas.width, canvas.height, 1};
+    flatFrame = {canvas.width, canvas.height, FlatPageScale};
     containerLeft = (frame.width - ContainerWidth) / 2;
 
+    MakePainters();
+    MakeHandsAndKeyboard();
+
+    Formats::U8Archive defaults = ReadArchiveContent(services.contents, DefaultsContentIndex);
+    data = std::make_unique<OperaData>(services.storage.fileSystem, services.storage.fileSystemCaller, FindFileOrFail(pages, DefaultFavoritesPath),
+        FindFileOrFail(defaults, DefaultPreferencesPath), services.consoleTime);
+
+    Graphics::GraphicsDevice& device = services.display.Device();
+    toolbar = std::make_unique<PageToolbar>(device, ReadArchiveContent(services.contents, ToolbarContentIndex));
+    favoritesScreen = std::make_unique<FavoritesScreen>(device, pages, texts);
+    settingsScreen = std::make_unique<SettingsScreen>(device, pages, texts);
+
+    ReadStartPagePictures();
+    ReadDialogPictures();
+
+    ShowToolbarButtons();
+    networkStart = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
+}
+
+InternetChannel::~InternetChannel() = default;
+
+void InternetChannel::MakePainters()
+{
     Graphics::GraphicsDevice& device = services.display.Device();
     const Layout::DrawableFont& pageFont = services.systemFonts.Find("wbf1.brfna");
     painter = std::make_unique<PagePainter>(device, pageFont, frame);
     flatPainter = std::make_unique<PagePainter>(device, pageFont, flatFrame);
     services.display.SetTextFonts(services.systemFonts);
+}
 
+void InternetChannel::MakeHandsAndKeyboard()
+{
     Formats::U8Archive interfaceFiles = ReadArchiveContent(services.contents, InterfaceContentIndex);
     Formats::U8Archive handFiles = Formats::ReadU8Archive(FindFileOrFail(interfaceFiles, CursorArchivePath));
     cursors = std::make_unique<SystemMenu::CursorManager>(services.display, std::make_unique<Layout::LayoutArchive>(std::move(handFiles)));
@@ -287,15 +337,10 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
         SystemMenu::KeyboardButtonTexts{}, services.clock, services.input, services.sounds);
     if (services.pc.keyboard != nullptr)
         keyboard->UsePhysicalKeyboard(*services.pc.keyboard);
+}
 
-    Formats::U8Archive defaults = ReadArchiveContent(services.contents, DefaultsContentIndex);
-    data = std::make_unique<OperaData>(services.storage.fileSystem, services.storage.fileSystemCaller, FindFileOrFail(pages, DefaultFavoritesPath),
-        FindFileOrFail(defaults, DefaultPreferencesPath), services.consoleTime);
-
-    toolbar = std::make_unique<PageToolbar>(device, ReadArchiveContent(services.contents, ToolbarContentIndex));
-    favoritesScreen = std::make_unique<FavoritesScreen>(device, pages, texts);
-    settingsScreen = std::make_unique<SettingsScreen>(device, pages, texts);
-
+void InternetChannel::ReadStartPagePictures()
+{
     std::string startPage(StartPageFolder);
     background = ReadPicture(startPage + "startBackground.png");
     logo = ReadPicture(startPage + "logoOpera.png");
@@ -309,7 +354,10 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
         orbSymbols[index] = ReadPicture(startPage + std::string(OrbSymbolFiles[index]));
         buttonIcons[index] = ReadPicture(startPage + std::string(ButtonIconFiles[index]));
     }
+}
 
+void InternetChannel::ReadDialogPictures()
+{
     std::string dialogPictures(DialogPictureFolder);
     dialogBack = ReadPicture(dialogPictures + "backDialog.png");
     infoSign = ReadPicture(dialogPictures + "symInfoSign.png");
@@ -318,12 +366,7 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
     cancelButton = ReadPicture(dialogPictures + "btnCancel.png");
     googleButton = ReadPicture(dialogPictures + "google.png");
     yahooButton = ReadPicture(dialogPictures + "yahoo.png");
-
-    ShowToolbarButtons();
-    networkStart = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
 }
-
-InternetChannel::~InternetChannel() = default;
 
 void InternetChannel::Update()
 {
@@ -472,17 +515,21 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfStartPagePlace(Place pla
         return std::nullopt;
 
     if (place == Place::OperaLogo)
-        return PageToPicture({containerLeft + LogoBox.left + LogoBox.width / 2, LogoBox.top + LogoBox.height / 2}, frame);
+        return PageToPicture(MiddleOf(Shifted(LogoBox, containerLeft, 0)), frame);
 
     if (place == Place::Controls)
-        return PageToPicture({containerLeft + ControllerPlace.left + ControllerPlace.width / 2, ControllerPlace.top + ControllerPlace.height / 2}, frame);
+        return PageToPicture(MiddleOf(Shifted(ControllerPlace, containerLeft, 0)), frame);
 
     std::size_t index = static_cast<std::size_t>(place);
     if (index < OrbTitles.size())
-        return PageToPicture({containerLeft + OrbWidth * index + OrbWidth / 2, OrbsTop + OrbPictureSize / 2}, frame);
+    {
+        PageRectangle orbPicture = {containerLeft + OrbWidth * index, OrbsTop, OrbWidth, OrbPictureSize};
+        return PageToPicture(MiddleOf(orbPicture), frame);
+    }
 
     std::size_t buttonIndex = index - OrbTitles.size();
-    return PageToPicture({containerLeft + ButtonPressableWidth / 2, ButtonsTop + ButtonHeight * buttonIndex + ButtonHeight / 2}, frame);
+    PageRectangle buttonPlace = {containerLeft, ButtonsTop + ButtonHeight * buttonIndex, ButtonPressableWidth, ButtonHeight};
+    return PageToPicture(MiddleOf(buttonPlace), frame);
 }
 
 std::optional<Formats::Vector2> InternetChannel::PlaceOfToolbarButton(ToolbarButton wantedButton) const
@@ -490,7 +537,7 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfToolbarButton(ToolbarBut
     if (!IsToolbarShown())
         return std::nullopt;
 
-    for (float x = 0; x < flatFrame.width; x += 1)
+    for (float x = 0; x < flatFrame.width; x += ToolbarScanStep)
     {
         Formats::Vector2 point = {x, flatFrame.height - PageToolbar::Height / 2};
         if (toolbar->ButtonAt(point, flatFrame) == wantedButton)
@@ -504,12 +551,12 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfFavorite(std::size_t ind
     if (view != View::Favorites)
         return std::nullopt;
 
-    for (float y = 0; y < flatFrame.height; y += 4)
+    for (float y = 0; y < flatFrame.height; y += FavoriteScanStep)
     {
-        for (float x = 0; x < flatFrame.width; x += 4)
+        for (float x = 0; x < flatFrame.width; x += FavoriteScanStep)
         {
             if (favoritesScreen->FavoriteAt({x, y}, flatFrame, data->Favorites().size()) == index)
-                return PageToPicture({x + 40, y + 40}, flatFrame);
+                return PageToPicture({x + IntoTheFavorite.x, y + IntoTheFavorite.y}, flatFrame);
         }
     }
     return std::nullopt;
@@ -520,11 +567,11 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfSettingsItem(const Setti
     if (view != View::Settings)
         return std::nullopt;
 
-    for (float y = 0; y < flatFrame.height; y += 4)
+    for (float y = 0; y < flatFrame.height; y += SettingsScanStep)
     {
         Formats::Vector2 point = {flatFrame.width / 2, y};
         if (settingsScreen->ItemAt(point, flatFrame) == item)
-            return PageToPicture({point.x, y + 10}, flatFrame);
+            return PageToPicture({point.x, y + IntoTheSettingsItem}, flatFrame);
     }
     return std::nullopt;
 }
@@ -534,12 +581,12 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfEditOption(FavoritesScre
     if (view != View::Favorites)
         return std::nullopt;
 
-    for (float y = 0; y < flatFrame.height; y += 2)
+    for (float y = 0; y < flatFrame.height; y += EditOptionScanStepDown)
     {
-        for (float x = 0; x < flatFrame.width; x += 8)
+        for (float x = 0; x < flatFrame.width; x += EditOptionScanStepAcross)
         {
             if (favoritesScreen->EditOptionAt({x, y}, flatFrame, data->Favorites().size()) == option)
-                return PageToPicture({x + 30, y + 20}, flatFrame);
+                return PageToPicture({x + IntoTheEditOption.x, y + IntoTheEditOption.y}, flatFrame);
         }
     }
     return std::nullopt;
@@ -550,8 +597,7 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogOk() const
     if (!dialog)
         return std::nullopt;
 
-    PageRectangle place = OkButton();
-    return PageToPicture({place.left + place.width / 2, place.top + place.height / 2}, frame);
+    return PageToPicture(MiddleOf(OkButton()), frame);
 }
 
 std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogCancel() const
@@ -559,8 +605,7 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogCancel() const
     if (!dialog || !dialog->hasCancel)
         return std::nullopt;
 
-    PageRectangle place = CancelButton();
-    return PageToPicture({place.left + place.width / 2, place.top + place.height / 2}, frame);
+    return PageToPicture(MiddleOf(CancelButton()), frame);
 }
 
 // The join of the network ends while the start page shows, and the channel tells it once (0x800320CC, 0x800338B0).
@@ -967,8 +1012,11 @@ void InternetChannel::PressToolbarButton(ToolbarButton pressedButton)
         OpenFavorites();
         return;
     case ToolbarButton::WebAddress:
-        OpenKeyboard(Typing::WebAddress, texts.FindById(EnterWebAddressTextId), view == View::Page ? Browser::TextOfUtf8(pageState.address) : u"");
+    {
+        std::u16string shownAddress = view == View::Page ? Browser::TextOfUtf8(pageState.address) : u"";
+        OpenKeyboard(Typing::WebAddress, texts.FindById(EnterWebAddressTextId), shownAddress);
         return;
+    }
     case ToolbarButton::StartPage:
         ShowView(View::StartPage);
         return;
@@ -1038,31 +1086,17 @@ void InternetChannel::Answer(DialogAnswer answer)
         pageView->Page().AnswerScriptDialog(isOk);
         return;
     case Question::DeleteFavorite:
-        if (isOk && favoriteToDelete && *favoriteToDelete < data->Favorites().size())
-        {
-            data->RemoveFavorite(data->Favorites()[*favoriteToDelete].number);
-            PlaySound(OperaSound::FavoriteDeleted);
-        }
+        if (isOk)
+            DeleteTheFavoriteToDelete();
         favoriteToDelete.reset();
         return;
     case Question::ChooseSearchEngine:
-    {
-        if (answer == DialogAnswer::Cancel)
-            return;
-        engineToConfirm = answer == DialogAnswer::Yahoo ? SearchEngine::Yahoo : SearchEngine::Google;
-        std::u16string engineName = Text(engineToConfirm == SearchEngine::Yahoo ? YahooText : GoogleText);
-        Ask(Question::ConfirmSearchEngine, ReplaceMark(texts.FindById(UseSearchEngineTextId), SearchEngineMark, engineName), true);
+        AnswerSearchEngineChoice(answer);
         return;
-    }
     case Question::ConfirmSearchEngine:
-    {
-        if (!isOk)
-            return;
-        data->SetSearchEngine(engineToConfirm);
-        std::u16string engineName = Text(engineToConfirm == SearchEngine::Yahoo ? YahooText : GoogleText);
-        Ask(Question::SearchEngineSet, ReplaceMark(texts.FindById(SearchEngineSetTextId), SearchEngineMark, engineName));
+        if (isOk)
+            SetTheConfirmedSearchEngine();
         return;
-    }
     case Question::SearchEngineSet:
         Search(wordsToSearch);
         return;
@@ -1075,6 +1109,41 @@ void InternetChannel::Answer(DialogAnswer answer)
     default:
         return;
     }
+}
+
+void InternetChannel::DeleteTheFavoriteToDelete()
+{
+    bool isStillInTheList = favoriteToDelete && *favoriteToDelete < data->Favorites().size();
+    if (!isStillInTheList)
+        return;
+
+    data->RemoveFavorite(data->Favorites()[*favoriteToDelete].number);
+    PlaySound(OperaSound::FavoriteDeleted);
+}
+
+void InternetChannel::AnswerSearchEngineChoice(DialogAnswer answer)
+{
+    if (answer == DialogAnswer::Cancel)
+        return;
+
+    engineToConfirm = answer == DialogAnswer::Yahoo ? SearchEngine::Yahoo : SearchEngine::Google;
+    std::u16string question = ReplaceMark(texts.FindById(UseSearchEngineTextId), SearchEngineMark, SearchEngineName(engineToConfirm));
+    Ask(Question::ConfirmSearchEngine, question, true);
+}
+
+void InternetChannel::SetTheConfirmedSearchEngine()
+{
+    data->SetSearchEngine(engineToConfirm);
+    std::u16string message = ReplaceMark(texts.FindById(SearchEngineSetTextId), SearchEngineMark, SearchEngineName(engineToConfirm));
+    Ask(Question::SearchEngineSet, message);
+}
+
+std::u16string InternetChannel::SearchEngineName(SearchEngine engine) const
+{
+    if (engine == SearchEngine::Yahoo)
+        return Text(YahooText);
+
+    return Text(GoogleText);
 }
 
 void InternetChannel::UseKeyboardAnswer(const SystemMenu::KeyboardAnswer& answer)
@@ -1105,10 +1174,13 @@ void InternetChannel::UseKeyboardAnswer(const SystemMenu::KeyboardAnswer& answer
         pageView->Page().FillTextField(answer.text);
         return;
     case Typing::FavoriteTitle:
-        if (renamedFavorite && *renamedFavorite < data->Favorites().size() && !answer.text.empty())
+    {
+        bool isStillInTheList = renamedFavorite && *renamedFavorite < data->Favorites().size();
+        if (isStillInTheList && !answer.text.empty())
             data->RenameFavorite(data->Favorites()[*renamedFavorite].number, answer.text);
         renamedFavorite.reset();
         return;
+    }
     default:
         return;
     }
@@ -1155,8 +1227,7 @@ void InternetChannel::OpenOperaAbout()
 
 void InternetChannel::OpenFavorites()
 {
-    if (view != View::Favorites && view != View::Settings)
-        viewBeforeList = view;
+    RememberTheViewBeforeTheList();
     favoritesScreen->Open();
     ShowThumbnails();
     ShowView(View::Favorites);
@@ -1176,10 +1247,17 @@ void InternetChannel::ShowThumbnails()
 
 void InternetChannel::OpenSettings()
 {
-    if (view != View::Favorites && view != View::Settings)
-        viewBeforeList = view;
+    RememberTheViewBeforeTheList();
     settingsScreen->Open();
     ShowView(View::Settings);
+}
+
+// Close of the favorites and the settings goes back to the start page or the web page they were opened from.
+void InternetChannel::RememberTheViewBeforeTheList()
+{
+    bool isAList = view == View::Favorites || view == View::Settings;
+    if (!isAList)
+        viewBeforeList = view;
 }
 
 void InternetChannel::ShowView(View newView)
@@ -1248,22 +1326,28 @@ void InternetChannel::PlaySound(std::string_view soundName)
 // Every place that the hand comes onto rolls over: the places of the start page, the toolbar, the favorites, the edit options and the settings.
 void InternetChannel::PlayRolloverWhenTheFocusMoves()
 {
-    std::string focus;
-    if (focusedPlace)
-        focus = std::format("place {}", static_cast<int>(*focusedPlace));
-    else if (focusedToolbarButton)
-        focus = std::format("toolbar {}", static_cast<int>(*focusedToolbarButton));
-    else if (focusedEditOption)
-        focus = std::format("edit option {}", static_cast<int>(*focusedEditOption));
-    else if (focusedFavorite)
-        focus = std::format("favorite {}", *focusedFavorite);
-    else if (focusedSettingsItem)
-        focus = std::format("setting {} {}", static_cast<int>(focusedSettingsItem->entry), focusedSettingsItem->choice.value_or(-1));
-
+    Focus focus = CurrentFocus();
     bool hasMoved = focus != focusBeforeTheStep;
     focusBeforeTheStep = focus;
-    if (hasMoved && !focus.empty())
+    if (hasMoved && !focus.IsNothing())
         PlaySound(OperaSound::Rollover);
+}
+
+// Only the first of the focused things counts, in this order.
+InternetChannel::Focus InternetChannel::CurrentFocus() const
+{
+    Focus focus;
+    if (focusedPlace)
+        focus.place = focusedPlace;
+    else if (focusedToolbarButton)
+        focus.toolbarButton = focusedToolbarButton;
+    else if (focusedEditOption)
+        focus.editOption = focusedEditOption;
+    else if (focusedFavorite)
+        focus.favorite = focusedFavorite;
+    else if (focusedSettingsItem)
+        focus.settingsItem = focusedSettingsItem;
+    return focus;
 }
 
 void InternetChannel::PlayLoadFinishWhenThePageIsLoaded()
@@ -1322,7 +1406,7 @@ ToolbarState InternetChannel::CurrentToolbarState() const
     Browser::PageState pageState = pageView ? pageView->Page().State() : Browser::PageState{};
     state.isLoading = pageState.isLoading;
     state.loadingProgress = pageState.loadingProgress;
-    state.isSecure = pageState.address.starts_with("https://");
+    state.isSecure = pageState.address.starts_with(SecureScheme);
     if (view == View::StartPage)
     {
         if (!pageView)
@@ -1505,13 +1589,13 @@ void InternetChannel::DrawStartPage()
     else
         painter->DrawPicturePart(*logo, Shifted(LogoPlace, containerLeft, 0), LogoPart);
     painter->DrawPicture(*homeIcon, {containerLeft + HomeIconLeft, HomeIconTop, homeIcon->Width(), homeIcon->Height()});
-    painter->DrawText(Text("S_START"), TitleStyle, Shifted(TitleBox, containerLeft, 0));
+    painter->DrawText(Text(StartPageTitleText), TitleStyle, Shifted(TitleBox, containerLeft, 0));
 
     DrawOrbs();
     DrawButtons();
 
     painter->DrawPicturePart(*controller, Shifted(ControllerPlace, containerLeft, 0), ControllerPart);
-    painter->DrawText(Text("S_HOKKAIDO_LABEL_USE_WII_REMOTE"), LabelStyle, Shifted(ControlsTextBox, containerLeft, 0));
+    painter->DrawText(Text(ControlsLabelText), LabelStyle, Shifted(ControlsTextBox, containerLeft, 0));
 }
 
 void InternetChannel::DrawOrbs()
@@ -1526,7 +1610,7 @@ void InternetChannel::DrawOrbs()
         PageRectangle firstState = {0, 0, OrbPictureSize, OrbPictureSize};
         painter->DrawPicturePart(*orb, picturePlace, {0, OrbPictureSize * state, OrbPictureSize, OrbPictureSize});
         painter->DrawPicturePart(*orbSymbols[index], picturePlace, firstState);
-        painter->DrawPicturePart(*gloss, Shifted(picturePlace, 0, 1), firstState);
+        painter->DrawPicturePart(*gloss, Shifted(picturePlace, 0, GlossDrop), firstState);
         painter->DrawText(Text(OrbTitles[index]), LabelStyle, {left, OrbLabelTop, OrbWidth, OrbLabelHeight});
     }
 }
