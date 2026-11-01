@@ -39,6 +39,20 @@ SystemMenu::KeyboardButtonTexts KeyboardTextsOf(const Formats::NumberedMessageFi
     return texts;
 }
 
+// The Mii Channel's hand (EffectManager 0x80028878): only the first player's, in the box of its 2D projection, 810 by 448 units in 16:9
+// (0x80028608), with the shadow 3 units right and 3 down, made 4/3 wider (0x80029A54, 0x800295B0). The closed hand rises above the
+// pointer while it holds a Mii (0x80029264: 80 units, or 95 with another camera; MiiChannelHoldingLift, EFF-12, Assumed).
+constexpr float HandBoxHalfWidth = 304.0f * 4 / 3;
+constexpr float HandBoxHalfHeight = 224;
+constexpr float MiiChannelHoldingLift = 80;
+constexpr EffectHandsLook MiiChannelHandsLook = {
+    false,
+    {SystemMenu::WideCanvas.width / 2 / HandBoxHalfWidth, SystemMenu::WideCanvas.height / 2 / HandBoxHalfHeight},
+    {3.0f * 4 / 3, -3},
+    MiiChannelHoldingLift,
+    false,
+};
+
 std::unique_ptr<Layout::LayoutArchive> ArchiveOf(const Formats::Bytes& bytes)
 {
     return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(bytes));
@@ -57,17 +71,21 @@ MiiChannel::MiiChannel(ChannelServices& channelServices)
     , files(ReadMiiChannelFiles(channelServices.contents))
     , data(channelServices.storage.fileSystem, channelServices.storage.fileSystemCaller, SystemIdOf(channelServices.network.configuration))
     , figures(channelServices.display.Device(), files.bodies, data.ConsoleSystemId())
+    , effects(channelServices.display, files.miiEffects, files.miiEffectPictures)
     , ground(channelServices.display.Device(), files.ground)
     , road(channelServices.display.Device(), files.road)
     , message(channelServices, *files.layouts, files.messages)
     , profile(channelServices, *files.layouts, files.messages)
     , keyboard(channelServices.display, ArchiveOf(files.keyboardArchive), KeyboardTextsOf(files.messages), channelServices.clock,
           channelServices.input, keyboardSounds)
-    , plaza(channelServices, *files.layouts, files.messages, figures, ground, *files.faceParts, message, data, SeedFromClock(channelServices))
-    , parade(channelServices, *files.layouts, files.messages, figures, road, *files.faceParts, message, data, SeedFromClock(channelServices))
+    , plaza(channelServices, *files.layouts, files.messages, figures, ground, *files.faceParts, message, data, effects,
+          SeedFromClock(channelServices))
+    , parade(channelServices, *files.layouts, files.messages, figures, road, *files.faceParts, message, data, effects,
+          SeedFromClock(channelServices))
     , lookAlike(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, SeedFromClock(channelServices))
-    , editor(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, profile, keyboard, data)
+    , editor(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, profile, keyboard, data, effects)
     , hands(std::make_unique<SystemMenu::CursorManager>(channelServices.display, ArchiveOf(files.handArchive)))
+    , ownHands(channelServices.display, files.handEffects, files.handPictures, MiiChannelHandsLook)
 {
     Graphics::GraphicsDevice& device = services.display.Device();
     fonts.AddFont(device, files.mainFont, {"newR_font_32_I4.brfnt", "WiiBitmapFontType1.brfnt"});
@@ -91,8 +109,17 @@ void MiiChannel::Update()
     else if (profile.IsOpen())
         profile.Update();
 
+    Scene sceneBefore = scene;
     UpdateScene(acceptsInput);
     PlayKeyboardSounds();
+
+    // The effects of a scene end with it, as the original makes its effect manager again for every scene (0x80028140).
+    if (scene != sceneBefore)
+        effects.Clear();
+    effects.Update();
+
+    bool holdsAMii = scene == Scene::Plaza && plaza.Plaza().HeldMii().has_value();
+    ownHands.SetHolding(0, holdsAMii);
 }
 
 // The keyboard asks for the menu's sounds by their names; the channel plays its own two instead.
@@ -129,12 +156,23 @@ void MiiChannel::Draw()
     }
 
     profile.Draw();
+    effects.DrawFlat();
     message.Draw();
 }
 
 SystemMenu::CursorManager& MiiChannel::Hands()
 {
     return *hands;
+}
+
+MiiEffects& MiiChannel::Effects()
+{
+    return effects;
+}
+
+EffectHands* MiiChannel::OwnHands()
+{
+    return &ownHands;
 }
 
 MiiChannel::Scene MiiChannel::CurrentScene() const

@@ -109,6 +109,7 @@ std::optional<std::vector<Mii::MiiRecord>> MiiChooser::Update()
 void MiiChooser::Draw()
 {
     layout.Draw();
+    session.ripples.Draw();
 }
 
 SceneLayout& MiiChooser::Layout()
@@ -143,6 +144,9 @@ void MiiChooser::PressLineupMii(std::size_t place)
     {
         chosen.push_back(mii);
         session.services.sounds.Request(AppendSound);
+        std::optional<Formats::Vector2> circle = layout.PlaceOfPane(Numbered("N_miiRootC", chosen.size() - 1));
+        if (circle)
+            session.ripples.StartMiiPutIntoACircle(*circle);
     }
     else
     {

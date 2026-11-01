@@ -13,7 +13,6 @@
 
 #include "Formats/Font.h"
 #include "Formats/FormatError.h"
-#include "Layout/PaneRectangle.h"
 #include "Ios/FileSystem/OpenFile.h"
 #include "Ios/Title/TitlePaths.h"
 #include "Mii/MiiDatabase.h"
@@ -90,6 +89,7 @@ void WiiSpeakChannel::Update()
     else
         FollowTheFirstStart();
 
+    session.ripples.Update();
     dialog.Update(services.input, services.sounds);
 }
 
@@ -143,13 +143,7 @@ std::optional<Formats::Vector2> WiiSpeakChannel::PlaceOfPane(std::string_view pa
 
     for (auto layout = layouts.rbegin(); layout != layouts.rend(); ++layout)
     {
-        const Formats::Pane* pane = (*layout)->Layout().FindPane(paneName);
-        if (pane == nullptr)
-            continue;
-
-        Layout::PaneRectangle rectangle = Layout::RectangleOfPane(*pane);
-        Formats::Vector2 middle = {rectangle.left + rectangle.width / 2, rectangle.top - rectangle.height / 2};
-        std::optional<Formats::Vector2> place = (*layout)->Layout().PointOfPaneInPicture(paneName, middle);
+        std::optional<Formats::Vector2> place = (*layout)->PlaceOfPane(paneName);
         if (place)
             return place;
     }
@@ -341,6 +335,7 @@ void WiiSpeakChannel::HearTheMicrophone()
 void WiiSpeakChannel::ChangeScreen(WiiSpeakScreenName name)
 {
     screen.reset();
+    session.ripples.Clear();
     if (name == WiiSpeakScreenName::ChatRoom)
         screen = std::make_unique<ChatRoomScreen>(session);
     else if (name == WiiSpeakScreenName::SettingsMenu)

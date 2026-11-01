@@ -1,6 +1,7 @@
 #include "Channels/WiiSpeak/SceneLayout.h"
 
 #include "Layout/LayoutError.h"
+#include "Layout/PaneRectangle.h"
 
 #include <algorithm>
 
@@ -235,6 +236,17 @@ void SceneLayout::ShowMadeTexture(std::string_view paneName, const std::string& 
     layout.Live().ProvideTexture(textureName, texture);
     Layout::LiveMaterial& material = layout.MaterialOf(layout.PaneNamed(paneName));
     material.textureNames.at(0) = textureName;
+}
+
+std::optional<Formats::Vector2> SceneLayout::PlaceOfPane(std::string_view paneName)
+{
+    const Formats::Pane* pane = Layout().FindPane(paneName);
+    if (pane == nullptr)
+        return std::nullopt;
+
+    ::Layout::PaneRectangle rectangle = ::Layout::RectangleOfPane(*pane);
+    Formats::Vector2 middle = {rectangle.left + rectangle.width / 2, rectangle.top - rectangle.height / 2};
+    return Layout().PointOfPaneInPicture(paneName, middle);
 }
 
 void SceneLayout::SetVisible(std::string_view paneName, bool isVisible)

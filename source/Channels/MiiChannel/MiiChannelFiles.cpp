@@ -27,9 +27,12 @@ constexpr std::string_view FacePartsPath = "RFL_Res.dat";
 // The folders blyt, anim and timg of Layout00.szs lie at its root.
 const std::string LayoutsAtTheRoot = "";
 
-// The channel's own hand is a NintendoWare effect (nw4r_defcursor_all01 in Character.szs) that WeeOS cannot draw; the hands are the ones of
-// its HOME Button Menu, as for the other channels (CHN-26).
+// The hands of the channel's HOME Button Menu, which show while it is open. The channel's own hands are the effects of Character.szs.
 constexpr std::string_view HandArchivePath = "./HomeButton2/LZ77_homeBtn.arc";
+constexpr std::string_view HandEffectsPath = "effect/nw4r_defcursor_all01.breff";
+constexpr std::string_view HandPicturesPath = "effect/nw4r_defcursor_all01.breft";
+constexpr std::string_view MiiEffectsPath = "effect/effect_nigaoe.breff";
+constexpr std::string_view MiiEffectPicturesPath = "effect/effect_nigaoe.breft";
 
 Formats::U8Archive ReadPackedArchive(const Formats::U8Archive& content, std::string_view path)
 {
@@ -61,6 +64,10 @@ MiiChannelFiles ReadMiiChannelFiles(SystemMenu::TitleContents& contents)
     Formats::U8Archive characterFiles = ReadPackedArchive(channelFiles, CharacterArchivePath);
     files.ground = ReadPlazaGroundModel(FindFileOrFail(characterFiles, GroundModelPath));
     files.road = ReadParadeRoadModel(FindFileOrFail(characterFiles, RoadModelPath));
+    files.handEffects = CopyOf(FindFileOrFail(characterFiles, HandEffectsPath));
+    files.handPictures = CopyOf(FindFileOrFail(characterFiles, HandPicturesPath));
+    files.miiEffects = CopyOf(FindFileOrFail(characterFiles, MiiEffectsPath));
+    files.miiEffectPictures = CopyOf(FindFileOrFail(characterFiles, MiiEffectPicturesPath));
 
     files.keyboardArchive = Formats::DecompressYaz0(FindFileOrFail(channelFiles, KeyboardArchivePath));
 

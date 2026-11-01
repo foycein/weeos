@@ -34,9 +34,14 @@ constexpr std::string_view DownloadingMessagePane = "textTUS1";
 constexpr std::array<std::string_view, 2> TextParts = {"textT", "nextT"};
 constexpr std::array<std::string_view, 6> OtherLanguages = {"JP", "GE", "FR", "IT", "SP", "DU"};
 
-// The hands are the ones of the channel's HOME Button Menu, HomeButton3: the channels' own hand is a NintendoWare effect
-// (nw4r_defcursor_all01) that WeeOS cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
+// The hands of the channel's HOME Button Menu (HomeButton3), which show while it is open.
 constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
+
+// The channel's own hands are particle effects of its resource content (CHN-26). The Forecast draws them in a box of the size of the
+// picture, the shadow 3 units right of and below the hand (0x8002C304).
+constexpr std::string_view HandEffectsPath = "./nw4r_defcursor_all01.breff.LZ";
+constexpr std::string_view HandPicturesPath = "./nw4r_defcursor_all01.breft.LZ";
+constexpr EffectHandsLook HandsLook = {true, {1, 1}, {3, -3}, 0, true};
 
 // The label in front of the code is a text of the program (0x8000B9C8 of the Forecast, "%ls %ls%06d").
 constexpr std::u16string_view ErrorCodeLabel = u"Error Code: ";
@@ -122,6 +127,8 @@ WiiConnect24Channel::WiiConnect24Channel(ChannelServices& channelServices, const
     oneMomentLayout = std::make_unique<SystemMenu::MenuLayout>(services.display, *layoutArchive, std::string(OneMomentLayoutName));
     errorLayout = std::make_unique<SystemMenu::MenuLayout>(services.display, *layoutArchive, std::string(ErrorLayoutName));
     cursors = std::make_unique<SystemMenu::CursorManager>(services.display, ReadHandArchive(services.contents, files.homeMenuContentIndex));
+    Formats::Bytes handEffects = ReadPackedFile(resources, HandEffectsPath);
+    ownHands = std::make_unique<EffectHands>(services.display, handEffects, ReadPackedFile(resources, HandPicturesPath), HandsLook);
 
     HideOtherLanguages(*oneMomentLayout);
     Formats::Pane* downloadingMessage = oneMomentLayout->FindPane(DownloadingMessagePane);
@@ -152,6 +159,11 @@ void WiiConnect24Channel::Draw()
 SystemMenu::CursorManager& WiiConnect24Channel::Hands()
 {
     return *cursors;
+}
+
+EffectHands* WiiConnect24Channel::OwnHands()
+{
+    return ownHands.get();
 }
 
 WiiConnect24Channel::Stage WiiConnect24Channel::CurrentStage() const

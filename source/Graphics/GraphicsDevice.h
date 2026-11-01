@@ -163,6 +163,37 @@ struct IndirectTexture
     std::array<std::array<float, 3>, 2> matrix = {};
 };
 
+// The alpha test of the Wii's graphics chip as the particle effects use it: a pixel is drawn only when its alpha (0 to 255) passes the
+// first comparison with the first reference and the second with the second, the two results joined as the test says.
+enum class AlphaComparison : std::uint8_t
+{
+    Never = 0,
+    Less = 1,
+    Equal = 2,
+    LessOrEqual = 3,
+    Greater = 4,
+    NotEqual = 5,
+    GreaterOrEqual = 6,
+    Always = 7,
+};
+
+enum class AlphaJoin : std::uint8_t
+{
+    And = 0,
+    Or = 1,
+    ExclusiveOr = 2,
+    ExclusiveNor = 3,
+};
+
+struct AlphaTest
+{
+    AlphaComparison firstComparison = AlphaComparison::Always;
+    std::uint8_t firstReference = 0;
+    AlphaComparison secondComparison = AlphaComparison::Always;
+    std::uint8_t secondReference = 0;
+    AlphaJoin join = AlphaJoin::And;
+};
+
 // A material says how a quad gets its colors.
 struct Material
 {
@@ -189,6 +220,9 @@ struct Material
     // The alpha test of the Wii's graphics chip as the Mii face library uses it: a pixel whose alpha is 0 is not drawn at all,
     // so it changes neither the colors nor the depth.
     bool skipsTransparentPixels = false;
+
+    // A pixel that fails the test is not drawn at all.
+    std::optional<AlphaTest> alphaTest;
 
     // Only for the stages that are moved by it (TevStage::isMovedByIndirectTexture).
     std::optional<IndirectTexture> indirectTexture;

@@ -38,7 +38,6 @@ constexpr std::uint16_t InternetErrorMessage = 2;
 constexpr std::uint16_t TitleMessage = 7;
 constexpr std::uint16_t TryAgainMessage = 8;
 constexpr std::uint16_t WiiMenuMessage = 9;
-constexpr std::uint16_t ConnectingMessage = 16;
 
 // The start-up picture of the USA is a raw 16:9 picture of 832 by 456 pixels in RGB565, packed with ASH0.
 constexpr std::string_view StartupPicturePath = "arc/layout/StartupTM.ash";
@@ -54,10 +53,15 @@ constexpr std::string_view ButtonPicturePath = "arc/error/image/banner/under_ban
 constexpr std::string_view FocusedButtonPicturePath = "arc/error/image/banner/under_banner_b.gif";
 constexpr std::string_view ButtonShadowPath = "arc/error/image/banner/under_banner_shadow.gif";
 constexpr std::string_view CursorArchivePath = "arc/layout/common/cursor.ash";
-constexpr std::string_view FontFile = "wbf1.brfna";
+constexpr std::string_view AccessMarkPath = "arc/layout/AccessMark.brres";
 
-// How long the start-up picture shows before the pages begin (CHN-28, Assumed).
+// The start-up picture stays until the browser has drawn its first page (0x8001BD00). Its own start takes a while even when the page is
+// an error that comes at once; the picture shows at least this long (StartupPictureSeconds, CHN-28, Assumed).
 constexpr double StartupPictureSeconds = 2;
+
+// The loop that plays while the access mark shows (0x8001CB60).
+constexpr std::string_view LoadingSound = "WIPL_SE_LOADING";
+constexpr std::string_view FontFile = "wbf1.brfna";
 
 // The places and the styles of error.css and of the pages internet.html and error.html, in pixels of the page. On a 16:9 screen the
 // wallpaper fills the room beside the page.
@@ -78,10 +82,6 @@ constexpr PageTextStyle DotsStyle = {16, {0x8C, 0x8C, 0x8C, 255}, Text::Horizont
 constexpr PageTextStyle ErrorCodeStyle = {22, {0xFF, 0x00, 0x00, 255}, Text::HorizontalAlignment::Left};
 constexpr PageTextStyle ErrorTextStyle = {16, {0xFF, 0x00, 0x00, 255}, Text::HorizontalAlignment::Left};
 constexpr PageTextStyle ButtonTextStyle = {18, {0x32, 0x32, 0x32, 255}, Text::HorizontalAlignment::Center};
-
-// "Connecting. Please wait..." stands in the middle of the page; the characters that run beside it are 3D models (CHN-28, Assumed).
-constexpr PageRectangle ConnectingBox = {0, 214, PageWidth, 28};
-constexpr PageTextStyle ConnectingStyle = {20, {0x32, 0x32, 0x32, 255}, Text::HorizontalAlignment::Center};
 
 // The dotted lines are a row of halfwidth middle dots.
 constexpr std::u16string_view DottedLine =
@@ -210,6 +210,10 @@ ShopChannel::ShopChannel(ChannelServices& channelServices)
 
     Formats::U8Archive handFiles = Formats::ReadU8Archive(Formats::DecompressAsh0(FindFileOrFail(resources, CursorArchivePath)));
     cursors = std::make_unique<SystemMenu::CursorManager>(services.display, std::make_unique<Layout::LayoutArchive>(std::move(handFiles)));
+    accessMark = std::make_unique<ShopAccessMark>(device, FindFileOrFail(resources, AccessMarkPath));
+
+    StartConnecting();
+    stage = Stage::StartUp;
 }
 
 void ShopChannel::Update()
@@ -226,14 +230,14 @@ void ShopChannel::Draw()
     if (stage == Stage::StartUp)
     {
         painter->DrawPicture(*startupPicture, WholeWidePicture);
+        accessMark->Draw(AccessMarkPlace::OverTheStartUpPicture);
         return;
     }
 
     DrawWallpaper();
+    DrawError();
     if (stage == Stage::Connecting)
-        DrawConnecting();
-    else
-        DrawError();
+        accessMark->Draw(AccessMarkPlace::OverThePage);
 }
 
 SystemMenu::CursorManager& ShopChannel::Hands()
@@ -269,22 +273,34 @@ const std::u16string& ShopChannel::Message(std::uint16_t messageNumber) const
 
 void ShopChannel::UpdateStage()
 {
-    double seconds = services.clock.Seconds();
-    if (stage == Stage::StartUp && seconds >= StartupPictureSeconds)
-        StartConnecting();
-
-    if (stage == Stage::Connecting)
+    if (stage == Stage::StartUp || stage == Stage::Connecting)
     {
+        bool isTheStartUpPictureOver = stage != Stage::StartUp || services.clock.Seconds() >= StartupPictureSeconds;
         std::optional<std::uint32_t> foundCode = FindErrorCode();
-        if (foundCode)
+        if (foundCode && isTheStartUpPictureOver)
         {
             errorCode = *foundCode;
             stage = Stage::ShowingError;
         }
     }
 
+    UpdateAccessMark();
     if (stage == Stage::ShowingError && services.fader.GetStatus() == SystemMenu::FaderStatus::Clear)
         UpdateButtons();
+}
+
+// The mark turns and its loop plays while a page is asked for.
+void ShopChannel::UpdateAccessMark()
+{
+    bool isLoading = stage != Stage::ShowingError;
+    if (isLoading)
+        accessMark->Update();
+
+    if (isLoading && !playsTheLoadingSound)
+        services.sounds.StartMusic(LoadingSound);
+    if (!isLoading && playsTheLoadingSound)
+        services.sounds.StopMusic(0);
+    playsTheLoadingSound = isLoading;
 }
 
 void ShopChannel::StartConnecting()
@@ -376,11 +392,6 @@ void ShopChannel::DrawWallpaper()
     painter->DrawPicture(*wallpaper, LeftWallpaper);
     painter->DrawPicture(*wallpaper, RightWallpaper, true);
     painter->FillRectangle(WholePage, {255, 255, 255, 255});
-}
-
-void ShopChannel::DrawConnecting()
-{
-    painter->DrawText(Message(ConnectingMessage), ConnectingStyle, ConnectingBox);
 }
 
 // In the order of the z-index of the pages: the buttons lie under the dotted lines, the title and the texts.

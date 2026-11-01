@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Formats/Bytes.h"
+#include "Formats/RgbaImage.h"
 
 #include <cstddef>
 #include <optional>
@@ -26,5 +27,9 @@ std::vector<ResourceEntry> ReadIndexGroup(ByteView bytes, std::size_t groupOffse
 // Where an entry of a BRRES file lives, for example the model "graund_model" in the group "3DModels(NW4R)" of the root. Nothing when
 // the file has no such group or entry.
 std::optional<std::size_t> FindResource(ByteView brres, std::string_view groupName, std::string_view entryName);
+
+// The picture of a texture (TEX0) of the group "Textures(NW4R)", decoded. Throws a FormatError when the file has no such texture or the
+// texture has a palette.
+RgbaImage ReadResourceTexture(ByteView brres, std::string_view textureName);
 
 }

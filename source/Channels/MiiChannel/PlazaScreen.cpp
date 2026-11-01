@@ -119,10 +119,12 @@ constexpr std::string_view DsSound = "SEQ_HIROBA_BUT_DS";
 
 PlazaScreen::PlazaScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts,
     const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const PlazaGround& plazaGround,
-    const Mii::MiiResources& faceParts, MessageWindow& messageWindow, MiiChannelData& channelData, std::uint32_t randomSeed)
+    const Mii::MiiResources& faceParts, MessageWindow& messageWindow, MiiChannelData& channelData, MiiEffects& miiEffects,
+    std::uint32_t randomSeed)
     : services(channelServices)
     , texts(messages)
     , figures(miiFigures)
+    , effects(miiEffects)
     , ground(plazaGround)
     , message(messageWindow)
     , data(channelData)
@@ -202,6 +204,7 @@ void PlazaScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     plaza.Update();
+    ShowPlazaMoments(effects, plaza, figures);
     if (plaza.SlipsInLastStep() > 0)
         services.sounds.Request(SlipSound);
 
@@ -237,6 +240,7 @@ void PlazaScreen::Draw()
     services.display.Device().DrawQuad(background, Graphics::Material());
 
     figures.DrawPlaza(plaza, ground, heads);
+    effects.DrawAmongModels(plaza.ViewMatrix(), plaza.ProjectionMatrix());
     layout->Draw();
 }
 

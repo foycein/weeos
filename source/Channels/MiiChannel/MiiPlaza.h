@@ -88,6 +88,35 @@ struct PlazaMii
 
     // While a whistle has called the Mii to its place in a line: it walks there and stays.
     bool staysAtTarget = false;
+
+    // The steps since the last balloon of a talk, and since the Mii began to run (for its dust).
+    int stepsSinceTalkBalloon = 0;
+    int stepsRunning = 0;
+};
+
+// A moment of a plaza Mii that an effect shows (EffectManager.cpp of the original, CHN-94).
+enum class PlazaMoment
+{
+    // A talking Mii lets out a balloon: at the start of a talk and now and then while it lasts.
+    Talks,
+
+    // A running Mii raises dust now and then.
+    RaisesDust,
+
+    // A running Mii slips and hits the ground (frame 27 of bodySlip_00).
+    Slips,
+
+    // A Mii sneezes (frame 13 of bodysnart_01).
+    Sneezes,
+
+    // A Mii falls asleep; its Zzz rise above it while it naps.
+    FallsAsleep,
+};
+
+struct PlazaMomentOfMii
+{
+    PlazaMoment moment;
+    std::size_t slot;
 };
 
 // The camera of the plaza (8001295C, 80014DA4): it looks down along a fixed direction, and its height is one of four zoom levels.
@@ -140,6 +169,9 @@ public:
     // The number of Miis that slipped in the last step, for the sound of the fall.
     int SlipsInLastStep() const;
 
+    // The moments of the Miis since the last call, for their effects.
+    std::vector<PlazaMomentOfMii> TakeMoments();
+
     // The hand picks the Mii up and carries it until it lets go.
     void Grab(std::size_t slot);
     void MoveHeldMii(Formats::Vector2 groundPosition);
@@ -185,6 +217,9 @@ private:
     void FinishActivity(PlazaMii& plazaMii);
     void ChooseIdleMoment(PlazaMii& plazaMii);
     void StartTalk(PlazaMii& talker);
+    void CountTalkBalloon(PlazaMii& plazaMii);
+    void CountRunningDust(PlazaMii& plazaMii);
+    void NoteFrameMoment(const PlazaMii& plazaMii, float frameBefore, float momentFrame, PlazaMoment moment);
     void TurnAndStep(PlazaMii& plazaMii, float speedKept, float speedAdded, float remaining);
     void PushApart();
     void WakeWhenBumped(PlazaMii& plazaMii);
@@ -198,10 +233,14 @@ private:
     PlazaKind kind;
     bool isParadeRunning = false;
     std::mt19937 random;
+
+    // The chances of the effects' moments have their own numbers, so that the effects do not change what the Miis do.
+    std::mt19937 effectRandom;
     std::vector<PlazaMii> miis;
     std::optional<std::size_t> heldSlot;
     PlazaCamera camera;
     int slipsInLastStep = 0;
+    std::vector<PlazaMomentOfMii> moments;
 };
 
 // The speed at which the walk animation plays for a Mii at a walking speed: a longer body takes longer steps (80022BD0).

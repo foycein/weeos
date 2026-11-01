@@ -74,6 +74,20 @@ constexpr std::string_view PhotoAppearSound = "SE_RIP_PHOTO_APPEAR";
 constexpr std::string_view MuteOnSound = "SE_COM_MUTE_ON";
 constexpr std::string_view MuteOffSound = "SE_COM_MUTE_OFF";
 
+// The ripples of the clock come in the last three seconds before a full hour and at the full hour, at the clock (0x80093B80). The
+// pane they come from is the hour of the clock (ClockRipplePane, EFF-14, Assumed).
+constexpr std::string_view ClockRipplePane = "T_time_02";
+constexpr int LastMinuteOfTheHour = 59;
+constexpr int FirstSecondOfTheRipples = 57;
+
+// The original lets a drop fall with every third drop of the water's sound (0x800A9DE4); WeeOS does not play the events of that sound,
+// so a drop falls every 150 steps (ChatRoomStepsBetweenDrops, EFF-14, Assumed).
+constexpr int ChatRoomStepsBetweenDrops = 150;
+
+// The photo lands in its slot, the Miis come up in the middle of the circle.
+constexpr std::string_view PhotoPane = "P_photoA_00";
+constexpr Formats::Vector2 MiddleOfTheCircle = {0, 0};
+
 constexpr int HoursOfHalfADay = 12;
 constexpr int FirstYearOfTheCalendar = 1900;
 constexpr int DaysOfTheWeek = 7;
@@ -132,6 +146,7 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
     }
 
     ShowClock();
+    LetDropsFall();
     for (SceneLayout* layout : {&background, &buttons, &clock, &muteSign, &circle})
         layout->Calculate();
     if (miisInCircle)
@@ -144,6 +159,7 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
 void ChatRoomScreen::Draw()
 {
     background.Draw();
+    session.ripples.Draw();
     circle.Draw();
     if (miisInCircle)
         miisInCircle->Draw();
@@ -197,6 +213,33 @@ void ChatRoomScreen::ShowClock()
     clock.SetText("T_time_02", DigitText(hour % DigitBase));
     clock.SetText("T_time_04", DigitText(calendar.tm_min / DigitBase));
     clock.SetText("T_time_05", DigitText(calendar.tm_min % DigitBase));
+    StartClockRipples(calendar);
+}
+
+void ChatRoomScreen::StartClockRipples(const std::tm& calendar)
+{
+    bool isNewSecond = calendar.tm_sec != lastShownSecond;
+    lastShownSecond = calendar.tm_sec;
+    if (!isNewSecond)
+        return;
+
+    bool isTheFullHour = calendar.tm_min == 0 && calendar.tm_sec == 0;
+    bool isJustBefore = calendar.tm_min == LastMinuteOfTheHour && calendar.tm_sec >= FirstSecondOfTheRipples;
+    if (!isTheFullHour && !isJustBefore)
+        return;
+
+    std::optional<Formats::Vector2> place = clock.PlaceOfPane(ClockRipplePane);
+    session.ripples.StartClockRipple(place.value_or(MiddleOfTheCircle), isTheFullHour);
+}
+
+void ChatRoomScreen::LetDropsFall()
+{
+    ++stepsSinceTheLastDrop;
+    if (stepsSinceTheLastDrop < ChatRoomStepsBetweenDrops)
+        return;
+
+    stepsSinceTheLastDrop = 0;
+    session.ripples.StartDrop(WiiSpeakRipples::ChatRoomDrop);
 }
 
 void ChatRoomScreen::ShowMute()
@@ -346,6 +389,7 @@ void ChatRoomScreen::ShowChosenMiis()
         std::string pane = std::format("P_mii_{:02}", place + 1);
         miisInCircle->ShowMadeTexture(pane, MiiFaces::TextureNameOf(mii), session.miiFaces.FaceOf(mii));
     }
+    session.ripples.StartMiisAppearing(MiddleOfTheCircle);
 }
 
 // The photo that Show Photos chose comes out of the slot at the bottom (12410_photoap of the scene photoAppre).
@@ -365,6 +409,7 @@ void ChatRoomScreen::ShowSharedPhoto()
 
     photo->PlayAnimation("all_in");
     session.services.sounds.Request(PhotoAppearSound);
+    session.ripples.StartPhotoRipple(photo->PlaceOfPane(PhotoPane).value_or(MiddleOfTheCircle));
     session.isSharedPhotoNew = false;
 }
 

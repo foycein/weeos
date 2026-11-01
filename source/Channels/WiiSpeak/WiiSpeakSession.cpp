@@ -23,6 +23,12 @@ SystemMenu::KeyboardButtonTexts KeyboardTextsOf(const WiiSpeakMessages& messages
     return texts;
 }
 
+// The drops fall at random places, different at every start as the original's are (it seeds with the clock).
+std::uint32_t RippleSeedFromClock(const ChannelServices& services)
+{
+    return static_cast<std::uint32_t>(services.consoleTime().time_since_epoch().count());
+}
+
 }
 
 WiiSpeakSession::WiiSpeakSession(ChannelServices& channelServices, const WiiSpeakFiles& titleFiles, const WiiSpeakMessages& titleMessages,
@@ -36,6 +42,7 @@ WiiSpeakSession::WiiSpeakSession(ChannelServices& channelServices, const WiiSpea
     , keyboard(channelServices.display, titleFiles.KeyboardLayouts(), KeyboardTextsOf(titleMessages), channelServices.clock,
           channelServices.input, channelServices.sounds)
     , miiFaces(channelServices.display.Device(), titleFiles.FaceParts())
+    , ripples(channelServices.display, titleFiles.RippleEffects(), titleFiles.RipplePictures(), RippleSeedFromClock(channelServices))
 {
 }
 

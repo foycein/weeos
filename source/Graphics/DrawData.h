@@ -88,7 +88,9 @@ struct ShaderDrawRecord
 
     // The indirect texture of the material and the two rows of its matrix (Material::indirectTexture).
     std::uint32_t indirectTextureIndex;
-    std::uint32_t unused;
+
+    // Material::alphaTest, packed by PackAlphaTest, or 0 without a test.
+    std::uint32_t alphaTest;
     std::array<float, 6> indirectMatrix;
     std::array<std::uint32_t, 2> unusedAtTheEnd;
 };
@@ -146,6 +148,10 @@ static_assert(offsetof(ShaderDrawRecord, cornerPositions) == 112);
 static_assert(offsetof(ShaderDrawRecord, cornerColors) == 312);
 
 ShaderStage PackStage(const TevStage& stage);
+
+// The alpha test in one number: the first comparison in bits 0 to 2, the second in bits 3 to 5, the join in bits 6 and 7, the first
+// reference in bits 8 to 15, the second in bits 16 to 23, and bit 31 set. Without a test the number is 0.
+std::uint32_t PackAlphaTest(const std::optional<AlphaTest>& test);
 
 ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std::uint32_t firstStage, std::uint32_t stageCount);
 

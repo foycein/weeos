@@ -26,7 +26,7 @@ constexpr std::uint16_t MiiChannelHomeMenuContent = 4;
 
 // Everything the Mii Channel reads from its title when it starts (the loads of 8000F704, 80010E80 and 80017EB0): the layouts and fonts of
 // Channel/ScreenAll/Cmn/Layout00.szs, the English messages of Channel/ScreenAll/Usa/Layout00.szs, the bodies and the ground of
-// Channel/Character.szs, the keyboard of Channel/sofkeybdkr.szs and the parts of the faces.
+// Channel/Character.szs with its effects, the keyboard of Channel/sofkeybdkr.szs and the parts of the faces.
 struct MiiChannelFiles
 {
     std::unique_ptr<Layout::LayoutArchive> layouts;
@@ -38,7 +38,15 @@ struct MiiChannelFiles
     PlazaGroundModel road;
     std::unique_ptr<Mii::MiiResources> faceParts;
     Formats::Bytes keyboardArchive;
+
+    // The hands of the HOME Button Menu, which show while it is open.
     Formats::Bytes handArchive;
+
+    // The particle effects of Character.szs: the channel's own hands and the effects of the Miis (CHN-94).
+    Formats::Bytes handEffects;
+    Formats::Bytes handPictures;
+    Formats::Bytes miiEffects;
+    Formats::Bytes miiEffectPictures;
 };
 
 // Throws a ChannelError or a FormatError when a file is missing or broken.

@@ -60,6 +60,13 @@ const Mii::MiiBodyFile& BodyFileOf(const Mii::MiiBodyFiles& bodies, const Mii::M
     return bodies.male;
 }
 
+// Where the body of a plaza Mii stands; a held Mii hangs above the ground.
+Graphics::Matrix4 PlazaPlaceOf(const PlazaMii& plazaMii)
+{
+    float lift = plazaMii.activity == PlazaActivity::Held ? HeldLift : 0.0f;
+    return Graphics::MakeTranslation({plazaMii.position.x, lift, plazaMii.position.y});
+}
+
 }
 
 std::size_t PlazaHeadKey(std::size_t slot, Mii::MiiExpression expression)
@@ -161,17 +168,25 @@ void MiiFigures::DrawPlaza(const MiiPlaza& plaza, const PlazaGround& ground, con
         if (head == nullptr)
             continue;
 
-        const Mii::MiiRecord& record = plazaMii.mii.record;
-        Mii::BodyStance stance;
-        stance.animation = &BodyFileOf(bodies, record).animations.at(std::string(AnimationOf(plazaMii.activity)));
-        stance.frame = plazaMii.animationFrame;
-        stance.facingDegrees = plazaMii.facingDegrees;
-        stance.leansBack = true;
-
-        float lift = plazaMii.activity == PlazaActivity::Held ? HeldLift : 0.0f;
-        Graphics::Matrix4 place = Graphics::MakeTranslation({plazaMii.position.x, lift, plazaMii.position.y});
-        DrawFigure(record, *head, stance, view * place, projection);
+        DrawFigure(plazaMii.mii.record, *head, PlazaStanceOf(plazaMii), view * PlazaPlaceOf(plazaMii), projection);
     }
+}
+
+Formats::Vector3 MiiFigures::HeadPositionOf(const PlazaMii& plazaMii) const
+{
+    const Mii::MiiRecord& record = plazaMii.mii.record;
+    Mii::BodyPose pose = Mii::PoseBody(BodyFileOf(bodies, record), record, PlazaStanceOf(plazaMii));
+    return Graphics::TransformPoint(PlazaPlaceOf(plazaMii) * Mii::HeadMatrixOf(pose), {0, 0, 0});
+}
+
+Mii::BodyStance MiiFigures::PlazaStanceOf(const PlazaMii& plazaMii) const
+{
+    Mii::BodyStance stance;
+    stance.animation = &BodyFileOf(bodies, plazaMii.mii.record).animations.at(std::string(AnimationOf(plazaMii.activity)));
+    stance.frame = plazaMii.animationFrame;
+    stance.facingDegrees = plazaMii.facingDegrees;
+    stance.leansBack = true;
+    return stance;
 }
 
 void MiiFigures::DrawStandingMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const PictureRectangle& rectangle,
@@ -186,10 +201,20 @@ void MiiFigures::DrawStandingMii(const Mii::MiiRecord& record, const Mii::MiiHea
 void MiiFigures::DrawPosedMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance,
     const PictureRectangle& rectangle, Graphics::Canvas canvas) const
 {
+    FigureCamera camera = StandingCamera(rectangle, canvas);
+    DrawFigure(record, head, stance, camera.view, camera.projection);
+}
+
+FigureCamera MiiFigures::StandingCamera(const PictureRectangle& rectangle, Graphics::Canvas canvas) const
+{
     float aspect = rectangle.halfSize.x / rectangle.halfSize.y;
     Graphics::Matrix4 projection = Graphics::MakePerspective(StandingViewDegrees, aspect, StandingNear, StandingFar);
-    Graphics::Matrix4 view = Graphics::MakeLookAt(StandingEye, StandingTarget, Upward);
-    DrawFigure(record, head, stance, view, ProjectIntoRectangle(projection, rectangle, canvas));
+    return {Graphics::MakeLookAt(StandingEye, StandingTarget, Upward), ProjectIntoRectangle(projection, rectangle, canvas)};
+}
+
+Formats::Vector3 MiiFigures::StandingHeadPosition(const Mii::MiiRecord& record) const
+{
+    return Mii::PoseStandingBody(BodyFileOf(bodies, record), record).headPosition;
 }
 
 void MiiFigures::DrawHead(const Mii::MiiHead& head, const PictureRectangle& rectangle, Graphics::Canvas canvas) const

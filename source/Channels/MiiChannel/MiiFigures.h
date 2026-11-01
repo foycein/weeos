@@ -65,6 +65,13 @@ private:
     std::map<std::size_t, KeptHead> heads;
 };
 
+// The camera of a figure: its view and its projection.
+struct FigureCamera
+{
+    Graphics::Matrix4 view;
+    Graphics::Matrix4 projection;
+};
+
 // Draws whole Miis: the shared bodies posed in an animation, with their heads on them.
 class MiiFigures
 {
@@ -87,7 +94,15 @@ public:
 
     const Mii::MiiBodyFiles& Bodies() const;
 
+    // Where the head of a plaza Mii is now, in the plaza: for the effects that come out of it.
+    Formats::Vector3 HeadPositionOf(const PlazaMii& plazaMii) const;
+
+    // The camera of DrawStandingMii and DrawPosedMii, and where the head of the standing Mii is, for the effects of the editor.
+    FigureCamera StandingCamera(const PictureRectangle& rectangle, Graphics::Canvas canvas) const;
+    Formats::Vector3 StandingHeadPosition(const Mii::MiiRecord& record) const;
+
 private:
+    Mii::BodyStance PlazaStanceOf(const PlazaMii& plazaMii) const;
     void DrawFigure(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance, const Graphics::Matrix4& view,
         const Graphics::Matrix4& projection) const;
 

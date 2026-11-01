@@ -1,6 +1,11 @@
 #include "Formats/ResourceFile.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/FormatError.h"
+#include "Formats/TextureDecoder.h"
+#include "Formats/TextureFormat.h"
+
+#include <format>
 
 namespace Formats
 {
@@ -68,6 +73,33 @@ std::optional<std::size_t> FindResource(ByteView brres, std::string_view groupNa
         }
     }
     return std::nullopt;
+}
+
+RgbaImage ReadResourceTexture(ByteView brres, std::string_view textureName)
+{
+    constexpr std::string_view TextureGroup = "Textures(NW4R)";
+    constexpr std::size_t TextureDataPosition = 0x10;
+    constexpr std::size_t TextureWidthPosition = 0x1C;
+    constexpr std::size_t TextureFormatPosition = 0x20;
+
+    std::optional<std::size_t> texture = FindResource(brres, TextureGroup, textureName);
+    if (!texture)
+        throw FormatError(std::format("the resource file has no texture {}", textureName));
+
+    ByteReader reader(brres, "texture of a resource file");
+    reader.MoveTo(*texture + TextureDataPosition);
+    std::size_t data = *texture + reader.ReadUint32();
+    reader.MoveTo(*texture + TextureWidthPosition);
+    std::uint16_t width = reader.ReadUint16();
+    std::uint16_t height = reader.ReadUint16();
+    reader.MoveTo(*texture + TextureFormatPosition);
+    std::optional<TextureFormat> format = TextureFormatFromNumber(reader.ReadUint32());
+    if (!format || IsPaletteFormat(*format))
+        reader.Fail(std::format("the texture {} has a format that is not expected", textureName));
+
+    reader.MoveTo(data);
+    ByteView pixels = reader.ReadBytes(EncodedImageSize(*format, width, height));
+    return DecodeTexture(*format, width, height, pixels, std::nullopt);
 }
 
 }

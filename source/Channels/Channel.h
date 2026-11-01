@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Channels/EffectHands.h"
+
 #include "SystemMenu/CursorManager.h"
 
 namespace Channels
@@ -28,6 +30,14 @@ public:
     // The hands of the four players, from the channel's own files. The channel system moves and draws them, and the HOME menu
     // draws them while it is open.
     virtual SystemMenu::CursorManager& Hands() = 0;
+
+    // The channel's own hands when they are particle effects (the Forecast, the News and the Mii Channel, CHN-26), or null. The
+    // channel system moves them and draws them over the channel while the HOME menu is closed; the HOME menu shows the hands of
+    // Hands().
+    virtual EffectHands* OwnHands()
+    {
+        return nullptr;
+    }
 
     // False while the HOME button must do nothing, as on the Shop's page of a damaged save, which turns off the HOME Button Menu.
     virtual bool AllowsHomeButton() const
