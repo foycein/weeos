@@ -14,9 +14,11 @@ add_library(Formats STATIC
     EllipticCurve.cpp
     FileBytes.cpp
     Font.cpp
+    GifImage.cpp
     HexText.cpp
     HmacSha1.cpp
     Huffman.cpp
+    Inflate.cpp
     Layout.cpp
     LayoutAnimation.cpp
     LayoutMaterial.cpp
@@ -28,6 +30,8 @@ add_library(Formats STATIC
     NandImage.cpp
     NandTitles.cpp
     OneTimeProgrammable.cpp
+    PlayRecordFile.cpp
+    PngImage.cpp
     RgbaImage.cpp
     RsaSignature.cpp
     SaveBanner.cpp
@@ -45,6 +49,7 @@ add_library(Formats STATIC
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    TitleMetadataBackupFile.cpp
     TplTexture.cpp
     U8Archive.cpp
     Vectors.cpp

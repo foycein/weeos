@@ -5,6 +5,9 @@
 #include "SystemMenu/DataManagement/NandRoom.h"
 #include "SystemMenu/DataManagement/TitleKinds.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/TitleCleanup.h"
+
 #include "Formats/FormatError.h"
 #include "Formats/SaveBanner.h"
 #include "Ios/Title/TitlePaths.h"
@@ -200,6 +203,19 @@ Formats::SaveBackupHeader ReadHeaderOrFail(const DataManagementServices& service
     return header;
 }
 
+// A title that Data Management deleted with its save data comes back from the backup file tmds.sys (0x8134EDBC calls ESMisc
+// PrepareTitleDir 0x813670A0). Without a backup the game was never played on this console.
+void RestoreTitleOfSaveData(DataManagementServices& services, Ios::TitleId titleId)
+{
+    NandFileAccess files(services.fileSystem, services.titles);
+    TitleCleanup cleanup(files, services.titles);
+    Ios::Result<void> restored = cleanup.RestoreTitleMetadata(titleId);
+    if (restored.Failed() && restored.Error() == Ios::IosError::NotFound)
+        throw DataError(DataResult::TitleNotInstalled, std::format("the title {} is not on the NAND", titleId.ToString()));
+
+    Require(restored, std::format("set up the title {} again", titleId.ToString()));
+}
+
 SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t lowPart)
 {
     Formats::Bytes backup = ReadSdFile(services.sdCard, SaveBackupPath(lowPart));
@@ -214,6 +230,7 @@ SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t low
     std::array<Formats::Byte, Formats::TransferIdSize> transferId = ReadTransferId(menuFiles);
 
     Ios::TitleId titleId = Ios::TitleId::FromValue(header.titleId);
+    RestoreTitleOfSaveData(services, titleId);
     if (services.titles.BecomeTitle(titleId).Failed())
         throw DataError(DataResult::TitleNotInstalled, std::format("the title {} is not on the NAND", titleId.ToString()));
 

@@ -1,0 +1,23 @@
+target_sources(SystemMenu PRIVATE
+    CalendarPages.cpp
+    ConnectionTestPages.cpp
+    CountryPages.cpp
+    DisplayPages.cpp
+    FormatPages.cpp
+    IndexPages.cpp
+    InternetPages.cpp
+    LanguagePage.cpp
+    NicknamePage.cpp
+    PageBuilder.cpp
+    PageFont.cpp
+    PageImages.cpp
+    PageLooks.cpp
+    PagePainter.cpp
+    ParentalPages.cpp
+    PcPages.cpp
+    SensorBarPages.cpp
+    SettingsScreen.cpp
+    SettingsFlow.cpp
+    SoundPage.cpp
+    UpdatePages.cpp
+)

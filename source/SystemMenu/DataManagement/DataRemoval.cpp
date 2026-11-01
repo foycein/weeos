@@ -5,6 +5,9 @@
 #include "SystemMenu/DataManagement/DataFiles.h"
 #include "SystemMenu/DataManagement/TitleKinds.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/TitleCleanup.h"
+
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>
@@ -18,47 +21,17 @@ namespace
 {
 
 constexpr std::string_view BannerFileName = "banner.bin";
-constexpr std::uint16_t SharedContentTypeFlag = 0x8000;
 
-// The console deletes the whole title only when its version is below this (ESMisc 0x81366758).
-constexpr std::uint16_t VersionOfTitlesThatGoWhole = 0x100;
-
-constexpr std::uint32_t InodesOfEmptyDirectory = 1;
-
-bool HasPrivateContents(const Ios::TitleService& titles, const Formats::TitleMetadata& metadata)
-{
-    Ios::Result<std::vector<std::uint32_t>> presentIds = titles.ListPresentContentIds(metadata);
-    if (presentIds.Failed())
-        return true;
-
-    for (const Formats::ContentRecord& record : metadata.contents)
-    {
-        bool isShared = (record.type & SharedContentTypeFlag) != 0;
-        bool isPresent = std::find(presentIds.Value().begin(), presentIds.Value().end(), record.id) != presentIds.Value().end();
-        if (isPresent && !isShared)
-            return true;
-    }
-    return false;
-}
-
-bool IsDataFolderEmpty(const Ios::FileSystemService& fileSystem, Ios::TitleId titleId)
-{
-    Ios::Result<Ios::DirectoryUsage> usage = fileSystem.GetDirectoryUsage(Ios::DataFolderPath(titleId));
-    return usage.Failed() || usage.Value().usedInodes <= InodesOfEmptyDirectory;
-}
-
-// A title with no contents, no save data and an old version goes completely (ESMisc::CheckSafeDeleteTitle 0x81366758).
+// A title that holds nothing any more goes completely, and its title metadata goes into the backup file tmds.sys, so that
+// its save data can come back from the SD card (0x8134DB7C: ESMisc CheckSafeDeleteTitle 0x81366758 and DeleteTitle 0x81366940).
 void DeleteTitleWhenNothingIsLeft(DataManagementServices& services, Ios::TitleId titleId)
 {
-    Ios::Result<Formats::TitleMetadata> metadata = services.titles.ReadTitleMetadata(titleId);
-    if (metadata.Failed())
+    NandFileAccess files(services.fileSystem, services.titles);
+    TitleCleanup cleanup(files, services.titles);
+    if (!cleanup.IsTitleEmpty(titleId))
         return;
 
-    bool isOldVersion = metadata.Value().titleVersion < VersionOfTitlesThatGoWhole;
-    if (!isOldVersion || HasPrivateContents(services.titles, metadata.Value()) || !IsDataFolderEmpty(services.fileSystem, titleId))
-        return;
-
-    Require(services.titles.DeleteTitle(titleId), std::format("delete the title {}", titleId.ToString()));
+    Require(cleanup.DeleteTitleKeepingBackup(titleId), std::format("delete the title {}", titleId.ToString()));
 }
 
 void EraseChannel(DataManagementServices& services, Ios::TitleId titleId)
