@@ -253,12 +253,13 @@ CornerLayout ReadCornerLayout(FileView& file, std::size_t object)
         || !HasAttribute(file, textureDescriptor, TextureCoordinateDescriptorBit))
         file.Fail("the corners of the ground have no position, color or texture coordinate");
 
+    bool hasNormal = HasAttribute(file, descriptor, NormalDescriptorBit);
+
     CornerLayout layout;
-    layout.positionByte = layout.size++;
-    if (HasAttribute(file, descriptor, NormalDescriptorBit))
-        ++layout.size;
-    layout.colorByte = layout.size++;
-    layout.textureCoordinateByte = layout.size++;
+    layout.positionByte = 0;
+    layout.colorByte = hasNormal ? 2 : 1;
+    layout.textureCoordinateByte = layout.colorByte + 1;
+    layout.size = layout.textureCoordinateByte + 1;
     return layout;
 }
 
