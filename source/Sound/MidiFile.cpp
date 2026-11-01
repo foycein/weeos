@@ -52,13 +52,14 @@ std::uint32_t ReadVariableLength(Formats::ByteReader& reader)
 {
     constexpr std::uint8_t MoreBytesBit = 0x80;
     constexpr std::uint8_t ValueBits = 0x7F;
+    constexpr int ValueBitCount = 7;
     constexpr int MostBytes = 4;
 
     std::uint32_t value = 0;
     for (int count = 0; count < MostBytes; ++count)
     {
         std::uint8_t byte = reader.ReadByte();
-        value = (value << 7) | (byte & ValueBits);
+        value = (value << ValueBitCount) | (byte & ValueBits);
         if ((byte & MoreBytesBit) == 0)
             return value;
     }
@@ -107,7 +108,11 @@ void ReadMetaEvent(Formats::ByteReader& reader, std::uint32_t tick, std::vector<
     if (type != TempoMeta || length != TempoLength)
         return;
 
-    std::uint32_t microseconds = (std::uint32_t(data[0]) << 16) | (std::uint32_t(data[1]) << 8) | data[2];
+    // The length of a quarter note in microseconds, as a big-endian number of three bytes.
+    constexpr int BitsPerByte = 8;
+    std::uint32_t microseconds = 0;
+    for (std::uint8_t byte : data)
+        microseconds = (microseconds << BitsPerByte) | byte;
     events.push_back({tick, std::nullopt, microseconds / MicrosecondsPerSecond});
 }
 
@@ -156,35 +161,9 @@ void ReadTrack(Formats::ByteView track, std::vector<TickedEvent>& events, std::u
     lastTick = std::max(lastTick, tick);
 }
 
-}
-
-MidiFile ReadMidiFile(Formats::ByteView bytes)
+// Turns the ticks of the events of all tracks into seconds, following the changes of the tempo.
+MidiFile TimeTheEvents(std::vector<TickedEvent>& tickedEvents, std::uint16_t ticksPerQuarterNote, std::uint32_t lastTick)
 {
-    Formats::ByteReader reader(bytes, "MIDI file");
-    if (reader.ReadUint32() != HeaderTag)
-        throw Formats::FormatError("Not a MIDI file");
-
-    std::uint32_t headerLength = reader.ReadUint32();
-    std::size_t afterHeader = reader.Position() + headerLength;
-    std::uint16_t format = reader.ReadUint16();
-    std::uint16_t trackCount = reader.ReadUint16();
-    std::uint16_t ticksPerQuarterNote = reader.ReadUint16();
-    if (format > HighestFormat)
-        throw Formats::FormatError("Only MIDI files of format 0 and 1 are read");
-    if ((ticksPerQuarterNote & TimeCodeDivisionBit) != 0 || ticksPerQuarterNote == 0)
-        throw Formats::FormatError("Only MIDI files that count in quarter notes are read");
-    reader.MoveTo(afterHeader);
-
-    std::vector<TickedEvent> tickedEvents;
-    std::uint32_t lastTick = 0;
-    for (std::uint16_t track = 0; track < trackCount; ++track)
-    {
-        if (reader.ReadUint32() != TrackTag)
-            throw Formats::FormatError("A MIDI track has no MTrk tag");
-        std::uint32_t trackLength = reader.ReadUint32();
-        ReadTrack(reader.ReadBytes(trackLength), tickedEvents, lastTick);
-    }
-
     std::stable_sort(tickedEvents.begin(), tickedEvents.end(),
         [](const TickedEvent& first, const TickedEvent& second) { return first.tick < second.tick; });
 
@@ -207,6 +186,39 @@ MidiFile ReadMidiFile(Formats::ByteView bytes)
     }
     file.lengthSeconds = seconds + (lastTick - tick) * secondsPerTick;
     return file;
+}
+
+}
+
+MidiFile ReadMidiFile(Formats::ByteView bytes)
+{
+    Formats::ByteReader reader(bytes, "MIDI file");
+    if (reader.ReadUint32() != HeaderTag)
+        throw Formats::FormatError("Not a MIDI file");
+
+    std::uint32_t headerLength = reader.ReadUint32();
+    std::size_t afterHeader = reader.Position() + headerLength;
+    std::uint16_t format = reader.ReadUint16();
+    std::uint16_t trackCount = reader.ReadUint16();
+    std::uint16_t ticksPerQuarterNote = reader.ReadUint16();
+    if (format > HighestFormat)
+        throw Formats::FormatError("Only MIDI files of format 0 and 1 are read");
+
+    bool countsInTimeCode = (ticksPerQuarterNote & TimeCodeDivisionBit) != 0;
+    if (countsInTimeCode || ticksPerQuarterNote == 0)
+        throw Formats::FormatError("Only MIDI files that count in quarter notes are read");
+    reader.MoveTo(afterHeader);
+
+    std::vector<TickedEvent> tickedEvents;
+    std::uint32_t lastTick = 0;
+    for (std::uint16_t track = 0; track < trackCount; ++track)
+    {
+        if (reader.ReadUint32() != TrackTag)
+            throw Formats::FormatError("A MIDI track has no MTrk tag");
+        std::uint32_t trackLength = reader.ReadUint32();
+        ReadTrack(reader.ReadBytes(trackLength), tickedEvents, lastTick);
+    }
+    return TimeTheEvents(tickedEvents, ticksPerQuarterNote, lastTick);
 }
 
 }

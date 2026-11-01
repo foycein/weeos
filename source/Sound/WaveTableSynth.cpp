@@ -27,6 +27,10 @@ constexpr double LoudestTenths = 59;
 constexpr double EndingTenths = -720;
 constexpr double TenthsPerDecade = 200;
 
+// Velocity and volume count twice (40 log10), a share of the power half (10 log10).
+constexpr double MidiValueTenthsPerDecade = 2 * TenthsPerDecade;
+constexpr double PowerShareTenthsPerDecade = TenthsPerDecade / 2;
+
 // The attack climbs a curve of 100 steps; the decay falls 96 decibels.
 constexpr double AttackCurveTop = 99;
 constexpr double AttackSteps = 100;
@@ -40,6 +44,8 @@ constexpr double CentsPerOctave = 1200;
 constexpr double LongestSeconds = 10;
 
 constexpr int StereoChannels = 2;
+constexpr std::size_t LeftSide = 0;
+constexpr std::size_t RightSide = 1;
 
 enum class EnvelopeStage
 {
@@ -79,7 +85,7 @@ double TenthsOfMidiValue(std::uint8_t value)
 {
     if (value == 0)
         return SilentTenths;
-    return 2 * TenthsPerDecade * std::log10(value / HighestMidiValue);
+    return MidiValueTenthsPerDecade * std::log10(value / HighestMidiValue);
 }
 
 // The share of the power that a side gets.
@@ -87,7 +93,12 @@ double TenthsOfPanShare(double share)
 {
     if (share <= 0)
         return QuietestHeardTenths;
-    return TenthsPerDecade / 2 * std::log10(share);
+    return PowerShareTenthsPerDecade * std::log10(share);
+}
+
+float GlideBetween(float from, float to, float share)
+{
+    return from + (to - from) * share;
 }
 
 float GainOfTenths(double tenths)
@@ -252,7 +263,8 @@ private:
         note.key = event.number;
         note.velocityTenths = TenthsOfMidiValue(event.value);
         double cents = (event.number - region->unityKey) * CentsPerKey + region->fineTuneCents;
-        note.step = static_cast<double>(region->wave->sampleRate) / SynthSampleRate * std::pow(2.0, cents / CentsPerOctave);
+        double rateRatio = static_cast<double>(region->wave->sampleRate) / SynthSampleRate;
+        note.step = rateRatio * std::pow(2.0, cents / CentsPerOctave);
         StartEnvelope(note);
         notes.push_back(note);
     }
@@ -288,8 +300,8 @@ private:
 
             float value = resampler.Read(samples, note.position, note.step);
             float share = static_cast<float>(sample) / SynthFrameSamples;
-            left[sample] += value * (oldGains[0] + (newGains[0] - oldGains[0]) * share);
-            right[sample] += value * (oldGains[1] + (newGains[1] - oldGains[1]) * share);
+            left[sample] += value * GlideBetween(oldGains[LeftSide], newGains[LeftSide], share);
+            right[sample] += value * GlideBetween(oldGains[RightSide], newGains[RightSide], share);
             note.position += note.step;
         }
     }

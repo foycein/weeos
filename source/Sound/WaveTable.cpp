@@ -6,6 +6,7 @@
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include <limits>
@@ -20,6 +21,7 @@ constexpr std::size_t RegionSize = 0x18;
 constexpr std::size_t ArticulationSize = 0x50;
 constexpr std::size_t SampleSize = 0x10;
 constexpr std::size_t AdpcmParameterSize = 0x2E;
+constexpr std::uint32_t NibblesPerByte = 2;
 
 // The table keeps times in timecents and loudness in tenths of a decibel, both times 65536. The smallest number means "none" (at once).
 constexpr double FixedPointOne = 65536.0;
@@ -88,12 +90,26 @@ std::int32_t ReadInt32(Formats::ByteReader& reader)
 Articulation ReadArticulation(Formats::ByteReader& reader)
 {
     Articulation articulation;
-    for (std::int32_t* field : {&articulation.lfoFrequency, &articulation.lfoDelay, &articulation.lfoAttenuation, &articulation.lfoPitch,
-             &articulation.lfoModulationAttenuation, &articulation.lfoModulationPitch, &articulation.attack, &articulation.decay,
-             &articulation.sustain, &articulation.release, &articulation.velocityToAttack, &articulation.keyToDecay,
-             &articulation.secondAttack, &articulation.secondDecay, &articulation.secondSustain, &articulation.secondRelease,
-             &articulation.secondVelocityToAttack, &articulation.secondKeyToDecay, &articulation.secondEnvelopeToPitch, &articulation.pan})
-        *field = ReadInt32(reader);
+    articulation.lfoFrequency = ReadInt32(reader);
+    articulation.lfoDelay = ReadInt32(reader);
+    articulation.lfoAttenuation = ReadInt32(reader);
+    articulation.lfoPitch = ReadInt32(reader);
+    articulation.lfoModulationAttenuation = ReadInt32(reader);
+    articulation.lfoModulationPitch = ReadInt32(reader);
+    articulation.attack = ReadInt32(reader);
+    articulation.decay = ReadInt32(reader);
+    articulation.sustain = ReadInt32(reader);
+    articulation.release = ReadInt32(reader);
+    articulation.velocityToAttack = ReadInt32(reader);
+    articulation.keyToDecay = ReadInt32(reader);
+    articulation.secondAttack = ReadInt32(reader);
+    articulation.secondDecay = ReadInt32(reader);
+    articulation.secondSustain = ReadInt32(reader);
+    articulation.secondRelease = ReadInt32(reader);
+    articulation.secondVelocityToAttack = ReadInt32(reader);
+    articulation.secondKeyToDecay = ReadInt32(reader);
+    articulation.secondEnvelopeToPitch = ReadInt32(reader);
+    articulation.pan = ReadInt32(reader);
     return articulation;
 }
 
@@ -124,9 +140,10 @@ WaveTableEnvelope MakeEnvelope(const Articulation& articulation)
 AdpcmParameters ReadAdpcmParameters(Formats::ByteReader& reader)
 {
     AdpcmParameters parameters;
+    constexpr std::size_t GainSize = 2;
     for (std::int16_t& coefficient : parameters.coefficients)
         coefficient = reader.ReadInt16();
-    reader.ReadUint16();
+    reader.Skip(GainSize);
     parameters.initialPredictorAndScale = reader.ReadUint16();
     parameters.initialHistory1 = reader.ReadInt16();
     parameters.initialHistory2 = reader.ReadInt16();
@@ -151,7 +168,7 @@ std::size_t StoredAdpcmByteCount(std::uint32_t sampleCount)
     std::uint32_t nibbles = wholeFrames * AdpcmNibblesPerFrame;
     if (samplesInTheLastFrame > 0)
         nibbles += AdpcmHeaderNibbleCount + samplesInTheLastFrame;
-    return (nibbles + 1) / 2;
+    return (nibbles + 1) / NibblesPerByte;
 }
 
 // A sample of the table: its format, its rate, where it starts in the sample file and how many samples it has.
@@ -178,7 +195,6 @@ SampleEntry ReadSampleEntry(Formats::ByteReader& reader)
 // The offset of a sample counts in the units of its format: nibbles for ADPCM, bytes for 8 bit and 16 bit words for 16 bit samples.
 std::vector<float> DecodeSamples(const SampleEntry& entry, Formats::ByteView tableFile, std::size_t adpcmTableOffset, Formats::ByteView sampleFile)
 {
-    constexpr std::uint32_t NibblesPerByte = 2;
     constexpr std::uint32_t BytesPerPcm16Sample = 2;
     switch (entry.format)
     {
@@ -204,26 +220,29 @@ std::vector<float> DecodeSamples(const SampleEntry& entry, Formats::ByteView tab
     throw Formats::FormatError(std::format("A sample of the wave table has the unknown format {}", static_cast<int>(entry.format)));
 }
 
-}
-
-WaveTable::WaveTable(Formats::ByteView tableFile, Formats::ByteView sampleFile)
+std::vector<std::vector<std::uint16_t>> ReadInstruments(Formats::ByteReader& reader, const TableOffsets& offsets)
 {
-    Formats::ByteReader reader(tableFile, "wave table");
-    TableOffsets offsets = ReadOffsets(reader);
-
-    constexpr std::size_t InstrumentSize = KeyCount * sizeof(std::uint16_t);
+    constexpr std::size_t InstrumentSize = WaveTable::KeyCount * sizeof(std::uint16_t);
     std::size_t instrumentCount = (offsets.regions - offsets.melodicInstruments) / InstrumentSize;
     reader.MoveTo(offsets.melodicInstruments);
+
+    std::vector<std::vector<std::uint16_t>> instruments;
     for (std::size_t instrument = 0; instrument < instrumentCount; ++instrument)
     {
-        std::vector<std::uint16_t> regionOfKey(KeyCount);
+        std::vector<std::uint16_t> regionOfKey(WaveTable::KeyCount);
         for (std::uint16_t& region : regionOfKey)
             region = reader.ReadUint16();
         instruments.push_back(std::move(regionOfKey));
     }
+    return instruments;
+}
 
+using Waves = std::vector<std::shared_ptr<const WaveTableWave>>;
+
+Waves ReadWaves(Formats::ByteReader& reader, const TableOffsets& offsets, Formats::ByteView tableFile, Formats::ByteView sampleFile)
+{
     std::size_t sampleCount = (offsets.adpcmParameters - offsets.samples) / SampleSize;
-    std::vector<std::shared_ptr<WaveTableWave>> waves;
+    Waves waves;
     for (std::size_t sample = 0; sample < sampleCount; ++sample)
     {
         reader.MoveTo(offsets.samples + sample * SampleSize);
@@ -233,40 +252,60 @@ WaveTable::WaveTable(Formats::ByteView tableFile, Formats::ByteView sampleFile)
         wave->samples = DecodeSamples(entry, tableFile, offsets.adpcmParameters, sampleFile);
         waves.push_back(std::move(wave));
     }
+    return waves;
+}
+
+// A copy of the wave that ends with its loop and plays the loop again and again.
+std::shared_ptr<const WaveTableWave> MakeLoopingWave(const WaveTableWave& wave, std::uint32_t loopStart, std::uint32_t loopLength)
+{
+    auto loopingWave = std::make_shared<WaveTableWave>(wave);
+    std::size_t loopEnd = std::size_t(loopStart) + loopLength;
+    loopingWave->samples.resize(std::min(loopingWave->samples.size(), loopEnd));
+    loopingWave->loops = true;
+    loopingWave->loopStartSample = loopStart;
+    return loopingWave;
+}
+
+WaveTableRegion ReadRegion(Formats::ByteReader& reader, const TableOffsets& offsets, Formats::ByteView tableFile, const Waves& waves)
+{
+    constexpr std::size_t UnusedByteSize = 1;
+    WaveTableRegion region;
+    region.unityKey = reader.ReadByte();
+    reader.Skip(UnusedByteSize);
+    region.fineTuneCents = reader.ReadInt16();
+    region.attenuationTenthsOfDecibel = ReadInt32(reader) / FixedPointOne;
+    std::uint32_t loopStart = reader.ReadUint32();
+    std::uint32_t loopLength = reader.ReadUint32();
+    std::uint32_t articulationIndex = reader.ReadUint32();
+    std::uint32_t sampleIndex = reader.ReadUint32();
+    if (sampleIndex >= waves.size())
+        throw Formats::FormatError(std::format("A region of the wave table names the sample {}, which it does not have", sampleIndex));
+
+    Formats::ByteReader articulationReader(tableFile, "wave table articulation");
+    articulationReader.MoveTo(offsets.articulations + articulationIndex * ArticulationSize);
+    region.envelope = MakeEnvelope(ReadArticulation(articulationReader));
+
+    if (loopLength == 0)
+        region.wave = waves[sampleIndex];
+    else
+        region.wave = MakeLoopingWave(*waves[sampleIndex], loopStart, loopLength);
+    return region;
+}
+
+}
+
+WaveTable::WaveTable(Formats::ByteView tableFile, Formats::ByteView sampleFile)
+{
+    Formats::ByteReader reader(tableFile, "wave table");
+    TableOffsets offsets = ReadOffsets(reader);
+    instruments = ReadInstruments(reader, offsets);
+    Waves waves = ReadWaves(reader, offsets, tableFile, sampleFile);
 
     std::size_t regionCount = (offsets.articulations - offsets.regions) / RegionSize;
     for (std::size_t regionNumber = 0; regionNumber < regionCount; ++regionNumber)
     {
         reader.MoveTo(offsets.regions + regionNumber * RegionSize);
-        WaveTableRegion region;
-        region.unityKey = reader.ReadByte();
-        reader.ReadByte();
-        region.fineTuneCents = reader.ReadInt16();
-        region.attenuationTenthsOfDecibel = ReadInt32(reader) / FixedPointOne;
-        std::uint32_t loopStart = reader.ReadUint32();
-        std::uint32_t loopLength = reader.ReadUint32();
-        std::uint32_t articulationIndex = reader.ReadUint32();
-        std::uint32_t sampleIndex = reader.ReadUint32();
-        if (sampleIndex >= waves.size())
-            throw Formats::FormatError(std::format("A region of the wave table names the sample {}, which it does not have", sampleIndex));
-
-        Formats::ByteReader articulationReader(tableFile, "wave table articulation");
-        articulationReader.MoveTo(offsets.articulations + articulationIndex * ArticulationSize);
-        region.envelope = MakeEnvelope(ReadArticulation(articulationReader));
-
-        if (loopLength == 0)
-        {
-            region.wave = waves[sampleIndex];
-        }
-        else
-        {
-            auto loopingWave = std::make_shared<WaveTableWave>(*waves[sampleIndex]);
-            loopingWave->samples.resize(std::min<std::size_t>(loopingWave->samples.size(), loopStart + loopLength));
-            loopingWave->loops = true;
-            loopingWave->loopStartSample = loopStart;
-            region.wave = std::move(loopingWave);
-        }
-        regions.push_back(std::move(region));
+        regions.push_back(ReadRegion(reader, offsets, tableFile, waves));
     }
 }
 

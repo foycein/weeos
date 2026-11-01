@@ -53,6 +53,8 @@ struct WaveTableRegion
 class WaveTable
 {
 public:
+    static constexpr std::size_t KeyCount = 128;
+
     // Throws a FormatError for a broken table, for samples beyond the end of the sample file and for articulations it cannot play.
     WaveTable(Formats::ByteView tableFile, Formats::ByteView sampleFile);
 
@@ -62,7 +64,6 @@ public:
     std::size_t InstrumentCount() const;
 
 private:
-    static constexpr std::size_t KeyCount = 128;
     static constexpr std::uint16_t NoRegion = 0xFFFF;
 
     std::vector<std::vector<std::uint16_t>> instruments;
