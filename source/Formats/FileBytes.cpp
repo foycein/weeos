@@ -24,4 +24,13 @@ Bytes ReadFileBytes(const std::filesystem::path& path)
     return bytes;
 }
 
+void WriteFileBytes(const std::filesystem::path& path, ByteView bytes)
+{
+    std::ofstream file(path, std::ios::binary);
+    file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    file.close();
+    if (!file)
+        throw std::runtime_error(std::format("Cannot write the file {}", path.string()));
+}
+
 }

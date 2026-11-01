@@ -42,6 +42,9 @@ enum class ScreenId : int
     SdChannelList = 0x22,
     SdChannelWindow = 0x23,
     SdCardMenuBar = 0x24,
+
+    // WeeOS's own screen, which the original does not have: the import of a person's Wii on the first start of a new console.
+    ConsoleImport = 0x40,
 };
 
 }

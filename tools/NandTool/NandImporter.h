@@ -36,6 +36,12 @@ struct ImportPlan
 // or when an imported name cannot be stored on Windows.
 ImportPlan PlanSystemImport(Formats::NandFileSystem& source);
 
+// The same with the rules of the complete import (BuildCompleteImportRules): a person's own Wii with everything on it.
+ImportPlan PlanCompleteImport(Formats::NandFileSystem& source);
+
+// The plan of any list of rules.
+ImportPlan PlanImport(Formats::NandFileSystem& source, std::vector<ImportRule> rules);
+
 // Writes the planned entries into a folder as the NAND folder of Ios::NandStorage keeps them: one file or folder for each
 // NAND entry, and the file ".attributes" with the owner, group, permissions and flags of each entry.
 // A system configuration is written with the personal settings of the owner reset (see PersonalSettings.h).

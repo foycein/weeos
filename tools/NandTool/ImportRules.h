@@ -15,6 +15,9 @@ enum class ImportAction
     // The entry is a system configuration (SYSCONF). It is imported with the settings of the owner set back to the factory values.
     ImportWithPersonalSettingsReset,
 
+    // The entry is the network configuration (config.dat). The owner's networks stay out; WeeOS's one connection takes their place.
+    ImportWithWeeOSConnection,
+
     Skip,
 };
 
@@ -49,6 +52,11 @@ std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles);
 // The rules in the order they are tried: first the rules for the homebrew channels, then the fixed rules of the owner.
 // The last rule covers every path, so every path follows a rule, and a path that no other rule names is not imported.
 std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homebrewChannelIds);
+
+// The rules of the complete import, which brings a person's own Wii into WeeOS (docs/DECISIONS.md, Start): everything of that console,
+// its Miis, saves, channels and Message Board included. Only what WeeOS has no place for stays out: BC and MIOS (no GameCube), and the
+// networks of the console, whose place WeeOS's connection through the PC takes (config.dat).
+std::vector<ImportRule> BuildCompleteImportRules();
 
 // The number of the first rule that covers the path. Throws a logic_error when the rules do not end with a rule for every path.
 std::size_t FindRuleNumber(const std::vector<ImportRule>& rules, std::string_view path);

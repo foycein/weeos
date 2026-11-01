@@ -1,6 +1,7 @@
 #include "SystemMenu/ScreenFactory.h"
 
 #include "SystemMenu/BackToWiiMenuScreen.h"
+#include "SystemMenu/ConsoleImportScreen.h"
 #include "SystemMenu/DataManagement/DataEditorScreen.h"
 #include "SystemMenu/SdCardMenu/SdCardMenuScreens.h"
 #include "SystemMenu/SdCardMenu/SdChannelWindowScreen.h"
@@ -26,6 +27,9 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
     {
     case ScreenId::HealthAndSafety:
         return std::make_unique<HealthAndSafetyScreen>(services);
+
+    case ScreenId::ConsoleImport:
+        return std::make_unique<ConsoleImportScreen>(services);
 
     case ScreenId::MainFrame:
         return std::make_unique<MainFrameScreen>(services);

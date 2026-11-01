@@ -12,6 +12,7 @@ add_library(SystemMenu STATIC
     FirstScreen.cpp
     FrontPanel.cpp
     HealthAndSafetyScreen.cpp
+    ConsoleImportScreen.cpp
     InputManager.cpp
     IosNandFiles.cpp
     KeyboardView.cpp

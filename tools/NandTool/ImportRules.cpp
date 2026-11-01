@@ -65,6 +65,10 @@ std::vector<ImportRule> FixedImportRules()
     return {
         SkipEverythingInside("/shared2/menu", "Miis (FaceLib) and the settings of Virtual Console games: personal data"),
         SkipEverythingInside("/shared2/wc24", "Message Board mail and WiiConnect24 data: personal data"),
+        ImportOnlyThisEntry("/shared2/sys/net", "the folder of the network configuration"),
+        ImportOnlyThisEntry("/shared2/sys/net/02", "the folder of the network configuration of the IOS of today"),
+        {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
+            "the network configuration: WeeOS's wired connection with automatic settings instead of the owner's networks"},
         SkipEverythingInside("/shared2/sys/net", "network configuration: the names, passwords and addresses of the owner's networks"),
         SkipEverythingInside("/title/00010000", "save data of disc games: personal data"),
 
@@ -137,6 +141,19 @@ std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles)
             homebrewChannelIds.push_back(titleId);
     }
     return homebrewChannelIds;
+}
+
+std::vector<ImportRule> BuildCompleteImportRules()
+{
+    return {
+        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
+        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000101.tik", "ticket of MIOS"),
+        {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
+            "the network configuration: WeeOS is online through the PC, with nothing to configure"},
+        ImportEverythingInside("/", "everything else of the console, personal data included"),
+    };
 }
 
 std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homebrewChannelIds)
