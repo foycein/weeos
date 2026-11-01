@@ -366,9 +366,7 @@ void DataEditorScreen::PlaceBalloon(Balloon& balloon, std::size_t slotIndex)
     if (!place)
         return;
 
-    bool isWide = services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-    float margin = isWide ? BalloonMarginOnAWideScreen : BalloonMarginOnANarrowScreen;
-    balloon.PlaceAt({place->x, place->y - BalloonDepthBelowItsPlace}, margin);
+    balloon.PlaceAt({place->x, place->y - BalloonDepthBelowItsPlace}, BalloonMarginOnAWideScreen);
 
     bool wasShown = balloon.IsShown();
     balloon.Calculate();
