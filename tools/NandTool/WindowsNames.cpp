@@ -1,6 +1,6 @@
 #include "WindowsNames.h"
 
-#include "NandFolderLayout.h"
+#include "Ios/FileSystem/HostNames.h"
 
 #include <algorithm>
 #include <cctype>
@@ -53,7 +53,8 @@ std::string LowerCaseName(std::string_view name)
 
 bool CanBeStoredOnWindows(std::string_view name)
 {
-    if (name.empty() || name == IndexFileName || name == IndexTemporaryFileName)
+    bool isIndexFileName = name == Ios::IndexFileName || name == Ios::IndexTemporaryFileName;
+    if (name.empty() || isIndexFileName)
         return false;
 
     if (std::any_of(name.begin(), name.end(), IsRejectedCharacter))

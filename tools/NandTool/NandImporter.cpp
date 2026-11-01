@@ -1,11 +1,11 @@
 #include "NandImporter.h"
 
 #include "FolderFiles.h"
-#include "NandFolderLayout.h"
 #include "PersonalSettings.h"
 #include "WindowsNames.h"
 
 #include "Formats/NandTitles.h"
+#include "Ios/FileSystem/HostNames.h"
 
 #include <algorithm>
 #include <format>
@@ -195,5 +195,5 @@ void WriteImport(Formats::NandFileSystem& source, const ImportPlan& plan, const 
     // The index comes last: a folder without an index is an empty NAND, so an import that stops half way leaves nothing half done.
     const Formats::NandEntry& root = source.Entries().front();
     std::string indexText = BuildIndexText(root, plan.importedEntries);
-    WriteBytesToFile(targetFolder / IndexFileName, Formats::Bytes(indexText.begin(), indexText.end()));
+    WriteBytesToFile(targetFolder / Ios::IndexFileName, Formats::Bytes(indexText.begin(), indexText.end()));
 }

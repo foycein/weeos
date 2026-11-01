@@ -227,7 +227,8 @@ std::string TitleCodeOf(std::uint64_t titleId)
     for (int byteNumber = TitleCodeLength - 1; byteNumber >= 0; --byteNumber)
     {
         std::uint32_t character = (titleId >> (byteNumber * Formats::BitsPerByte)) & Formats::ByteMask;
-        if (character < FirstPrintableCharacter || character > LastPrintableCharacter)
+        bool isPrintable = character >= FirstPrintableCharacter && character <= LastPrintableCharacter;
+        if (!isPrintable)
             return std::string();
 
         code += static_cast<char>(character);
