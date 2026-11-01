@@ -22,5 +22,11 @@
 // than the console makes it, because then the places of the personal values are not known.
 void ResetPersonalSettings(Formats::SystemConfiguration& configuration);
 
+// The network configuration that WeeOS's NAND holds instead of the owner's (/shared2/sys/net/02/config.dat, DECISIONS.md): Connection 1
+// is a wired connection with automatic settings, switched on, chosen, and with its connection test passed, so that the menu does not
+// ask for the Internet settings and the online channels start and show their own connection errors, like a console with an unplugged
+// cable. Connections 2 and 3 are empty.
+Formats::Bytes MakeWeeOSNetworkConfigurationFile();
+
 // Reads the bytes of a SYSCONF file, resets the personal settings and writes the file again.
 Formats::Bytes ResetPersonalSettingsOfFile(Formats::ByteView systemConfigurationBytes);

@@ -29,8 +29,14 @@ struct BannerContent
 {
     std::array<ChannelName, BannerLanguageCount> names;
 
-    // True when another content of the title holds a script or a module that drives the icon (icon.cs or icon.rso).
+    // True when another content of the title holds a script or a module that drives the icon (icon.cs or icon.rso),
+    // and the same for the banner (banner.cs or banner.rso).
     bool isIconDrivenByCode = false;
+    bool isBannerDrivenByCode = false;
+
+    // The channel works only with a connection to the Internet: the menu asks for the Internet settings before it starts it
+    // when no connection has passed its test.
+    bool needsInternetConnection = false;
 
     U8Archive files;
 };

@@ -171,6 +171,13 @@ const LoadedChannel& ChannelManager::LoadChannel(SlotPosition position)
     return *channel;
 }
 
+void ChannelManager::RememberChannelThatStarts(SlotPosition position)
+{
+    saveData.pageToReturnTo = static_cast<std::uint32_t>(position.page);
+    PutFirstInTheListOfStartedTitles(saveData, SlotAt(position).titleId);
+    Save();
+}
+
 void ChannelManager::Save()
 {
     console.WriteNandFile(SaveDataPath, WriteSaveData(saveData));
