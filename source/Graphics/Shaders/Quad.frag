@@ -290,11 +290,21 @@ float CalculateAlpha(Stage stage, StageSources sources)
     return clamp(result, LowestRegisterValue, HighestRegisterValue);
 }
 
+// The swap table of a stage: every channel reads the channel whose number its two bits hold.
+const uint TextureSwapShift = 8u;
+
+vec4 Swapped(vec4 color, uint table)
+{
+    return vec4(color[table & 3u], color[(table >> 2u) & 3u], color[(table >> 4u) & 3u], color[(table >> 6u) & 3u]);
+}
+
 void RunStage(Stage stage)
 {
     StageSources sources;
     sources.textureSample = stage.textureIndex == NoTexture ? vec4(0.0) : SampleTexture(stage.textureIndex);
     sources.rasterSample = stage.usesRasterColor != 0u ? rasterColor : vec4(0.0);
+    sources.textureSample = Swapped(sources.textureSample, stage.swaps >> TextureSwapShift);
+    sources.rasterSample = Swapped(sources.rasterSample, stage.swaps);
     sources.constantColor = ConstantColorValue(stage.constantColor);
     sources.constantAlpha = ConstantAlphaValue(stage.constantAlpha);
 

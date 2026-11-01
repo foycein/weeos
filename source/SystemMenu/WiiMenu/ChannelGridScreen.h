@@ -73,6 +73,7 @@ public:
     void Load() override;
     void Build() override;
     void Draw(DrawPass pass) override;
+    void OnClose() override;
 
     GridState State() const;
     int CurrentPage() const;
@@ -81,8 +82,9 @@ public:
     // The place of the picture where the middle of a television of the page that shows lies, in layout units.
     Formats::Vector2 PlaceOfSlot(int slotIndex);
 
-    // The channel start window asks for the zoom into the television of the pressed channel when it is ready (0x813ADC08), and for the
-    // zoom back out when it closes (0x813ADCE8).
+    // The channel start window asks for the zoom into the television of the pressed channel when it is built (0x813ADC08), and for the
+    // zoom back out when it closes (0x813ADCE8). While the grid zooms, the camera of the display shows the part of the Wii Menu that
+    // the zoom looks at.
     void ZoomIntoPressedChannel();
     void ZoomOutOfPressedChannel();
 
@@ -118,6 +120,8 @@ private:
     void RunTurningOfThePage();
     void RunHolding();
     void RunZoom();
+    void ShowTheZoom();
+    PictureArea TelevisionOfThePressedChannel();
     void DrawTheGrid();
     bool RunLeaving();
 
@@ -143,7 +147,7 @@ private:
     void SetBarButtonsEnabled(bool shouldBeEnabled);
     ChannelTile& Tile(SlotPosition position);
     void DrawTiles(const PlacedPanes& placedPanes);
-    Graphics::ScissorRectangle AreaOfTheTelevisionAt(Formats::Vector2 place) const;
+    PictureArea AreaOfTheTelevisionAt(Formats::Vector2 place) const;
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> selectionArchive;

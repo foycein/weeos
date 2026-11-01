@@ -58,6 +58,9 @@ public:
     // The panes that the group lists. Throws a LayoutError when the layout has no such group or lists a pane that does not exist.
     std::vector<Formats::Pane*> PanesOfGroup(std::string_view groupName);
 
+    // The groups of the file, as it lists them. Nothing when the file has none.
+    const std::optional<Formats::Group>& RootGroup() const;
+
     // Throws a LayoutError when the layout has no material with this number.
     LiveMaterial& MaterialAt(std::size_t materialIndex);
     std::size_t MaterialCount() const;

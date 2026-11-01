@@ -58,14 +58,17 @@ BoardView* MainFrameScreen::Board()
     return board.get();
 }
 
+// The background zooms with the grid: it is seen through the camera of the display (0x8138F514).
 void MainFrameScreen::Draw(DrawPass pass)
 {
     if (pass != DrawPass::Main || !background)
         return;
 
+    services.display.LookThroughCamera();
     background->Draw();
     if (board)
         board->Draw();
+    services.display.StopMovingAreas();
 }
 
 bool MainFrameScreen::UpdatesWithChildren() const

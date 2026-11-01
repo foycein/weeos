@@ -1,6 +1,7 @@
 add_library(Mii STATIC
     DefaultMiis.cpp
     MiiBody.cpp
+    MiiBodyAnimation.cpp
     MiiBodyFile.cpp
     MiiBodyPicture.cpp
     MiiChecksum.cpp

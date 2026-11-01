@@ -21,6 +21,10 @@ class LayoutArchive : public PictureSource
 public:
     explicit LayoutArchive(Formats::U8Archive archive);
 
+    // An archive whose folders blyt, anim and timg lie in another folder than "arc/", or at its root (rootFolder ""), as in the
+    // Layout00.szs of the Mii Channel.
+    LayoutArchive(Formats::U8Archive archive, std::string rootFolder);
+
     // Reads "arc/blyt/<layoutName>.brlyt", for example the layoutName "my_IplTop_c".
     // Throws a LayoutError when the archive has no such file and a FormatError when the file is damaged.
     Formats::Layout ReadLayout(const std::string& layoutName) const;
@@ -35,6 +39,7 @@ private:
     Formats::ByteView FindFileOrFail(const std::string& path) const;
 
     Formats::U8Archive archive;
+    std::string root;
 };
 
 }

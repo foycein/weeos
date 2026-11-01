@@ -5,6 +5,7 @@
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/ZoomedWindow.h"
 
 #include "Layout/LayoutArchive.h"
 
@@ -68,6 +69,9 @@ private:
     std::unique_ptr<MenuLayout> background;
     std::unique_ptr<ChannelIconLayout> icon;
     std::unique_ptr<ButtonGroup> buttons;
+
+    // While the list zooms, the window is a picture inside the television.
+    ZoomedWindow zoomedWindow;
     std::u16string name;
     Formats::Bytes iconFile;
 

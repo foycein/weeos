@@ -20,6 +20,7 @@ add_library(Graphics STATIC
     OneTimeCommands.cpp
     RangeAllocator.cpp
     StageList.cpp
+    StoredMeshes.cpp
     Swapchain.cpp
     TextureStore.cpp
     VulkanContext.cpp

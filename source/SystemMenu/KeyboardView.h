@@ -96,6 +96,18 @@ struct FieldLook
     bool isCaretShown = true;
 };
 
+// The words on the buttons of the keyboard: the bar at the bottom, the key that opens the symbols, and the buttons of the symbol window.
+// An empty word keeps the text of the layout.
+struct KeyboardButtonTexts
+{
+    std::u16string cancel;
+    std::u16string confirm;
+    std::u16string others;
+    std::u16string close;
+    std::u16string back;
+    std::u16string next;
+};
+
 // What the soft keyboard looks like (the layouts of sofkeybd.ash: background, text field, keys, bar and symbol window) and where its keys are.
 // It knows nothing about typing: the keyboard tells it what to show and asks it what the pointers did.
 class KeyboardView
@@ -107,6 +119,9 @@ public:
 
     // The display, the files and the messages must stay alive as long as the view.
     KeyboardView(Display& display, const MenuFiles& files, const Text::MessageCatalog& messages);
+
+    // The keyboard of a channel: the same layouts from the channel's own archive (the Mii Channel's sofkeybdkr.szs), with its words.
+    KeyboardView(Display& display, std::unique_ptr<Layout::LayoutArchive> keyboardArchive, const KeyboardButtonTexts& texts);
 
     // The keyboard fades in and out. The opacity goes from 0 (gone) to 255 (all there).
     void SetOpacity(std::uint8_t opacity);
@@ -188,7 +203,7 @@ private:
     void DrawRectangle(const Rectangle& area, Formats::Rgba8Color color);
 
     Display& display;
-    const Text::MessageCatalog& messages;
+    KeyboardButtonTexts buttonTexts;
     std::unique_ptr<Layout::LayoutArchive> archive;
 
     std::unique_ptr<MenuLayout> background;

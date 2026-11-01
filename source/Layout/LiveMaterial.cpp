@@ -27,8 +27,6 @@ constexpr std::uint8_t OneFactor = 1;
 constexpr std::uint8_t SourceAlphaFactor = 4;
 constexpr std::uint8_t InverseSourceAlphaFactor = 5;
 
-// In the plain swap table every channel reads the channel of its own name.
-constexpr Formats::TevSwapTable PlainSwapTable = {0xE4, 0xE4, 0xE4, 0xE4};
 
 constexpr float TextureMiddle = 0.5f;
 
@@ -107,9 +105,6 @@ bool AlphaTestAlwaysPasses(const Formats::Material& material)
 
 void RequireSupportedParts(const Formats::Material& material)
 {
-    if (material.tevSwapTable && *material.tevSwapTable != PlainSwapTable)
-        FailMaterial(material, "it has a swap table other than the plain one");
-
     if (!AlphaTestAlwaysPasses(material))
         FailMaterial(material, "it has an alpha test that can reject pixels");
 
@@ -143,7 +138,7 @@ Graphics::TevStage ConvertStage(const Formats::Material& material, const Formats
 {
     try
     {
-        return ConvertTevStage(record);
+        return ConvertTevStage(record, material.tevSwapTable);
     }
     catch (const LayoutError& error)
     {

@@ -25,13 +25,19 @@ MenuError MakeNandError(std::string_view action, std::string_view path, Ios::Ios
 
 IosNandFiles::IosNandFiles(Ios::FileSystemService& fileSystemService, const Ios::TitleService& titleService)
     : fileSystem(fileSystemService)
-    , titles(titleService)
+    , titles(&titleService)
+{
+}
+
+IosNandFiles::IosNandFiles(Ios::FileSystemService& fileSystemService, Ios::Caller fixedCaller)
+    : fileSystem(fileSystemService)
+    , caller(fixedCaller)
 {
 }
 
 std::optional<Formats::Bytes> IosNandFiles::ReadFile(std::string_view path)
 {
-    Ios::Result<Ios::OpenFile> opened = fileSystem.Open(ParsePath(path), Ios::OpenMode::Read, titles.GetCaller());
+    Ios::Result<Ios::OpenFile> opened = fileSystem.Open(ParsePath(path), Ios::OpenMode::Read, CurrentCaller());
     if (opened.Failed() && opened.Error() == Ios::IosError::NotFound)
         return std::nullopt;
 
@@ -51,7 +57,7 @@ std::optional<Formats::Bytes> IosNandFiles::ReadFile(std::string_view path)
 
 void IosNandFiles::DeleteFile(std::string_view path)
 {
-    Ios::Result<void> deleted = fileSystem.DeleteEntry(ParsePath(path), titles.GetCaller());
+    Ios::Result<void> deleted = fileSystem.DeleteEntry(ParsePath(path), CurrentCaller());
     if (deleted.Failed() && deleted.Error() != Ios::IosError::NotFound)
         throw MakeNandError("delete", path, deleted.Error());
 }
@@ -61,17 +67,26 @@ void IosNandFiles::WriteFile(std::string_view path, Formats::ByteView bytes)
     DeleteFile(path);
 
     Ios::NandPath nandPath = ParsePath(path);
-    Ios::Result<void> created = fileSystem.CreateFile(nandPath, EverybodyReadsAndWrites, NoAttributeFlags, titles.GetCaller());
+    Ios::Result<void> created = fileSystem.CreateFile(nandPath, EverybodyReadsAndWrites, NoAttributeFlags, CurrentCaller());
     if (created.Failed())
         throw MakeNandError("make", path, created.Error());
 
-    Ios::Result<Ios::OpenFile> opened = fileSystem.Open(nandPath, Ios::OpenMode::Write, titles.GetCaller());
+    Ios::Result<Ios::OpenFile> opened = fileSystem.Open(nandPath, Ios::OpenMode::Write, CurrentCaller());
     if (opened.Failed())
         throw MakeNandError("open", path, opened.Error());
 
     Ios::Result<std::size_t> written = opened.Value().Write(bytes);
     if (written.Failed())
         throw MakeNandError("write", path, written.Error());
+}
+
+// The caller of the title that runs now, which changes when a program becomes another title.
+Ios::Caller IosNandFiles::CurrentCaller() const
+{
+    if (titles != nullptr)
+        return titles->GetCaller();
+
+    return caller;
 }
 
 Ios::NandPath IosNandFiles::ParsePath(std::string_view path) const
