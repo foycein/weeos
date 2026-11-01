@@ -100,6 +100,10 @@ public:
     // The volume the user has set. The System Menu keeps it as BT.SPKV.
     int SpeakerVolumeStep() const;
 
+    // The master volume of the console, from 1 to 0: it falls with the picture when the menu fades out to end the program under it
+    // (0x81377118, the state 0x13 of 0x81372E9C). It is 1 at every other time.
+    float SoundVolume() const;
+
 private:
     // The steps of the menu (the states of the original, 0x81372E9C).
     enum class Step
