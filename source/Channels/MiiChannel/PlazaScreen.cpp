@@ -64,6 +64,10 @@ constexpr std::array<SortButton, 4> SortButtons = {{
 
 constexpr Formats::Rgba8Color BackgroundColor = {255, 255, 255, 255};
 constexpr std::string_view CountText = "countText_00";
+
+// The words of the whistle: "Arrange" and "Disband".
+constexpr std::string_view WhistleText = "squText_14";
+constexpr std::string_view DisbandText = "squText_15";
 constexpr std::string_view LoadWindow = "loadWindow_00";
 constexpr std::string_view LoadText = "squLoadTextRC_00";
 constexpr std::string_view BalloonPane = "balAnimNull_00";
@@ -138,13 +142,15 @@ PlazaScreen::PlazaScreen(ChannelServices& channelServices, const Layout::LayoutA
 
     for (const SortButton& sort : SortButtons)
         layout->PaneNamed(sort.pane).isVisible = false;
-    layout->PaneNamed("squText_15").isVisible = false;
+    layout->PaneNamed(DisbandText).isVisible = false;
     HideLoadWindow();
 }
 
+// The Miis come in at new places, so a line of the whistle is over.
 void PlazaScreen::Start()
 {
     plaza.SetMiis(data.Miis());
+    ShowWhistleBar(false);
 }
 
 void PlazaScreen::ShowSavedMii(std::size_t slot)
@@ -321,16 +327,12 @@ void PlazaScreen::HandleButtons()
         {
             services.sounds.Request(DisbandSound);
             plaza.Arrange(PlazaArrangement::Disband);
-            isArranged = false;
-            layout->PaneNamed("squText_15").isVisible = false;
-            layout->PaneNamed("squText_14").isVisible = true;
+            ShowWhistleBar(false);
             return;
         }
 
         services.sounds.Request(WhistleSound);
-        areSortButtonsShown = !areSortButtonsShown;
-        for (const SortButton& sort : SortButtons)
-            layout->PaneNamed(sort.pane).isVisible = areSortButtonsShown;
+        ShowWhistleBar(!areSortButtonsShown);
         return;
     }
 
@@ -344,14 +346,23 @@ void PlazaScreen::HandleButtons()
 
         services.sounds.Request(sort.sound);
         plaza.Arrange(sort.arrangement);
+        ShowWhistleBar(false);
         isArranged = true;
-        areSortButtonsShown = false;
-        for (const SortButton& hidden : SortButtons)
-            layout->PaneNamed(hidden.pane).isVisible = false;
-        layout->PaneNamed("squText_14").isVisible = false;
-        layout->PaneNamed("squText_15").isVisible = true;
+        layout->PaneNamed(WhistleText).isVisible = false;
+        layout->PaneNamed(DisbandText).isVisible = true;
         return;
     }
+}
+
+// The sort buttons show or hide, and the whistle says "Arrange" again.
+void PlazaScreen::ShowWhistleBar(bool showsSortButtons)
+{
+    areSortButtonsShown = showsSortButtons;
+    isArranged = false;
+    for (const SortButton& sort : SortButtons)
+        layout->PaneNamed(sort.pane).isVisible = showsSortButtons;
+    layout->PaneNamed(DisbandText).isVisible = false;
+    layout->PaneNamed(WhistleText).isVisible = true;
 }
 
 // A and B together grab the Mii under the hand; letting go of either drops it, on a button or on the ground. A alone shows the name.
