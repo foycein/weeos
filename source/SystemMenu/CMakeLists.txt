@@ -27,5 +27,6 @@ add_library(SystemMenu STATIC
 )
 
 add_subdirectory(DataManagement)
+add_subdirectory(SdCardMenu)
 
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)

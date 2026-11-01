@@ -160,6 +160,22 @@ Bytes WriteBackupFileHeader(const BackupFileHeader& header, ByteView fillBytes);
 // Throws a FormatError when the bytes are no header of a file.
 BackupFileHeader ReadBackupFileHeader(ByteView bytes);
 
+// The places of the channels in the SD Card Menu: 20 pages of 12 places, each with the low half of the title id of a channel
+// (its code of four characters) or zero for an empty place. The card keeps them in /private/wii/loc.dat and the copy loc.bak,
+// encrypted with the SD key: the tag "sdal", the MD5 digest of the file, the places, and 12 empty bytes.
+constexpr std::size_t ChannelPlacesPerPage = 12;
+constexpr std::size_t ChannelPlacePageCount = 20;
+constexpr std::size_t ChannelPlaceCount = ChannelPlacesPerPage * ChannelPlacePageCount;
+constexpr std::size_t ChannelPlacesFileSize = 0x3E0;
+
+using ChannelPlaces = std::array<std::uint32_t, ChannelPlaceCount>;
+
+// The plain file with its digest.
+Bytes WriteChannelPlaces(const ChannelPlaces& places);
+
+// Reads a decrypted file. Throws a FormatError when the digest is wrong. The console does not look at the tag.
+ChannelPlaces ReadChannelPlaces(ByteView plainFile);
+
 // The random numbers of the C library the System Menu was built with. The console fills the gaps of a backup archive with them
 // and takes the initialization vectors of the files from them, starting from the low half of the title id.
 class BackupFillNumbers

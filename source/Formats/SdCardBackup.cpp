@@ -31,6 +31,9 @@ constexpr std::string_view ArchiveTag = "Bk";
 constexpr std::uint16_t ArchiveVersion = 1;
 constexpr std::size_t ArchiveTitleIdOffset = 0x60;
 
+constexpr std::string_view ChannelPlacesTag = "sdal";
+constexpr std::size_t ChannelPlacesDigestOffset = 0x04;
+
 constexpr std::uint32_t FileHeaderMagic = 0x03ADF17E;
 constexpr std::size_t FileNameOffset = 0x0B;
 constexpr std::size_t FileNameFieldSize = 0x40;
@@ -293,6 +296,35 @@ BackupFileHeader ReadBackupFileHeader(ByteView bytes)
     reader.MoveTo(FileInitializationVectorOffset);
     header.initializationVector = reader.ReadByteArray<AesBlockSize>();
     return header;
+}
+
+Bytes WriteChannelPlaces(const ChannelPlaces& places)
+{
+    ByteWriter writer;
+    writer.WriteBytes(ByteView(reinterpret_cast<const Byte*>(ChannelPlacesTag.data()), ChannelPlacesTag.size()));
+    writer.WriteZeros(Md5DigestSize);
+    for (std::uint32_t code : places)
+        writer.WriteUint32(code);
+
+    Bytes file = PadWithZeros(writer, ChannelPlacesFileSize);
+    PutDigest(file, ChannelPlacesDigestOffset);
+    return file;
+}
+
+ChannelPlaces ReadChannelPlaces(ByteView plainFile)
+{
+    ByteReader reader(plainFile, "Places of the channels of the SD card");
+    if (plainFile.size() != ChannelPlacesFileSize)
+        reader.Fail(std::format("the file has {:#x} bytes instead of {:#x}", plainFile.size(), ChannelPlacesFileSize));
+
+    CheckDigest(reader, plainFile, ChannelPlacesDigestOffset);
+
+    reader.MoveTo(ChannelPlacesDigestOffset + Md5DigestSize);
+    ChannelPlaces places;
+    for (std::uint32_t& code : places)
+        code = reader.ReadUint32();
+
+    return places;
 }
 
 BackupFillNumbers::BackupFillNumbers(std::uint32_t seed)
