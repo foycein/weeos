@@ -29,6 +29,8 @@ constexpr std::array<std::string_view, 3> LetterKindFolders = {KindFolder::Text,
 
 // The parts of the path of a record.
 constexpr std::size_t PathPartCount = 8;
+constexpr std::size_t SourcePart = 5;
+constexpr std::size_t KindPart = 6;
 constexpr std::size_t TimeDigitCount = 8;
 constexpr std::size_t NumberDigitCount = 3;
 constexpr int HexadecimalBase = 16;
@@ -39,28 +41,9 @@ Formats::VolumeTime VolumeTimeOf(const LocalTime& time)
 }
 
 // The folder of a month counts from 00 for January, as the calendar time of the operating system does; the days count from 01.
-// The number that a folder of a year, a month or a day is named with; nothing for another folder.
-std::optional<int> NumberOfFolder(const std::string& name)
-{
-    if (name.empty() || !std::all_of(name.begin(), name.end(), [](char character) { return character >= '0' && character <= '9'; }))
-        return std::nullopt;
-
-    return std::stoi(name);
-}
-
 int MonthFolderNumber(int month)
 {
     return month - 1;
-}
-
-std::optional<int> NumberOfFolder(const Formats::VolumeEntry& entry)
-{
-    int number = 0;
-    std::from_chars_result read = std::from_chars(entry.name.data(), entry.name.data() + entry.name.size(), number);
-    bool isWholeNumber = read.ec == std::errc() && read.ptr == entry.name.data() + entry.name.size();
-    if (!entry.isFolder || !isWholeNumber)
-        return std::nullopt;
-    return number;
 }
 
 std::string DayFolderOf(BoardDay day)
@@ -97,6 +80,15 @@ std::optional<int> ReadDecimal(std::string_view text)
     if (error != std::errc() || end != text.data() + text.size())
         return std::nullopt;
     return value;
+}
+
+// The number that a folder of a year, a month or a day is named with; nothing for another entry.
+std::optional<int> NumberOfFolder(const Formats::VolumeEntry& entry)
+{
+    if (!entry.isFolder)
+        return std::nullopt;
+
+    return ReadDecimal(entry.name);
 }
 
 bool IsLetterKind(std::string_view kindFolder)
@@ -136,8 +128,8 @@ std::optional<RecordPlace> PlaceOfPath(std::string_view path)
 
     RecordPlace place;
     place.time = *time;
-    place.sourceFolder = std::string(parts[5]);
-    place.kindFolder = std::string(parts[6]);
+    place.sourceFolder = std::string(parts[SourcePart]);
+    place.kindFolder = std::string(parts[KindPart]);
     place.number = *number;
     return place;
 }

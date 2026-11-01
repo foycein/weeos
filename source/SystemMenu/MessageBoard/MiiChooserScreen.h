@@ -43,6 +43,7 @@ private:
     void ShowThePage();
     void RunChoosing();
     std::optional<std::size_t> MiiPlaceAt(Formats::Vector2 place);
+    bool HandleArrowPress(Formats::Vector2 place);
     void TurnPage(int direction);
     void Leave(std::optional<MiiData> chosenMii);
 

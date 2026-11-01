@@ -57,6 +57,7 @@ private:
 
     void FillThePaper(const StoredMessage& message, MiiPortraits& portraits);
     void ShowThePicture(const StoredMessage& message);
+    bool HasOpened();
     void RunViewingThePicture();
     bool HandlePicturePress(Formats::Vector2 place);
     void RunScrolling();

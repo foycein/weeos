@@ -1,21 +1,21 @@
 #include "SystemMenu/MessageBoard/BoardPosting.h"
 
+#include "SystemMenu/MessageBoard/SmallLetter.h"
+
 namespace SystemMenu
 {
 
 namespace
 {
 
-constexpr float LeftEdgeOfTheBox = -230;
-constexpr float WidthOfTheBox = 460;
-constexpr float TopEdgeOfTheBox = 180;
-constexpr float HeightOfTheBox = 260;
+constexpr float WidthOfTheBox = RightmostLetterPlace - LeftmostLetterPlace;
+constexpr float HeightOfTheBox = HighestLetterPlace - LowestLetterPlace;
 
 }
 
 Formats::Vector2 PlaceForNewLetter(float firstRandomNumber, float secondRandomNumber)
 {
-    return Formats::Vector2{LeftEdgeOfTheBox + WidthOfTheBox * firstRandomNumber, TopEdgeOfTheBox - HeightOfTheBox * secondRandomNumber};
+    return Formats::Vector2{LeftmostLetterPlace + WidthOfTheBox * firstRandomNumber, HighestLetterPlace - HeightOfTheBox * secondRandomNumber};
 }
 
 Formats::BoardMessage MakeMemo(const std::u16string& text, const std::optional<MiiData>& mii, Formats::Vector2 place, const LocalTime& now)

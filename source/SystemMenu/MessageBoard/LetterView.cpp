@@ -18,6 +18,9 @@ namespace SystemMenu
 namespace
 {
 
+constexpr std::string_view MemoLayout = "my_Memo_a";
+constexpr std::string_view LetterLayout = "my_LetterL";
+
 constexpr std::string_view HeaderText = "T_Header";
 constexpr std::string_view BodyText = "T_Letter";
 constexpr std::string_view MiiPicture = "Nigaoe";
@@ -61,9 +64,10 @@ constexpr float SpeedThatSounds = 1;
 std::string LayoutNameOf(Formats::BoardMessageKind kind)
 {
     bool isOnMemoPaper = kind == Formats::BoardMessageKind::Memo || kind == Formats::BoardMessageKind::PlayLog;
-    return isOnMemoPaper ? "my_Memo_a" : "my_LetterL";
+    return std::string(isOnMemoPaper ? MemoLayout : LetterLayout);
 }
 
+// Slow at the start and at the end (the smoothstep curve).
 float Smoothed(float progress)
 {
     return progress * progress * (3 - 2 * progress);
@@ -149,7 +153,7 @@ void LetterView::ShowThePicture(const StoredMessage& message)
         pane.width = pane.height * picture->Aspect();
     layout.ShowTexture(PicturePane, picture->Texture());
 
-    std::string layoutName = "my_LetterL";
+    std::string layoutName(LetterLayout);
     zoomInAnimation = layout.BindAnimation(layoutName + "_SelectPic", PictureGroup, Layout::PlaybackMode::PlayOnce);
     zoomOutAnimation = layout.BindAnimation(layoutName + "_ExitPic", PictureGroup, Layout::PlaybackMode::PlayOnce);
 }
@@ -189,7 +193,7 @@ LetterViewResult LetterView::Run()
     case ViewState::Opening:
         ++stepsSinceOpening;
         PutTheRootAtTheOpeningPlace();
-        if (!layout.IsAnimationPlaying(openAnimation) && stepsSinceOpening >= StepsOfTheOpening && !bar.IsChanging())
+        if (HasOpened())
         {
             ShowTheArrowsOfThePaper();
             state = ViewState::Reading;
@@ -222,6 +226,12 @@ LetterViewResult LetterView::Run()
     paper.ScrollTo(scroll);
     layout.Calculate();
     return result;
+}
+
+bool LetterView::HasOpened()
+{
+    bool hasSlidIn = stepsSinceOpening >= StepsOfTheOpening;
+    return hasSlidIn && !layout.IsAnimationPlaying(openAnimation) && !bar.IsChanging();
 }
 
 void LetterView::RunScrolling()

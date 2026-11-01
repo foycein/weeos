@@ -137,9 +137,12 @@ bool MemoWriterScreen::RunMain()
     switch (state)
     {
     case WriterState::Opening:
-        if (!layout.IsAnimationPlaying(openAnimation) && (Bar() == nullptr || !Bar()->IsChanging()))
+    {
+        bool isBarStill = Bar() == nullptr || !Bar()->IsChanging();
+        if (!layout.IsAnimationPlaying(openAnimation) && isBarStill)
             state = WriterState::Writing;
         break;
+    }
 
     case WriterState::Writing:
         RunWriting();

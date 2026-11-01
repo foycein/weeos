@@ -80,11 +80,11 @@ public:
     // cdbwiiid.dat. The files must outlive the store.
     MessageStore(NandFiles& nandFiles, const WirelessAddress& wirelessAddress);
 
-    // The messages that lie on a day, the newest first. Records that cannot be read are left out, as the board leaves them out.
     // Writes an empty database when cdb.vff is missing, as the menu does when it starts (the CdbManager's set-up, stage 3): the file
     // lies in the menu's own data folder, where the channels that post to the board cannot make it.
     void CreateWhenMissing();
 
+    // The messages that lie on a day, the newest first. Records that cannot be read are left out, as the board leaves them out.
     std::vector<StoredMessage> MessagesOfDay(BoardDay day);
 
     // The days whose folders hold records, the oldest first: every day a program that looks through the whole board reads.

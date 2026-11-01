@@ -47,7 +47,8 @@ void LetterPaper::MeasureTheText(int fewestLines)
         return;
 
     Text::LaidOutText text = layout->LayOutText(BodyText);
-    lineCount = std::max(fewestLines, static_cast<int>(std::ceil(text.block.height / lineHeight)));
+    int neededLines = static_cast<int>(std::ceil(text.block.height / lineHeight));
+    lineCount = std::max(fewestLines, neededLines);
 }
 
 float LetterPaper::LineHeight() const
