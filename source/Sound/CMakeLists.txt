@@ -1,4 +1,5 @@
 add_library(Sound STATIC
+    AudioFile.cpp
     AudioOutput.cpp
     BankFile.cpp
     Envelope.cpp

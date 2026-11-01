@@ -189,6 +189,14 @@ void HomeButtonMenu::Draw()
     display.Device().DrawQuad(quad, Graphics::Material());
 }
 
+float HomeButtonMenu::SoundVolume() const
+{
+    if (step != Step::FadingOut)
+        return 1.0f;
+
+    return 1.0f - float(fadeSteps) / float(FadeOutSteps);
+}
+
 HomeMenuOutcome HomeButtonMenu::Outcome() const
 {
     return outcome;

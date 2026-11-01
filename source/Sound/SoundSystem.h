@@ -77,6 +77,11 @@ public:
     void SetMasterVolume(float volume);
     float MasterVolume() const;
 
+    // The master volume of the console (the AX master volume of the original), which multiplies the master volume of the PC: the HOME
+    // menu fades it out with its picture when it ends the program under it. 1 is full. A change moves smoothly as the master volume does.
+    void SetConsoleVolume(float volume);
+    float ConsoleVolume() const;
+
     // A paused system makes silence and does not move on.
     void SetPaused(bool paused);
 
@@ -169,6 +174,7 @@ private:
 
     std::atomic<std::uint32_t> lastHandleNumber{0};
     std::atomic<float> masterVolume{1.0f};
+    std::atomic<float> consoleVolume{1.0f};
 
     // The master volume that the last rendered buffer ended with. The first buffer takes the master volume at once.
     float renderedMasterVolume = 1.0f;

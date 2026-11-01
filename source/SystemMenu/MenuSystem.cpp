@@ -91,6 +91,7 @@ void MenuSystem::RunStep()
         sounds.PauseAllSounds();
     if (!homeButton.IsOpen() && isHomeMenuOpen)
         sounds.ResumeAllSounds();
+    sounds.ChangeConsoleVolume(homeButton.SoundVolume());
 
     cursors.Update(input);
     fader.Calculate();

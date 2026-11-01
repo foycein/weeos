@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Formats/Bytes.h"
+
 #include <string>
 #include <string_view>
 #include <vector>
@@ -38,6 +40,9 @@ constexpr int MusicStopStepsOfAChannel = 5;
 // The music and the sounds are paused, and go on, in 5 steps (0x8136BD8C and 0x8136BE34).
 constexpr int PauseFadeSteps = 5;
 
+// The wave player of the menu plays its files at this volume (0x8136B280 sets 0.9).
+constexpr float WavePlayerVolume = 0.9f;
+
 // The error screen stops every sound in 5 steps (0x81334F0C). Before a title starts and before the menu starts again, the
 // screens stop them in 20 steps (0x813B5130, 0x813F7DA4, 0x81409988).
 constexpr int ErrorStopFadeSteps = 5;
@@ -52,17 +57,23 @@ enum class SoundAction
     PauseAllSounds,
     ResumeAllSounds,
     StopAllSounds,
+    ChangeConsoleVolume,
+    PlayWaveFile,
+    StopWaveFile,
 };
 
 struct SoundRequest
 {
     SoundAction action = SoundAction::PlayEffect;
 
-    // The name of the effect that PlayEffect plays.
+    // The name of the effect that PlayEffect plays, or of the music that StartMusic starts.
     std::string effectName;
 
-    // The new volume of ChangeMusicVolume: 1 is the volume of the archive, 0 is silence.
+    // The new volume of ChangeMusicVolume and ChangeConsoleVolume: 1 is full, 0 is silence.
     float volume = 1.0f;
+
+    // The file that PlayWaveFile plays.
+    Formats::Bytes waveFile;
 
     // In how many steps the stop or the change of the volume happens. 0 is at once.
     int fadeSteps = 0;
@@ -81,11 +92,12 @@ public:
         requests.push_back({.action = SoundAction::PlayEffect, .effectName = std::string(soundName)});
     }
 
-    // Starts the music of the menu from its beginning (0x8136B3BC with WIPL_BGM_MENU). The reverb of the menu is set up again
-    // when a stop of all sounds had shut it down, as the screens of the original do before they start the music again (0x8136B37C).
-    void StartMusic()
+    // Starts the music of the menu from its beginning (0x8136B3BC with WIPL_BGM_MENU), or another music of the archives, for example the
+    // music of a channel. The reverb is set up again when a stop of all sounds had shut it down, as the screens of the original do before
+    // they start the music again (0x8136B37C).
+    void StartMusic(std::string_view musicName = SoundName::Music)
     {
-        requests.push_back({.action = SoundAction::StartMusic});
+        requests.push_back({.action = SoundAction::StartMusic, .effectName = std::string(musicName)});
     }
 
     // Fades the music out in the steps given and stops it (0x8136BA34).
@@ -119,6 +131,30 @@ public:
         requests.push_back({.action = SoundAction::StopAllSounds, .fadeSteps = fadeSteps});
     }
 
+    // The master volume of the console (0x81377118): the HOME menu fades it out while it fades the picture out to end the program under
+    // it. The volume is asked for only when it is not the one asked for last.
+    void ChangeConsoleVolume(float volume)
+    {
+        if (volume == consoleVolume)
+            return;
+
+        consoleVolume = volume;
+        requests.push_back({.action = SoundAction::ChangeConsoleVolume, .volume = volume});
+    }
+
+    // The wave player of the menu (the object 0x81089F68) plays one file at a time, a WAV or AIFF file attached to a message of the
+    // Message Board or the sound of a channel's banner, at WavePlayerVolume (0x8140E800). A new file stops the one that plays at once.
+    void PlayWaveFile(Formats::ByteView file)
+    {
+        requests.push_back({.action = SoundAction::PlayWaveFile, .waveFile = Formats::Bytes(file.begin(), file.end())});
+    }
+
+    // The file of the wave player fades out in the steps given and stops (0x8136C1F8).
+    void StopWaveFile(int fadeSteps)
+    {
+        requests.push_back({.action = SoundAction::StopWaveFile, .fadeSteps = fadeSteps});
+    }
+
     // The names of the sound effects requested since the last call of StartNextStep, in the order in which they were requested.
     const std::vector<std::string>& RequestedInThisStep() const
     {
@@ -140,6 +176,7 @@ public:
 private:
     std::vector<std::string> effectNames;
     std::vector<SoundRequest> requests;
+    float consoleVolume = 1.0f;
 };
 
 }

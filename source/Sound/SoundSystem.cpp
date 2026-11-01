@@ -194,6 +194,16 @@ float SoundSystem::MasterVolume() const
     return masterVolume.load();
 }
 
+void SoundSystem::SetConsoleVolume(float volume)
+{
+    consoleVolume.store(volume);
+}
+
+float SoundSystem::ConsoleVolume() const
+{
+    return consoleVolume.load();
+}
+
 void SoundSystem::SetPaused(bool shouldBePaused)
 {
     paused.store(shouldBePaused);
@@ -631,8 +641,8 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
         return;
     }
 
-    float startVolume = hasRendered ? renderedMasterVolume : masterVolume.load();
-    float endVolume = masterVolume.load();
+    float endVolume = masterVolume.load() * consoleVolume.load();
+    float startVolume = hasRendered ? renderedMasterVolume : endVolume;
     renderedMasterVolume = endVolume;
     hasRendered = true;
 

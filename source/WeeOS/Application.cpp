@@ -143,33 +143,24 @@ private:
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
             iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
 
+        std::vector<Sound::SoundSystem*> channelSounds;
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
         {
             Sound::SoundSystem* soundSystem = sound.StartTitleArchive(archive);
             if (soundSystem != nullptr)
                 channelSounds.push_back(soundSystem);
         }
+
+        if (!channelSounds.empty())
+            channelSound.emplace(channelSounds);
     }
 
-    // A channel asks for its sounds by name; each one plays from the first of the channel's archives that has it.
+    // A channel asks for its sounds by name, as the menu does; each one plays from the first of the channel's archives that has it.
     void PlayChannelSoundsOfTheStep()
     {
         sound.SetSoundMode(wiiSettings.SoundMode());
-        for (const std::string& soundName : channel->Services().sounds.RequestedInThisStep())
-            PlayChannelSound(soundName);
-    }
-
-    void PlayChannelSound(const std::string& soundName)
-    {
-        for (Sound::SoundSystem* soundSystem : channelSounds)
-        {
-            std::optional<std::size_t> soundNumber = soundSystem->Archive().FindSoundNumber(soundName);
-            if (soundNumber)
-            {
-                soundSystem->Play(*soundNumber);
-                return;
-            }
-        }
+        if (channelSound)
+            channelSound->PlayRequests(channel->Services().sounds);
     }
 
     Platform::Window& window;
@@ -187,7 +178,7 @@ private:
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
     std::optional<SystemMenu::MenuSound> menuSound;
-    std::vector<Sound::SoundSystem*> channelSounds;
+    std::optional<SystemMenu::MenuSound> channelSound;
 };
 
 Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)

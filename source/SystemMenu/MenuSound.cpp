@@ -2,7 +2,8 @@
 
 #include "SystemMenu/MenuClock.h"
 
-#include <optional>
+#include "Formats/FormatError.h"
+#include "Sound/AudioFile.h"
 
 namespace SystemMenu
 {
@@ -26,9 +27,15 @@ bool IsPlayedToItsEnd(std::string_view effectName)
 }
 
 MenuSound::MenuSound(Sound::SoundSystem& soundSystem)
-    : sounds(soundSystem)
+    : MenuSound(std::vector<Sound::SoundSystem*>{&soundSystem})
 {
-    sounds.SetReverbEnabled(true);
+}
+
+MenuSound::MenuSound(std::vector<Sound::SoundSystem*> soundSystems)
+    : systems(std::move(soundSystems))
+{
+    for (Sound::SoundSystem* system : systems)
+        system->SetReverbEnabled(true);
 }
 
 void MenuSound::PlayRequests(const SoundRequests& requests)
@@ -38,60 +45,86 @@ void MenuSound::PlayRequests(const SoundRequests& requests)
         switch (request.action)
         {
         case SoundAction::PlayEffect: PlayEffect(request.effectName); break;
-        case SoundAction::StartMusic: StartMusic(); break;
+        case SoundAction::StartMusic: StartMusic(request.effectName); break;
         case SoundAction::StopMusic: StopMusic(request.fadeSteps); break;
         case SoundAction::ChangeMusicVolume: ChangeMusicVolume(request.volume, request.fadeSteps); break;
         case SoundAction::PauseAllSounds: PauseAllSounds(request.fadeSteps); break;
         case SoundAction::ResumeAllSounds: ResumeAllSounds(request.fadeSteps); break;
         case SoundAction::StopAllSounds: StopAllSounds(request.fadeSteps); break;
+        case SoundAction::ChangeConsoleVolume: ChangeConsoleVolume(request.volume); break;
+        case SoundAction::PlayWaveFile: PlayWaveFile(request.waveFile); break;
+        case SoundAction::StopWaveFile: StopWaveFile(request.fadeSteps); break;
         }
     }
 }
 
 Sound::SoundHandle MenuSound::MusicHandle() const
 {
-    return musicHandle;
+    return music.handle;
 }
 
-// A name that the archive does not have plays nothing, as in the original.
+Sound::SoundHandle MenuSound::WaveFileHandle() const
+{
+    return waveFile.handle;
+}
+
+// A name that no archive has plays nothing, as in the original.
+std::optional<MenuSound::FoundSound> MenuSound::FindSound(std::string_view name) const
+{
+    for (Sound::SoundSystem* system : systems)
+    {
+        std::optional<std::size_t> number = system->Archive().FindSoundNumber(name);
+        if (number)
+            return FoundSound{system, *number};
+    }
+    return std::nullopt;
+}
+
+void MenuSound::Stop(const StartedSound& sound, int fadeSteps)
+{
+    if (sound.system != nullptr)
+        sound.system->Stop(sound.handle, SecondsOf(fadeSteps));
+}
+
 void MenuSound::PlayEffect(const std::string& name)
 {
-    std::optional<std::size_t> soundNumber = sounds.Archive().FindSoundNumber(name);
-    if (!soundNumber)
+    std::optional<FoundSound> found = FindSound(name);
+    if (!found)
         return;
 
     if (IsPlayedToItsEnd(name))
     {
-        effectHandles[name] = sounds.PlayIfNotPlaying(*soundNumber);
+        effects[name] = {found->system, found->system->PlayIfNotPlaying(found->number)};
         return;
     }
 
-    auto earlier = effectHandles.find(name);
-    if (earlier != effectHandles.end())
-        sounds.Stop(earlier->second);
+    auto earlier = effects.find(name);
+    if (earlier != effects.end())
+        Stop(earlier->second, 0);
 
-    effectHandles[name] = sounds.Play(*soundNumber);
+    effects[name] = {found->system, found->system->Play(found->number)};
 }
 
-void MenuSound::StartMusic()
+void MenuSound::StartMusic(const std::string& name)
 {
-    std::optional<std::size_t> soundNumber = sounds.Archive().FindSoundNumber(SoundName::Music);
-    if (!soundNumber)
+    std::optional<FoundSound> found = FindSound(name);
+    if (!found)
         return;
 
-    sounds.SetReverbEnabled(true);
-    musicHandle = sounds.Play(*soundNumber);
+    found->system->SetReverbEnabled(true);
+    music = {found->system, found->system->Play(found->number)};
     hasStartedMusic = true;
 }
 
 void MenuSound::StopMusic(int fadeSteps)
 {
-    sounds.Stop(musicHandle, SecondsOf(fadeSteps));
+    Stop(music, fadeSteps);
 }
 
 void MenuSound::ChangeMusicVolume(float volume, int fadeSteps)
 {
-    sounds.ChangeVolume(musicHandle, volume, SecondsOf(fadeSteps));
+    if (music.system != nullptr)
+        music.system->ChangeVolume(music.handle, volume, SecondsOf(fadeSteps));
 }
 
 void MenuSound::PauseAllSounds(int fadeSteps)
@@ -99,8 +132,11 @@ void MenuSound::PauseAllSounds(int fadeSteps)
     if (!hasStartedMusic)
         return;
 
-    sounds.PauseRunningSounds(SecondsOf(fadeSteps));
-    sounds.SetReverbEnabled(false);
+    for (Sound::SoundSystem* system : systems)
+    {
+        system->PauseRunningSounds(SecondsOf(fadeSteps));
+        system->SetReverbEnabled(false);
+    }
 }
 
 void MenuSound::ResumeAllSounds(int fadeSteps)
@@ -108,15 +144,52 @@ void MenuSound::ResumeAllSounds(int fadeSteps)
     if (!hasStartedMusic)
         return;
 
-    sounds.SetReverbEnabled(true);
-    sounds.ResumePausedSounds(SecondsOf(fadeSteps));
+    for (Sound::SoundSystem* system : systems)
+    {
+        system->SetReverbEnabled(true);
+        system->ResumePausedSounds(SecondsOf(fadeSteps));
+    }
 }
 
 void MenuSound::StopAllSounds(int fadeSteps)
 {
-    sounds.StopAll(SecondsOf(fadeSteps));
-    sounds.SetReverbEnabled(false);
-    effectHandles.clear();
+    for (Sound::SoundSystem* system : systems)
+    {
+        system->StopAll(SecondsOf(fadeSteps));
+        system->SetReverbEnabled(false);
+    }
+    effects.clear();
+}
+
+void MenuSound::ChangeConsoleVolume(float volume)
+{
+    for (Sound::SoundSystem* system : systems)
+        system->SetConsoleVolume(volume);
+}
+
+// The wave player stops the file that plays at once and plays the new one (0x8140E800). A file it cannot read plays nothing.
+void MenuSound::PlayWaveFile(const Formats::Bytes& file)
+{
+    Stop(waveFile, 0);
+    waveFile = {};
+
+    try
+    {
+        waveOfTheFile = std::make_shared<const Sound::DecodedWave>(Sound::ReadAudioFile(file));
+    }
+    catch (const Formats::FormatError&)
+    {
+        waveOfTheFile.reset();
+        return;
+    }
+
+    Sound::SoundSystem* system = systems.front();
+    waveFile = {system, system->PlayWave(waveOfTheFile, WavePlayerVolume)};
+}
+
+void MenuSound::StopWaveFile(int fadeSteps)
+{
+    Stop(waveFile, fadeSteps);
 }
 
 }
