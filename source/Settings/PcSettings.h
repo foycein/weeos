@@ -62,6 +62,13 @@ PcSettings DefaultPcSettings();
 int KeyOfButton(const PcSettings& settings, Input::ButtonMask button);
 void SetKeyOfButton(PcSettings& settings, Input::ButtonMask button, int virtualKeyCode);
 
+// Whether a button other than this one has the key. "None" belongs to no button, so any number of buttons can have it.
+bool IsKeyTakenByAnotherButton(const PcSettings& settings, Input::ButtonMask button, int virtualKeyCode);
+
+// The key the page "Keys" gives the button when its row is pressed: the next key of SelectableKeys in the direction (+1 or -1)
+// that no other button has, so two buttons never share a key. The list goes round: after the last key comes "None" again.
+int NextFreeKey(const PcSettings& settings, Input::ButtonMask button, int direction);
+
 // The mouse buttons as the virtual Wii Remote takes them.
 std::vector<Input::MouseBinding> MouseMapOf(const PcSettings& settings);
 

@@ -175,6 +175,16 @@ std::string KeyLineName(const RemoteButtonName& button)
     return std::string(KeyNamePrefix) + Utf8FromText(button.name);
 }
 
+// A key that a line gives one button is taken away from any other button that had it until then (by default, or by an earlier
+// line of a file changed by hand), so two buttons never share a key.
+void GiveKeyToOnlyThisButton(PcSettings& settings, Input::ButtonMask button, int virtualKeyCode)
+{
+    std::erase_if(settings.keyMap,
+        [button, virtualKeyCode](const Input::KeyBinding& binding)
+        { return binding.virtualKeyCode == virtualKeyCode && binding.button != button; });
+    SetKeyOfButton(settings, button, virtualKeyCode);
+}
+
 // "Key A = Enter": the button and the key, both by the names the page shows.
 bool ReadKeyLine(std::string_view name, std::string_view value, PcSettings& settings)
 {
@@ -185,7 +195,7 @@ bool ReadKeyLine(std::string_view name, std::string_view value, PcSettings& sett
 
         std::optional<PcKey> key = FindKeyByName(TextFromUtf8(value));
         if (key)
-            SetKeyOfButton(settings, button.button, key->virtualKeyCode);
+            GiveKeyToOnlyThisButton(settings, button.button, key->virtualKeyCode);
 
         return true;
     }
@@ -237,6 +247,18 @@ void ReadLine(std::string_view name, std::string_view value, PcSettings& setting
     {
         ReadKeyLine(name, value, settings);
     }
+}
+
+int PositionOfKey(int virtualKeyCode)
+{
+    std::span<const PcKey> keys = SelectableKeys();
+    for (std::size_t position = 0; position < keys.size(); ++position)
+    {
+        if (keys[position].virtualKeyCode == virtualKeyCode)
+            return static_cast<int>(position);
+    }
+
+    return 0;
 }
 
 // The first key of the default table for each button: the table has a second key for + and - on the keypad, which the page,
@@ -300,6 +322,36 @@ void SetKeyOfButton(PcSettings& settings, Input::ButtonMask button, int virtualK
     settings.keyMap.push_back({virtualKeyCode, button});
     std::sort(settings.keyMap.begin(), settings.keyMap.end(),
         [](const Input::KeyBinding& first, const Input::KeyBinding& second) { return first.button < second.button; });
+}
+
+bool IsKeyTakenByAnotherButton(const PcSettings& settings, Input::ButtonMask button, int virtualKeyCode)
+{
+    if (virtualKeyCode == NoKey)
+        return false;
+
+    for (const Input::KeyBinding& binding : settings.keyMap)
+    {
+        if (binding.virtualKeyCode == virtualKeyCode && binding.button != button)
+            return true;
+    }
+
+    return false;
+}
+
+int NextFreeKey(const PcSettings& settings, Input::ButtonMask button, int direction)
+{
+    std::span<const PcKey> keys = SelectableKeys();
+    int keyCount = static_cast<int>(keys.size());
+    int position = PositionOfKey(KeyOfButton(settings, button));
+
+    // "None" is never taken, so the search ends at the latest when it comes round to it.
+    while (true)
+    {
+        position = (position + direction + keyCount) % keyCount;
+        int key = keys[position].virtualKeyCode;
+        if (!IsKeyTakenByAnotherButton(settings, button, key))
+            return key;
+    }
 }
 
 std::vector<Input::MouseBinding> MouseMapOf(const PcSettings& settings)

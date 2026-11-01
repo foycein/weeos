@@ -79,18 +79,6 @@ std::u16string KeyNameOf(int virtualKeyCode)
     return std::u16string(key->name);
 }
 
-int PositionOfKey(int virtualKeyCode)
-{
-    std::span<const Settings::PcKey> keys = Settings::SelectableKeys();
-    for (std::size_t position = 0; position < keys.size(); ++position)
-    {
-        if (keys[position].virtualKeyCode == virtualKeyCode)
-            return static_cast<int>(position);
-    }
-
-    return 0;
-}
-
 int ListPageCount(int rowCount)
 {
     return std::max(1, (rowCount + RowsOnListPage - 1) / RowsOnListPage);
@@ -359,17 +347,11 @@ void PcPages::ChangeVolume(int change)
         { changed.volume = std::clamp(changed.volume + change, Settings::LowestVolume, Settings::HighestVolume); });
 }
 
-// The list of keys goes round: after the last key comes "None" again.
 void PcPages::ChangeKey(Input::ButtonMask button, int change)
 {
     Change(
         [button, change](Settings::PcSettings& changed)
-        {
-            int keyCount = static_cast<int>(Settings::SelectableKeys().size());
-            int position = PositionOfKey(Settings::KeyOfButton(changed, button)) + change;
-            int positionInTheList = (position + keyCount) % keyCount;
-            Settings::SetKeyOfButton(changed, button, Settings::SelectableKeys()[positionInTheList].virtualKeyCode);
-        });
+        { Settings::SetKeyOfButton(changed, button, Settings::NextFreeKey(changed, button, change)); });
 }
 
 }
