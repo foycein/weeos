@@ -89,8 +89,8 @@ BlockShape BlockShapeOf(TextureFormat format)
 std::size_t EncodedImageSize(TextureFormat format, std::uint32_t width, std::uint32_t height)
 {
     BlockShape shape = BlockShapeOf(format);
-    std::size_t blocksAcross = RoundUpToMultiple(width, shape.width) / shape.width;
-    std::size_t blocksDown = RoundUpToMultiple(height, shape.height) / shape.height;
+    std::size_t blocksAcross = DivideRoundingUp(width, shape.width);
+    std::size_t blocksDown = DivideRoundingUp(height, shape.height);
     return blocksAcross * blocksDown * shape.byteSize;
 }
 

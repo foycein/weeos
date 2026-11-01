@@ -160,7 +160,8 @@ Bytes DecompressAsh0(ByteView compressedBytes)
 
     std::size_t outputSize = sizeWord;
     std::uint32_t distanceStreamOffset = header.ReadUint32();
-    if (distanceStreamOffset < HeaderSize || distanceStreamOffset > compressedBytes.size())
+    bool startsInsideTheData = distanceStreamOffset >= HeaderSize && distanceStreamOffset <= compressedBytes.size();
+    if (!startsInsideTheData)
         header.Fail(std::format("the second stream starts at {:#x}, which is outside the data", distanceStreamOffset));
 
     BitReader symbolReader(compressedBytes.subspan(HeaderSize, distanceStreamOffset - HeaderSize));

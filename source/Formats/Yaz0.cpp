@@ -22,6 +22,27 @@ constexpr unsigned DistanceHighMask = 0x0F;
 constexpr int LengthShift = 4;
 constexpr std::size_t ShortLengthAddition = 2;
 constexpr std::size_t LongLengthAddition = 0x12;
+constexpr std::size_t ShortestDistance = 1;
+
+void CopyEarlierOutput(ByteReader& reader, Bytes& output)
+{
+    Byte first = reader.ReadByte();
+    Byte second = reader.ReadByte();
+    std::size_t storedDistance = ((first & DistanceHighMask) << BitsPerByte) | second;
+    std::size_t distance = storedDistance + ShortestDistance;
+
+    std::size_t lengthField = first >> LengthShift;
+    std::size_t length = lengthField + ShortLengthAddition;
+    if (lengthField == 0)
+        length = reader.ReadByte() + LongLengthAddition;
+
+    if (distance > output.size())
+        reader.Fail("a copy reaches back before the start of the output");
+
+    std::size_t start = output.size() - distance;
+    for (std::size_t index = 0; index < length; ++index)
+        output.push_back(output[start + index]);
+}
 
 }
 
@@ -54,24 +75,9 @@ Bytes DecompressYaz0(ByteView compressed)
         {
             bool isLiteral = (group & (FirstItemBit >> item)) != 0;
             if (isLiteral)
-            {
                 output.push_back(reader.ReadByte());
-                continue;
-            }
-
-            Byte first = reader.ReadByte();
-            Byte second = reader.ReadByte();
-            std::size_t distance = (((first & DistanceHighMask) << BitsPerByte) | second) + 1;
-            std::size_t length = (first >> LengthShift) + ShortLengthAddition;
-            if ((first >> LengthShift) == 0)
-                length = reader.ReadByte() + LongLengthAddition;
-
-            if (distance > output.size())
-                reader.Fail("a copy reaches back before the start of the output");
-
-            std::size_t start = output.size() - distance;
-            for (std::size_t index = 0; index < length; ++index)
-                output.push_back(output[start + index]);
+            else
+                CopyEarlierOutput(reader, output);
         }
     }
 

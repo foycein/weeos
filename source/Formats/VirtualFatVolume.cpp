@@ -1,11 +1,13 @@
 #include "Formats/VirtualFatVolume.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <format>
 
 namespace Formats
@@ -35,6 +37,8 @@ constexpr std::uint16_t Fat12EntryMask = 0x0FFF;
 constexpr std::uint16_t Fat12SpecialValues = 0x0FF0;
 constexpr std::uint16_t Fat16TopBits = 0xF000;
 constexpr int Fat12OddEntryShift = 4;
+constexpr std::size_t Fat12BytesPerEntryPair = 3;
+constexpr std::size_t EntriesPerFat12Pair = 2;
 
 constexpr std::uint16_t FirstDataCluster = 2;
 constexpr std::uint16_t FreeCluster = 0;
@@ -73,6 +77,14 @@ constexpr std::size_t FileSizeOffset = 28;
 
 constexpr int FatYearOrigin = 1980;
 constexpr int SecondsPerTimeUnit = 2;
+constexpr int FatYearShift = 9;
+constexpr int FatMonthShift = 5;
+constexpr int FatHourShift = 11;
+constexpr int FatMinuteShift = 5;
+
+constexpr char16_t FirstNonAsciiCharacter = 0x80;
+constexpr int BitsPerHalfWord = 16;
+constexpr std::uint32_t HalfWordMask = 0xFFFF;
 
 constexpr std::string_view ShortNameSymbols = "!#$%&'()-@^_`{}~";
 
@@ -85,7 +97,7 @@ std::uint32_t ReadLittleEndian32(const Bytes& bytes, std::size_t offset)
 {
     std::uint32_t lowHalf = ReadLittleEndian16(bytes, offset);
     std::uint32_t highHalf = ReadLittleEndian16(bytes, offset + 2);
-    return lowHalf | (highHalf << 16);
+    return lowHalf | (highHalf << BitsPerHalfWord);
 }
 
 void WriteLittleEndian16(Bytes& bytes, std::size_t offset, std::uint16_t value)
@@ -96,23 +108,27 @@ void WriteLittleEndian16(Bytes& bytes, std::size_t offset, std::uint16_t value)
 
 void WriteLittleEndian32(Bytes& bytes, std::size_t offset, std::uint32_t value)
 {
-    WriteLittleEndian16(bytes, offset, static_cast<std::uint16_t>(value & 0xFFFF));
-    WriteLittleEndian16(bytes, offset + 2, static_cast<std::uint16_t>(value >> 16));
+    WriteLittleEndian16(bytes, offset, static_cast<std::uint16_t>(value & HalfWordMask));
+    WriteLittleEndian16(bytes, offset + 2, static_cast<std::uint16_t>(value >> BitsPerHalfWord));
 }
 
-std::size_t AlignUp(std::size_t value, std::size_t alignment)
+std::size_t Fat12OffsetOfEntry(std::size_t cluster)
 {
-    return (value + alignment - 1) / alignment * alignment;
+    return cluster * Fat12BytesPerEntryPair / EntriesPerFat12Pair;
 }
 
 std::uint16_t FatDate(const VolumeTime& time)
 {
-    return static_cast<std::uint16_t>(((time.year - FatYearOrigin) << 9) | (time.month << 5) | time.day);
+    int year = (time.year - FatYearOrigin) << FatYearShift;
+    int month = time.month << FatMonthShift;
+    return static_cast<std::uint16_t>(year | month | time.day);
 }
 
 std::uint16_t FatTime(const VolumeTime& time)
 {
-    return static_cast<std::uint16_t>((time.hour << 11) | (time.minute << 5) | (time.second / SecondsPerTimeUnit));
+    int hour = time.hour << FatHourShift;
+    int minute = time.minute << FatMinuteShift;
+    return static_cast<std::uint16_t>(hour | minute | (time.second / SecondsPerTimeUnit));
 }
 
 char ToUpper(char character)
@@ -190,7 +206,7 @@ Byte ShortNameChecksum(const Bytes& bytes, std::size_t entryOffset)
 {
     Byte sum = 0;
     for (std::size_t index = 0; index < ShortNameSize; ++index)
-        sum = static_cast<Byte>(((sum & 1) << 7) + (sum >> 1) + bytes[entryOffset + index]);
+        sum = static_cast<Byte>(std::rotr(sum, 1) + bytes[entryOffset + index]);
     return sum;
 }
 
@@ -203,9 +219,50 @@ std::string ReadLongNamePart(const Bytes& bytes, std::size_t entryOffset)
         char16_t character = ReadLittleEndian16(bytes, entryOffset + characterOffset);
         if (character == 0 || character == LongNamePadding)
             break;
-        part.push_back(character < 0x80 ? static_cast<char>(character) : '?');
+        part.push_back(character < FirstNonAsciiCharacter ? static_cast<char>(character) : '?');
     }
     return part;
+}
+
+// The short name as 8 and 3 characters padded with spaces; "." and ".." keep their dots.
+void WriteShortName(Bytes& bytes, std::size_t entryOffset, const std::string& shortName)
+{
+    std::fill(bytes.begin() + entryOffset, bytes.begin() + entryOffset + ShortNameSize, Byte{' '});
+
+    bool isDotEntry = shortName == "." || shortName == "..";
+    std::size_t dot = isDotEntry ? std::string::npos : shortName.find('.');
+    std::string base = shortName.substr(0, dot);
+    std::string extension = dot == std::string::npos ? std::string() : shortName.substr(dot + 1);
+    std::copy(base.begin(), base.end(), bytes.begin() + entryOffset);
+    std::copy(extension.begin(), extension.end(), bytes.begin() + entryOffset + ShortBaseSize);
+}
+
+// The 13 characters of a long name from firstCharacter on: a zero after the last character, then padding.
+void WriteLongNamePart(Bytes& bytes, std::size_t entryOffset, std::string_view name, std::size_t firstCharacter)
+{
+    for (std::size_t slot = 0; slot < LongNameCharactersPerEntry; ++slot)
+    {
+        std::size_t characterIndex = firstCharacter + slot;
+        char16_t character = LongNamePadding;
+        if (characterIndex < name.size())
+            character = static_cast<char16_t>(name[characterIndex]);
+        else if (characterIndex == name.size())
+            character = 0;
+        WriteLittleEndian16(bytes, entryOffset + LongNameCharacterOffsets[slot], character);
+    }
+}
+
+// The upper case characters of the text that a short name may hold, at most largestSize of them.
+std::string ShortNameCharacters(std::string_view text, std::size_t largestSize)
+{
+    std::string characters;
+    for (char character : text)
+    {
+        char upper = ToUpper(character);
+        if (IsShortNameCharacter(upper) && characters.size() < largestSize)
+            characters.push_back(upper);
+    }
+    return characters;
 }
 
 }
@@ -263,8 +320,10 @@ void VirtualFatVolume::FindTheParts()
         throw FormatError(std::format("VFF: {} bytes are too many for a FAT16 volume", bytes.size()));
 
     isFat12 = clustersOfTheSize < SmallestFat16ClusterCount;
-    std::size_t fatBytes = isFat12 ? (clustersOfTheSize * 3 + 1) / 2 : clustersOfTheSize * sizeof(std::uint16_t);
-    fatSize = AlignUp(fatBytes, ClusterSize);
+    std::size_t fatBytes = clustersOfTheSize * sizeof(std::uint16_t);
+    if (isFat12)
+        fatBytes = DivideRoundingUp(clustersOfTheSize * Fat12BytesPerEntryPair, EntriesPerFat12Pair);
+    fatSize = RoundUpToMultiple(fatBytes, ClusterSize);
     firstFatOffset = HeaderSize;
     rootFolderOffset = firstFatOffset + 2 * fatSize;
     firstClusterOffset = rootFolderOffset + RootFolderSize;
@@ -311,7 +370,7 @@ std::optional<Bytes> VirtualFatVolume::ReadFile(std::string_view filePath) const
 
 void VirtualFatVolume::WriteFile(std::string_view filePath, ByteView contents, const VolumeTime& time)
 {
-    std::size_t clustersNeeded = AlignUp(contents.size(), ClusterSize) / ClusterSize;
+    std::size_t clustersNeeded = DivideRoundingUp(contents.size(), ClusterSize);
     std::optional<FoundEntry> existing = FindEntry(filePath);
     if (existing && existing->isFolder)
         throw FormatError(std::format("VFF: {} is a folder", filePath));
@@ -345,7 +404,7 @@ void VirtualFatVolume::WriteFile(std::string_view filePath, ByteView contents, c
 
 std::uint16_t VirtualFatVolume::CopyIntoNewChain(ByteView contents)
 {
-    std::size_t clustersNeeded = AlignUp(contents.size(), ClusterSize) / ClusterSize;
+    std::size_t clustersNeeded = DivideRoundingUp(contents.size(), ClusterSize);
     std::uint16_t firstCluster = AllocateChain(clustersNeeded);
     std::size_t written = 0;
     for (std::uint16_t cluster : ClusterChain(firstCluster))
@@ -558,18 +617,14 @@ void VirtualFatVolume::AddEntry(std::uint16_t folderCluster, std::string_view na
     std::uint32_t size, const VolumeTime& time)
 {
     std::string shortName = MakeShortName(folderCluster, name);
-    bool needsLongName = shortName != name;
-    std::size_t longNameEntryCount = needsLongName ? AlignUp(name.size(), LongNameCharactersPerEntry) / LongNameCharactersPerEntry : 0;
+    std::size_t longNameEntryCount = 0;
+    if (shortName != name)
+        longNameEntryCount = DivideRoundingUp(name.size(), LongNameCharactersPerEntry);
     std::size_t firstIndex = FindFreeEntries(folderCluster, longNameEntryCount + 1);
 
     std::size_t shortEntryOffset = OffsetOfEntry(folderCluster, firstIndex + longNameEntryCount);
     std::fill(bytes.begin() + shortEntryOffset, bytes.begin() + shortEntryOffset + EntrySize, Byte{0});
-    std::fill(bytes.begin() + shortEntryOffset, bytes.begin() + shortEntryOffset + ShortNameSize, Byte{' '});
-    std::size_t dot = (shortName == "." || shortName == "..") ? std::string::npos : shortName.find('.');
-    std::string base = shortName.substr(0, dot);
-    std::string extension = dot == std::string::npos ? std::string() : shortName.substr(dot + 1);
-    std::copy(base.begin(), base.end(), bytes.begin() + shortEntryOffset);
-    std::copy(extension.begin(), extension.end(), bytes.begin() + shortEntryOffset + ShortBaseSize);
+    WriteShortName(bytes, shortEntryOffset, shortName);
 
     bytes[shortEntryOffset + AttributeOffset] = isFolder ? FolderAttribute : FileAttribute;
     WriteLittleEndian16(bytes, shortEntryOffset + CreationTimeOffset, FatTime(time));
@@ -591,16 +646,7 @@ void VirtualFatVolume::AddEntry(std::uint16_t folderCluster, std::string_view na
         bytes[entryOffset + LongNameChecksumOffset] = checksum;
 
         std::size_t firstCharacter = (sequence - 1) * LongNameCharactersPerEntry;
-        for (std::size_t slot = 0; slot < LongNameCharactersPerEntry; ++slot)
-        {
-            std::size_t characterIndex = firstCharacter + slot;
-            char16_t character = LongNamePadding;
-            if (characterIndex < name.size())
-                character = static_cast<char16_t>(name[characterIndex]);
-            else if (characterIndex == name.size())
-                character = 0;
-            WriteLittleEndian16(bytes, entryOffset + LongNameCharacterOffsets[slot], character);
-        }
+        WriteLongNamePart(bytes, entryOffset, name, firstCharacter);
     }
 }
 
@@ -623,18 +669,8 @@ std::string VirtualFatVolume::MakeShortName(std::uint16_t folderCluster, std::st
     std::string_view base = longName.substr(0, dot);
     std::string_view extension = dot == std::string_view::npos ? std::string_view() : longName.substr(dot + 1);
 
-    std::string upperBase;
-    std::string upperExtension;
-    for (char character : base)
-    {
-        if (IsShortNameCharacter(ToUpper(character)))
-            upperBase.push_back(ToUpper(character));
-    }
-    for (char character : extension)
-    {
-        if (IsShortNameCharacter(ToUpper(character)) && upperExtension.size() < ShortExtensionSize)
-            upperExtension.push_back(ToUpper(character));
-    }
+    std::string upperBase = ShortNameCharacters(base, std::string::npos);
+    std::string upperExtension = ShortNameCharacters(extension, ShortExtensionSize);
 
     std::vector<FoundEntry> entries = ReadFolder(folderCluster);
     auto isTaken = [&](const std::string& candidate) {
@@ -670,9 +706,11 @@ std::uint16_t VirtualFatVolume::FatEntry(std::uint16_t cluster) const
     if (!isFat12)
         return ReadLittleEndian16(bytes, firstFatOffset + cluster * sizeof(std::uint16_t));
 
-    std::uint16_t pair = ReadLittleEndian16(bytes, firstFatOffset + cluster * 3 / 2);
+    std::uint16_t pair = ReadLittleEndian16(bytes, firstFatOffset + Fat12OffsetOfEntry(cluster));
     bool isOdd = cluster % 2 == 1;
-    std::uint16_t value = isOdd ? static_cast<std::uint16_t>(pair >> Fat12OddEntryShift) : static_cast<std::uint16_t>(pair & Fat12EntryMask);
+    std::uint16_t value = static_cast<std::uint16_t>(pair & Fat12EntryMask);
+    if (isOdd)
+        value = static_cast<std::uint16_t>(pair >> Fat12OddEntryShift);
     if (value >= Fat12SpecialValues)
         value |= Fat16TopBits;
     return value;
@@ -688,16 +726,15 @@ void VirtualFatVolume::SetFatEntry(std::uint16_t cluster, std::uint16_t value)
         return;
     }
 
-    std::size_t place = cluster * 3 / 2;
-    std::uint16_t twelveBits = value & Fat12EntryMask;
+    std::size_t place = Fat12OffsetOfEntry(cluster);
+    bool isOdd = cluster % 2 == 1;
+    int shift = isOdd ? Fat12OddEntryShift : 0;
+    unsigned entryBits = unsigned{Fat12EntryMask} << shift;
+    unsigned newBits = static_cast<unsigned>(value & Fat12EntryMask) << shift;
     for (std::size_t fatOffset : {firstFatOffset, firstFatOffset + fatSize})
     {
         std::uint16_t pair = ReadLittleEndian16(bytes, fatOffset + place);
-        bool isOdd = cluster % 2 == 1;
-        if (isOdd)
-            pair = static_cast<std::uint16_t>((pair & ~(Fat12EntryMask << Fat12OddEntryShift)) | (twelveBits << Fat12OddEntryShift));
-        else
-            pair = static_cast<std::uint16_t>((pair & ~Fat12EntryMask) | twelveBits);
+        pair = static_cast<std::uint16_t>((pair & ~entryBits) | newBits);
         WriteLittleEndian16(bytes, fatOffset + place, pair);
     }
 }

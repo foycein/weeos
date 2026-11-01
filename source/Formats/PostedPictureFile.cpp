@@ -32,6 +32,18 @@ std::uint16_t ToRgb565(const Rgba8Pixel& pixel)
     return static_cast<std::uint16_t>((red << RedShift) | (green << GreenShift) | blue);
 }
 
+void WriteTile(ByteWriter& pixels, const RgbaImage& picture, std::uint32_t tileLeft, std::uint32_t tileTop)
+{
+    for (std::uint32_t y = tileTop; y < tileTop + TileSide; ++y)
+    {
+        for (std::uint32_t x = tileLeft; x < tileLeft + TileSide; ++x)
+        {
+            std::size_t pixelIndex = static_cast<std::size_t>(y) * picture.width + x;
+            pixels.WriteUint16(ToRgb565(picture.pixels[pixelIndex]));
+        }
+    }
+}
+
 }
 
 std::size_t PostedPictureFileSize(int width, int height)
@@ -45,13 +57,7 @@ Bytes MakePostedPictureFile(const RgbaImage& picture)
     for (std::uint32_t tileTop = 0; tileTop < picture.height; tileTop += TileSide)
     {
         for (std::uint32_t tileLeft = 0; tileLeft < picture.width; tileLeft += TileSide)
-        {
-            for (std::uint32_t y = tileTop; y < tileTop + TileSide; ++y)
-            {
-                for (std::uint32_t x = tileLeft; x < tileLeft + TileSide; ++x)
-                    pixels.WriteUint16(ToRgb565(picture.pixels[static_cast<std::size_t>(y) * picture.width + x]));
-            }
-        }
+            WriteTile(pixels, picture, tileLeft, tileTop);
     }
 
     ByteWriter checkedPart;
@@ -74,10 +80,16 @@ std::optional<RgbaImage> ReadPostedPictureFile(ByteView bytes, int width, int he
         return std::nullopt;
 
     ByteReader reader(bytes, "posted picture");
-    bool isRightFile = reader.ReadUint32() == PictureFileCode && reader.ReadUint32() == bytes.size();
+    std::uint32_t fileCode = reader.ReadUint32();
+    std::uint32_t fileSize = reader.ReadUint32();
     std::uint32_t checksum = reader.ReadUint32();
-    bool hasRightSize = reader.ReadUint32() == static_cast<std::uint32_t>(width) && reader.ReadUint32() == static_cast<std::uint32_t>(height);
-    if (!isRightFile || !hasRightSize || checksum != ComputeCrc32(bytes.subspan(CheckedPartStart)))
+    std::uint32_t storedWidth = reader.ReadUint32();
+    std::uint32_t storedHeight = reader.ReadUint32();
+
+    bool isRightFile = fileCode == PictureFileCode && fileSize == bytes.size();
+    bool hasRightSize = storedWidth == static_cast<std::uint32_t>(width) && storedHeight == static_cast<std::uint32_t>(height);
+    bool hasRightChecksum = checksum == ComputeCrc32(bytes.subspan(CheckedPartStart));
+    if (!isRightFile || !hasRightSize || !hasRightChecksum)
         return std::nullopt;
 
     return DecodeTexture(TextureFormat::Rgb565, width, height, bytes.subspan(PictureHeaderSize), std::nullopt);

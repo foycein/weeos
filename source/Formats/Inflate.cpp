@@ -18,9 +18,14 @@ constexpr Byte DeflateMethod = 8;
 constexpr Byte MethodMask = 0x0F;
 constexpr Byte PresetDictionaryFlag = 0x20;
 
+constexpr int BlockTypeBits = 2;
 constexpr int StoredBlock = 0;
 constexpr int FixedCodeBlock = 1;
 constexpr int DynamicCodeBlock = 2;
+
+// A stored block starts with its length and the length with every bit flipped.
+constexpr int StoredLengthBits = 16;
+constexpr std::uint32_t AllStoredLengthBits = 0xFFFF;
 
 constexpr int MaximumCodeLength = 15;
 constexpr int EndOfBlockSymbol = 256;
@@ -44,11 +49,43 @@ constexpr std::array<Byte, 30> DistanceExtraBits = {
 
 // A block with dynamic codes starts with the lengths of the codes of the lengths. They come in this order.
 constexpr std::array<Byte, 19> LengthCodeOrder = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+constexpr int LengthCodeLengthBits = 3;
+
+// The header of a block with dynamic codes: how many codes of each kind follow, each count less its smallest value.
+constexpr int LiteralCodeCountBits = 5;
+constexpr int SmallestLiteralCodeCount = 257;
+constexpr int DistanceCodeCountBits = 5;
+constexpr int SmallestDistanceCodeCount = 1;
+constexpr int LengthCodeCountBits = 4;
+constexpr int SmallestLengthCodeCount = 4;
+
+// The symbols 16 to 18 among the lengths of the codes repeat a length: the previous one, or zero a few times or many times.
 constexpr int RepeatPreviousLength = 16;
 constexpr int RepeatZeroShort = 17;
+constexpr int ShortRepeatSmallestCount = 3;
+constexpr int RepeatPreviousExtraBits = 2;
+constexpr int RepeatZeroShortExtraBits = 3;
+constexpr int LongRepeatSmallestCount = 11;
+constexpr int RepeatZeroLongExtraBits = 7;
 
 constexpr int FixedLiteralCodeCount = 288;
 constexpr int FixedDistanceCodeCount = 30;
+constexpr Byte FixedDistanceCodeLength = 5;
+
+// The literals and lengths of a block with fixed codes have codes of 7 to 9 bits, by ranges of symbols.
+struct FixedCodeRange
+{
+    int firstSymbol;
+    int lastSymbol;
+    Byte codeLength;
+};
+
+constexpr std::array<FixedCodeRange, 4> FixedLiteralCodeRanges = {{
+    {0, 143, 8},
+    {144, 255, 9},
+    {256, 279, 7},
+    {280, 287, 8},
+}};
 
 [[noreturn]] void Fail(const std::string& problem)
 {
@@ -142,8 +179,11 @@ CodeTable MakeCodeTable(const std::vector<Byte>& lengthOfSymbol)
     for (std::size_t symbol = 0; symbol < lengthOfSymbol.size(); ++symbol)
     {
         Byte length = lengthOfSymbol[symbol];
-        if (length != 0)
-            table.symbols[offsetOfLength[length]++] = static_cast<std::uint16_t>(symbol);
+        if (length == 0)
+            continue;
+
+        table.symbols[offsetOfLength[length]] = static_cast<std::uint16_t>(symbol);
+        ++offsetOfLength[length];
     }
 
     return table;
@@ -175,9 +215,9 @@ int DecodeSymbol(BitReader& reader, const CodeTable& table)
 void InflateStoredBlock(BitReader& reader, Bytes& output)
 {
     reader.SkipToNextByte();
-    std::uint32_t length = reader.ReadBits(16);
-    std::uint32_t lengthComplement = reader.ReadBits(16);
-    if ((length ^ lengthComplement) != 0xFFFF)
+    std::uint32_t length = reader.ReadBits(StoredLengthBits);
+    std::uint32_t lengthComplement = reader.ReadBits(StoredLengthBits);
+    if ((length ^ lengthComplement) != AllStoredLengthBits)
         Fail("a stored block with a wrong length");
 
     ByteView data = reader.ReadBytes(length);
@@ -223,23 +263,16 @@ void InflateBlockData(BitReader& reader, const CodeTable& literalTable, const Co
     }
 }
 
-// The codes of a block with fixed codes: literals and lengths have 8 to 9 bits, distances have 5.
 void InflateFixedCodeBlock(BitReader& reader, Bytes& output)
 {
     std::vector<Byte> literalLengths(FixedLiteralCodeCount);
-    for (int symbol = 0; symbol < FixedLiteralCodeCount; ++symbol)
+    for (const FixedCodeRange& range : FixedLiteralCodeRanges)
     {
-        if (symbol < 144)
-            literalLengths[symbol] = 8;
-        else if (symbol < 256)
-            literalLengths[symbol] = 9;
-        else if (symbol < 280)
-            literalLengths[symbol] = 7;
-        else
-            literalLengths[symbol] = 8;
+        for (int symbol = range.firstSymbol; symbol <= range.lastSymbol; ++symbol)
+            literalLengths[symbol] = range.codeLength;
     }
 
-    std::vector<Byte> distanceLengths(FixedDistanceCodeCount, 5);
+    std::vector<Byte> distanceLengths(FixedDistanceCodeCount, FixedDistanceCodeLength);
     InflateBlockData(reader, MakeCodeTable(literalLengths), MakeCodeTable(distanceLengths), output);
 }
 
@@ -263,15 +296,15 @@ std::vector<Byte> ReadLengthsOfCodes(BitReader& reader, const CodeTable& lengthT
                 Fail("a repeat of a length that does not exist");
 
             repeatedLength = lengths.back();
-            repeatCount = 3 + reader.ReadBits(2);
+            repeatCount = ShortRepeatSmallestCount + reader.ReadBits(RepeatPreviousExtraBits);
         }
         else if (symbol == RepeatZeroShort)
         {
-            repeatCount = 3 + reader.ReadBits(3);
+            repeatCount = ShortRepeatSmallestCount + reader.ReadBits(RepeatZeroShortExtraBits);
         }
         else
         {
-            repeatCount = 11 + reader.ReadBits(7);
+            repeatCount = LongRepeatSmallestCount + reader.ReadBits(RepeatZeroLongExtraBits);
         }
 
         if (lengths.size() + repeatCount > static_cast<std::size_t>(count))
@@ -286,13 +319,13 @@ std::vector<Byte> ReadLengthsOfCodes(BitReader& reader, const CodeTable& lengthT
 // A block with dynamic codes brings its own codes: first the codes for the lengths of the codes, then the literal and distance codes.
 void InflateDynamicCodeBlock(BitReader& reader, Bytes& output)
 {
-    int literalCodeCount = static_cast<int>(reader.ReadBits(5)) + 257;
-    int distanceCodeCount = static_cast<int>(reader.ReadBits(5)) + 1;
-    int lengthCodeCount = static_cast<int>(reader.ReadBits(4)) + 4;
+    int literalCodeCount = static_cast<int>(reader.ReadBits(LiteralCodeCountBits)) + SmallestLiteralCodeCount;
+    int distanceCodeCount = static_cast<int>(reader.ReadBits(DistanceCodeCountBits)) + SmallestDistanceCodeCount;
+    int lengthCodeCount = static_cast<int>(reader.ReadBits(LengthCodeCountBits)) + SmallestLengthCodeCount;
 
     std::vector<Byte> lengthCodeLengths(LengthCodeOrder.size(), 0);
     for (int index = 0; index < lengthCodeCount; ++index)
-        lengthCodeLengths[LengthCodeOrder[index]] = static_cast<Byte>(reader.ReadBits(3));
+        lengthCodeLengths[LengthCodeOrder[index]] = static_cast<Byte>(reader.ReadBits(LengthCodeLengthBits));
 
     CodeTable lengthTable = MakeCodeTable(lengthCodeLengths);
     std::vector<Byte> allLengths = ReadLengthsOfCodes(reader, lengthTable, literalCodeCount + distanceCodeCount);
@@ -324,7 +357,7 @@ Bytes Inflate(ByteView deflateBytes)
     while (!isLastBlock)
     {
         isLastBlock = reader.ReadBit() != 0;
-        std::uint32_t blockType = reader.ReadBits(2);
+        std::uint32_t blockType = reader.ReadBits(BlockTypeBits);
 
         if (blockType == StoredBlock)
             InflateStoredBlock(reader, output);

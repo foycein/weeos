@@ -217,7 +217,8 @@ std::optional<std::uint16_t> Font::FindGlyphIndex(std::uint16_t characterCode) c
 {
     for (const CharacterMap& map : characterMaps)
     {
-        if (characterCode < map.firstCharacterCode || characterCode > map.lastCharacterCode)
+        bool isInMap = characterCode >= map.firstCharacterCode && characterCode <= map.lastCharacterCode;
+        if (!isInMap)
             continue;
 
         if (map.method == CharacterMapMethod::Direct)

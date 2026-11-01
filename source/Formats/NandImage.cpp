@@ -49,8 +49,9 @@ SectorSummary SummarizeSector(ByteView sector)
 
 void AppendLittleEndian(NandErrorCorrection& errorCorrection, std::size_t& position, std::uint16_t number)
 {
-    errorCorrection[position++] = static_cast<Byte>(number & ByteMask);
-    errorCorrection[position++] = static_cast<Byte>(number >> BitsPerByte);
+    errorCorrection[position] = static_cast<Byte>(number & ByteMask);
+    errorCorrection[position + 1] = static_cast<Byte>(number >> BitsPerByte);
+    position += sizeof(number);
 }
 
 bool AreAll(ByteView bytes, Byte value)

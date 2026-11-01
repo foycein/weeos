@@ -22,8 +22,9 @@ constexpr std::size_t ChannelBackupHeaderDigestOffset = 0x0C;
 constexpr std::size_t ChannelBackupBannerHeaderOffset = 0x40;
 
 constexpr std::string_view BannerTag = "IMET";
-constexpr std::size_t BannerTagOffset = 0x40;
-constexpr std::size_t ChannelNamesOffset = BannerTagOffset + 0x1C;
+constexpr std::size_t BannerTagOffset = BannerHeaderOffsetInContent;
+constexpr std::size_t ChannelNamesOffsetAfterTag = 0x1C;
+constexpr std::size_t ChannelNamesOffset = BannerTagOffset + ChannelNamesOffsetAfterTag;
 constexpr std::size_t ChannelNameLineLength = 21;
 
 constexpr std::uint32_t ArchiveHeaderLength = 0x70;
@@ -143,7 +144,8 @@ SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader)
 Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header)
 {
     if (header.bannerHeader.size() > BiggestBannerHeaderSize)
-        throw FormatError(std::format("A banner header of {:#x} bytes does not fit into the header of content.bin", header.bannerHeader.size()));
+        throw FormatError(
+            std::format("A banner header of {:#x} bytes does not fit into the header of content.bin", header.bannerHeader.size()));
 
     ByteWriter writer;
     writer.WriteUint64(header.titleId);
@@ -225,8 +227,10 @@ BackupArchiveHeader ReadBackupArchiveHeader(ByteView bytes)
     std::uint32_t length = reader.ReadUint32();
     std::string tag = reader.ReadText(ArchiveTag.size());
     std::uint16_t version = reader.ReadUint16();
-    if (length != ArchiveHeaderLength || tag != ArchiveTag || version != ArchiveVersion)
-        reader.Fail(std::format("the header is not a header of version {} with {:#x} bytes and the tag {}", ArchiveVersion, ArchiveHeaderLength, ArchiveTag));
+    bool isKnownHeader = length == ArchiveHeaderLength && tag == ArchiveTag && version == ArchiveVersion;
+    if (!isKnownHeader)
+        reader.Fail(std::format("the header is not a header of version {} with {:#x} bytes and the tag {}", ArchiveVersion,
+            ArchiveHeaderLength, ArchiveTag));
 
     BackupArchiveHeader header;
     header.deviceId = reader.ReadUint32();
@@ -286,7 +290,9 @@ BackupFileHeader ReadBackupFileHeader(ByteView bytes)
     header.flags = reader.ReadByte();
 
     Byte kind = reader.ReadByte();
-    if (kind != static_cast<Byte>(BackupEntryKind::File) && kind != static_cast<Byte>(BackupEntryKind::Directory))
+    bool isFile = kind == static_cast<Byte>(BackupEntryKind::File);
+    bool isDirectory = kind == static_cast<Byte>(BackupEntryKind::Directory);
+    if (!isFile && !isDirectory)
         reader.Fail(std::format("the kind {} is neither a file nor a directory", kind));
     header.kind = static_cast<BackupEntryKind>(kind);
 

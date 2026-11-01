@@ -77,7 +77,8 @@ AnimationTagKind ReadTagKind(ByteReader& reader)
 KeyFrameKind ReadKeyFrameKind(ByteReader& reader)
 {
     Byte number = reader.ReadByte();
-    if (number != static_cast<Byte>(KeyFrameKind::Step) && number != static_cast<Byte>(KeyFrameKind::Hermite))
+    bool isKnownKind = number == static_cast<Byte>(KeyFrameKind::Step) || number == static_cast<Byte>(KeyFrameKind::Hermite);
+    if (!isKnownKind)
         reader.Fail(std::format("the key frame type {} is not known", number));
 
     return static_cast<KeyFrameKind>(number);

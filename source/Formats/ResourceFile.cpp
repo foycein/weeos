@@ -43,10 +43,11 @@ std::vector<ResourceEntry> ReadIndexGroup(ByteView bytes, std::size_t groupOffse
     std::vector<ResourceEntry> entries;
     for (std::uint32_t entryNumber = 1; entryNumber <= count; ++entryNumber)
     {
-        reader.MoveTo(groupOffset + FirstGroupEntry + entryNumber * GroupEntrySize + EntryNamePosition);
+        std::size_t entryStart = groupOffset + FirstGroupEntry + entryNumber * GroupEntrySize;
+        reader.MoveTo(entryStart + EntryNamePosition);
         std::size_t nameOffset = OffsetFrom(groupOffset, reader.ReadUint32());
 
-        reader.MoveTo(groupOffset + FirstGroupEntry + entryNumber * GroupEntrySize + EntryDataPosition);
+        reader.MoveTo(entryStart + EntryDataPosition);
         std::size_t dataOffset = OffsetFrom(groupOffset, reader.ReadUint32());
 
         reader.MoveTo(nameOffset);

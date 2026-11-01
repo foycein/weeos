@@ -1,5 +1,6 @@
 #include "Formats/EffectFile.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 #include "Formats/TextureDecoder.h"
@@ -195,6 +196,43 @@ void ReadAlphaTestAndCount(ByteReader& reader, std::size_t drawSetting, EffectDr
         reader.Fail(std::format("{} stages", stageCount));
 }
 
+void ReadBlend(ByteReader& reader, std::size_t place, EffectDrawSetting& setting)
+{
+    reader.MoveTo(place);
+    setting.blendType = reader.ReadByte();
+    setting.blendSource = reader.ReadByte();
+    setting.blendDestination = reader.ReadByte();
+}
+
+void ReadColorSources(ByteReader& reader, std::size_t place, std::array<ParticleColorSource, ParticleColorRegisterCount>& registers,
+    std::array<ParticleColorSource, ParticleConstantColorCount>& constants)
+{
+    reader.MoveTo(place);
+    for (ParticleColorSource& source : registers)
+        source = ReadColorSource(reader);
+    for (ParticleColorSource& source : constants)
+        source = ReadColorSource(reader);
+}
+
+void ReadFlickerAndLighting(ByteReader& reader, std::size_t flickerPlace, std::size_t lightingPlace, EffectDrawSetting& setting)
+{
+    reader.MoveTo(flickerPlace);
+    setting.flickerType = reader.ReadByte();
+    reader.MoveTo(lightingPlace);
+    setting.lightingType = reader.ReadByte();
+    setting.ambientColor = ReadRgba8Color(reader);
+}
+
+void ReadIndirectMatrix(ByteReader& reader, std::size_t matrixPlace, std::size_t scalePlace, EffectDrawSetting& setting)
+{
+    reader.MoveTo(matrixPlace);
+    for (auto& row : setting.indirectMatrix)
+        for (float& number : row)
+            number = reader.ReadFloat();
+    reader.MoveTo(scalePlace);
+    setting.indirectScaleExponent = static_cast<std::int8_t>(reader.ReadByte());
+}
+
 // Version 5: the alpha operation of a stage is the same as its color operation (the library passes the color bytes to both),
 // stage 0 reads texture 1 and the other stages texture 2, and one group of sources fills both color and alpha.
 EffectDrawSetting ReadDrawSettingVersion5(ByteReader& reader, std::size_t drawSetting)
@@ -239,31 +277,12 @@ EffectDrawSetting ReadDrawSettingVersion5(ByteReader& reader, std::size_t drawSe
     if ((setting.flags & DrawFlag::UsesIndirectTexture) != 0)
         setting.indirectStageMask = static_cast<std::uint8_t>(1u << indirectStage);
 
-    reader.MoveTo(drawSetting + Blend);
-    setting.blendType = reader.ReadByte();
-    setting.blendSource = reader.ReadByte();
-    setting.blendDestination = reader.ReadByte();
-
-    reader.MoveTo(drawSetting + RegisterSources);
-    for (ParticleColorSource& source : setting.registerColors)
-        source = ReadColorSource(reader);
-    for (ParticleColorSource& source : setting.constantColors)
-        source = ReadColorSource(reader);
+    ReadBlend(reader, drawSetting + Blend, setting);
+    ReadColorSources(reader, drawSetting + RegisterSources, setting.registerColors, setting.constantColors);
     setting.registerAlphas = setting.registerColors;
     setting.constantAlphas = setting.constantColors;
-
-    reader.MoveTo(drawSetting + Flicker);
-    setting.flickerType = reader.ReadByte();
-    reader.MoveTo(drawSetting + Lighting);
-    setting.lightingType = reader.ReadByte();
-    setting.ambientColor = ReadRgba8Color(reader);
-
-    reader.MoveTo(drawSetting + IndirectMatrix);
-    for (auto& row : setting.indirectMatrix)
-        for (float& number : row)
-            number = reader.ReadFloat();
-    reader.MoveTo(drawSetting + IndirectScale);
-    setting.indirectScaleExponent = static_cast<std::int8_t>(reader.ReadByte());
+    ReadFlickerAndLighting(reader, drawSetting + Flicker, drawSetting + Lighting, setting);
+    ReadIndirectMatrix(reader, drawSetting + IndirectMatrix, drawSetting + IndirectScale, setting);
     return setting;
 }
 
@@ -306,34 +325,11 @@ EffectDrawSetting ReadDrawSettingVersion11(ByteReader& reader, std::size_t drawS
     if ((setting.flags & DrawFlag::UsesIndirectTexture) == 0)
         setting.indirectStageMask = 0;
 
-    reader.MoveTo(drawSetting + Blend);
-    setting.blendType = reader.ReadByte();
-    setting.blendSource = reader.ReadByte();
-    setting.blendDestination = reader.ReadByte();
-
-    reader.MoveTo(drawSetting + ColorSources);
-    for (ParticleColorSource& source : setting.registerColors)
-        source = ReadColorSource(reader);
-    for (ParticleColorSource& source : setting.constantColors)
-        source = ReadColorSource(reader);
-    reader.MoveTo(drawSetting + AlphaSources);
-    for (ParticleColorSource& source : setting.registerAlphas)
-        source = ReadColorSource(reader);
-    for (ParticleColorSource& source : setting.constantAlphas)
-        source = ReadColorSource(reader);
-
-    reader.MoveTo(drawSetting + Flicker);
-    setting.flickerType = reader.ReadByte();
-    reader.MoveTo(drawSetting + Lighting);
-    setting.lightingType = reader.ReadByte();
-    setting.ambientColor = ReadRgba8Color(reader);
-
-    reader.MoveTo(drawSetting + IndirectMatrix);
-    for (auto& row : setting.indirectMatrix)
-        for (float& number : row)
-            number = reader.ReadFloat();
-    reader.MoveTo(drawSetting + IndirectScale);
-    setting.indirectScaleExponent = static_cast<std::int8_t>(reader.ReadByte());
+    ReadBlend(reader, drawSetting + Blend, setting);
+    ReadColorSources(reader, drawSetting + ColorSources, setting.registerColors, setting.constantColors);
+    ReadColorSources(reader, drawSetting + AlphaSources, setting.registerAlphas, setting.constantAlphas);
+    ReadFlickerAndLighting(reader, drawSetting + Flicker, drawSetting + Lighting, setting);
+    ReadIndirectMatrix(reader, drawSetting + IndirectMatrix, drawSetting + IndirectScale, setting);
     return setting;
 }
 
@@ -437,6 +433,7 @@ EffectAnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
     constexpr std::uint8_t LastTextureTarget = 0x19;
     constexpr std::uint8_t ChildTarget = 0x1A;
     constexpr std::uint8_t FirstFieldTarget = 0x20;
+    constexpr std::uint8_t LastPlainFieldTarget = 0x24;
     constexpr std::uint8_t FirstEmitterTarget = 0x40;
     constexpr std::uint8_t LastEmitterTarget = 0x49;
     constexpr std::uint8_t FieldOfSpin = 0x26;
@@ -448,7 +445,7 @@ EffectAnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
         return TargetAfter(EffectAnimationTarget::Texture1Pattern, number - FirstPatternTarget);
     if (number == ChildTarget)
         return EffectAnimationTarget::Child;
-    if (number >= FirstFieldTarget && number <= static_cast<std::uint8_t>(FirstFieldTarget + 4))
+    if (number >= FirstFieldTarget && number <= LastPlainFieldTarget)
         return TargetAfter(EffectAnimationTarget::GravityField, number - FirstFieldTarget);
     if (number == FieldOfSpin)
         return EffectAnimationTarget::SpinField;
@@ -560,7 +557,7 @@ std::size_t ValueSizeOf(const EffectAnimation& animation, std::uint16_t version)
     switch (animation.kind)
     {
     case AnimationValueKind::Bytes:
-        return (animation.componentCount + 1) / 2 * 2;
+        return RoundUpToMultiple(animation.componentCount, 2);
     case AnimationValueKind::TexturePattern:
         return TextureKeyValueSize;
     case AnimationValueKind::Child:
@@ -773,6 +770,19 @@ FieldSettings ReadFieldSettings(ByteReader& reader, std::size_t info, std::uint3
     return field;
 }
 
+EffectAnimationTarget TargetOf(ByteReader& reader, std::uint8_t target, AnimationValueKind kind, std::uint16_t version)
+{
+    if (version == EffectFileVersion5)
+        return Version5Target(reader, target);
+    if (kind == AnimationValueKind::Field)
+        return Version11FieldTarget(reader, target);
+    if (kind == AnimationValueKind::Child)
+        return EffectAnimationTarget::Child;
+    if (kind == AnimationValueKind::Rotation)
+        return EffectAnimationTarget::Rotation;
+    return Version11ParameterTarget(reader, target);
+}
+
 EffectAnimation ReadAnimation(ByteReader& reader, std::size_t start, std::uint16_t version, bool isEmitterAnimation)
 {
     reader.MoveTo(start);
@@ -807,16 +817,7 @@ EffectAnimation ReadAnimation(ByteReader& reader, std::size_t start, std::uint16
     }
 
     animation.kind = ValueKindOf(reader, header, version);
-    if (version == EffectFileVersion5)
-        animation.target = Version5Target(reader, header.target);
-    else if (animation.kind == AnimationValueKind::Field)
-        animation.target = Version11FieldTarget(reader, header.target);
-    else if (animation.kind == AnimationValueKind::Child)
-        animation.target = EffectAnimationTarget::Child;
-    else if (animation.kind == AnimationValueKind::Rotation)
-        animation.target = EffectAnimationTarget::Rotation;
-    else
-        animation.target = Version11ParameterTarget(reader, header.target);
+    animation.target = TargetOf(reader, header.target, animation.kind, version);
 
     if (animation.kind == AnimationValueKind::Rotation)
         animation.componentCount = RotationComponentCount;
@@ -929,6 +930,28 @@ TextureFormat ReadTextureFormat(ByteReader& reader)
     return *format;
 }
 
+EffectTexture ReadEffectTexture(ByteReader& reader, const TableEntry& entry, std::size_t tableOffset, std::uint16_t version)
+{
+    std::size_t block = tableOffset + entry.offset;
+    reader.MoveTo(block + sizeof(std::uint32_t));
+
+    EffectTexture texture;
+    texture.name = entry.name;
+    texture.width = reader.ReadUint16();
+    texture.height = reader.ReadUint16();
+    std::uint32_t imageSize = reader.ReadUint32();
+    reader.MoveTo(block + TextureFormatPlace);
+    TextureFormat format = ReadTextureFormat(reader);
+    if (IsPaletteFormat(format))
+        reader.Fail(std::format("the texture {} has a palette, which no effect file uses", entry.name));
+
+    std::size_t headerSize = version == EffectFileVersion5 ? Version5TextureHeaderSize : Version11TextureHeaderSize;
+    reader.MoveTo(block + headerSize);
+    ByteView pixels = reader.ReadBytes(imageSize);
+    texture.image = DecodeTexture(format, texture.width, texture.height, pixels, std::nullopt);
+    return texture;
+}
+
 }
 
 const EmitterResource* EffectFile::FindEmitter(std::string_view name) const
@@ -966,26 +989,7 @@ std::vector<EffectTexture> ReadEffectTextureFile(ByteView bytes)
 
     std::vector<EffectTexture> textures;
     for (const TableEntry& entry : ReadEntryTable(reader, tableOffset))
-    {
-        std::size_t block = tableOffset + entry.offset;
-        reader.MoveTo(block + sizeof(std::uint32_t));
-
-        EffectTexture texture;
-        texture.name = entry.name;
-        texture.width = reader.ReadUint16();
-        texture.height = reader.ReadUint16();
-        std::uint32_t imageSize = reader.ReadUint32();
-        reader.MoveTo(block + TextureFormatPlace);
-        TextureFormat format = ReadTextureFormat(reader);
-        if (IsPaletteFormat(format))
-            reader.Fail(std::format("the texture {} has a palette, which no effect file uses", entry.name));
-
-        std::size_t headerSize = version == EffectFileVersion5 ? Version5TextureHeaderSize : Version11TextureHeaderSize;
-        reader.MoveTo(block + headerSize);
-        ByteView pixels = reader.ReadBytes(imageSize);
-        texture.image = DecodeTexture(format, texture.width, texture.height, pixels, std::nullopt);
-        textures.push_back(std::move(texture));
-    }
+        textures.push_back(ReadEffectTexture(reader, entry, tableOffset, version));
     return textures;
 }
 

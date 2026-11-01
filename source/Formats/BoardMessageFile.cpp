@@ -1,5 +1,6 @@
 #include "Formats/BoardMessageFile.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/Crc32.h"
@@ -22,14 +23,17 @@ constexpr std::size_t TextAlignment = 8;
 constexpr std::size_t MiiAreaSize = 0x4C;
 constexpr std::size_t AttachmentAlignment = 0x20;
 
-std::size_t AlignUp(std::size_t value, std::size_t alignment)
-{
-    return (value + alignment - 1) / alignment * alignment;
-}
+// The header keeps the places of the subject, the body and the Mii in this order.
+constexpr std::size_t SubjectSlot = 0;
+constexpr std::size_t BodySlot = 1;
+constexpr std::size_t MiiSlot = 2;
+constexpr std::size_t TextAndMiiSlotCount = 3;
+
+using TextAndMiiOffsets = std::array<std::uint32_t, TextAndMiiSlotCount>;
 
 std::size_t TextAreaSize(const std::u16string& text)
 {
-    return AlignUp((text.size() + 1) * sizeof(char16_t), TextAlignment);
+    return RoundUpToMultiple((text.size() + 1) * sizeof(char16_t), TextAlignment);
 }
 
 std::u16string ReadTextAt(ByteView bytes, std::uint32_t offset)
@@ -65,8 +69,53 @@ struct AttachmentPlace
 };
 
 // Everything of the header but the CRC and the padding behind it.
-Bytes WriteCheckedHeader(const BoardMessage& message, const std::array<std::uint32_t, 3>& textAndMiiOffsets,
-    const std::array<AttachmentPlace, BoardMessageAttachmentCount>& attachmentPlaces)
+using AttachmentPlaces = std::array<AttachmentPlace, BoardMessageAttachmentCount>;
+
+// Where the parts of a message go: the texts and the Mii behind the header, the attachments from a multiple of 0x20 on.
+struct MessageLayout
+{
+    TextAndMiiOffsets textAndMiiOffsets{};
+    std::size_t firstAttachmentOffset = 0;
+    AttachmentPlaces attachmentPlaces{};
+};
+
+MessageLayout PlaceParts(const BoardMessage& message)
+{
+    MessageLayout layout;
+    std::size_t place = BoardMessageHeaderSize;
+    if (!message.subject.empty())
+    {
+        layout.textAndMiiOffsets[SubjectSlot] = static_cast<std::uint32_t>(place);
+        place += TextAreaSize(message.subject);
+    }
+    if (!message.body.empty())
+    {
+        layout.textAndMiiOffsets[BodySlot] = static_cast<std::uint32_t>(place);
+        place += TextAreaSize(message.body);
+    }
+    if (message.mii)
+    {
+        layout.textAndMiiOffsets[MiiSlot] = static_cast<std::uint32_t>(place);
+        place += MiiAreaSize;
+    }
+
+    layout.firstAttachmentOffset = RoundUpToMultiple(place, AttachmentAlignment);
+    place = layout.firstAttachmentOffset;
+    for (std::size_t index = 0; index < BoardMessageAttachmentCount; ++index)
+    {
+        const std::optional<BoardAttachment>& attachment = message.attachments[index];
+        if (!attachment)
+            continue;
+
+        std::uint32_t size = static_cast<std::uint32_t>(attachment->contents.size());
+        std::uint32_t kind = static_cast<std::uint32_t>(attachment->kind);
+        layout.attachmentPlaces[index] = AttachmentPlace{kind, static_cast<std::uint32_t>(place), size};
+        place += RoundUpToMultiple(size, AttachmentAlignment);
+    }
+    return layout;
+}
+
+Bytes WriteCheckedHeader(const BoardMessage& message, const TextAndMiiOffsets& textAndMiiOffsets, const AttachmentPlaces& attachmentPlaces)
 {
     ByteWriter header;
     header.WriteBytes(ByteView(reinterpret_cast<const Byte*>(Magic.data()), Magic.size()));
@@ -107,7 +156,7 @@ BoardMessage ReadBoardMessage(ByteView bytes)
     message.positionX = reader.ReadFloat();
     message.positionY = reader.ReadFloat();
     message.optOutFlag = reader.ReadByte();
-    message.unusedKindBytes = reader.ReadByteArray<2>();
+    message.unusedKindBytes = reader.ReadByteArray<BoardMessageUnusedKindSize>();
     message.kind = static_cast<BoardMessageKind>(reader.ReadByte());
     message.boardTime = reader.ReadUint64();
     message.sender = reader.ReadByteArray<BoardMessageSenderSize>();
@@ -144,39 +193,9 @@ BoardMessage ReadBoardMessage(ByteView bytes)
 
 Bytes WriteBoardMessage(const BoardMessage& message)
 {
-    std::size_t place = BoardMessageHeaderSize;
-    std::array<std::uint32_t, 3> textAndMiiOffsets{};
-    if (!message.subject.empty())
-    {
-        textAndMiiOffsets[0] = static_cast<std::uint32_t>(place);
-        place += TextAreaSize(message.subject);
-    }
-    if (!message.body.empty())
-    {
-        textAndMiiOffsets[1] = static_cast<std::uint32_t>(place);
-        place += TextAreaSize(message.body);
-    }
-    if (message.mii)
-    {
-        textAndMiiOffsets[2] = static_cast<std::uint32_t>(place);
-        place += MiiAreaSize;
-    }
+    MessageLayout layout = PlaceParts(message);
 
-    std::size_t firstAttachmentOffset = AlignUp(place, AttachmentAlignment);
-    place = firstAttachmentOffset;
-    std::array<AttachmentPlace, BoardMessageAttachmentCount> attachmentPlaces{};
-    for (std::size_t index = 0; index < BoardMessageAttachmentCount; ++index)
-    {
-        const std::optional<BoardAttachment>& attachment = message.attachments[index];
-        if (!attachment)
-            continue;
-
-        std::uint32_t size = static_cast<std::uint32_t>(attachment->contents.size());
-        attachmentPlaces[index] = AttachmentPlace{static_cast<std::uint32_t>(attachment->kind), static_cast<std::uint32_t>(place), size};
-        place += AlignUp(size, AttachmentAlignment);
-    }
-
-    Bytes checkedHeader = WriteCheckedHeader(message, textAndMiiOffsets, attachmentPlaces);
+    Bytes checkedHeader = WriteCheckedHeader(message, layout.textAndMiiOffsets, layout.attachmentPlaces);
     ByteWriter writer;
     writer.WriteBytes(checkedHeader);
     writer.WriteUint32(ComputeCrc32(checkedHeader));
@@ -190,14 +209,15 @@ Bytes WriteBoardMessage(const BoardMessage& message)
         writer.WriteBytes(*message.mii);
         writer.WriteZeros(MiiAreaSize - BoardMessageMiiSize);
     }
-    writer.WriteZeros(firstAttachmentOffset - writer.GetBytes().size());
+    writer.WriteZeros(layout.firstAttachmentOffset - writer.GetBytes().size());
 
     for (const std::optional<BoardAttachment>& attachment : message.attachments)
     {
         if (!attachment)
             continue;
         writer.WriteBytes(attachment->contents);
-        writer.WriteZeros(AlignUp(attachment->contents.size(), AttachmentAlignment) - attachment->contents.size());
+        std::size_t paddedSize = RoundUpToMultiple(attachment->contents.size(), AttachmentAlignment);
+        writer.WriteZeros(paddedSize - attachment->contents.size());
     }
     return writer.GetBytes();
 }

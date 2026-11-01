@@ -61,7 +61,7 @@ CdbRecordFile ReadCdbRecordFile(ByteView bytes)
     record.writeCount = reader.ReadUint32();
     record.sizeOnSdCard = reader.ReadUint32();
     record.modifiedTime = reader.ReadUint32();
-    record.restOfHeader = reader.ReadByteArray<CdbRecordHeaderSize - 0x80>();
+    record.restOfHeader = reader.ReadByteArray<CdbRecordHeaderSize - CdbRestOfHeaderOffset>();
 
     ByteView data = reader.ReadBytes(reader.RemainingSize());
     record.data.assign(data.begin(), data.end());

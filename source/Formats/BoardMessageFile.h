@@ -15,6 +15,7 @@ constexpr std::size_t BoardMessageHeaderSize = 0x148;
 constexpr std::size_t BoardMessageSenderSize = 0x100;
 constexpr std::size_t BoardMessageMiiSize = 0x4A;
 constexpr std::size_t BoardMessageAttachmentCount = 2;
+constexpr std::size_t BoardMessageUnusedKindSize = 2;
 
 // What a message on the Message Board is. It chooses the small letter and the view of the letter.
 enum class BoardMessageKind : Byte
@@ -73,7 +74,7 @@ struct BoardMessage
 
     // 1 when the sender lets the user opt out of its mail. The two bytes after it are kept as they were read.
     Byte optOutFlag = 0;
-    std::array<Byte, 2> unusedKindBytes{};
+    std::array<Byte, BoardMessageUnusedKindSize> unusedKindBytes{};
     BoardMessageKind kind = BoardMessageKind::Memo;
 
     // When the message was put on the board: ticks of the console's timer (a quarter of the bus clock) since the year 2000.

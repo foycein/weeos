@@ -16,16 +16,18 @@ constexpr std::size_t WordSize = 4;
 constexpr int WordsPerBlock = BlockSize / WordSize;
 constexpr int RoundCount = 64;
 constexpr int RoundsPerStage = 16;
+constexpr int StageCount = RoundCount / RoundsPerStage;
 constexpr int ShiftsPerStage = 4;
+constexpr std::size_t StateWordCount = 4;
 
 constexpr Byte EndOfDataMarker = 0x80;
 
-using Md5State = std::array<std::uint32_t, 4>;
+using Md5State = std::array<std::uint32_t, StateWordCount>;
 
 constexpr Md5State InitialState = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476};
 
 // How far each of the four stages turns a value, in the order of the rounds of the stage.
-constexpr std::array<int, 4 * ShiftsPerStage> ShiftAmounts = {7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21};
+constexpr std::array<int, StageCount * ShiftsPerStage> ShiftAmounts = {7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21};
 
 // The constant of round n is the whole part of 2^32 times the absolute value of sin(n + 1), as RFC 1321 says.
 std::uint32_t RoundConstant(int round)

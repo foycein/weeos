@@ -3,6 +3,7 @@
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
+#include "Formats/WordSum.h"
 
 #include <algorithm>
 #include <format>
@@ -29,16 +30,7 @@ constexpr std::size_t BufferStartDistance = 0xFE0;
 // A zero word ends the list of the places of the arguments, like the list of arguments of a C program.
 constexpr std::size_t ListEndSize = WordSize;
 
-std::uint32_t SumOfWords(ByteView words)
-{
-    ByteReader reader(words, "NANDBOOTINFO");
-
-    std::uint32_t sum = 0;
-    while (!reader.IsAtEnd())
-        sum += reader.ReadUint32();
-
-    return sum;
-}
+constexpr std::string_view Description = "NANDBOOTINFO";
 
 void StoreBytes(Bytes& file, std::size_t offset, ByteView bytes)
 {
@@ -62,14 +54,14 @@ std::vector<std::string> ReadArguments(ByteView bytes, std::uint32_t listPlaceIn
     if (listPlaceInBuffer == 0)
         return {};
 
-    ByteReader listReader(bytes, "NANDBOOTINFO");
+    ByteReader listReader(bytes, Description);
     listReader.MoveTo(PlaceInFile(listPlaceInBuffer, "the list of arguments"));
     std::uint32_t argumentCount = listReader.ReadUint32();
 
     std::vector<std::string> arguments;
     for (std::uint32_t argumentNumber = 0; argumentNumber < argumentCount; ++argumentNumber)
     {
-        ByteReader textReader(bytes, "NANDBOOTINFO");
+        ByteReader textReader(bytes, Description);
         textReader.MoveTo(PlaceInFile(listReader.ReadUint32(), "an argument"));
         arguments.push_back(textReader.ReadTextUntilZero());
     }
@@ -125,9 +117,9 @@ NandBootInfo ReadNandBootInfo(ByteView bytes)
     if (bytes.size() != NandBootInfoFileSize)
         throw FormatError(std::format("NANDBOOTINFO: {} bytes instead of {}", bytes.size(), NandBootInfoFileSize));
 
-    ByteReader reader(bytes, "NANDBOOTINFO");
+    ByteReader reader(bytes, Description);
     std::uint32_t storedSum = reader.ReadUint32();
-    std::uint32_t sumOfWords = SumOfWords(bytes.subspan(ChecksumSize));
+    std::uint32_t sumOfWords = SumOfWords(bytes.subspan(ChecksumSize), Description);
     if (storedSum != sumOfWords)
         throw FormatError(std::format("NANDBOOTINFO: the sum {:#x} in the file is not the sum {:#x} of its words", storedSum, sumOfWords));
 
@@ -168,7 +160,7 @@ Bytes WriteNandBootInfo(const NandBootInfo& info)
     StoreBytes(file, 0, header.GetBytes());
 
     ByteWriter sum;
-    sum.WriteUint32(SumOfWords(ByteView(file).subspan(ChecksumSize)));
+    sum.WriteUint32(SumOfWords(ByteView(file).subspan(ChecksumSize), Description));
     StoreBytes(file, 0, sum.GetBytes());
     return file;
 }

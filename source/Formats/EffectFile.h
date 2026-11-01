@@ -172,6 +172,10 @@ constexpr std::uint16_t UsesIndirectTexture = 0x40;
 constexpr std::uint16_t OldestFirst = 0x800;
 }
 
+// The color sources of the chip's three color registers and four constant colors.
+constexpr std::size_t ParticleColorRegisterCount = 3;
+constexpr std::size_t ParticleConstantColorCount = 4;
+
 // How the particles of an emitter are colored and laid over the picture.
 struct EffectDrawSetting
 {
@@ -193,10 +197,10 @@ struct EffectDrawSetting
     std::uint8_t blendSource = 4;
     std::uint8_t blendDestination = 5;
 
-    std::array<ParticleColorSource, 3> registerColors = {};
-    std::array<ParticleColorSource, 3> registerAlphas = {};
-    std::array<ParticleColorSource, 4> constantColors = {};
-    std::array<ParticleColorSource, 4> constantAlphas = {};
+    std::array<ParticleColorSource, ParticleColorRegisterCount> registerColors = {};
+    std::array<ParticleColorSource, ParticleColorRegisterCount> registerAlphas = {};
+    std::array<ParticleColorSource, ParticleConstantColorCount> constantColors = {};
+    std::array<ParticleColorSource, ParticleConstantColorCount> constantAlphas = {};
 
     // The light of the manager: 0 none, 1 the ambient color multiplies the particles.
     std::uint8_t lightingType = 0;

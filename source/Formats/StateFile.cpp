@@ -3,6 +3,7 @@
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
+#include "Formats/WordSum.h"
 
 #include <format>
 
@@ -13,18 +14,7 @@ namespace
 {
 
 constexpr std::size_t ChecksumSize = 4;
-
-// The sum of the 32 bit words, modulo 2^32.
-std::uint32_t SumOfWords(ByteView words)
-{
-    ByteReader reader(words, "State file");
-
-    std::uint32_t sum = 0;
-    while (!reader.IsAtEnd())
-        sum += reader.ReadUint32();
-
-    return sum;
-}
+constexpr std::string_view Description = "State file";
 
 }
 
@@ -33,9 +23,9 @@ StateFile ReadStateFile(ByteView bytes)
     if (bytes.size() != StateFileSize)
         throw FormatError(std::format("State file: {} bytes instead of {}", bytes.size(), StateFileSize));
 
-    ByteReader reader(bytes, "State file");
+    ByteReader reader(bytes, Description);
     std::uint32_t storedSum = reader.ReadUint32();
-    std::uint32_t sumOfWords = SumOfWords(bytes.subspan(ChecksumSize));
+    std::uint32_t sumOfWords = SumOfWords(bytes.subspan(ChecksumSize), Description);
     if (storedSum != sumOfWords)
         throw FormatError(std::format("State file: the sum {:#x} in the file is not the sum {:#x} of its words", storedSum, sumOfWords));
 
@@ -58,7 +48,7 @@ Bytes WriteStateFile(const StateFile& state)
     words.WriteBytes(state.spare);
 
     ByteWriter file;
-    file.WriteUint32(SumOfWords(words.GetBytes()));
+    file.WriteUint32(SumOfWords(words.GetBytes(), Description));
     file.WriteBytes(words.GetBytes());
     return file.GetBytes();
 }

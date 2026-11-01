@@ -109,7 +109,8 @@ ZipEntry ReadDirectoryEntry(ByteReader& reader, ByteView zipBytes)
     if ((flags & EncryptedFlag) != 0)
         Fail(std::format("{} is encrypted", entry.name));
 
-    if (entry.compressionMethod != StoredMethod && entry.compressionMethod != DeflateMethod)
+    bool isKnownMethod = entry.compressionMethod == StoredMethod || entry.compressionMethod == DeflateMethod;
+    if (!isKnownMethod)
         Fail(std::format("{} is packed with method {}, which is not read", entry.name, entry.compressionMethod));
 
     entry.packedBytes = FindPackedBytes(zipBytes, localHeaderOffset, packedSize);
@@ -135,7 +136,8 @@ std::vector<ZipEntry> ReadZipEntries(ByteView zipBytes)
     endReader.Skip(DirectorySizeField);
     std::uint32_t directoryOffset = endReader.ReadLittleEndianUint32();
 
-    if (diskNumber != 0 || diskOfDirectory != 0 || entriesOnThisDisk != entryCount)
+    bool isSplitIntoParts = diskNumber != 0 || diskOfDirectory != 0 || entriesOnThisDisk != entryCount;
+    if (isSplitIntoParts)
         Fail("the archive is split into parts");
 
     ByteReader directoryReader(zipBytes, ArchiveDescription);

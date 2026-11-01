@@ -280,7 +280,7 @@ Group ReadGroupSection(const Section& section)
     reader.Skip(UnusedAfterNameCountSize);
 
     for (std::uint16_t paneNumber = 0; paneNumber < paneCount; ++paneNumber)
-        group.paneNames.push_back(reader.ReadText(GroupNameSize));
+        group.paneNames.push_back(reader.ReadText(PaneNameSize));
 
     RequireSectionEnd(reader);
     return group;

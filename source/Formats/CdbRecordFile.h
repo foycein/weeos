@@ -13,6 +13,9 @@ namespace Formats
 constexpr std::size_t CdbRecordHeaderSize = 0x400;
 constexpr std::size_t CdbConsoleIdSize = 8;
 
+// Where the part of the header behind the numbers starts.
+constexpr std::size_t CdbRestOfHeaderOffset = 0x80;
+
 // The type names of the records of the Message Board.
 constexpr std::string_view BoardRecordTypeName = "ripl_board_record";
 constexpr std::string_view PlayLogRecordTypeName = "playtimelog";
@@ -42,7 +45,7 @@ struct CdbRecordFile
     std::uint32_t modifiedTime = 0;
 
     // The rest of the header (0x80 to 0x3FF): zeros on the NAND; the key, the IV and the HMAC of a copy on the SD card.
-    std::array<Byte, CdbRecordHeaderSize - 0x80> restOfHeader{};
+    std::array<Byte, CdbRecordHeaderSize - CdbRestOfHeaderOffset> restOfHeader{};
 
     Bytes data;
 };

@@ -19,6 +19,7 @@ constexpr std::string_view SignatureStart = "GIF";
 constexpr std::size_t SignatureSize = 6;
 constexpr std::size_t BackgroundAndAspectSize = 2;
 constexpr std::size_t BytesPerColor = 3;
+constexpr Byte OpaqueAlpha = 255;
 
 // The blocks that follow the screen descriptor start with one of these bytes.
 constexpr Byte ExtensionBlock = 0x21;
@@ -47,7 +48,9 @@ public:
     Byte ReadByte()
     {
         RequireBytes(1);
-        return bytes[position++];
+        Byte value = bytes[position];
+        ++position;
+        return value;
     }
 
     std::uint16_t ReadUint16()
@@ -91,12 +94,17 @@ private:
 
 std::vector<Rgba8Pixel> ReadColorTable(GifReader& reader, Byte flags)
 {
-    std::size_t colorCount = std::size_t(1) << ((flags & ColorTableSizeMask) + 1);
+    // The flags hold the size as a power of two minus one.
+    int sizeExponent = (flags & ColorTableSizeMask) + 1;
+    std::size_t colorCount = std::size_t(1) << sizeExponent;
     ByteView colorBytes = reader.ReadBytes(colorCount * BytesPerColor);
 
     std::vector<Rgba8Pixel> palette;
     for (std::size_t color = 0; color < colorCount; ++color)
-        palette.push_back({colorBytes[color * BytesPerColor], colorBytes[color * BytesPerColor + 1], colorBytes[color * BytesPerColor + 2], 255});
+    {
+        ByteView redGreenBlue = colorBytes.subspan(color * BytesPerColor, BytesPerColor);
+        palette.push_back({redGreenBlue[0], redGreenBlue[1], redGreenBlue[2], OpaqueAlpha});
+    }
 
     return palette;
 }
@@ -197,9 +205,11 @@ Bytes DecodeLzw(Byte minimumCodeSize, const Bytes& compressedBytes, std::size_t 
 
         // A code that is the next free entry stands for the string before it plus the first byte of that string.
         Bytes previousString = ExpandEntry(table, firstFreeEntry, *previousCode);
-        Bytes codeString = *code == nextEntry ? previousString : ExpandEntry(table, firstFreeEntry, *code);
+        Bytes codeString = previousString;
         if (*code == nextEntry)
             codeString.push_back(previousString.front());
+        else
+            codeString = ExpandEntry(table, firstFreeEntry, *code);
 
         indexes.insert(indexes.end(), codeString.begin(), codeString.end());
 
@@ -248,7 +258,8 @@ std::optional<Byte> SkipToImage(GifReader& reader)
             return transparentIndex;
 
         if (block != ExtensionBlock)
-            throw FormatError(std::format("{}: the file has no picture, or a block of a kind that does not exist ({:#x})", DataDescription, block));
+            throw FormatError(
+                std::format("{}: the file has no picture, or a block of a kind that does not exist ({:#x})", DataDescription, block));
 
         Byte label = reader.ReadByte();
         Bytes extensionData = reader.ReadSubBlocks();
