@@ -39,6 +39,10 @@ struct PcSettings
     // The left mouse button is A and the right one is B, or the other way round.
     bool areMouseButtonsSwapped = false;
 
+    // The owner's own server, which takes the place of every Nintendo service (docs/DECISIONS.md, Online): a host name or an IPv4
+    // address, with ":port" when it is not 80. Empty until the server exists; until then every online channel shows its server error.
+    std::string serverAddress;
+
     bool operator==(const PcSettings& other) const;
 };
 

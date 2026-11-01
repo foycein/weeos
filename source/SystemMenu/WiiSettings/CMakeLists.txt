@@ -14,6 +14,7 @@ target_sources(SystemMenu PRIVATE
     PageLooks.cpp
     PagePainter.cpp
     ParentalPages.cpp
+    PcConnectionTest.cpp
     PcPages.cpp
     SensorBarPages.cpp
     SettingsScreen.cpp

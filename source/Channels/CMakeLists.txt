@@ -3,7 +3,6 @@ add_library(Channels STATIC
     ChannelSystem.cpp
     InternetChannel.cpp
     NativeChannels.cpp
-    OfflineConnection.cpp
     OperaLanguageFile.cpp
     PagePainter.cpp
     Photo/PhotoChannel.cpp

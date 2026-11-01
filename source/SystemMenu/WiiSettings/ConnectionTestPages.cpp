@@ -3,32 +3,20 @@
 #include "SystemMenu/WiiSettings/MessageLines.h"
 #include "SystemMenu/WiiSettings/PageBuilder.h"
 
-#include <format>
-
 namespace SystemMenu
 {
 
 namespace
 {
 
-// The test shows its page for about two and a half seconds.
+// The test shows its page for about two and a half seconds at least.
 constexpr int StepsOfTesting = 150;
 
-// The messages of the menu that explain why a connection does not work (docs/audit/OpenPoints/Settings.md SET-08).
 constexpr std::uint16_t ErrorCodeMessage = 400;
-constexpr std::uint16_t UnableToConnectMessage = 405;
-constexpr std::uint16_t NoConnectionConfiguredMessage = 406;
-constexpr std::uint16_t SettingsIncorrectMessage = 407;
-constexpr std::uint16_t AdapterNotInsertedMessage = 408;
-constexpr std::uint16_t AccessPointNotFoundMessage = 409;
 
-// The support codes of the console come from the function of the System Menu that turns the answers of the socket library into codes:
-// a wired connection that cannot start gives 51300, a wireless one 51400 (the answers -39 and -48 of the library, 0x81494C04).
-// The codes of the other two failures are Assumed.
-constexpr int WiredConnectionFailedCode = 51300;
-constexpr int WirelessConnectionFailedCode = 51400;
-constexpr int NoConnectionConfiguredCode = 51000;
-constexpr int SettingsIncorrectCode = 52000;
+// WeeOS's own words: the console is online through the PC (docs/DECISIONS.md, Online).
+constexpr std::u16string_view ConnectedThroughThePcText = u"Connected through the PC.";
+constexpr std::u16string_view ServerAnsweredText = u"The server answered the connection test.";
 
 std::u16string NumberAsText(int number)
 {
@@ -39,9 +27,11 @@ std::u16string NumberAsText(int number)
 }
 
 ConnectionTestPages::ConnectionTestPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService,
-    const Text::MessageCatalog& messageCatalog)
+    Ios::SocketService& socketService, const Settings::PcSettingsStore& pcSettingsStore, const Text::MessageCatalog& messageCatalog)
     : navigator(pageNavigator)
     , networkConfig(networkConfigService)
+    , sockets(socketService)
+    , pcSettings(pcSettingsStore)
     , messages(messageCatalog)
 {
 }
@@ -59,8 +49,11 @@ bool ConnectionTestPages::Owns(PageId page) const
 
 void ConnectionTestPages::EnterPage(PageId page)
 {
-    if (page == PageId::ConnectionTesting)
-        stepsTested = 0;
+    if (page != PageId::ConnectionTesting)
+        return;
+
+    stepsTested = 0;
+    test = std::make_unique<PcConnectionTest>(networkConfig, sockets, pcSettings.Values().serverAddress);
 }
 
 void ConnectionTestPages::BuildPage(PageId page, Page& content)
@@ -74,80 +67,48 @@ void ConnectionTestPages::BuildPage(PageId page, Page& content)
         return;
     }
 
-    builder.AddMessage(LinesOfTheFailure());
+    builder.AddMessage(LinesOfTheResult());
     builder.AddBottomRight(u"OK", [this] { navigator.GoTo(plan.returnPage); });
 }
 
 void ConnectionTestPages::Step(PageId shownPage)
 {
-    if (shownPage != PageId::ConnectionTesting)
+    if (shownPage != PageId::ConnectionTesting || !test)
         return;
 
     ++stepsTested;
     if (stepsTested < StepsOfTesting)
         return;
 
-    FindOutWhyTheTestFails();
+    std::optional<ConnectionTestResult> found = test->Result();
+    if (!found)
+        return;
+
+    result = *found;
+    test.reset();
     navigator.GoTo(PageId::ConnectionTestFailed);
 }
 
-int ConnectionTestPages::LastSupportCode() const
+ConnectionTestResult ConnectionTestPages::LastResult() const
 {
-    return supportCode;
+    return result;
 }
 
-int ConnectionTestPages::LastMessageNumber() const
+std::vector<std::u16string> ConnectionTestPages::LinesOfTheResult() const
 {
-    return messageNumber;
-}
+    std::vector<std::u16string> lines;
+    if (result.isConnectedThroughThePc)
+        lines = {std::u16string(ConnectedThroughThePcText), u""};
 
-// The module is asked to connect with the settings that are stored. An unplugged cable gives these answers.
-void ConnectionTestPages::FindOutWhyTheTestFails()
-{
-    Ios::Result<Ios::NetworkConfiguration> stored = networkConfig.ReadConfiguration();
-    if (stored.Failed())
+    if (result.hasServerAnswered)
     {
-        supportCode = NoConnectionConfiguredCode;
-        messageNumber = NoConnectionConfiguredMessage;
-        return;
+        lines.push_back(std::u16string(ServerAnsweredText));
+        return lines;
     }
 
-    Ios::Result<void> applied = networkConfig.ApplyConfiguration(stored.Value());
-    if (applied.Failed())
-    {
-        supportCode = SettingsIncorrectCode;
-        messageNumber = SettingsIncorrectMessage;
-        return;
-    }
-
-    Ios::LinkStatus status = networkConfig.GetLinkStatus();
-    if (status == Ios::LinkStatus::WiredInterfaceReady)
-    {
-        supportCode = WiredConnectionFailedCode;
-        messageNumber = AdapterNotInsertedMessage;
-    }
-    else if (status == Ios::LinkStatus::Busy)
-    {
-        supportCode = WirelessConnectionFailedCode;
-        messageNumber = AccessPointNotFoundMessage;
-    }
-    else if (status == Ios::LinkStatus::NoInterface)
-    {
-        supportCode = NoConnectionConfiguredCode;
-        messageNumber = NoConnectionConfiguredMessage;
-    }
-    else
-    {
-        supportCode = WirelessConnectionFailedCode;
-        messageNumber = UnableToConnectMessage;
-    }
-}
-
-std::vector<std::u16string> ConnectionTestPages::LinesOfTheFailure() const
-{
-    std::vector<std::u16string> lines = {messages.Find(ErrorCodeMessage) + NumberAsText(supportCode), u""};
-
-    std::vector<std::u16string> explanation = LinesOfMessage(messages.Find(static_cast<std::uint16_t>(messageNumber)));
+    lines.push_back(messages.Find(ErrorCodeMessage) + NumberAsText(result.supportCode));
+    lines.push_back(u"");
+    std::vector<std::u16string> explanation = LinesOfMessage(messages.Find(result.messageNumber));
     lines.insert(lines.end(), explanation.begin(), explanation.end());
     return lines;
 }

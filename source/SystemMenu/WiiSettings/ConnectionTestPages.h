@@ -2,9 +2,14 @@
 
 #include "SystemMenu/WiiSettings/PageGroup.h"
 #include "SystemMenu/WiiSettings/PageNavigator.h"
+#include "SystemMenu/WiiSettings/PcConnectionTest.h"
 
 #include "Ios/Network/NetworkConfigService.h"
+#include "Ios/Sockets/SocketService.h"
+#include "Settings/PcSettings.h"
 #include "Text/MessageCatalog.h"
+
+#include <memory>
 
 namespace SystemMenu
 {
@@ -17,16 +22,15 @@ struct ConnectionTestPlan
     std::u16string title;
 };
 
-// The test of the connection that the console is set up with: the page "Testing connection..." and the page that tells why it failed.
-//
-// The console here has no network. The network configuration module answers as it does with an unplugged cable, so the test always
-// fails, and the page names the reason like the original: a code that the user can give to the support, and an explanation.
-// A test that passes cannot happen here, so there is no page for it.
+// The test of the connection: the page "Testing connection..." and the page with what the test found (PcConnectionTest).
+// While the PC is connected the page says so, and names the code of the owner's server when the server did not answer;
+// while it is not, it names the code and the explanation of a connection that cannot be made, like the original.
 class ConnectionTestPages : public PageGroup
 {
 public:
-    // The navigator, the network configuration and the messages must outlive the pages.
-    ConnectionTestPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService, const Text::MessageCatalog& messageCatalog);
+    // The navigator, the services, the settings of the PC (the address of the server) and the messages must outlive the pages.
+    ConnectionTestPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService, Ios::SocketService& socketService,
+        const Settings::PcSettingsStore& pcSettingsStore, const Text::MessageCatalog& messageCatalog);
 
     // Starts a test and shows the page that waits for it.
     void Begin(const ConnectionTestPlan& testPlan);
@@ -36,22 +40,22 @@ public:
     void BuildPage(PageId page, Page& content) override;
     void Step(PageId shownPage) override;
 
-    // The code and the explanation of the last test that failed. For the tests.
-    int LastSupportCode() const;
-    int LastMessageNumber() const;
+    // What the last test found. For the tests.
+    ConnectionTestResult LastResult() const;
 
 private:
-    void FindOutWhyTheTestFails();
-    std::vector<std::u16string> LinesOfTheFailure() const;
+    std::vector<std::u16string> LinesOfTheResult() const;
 
     PageNavigator& navigator;
     Ios::NetworkConfigService& networkConfig;
+    Ios::SocketService& sockets;
+    const Settings::PcSettingsStore& pcSettings;
     const Text::MessageCatalog& messages;
 
     ConnectionTestPlan plan;
+    std::unique_ptr<PcConnectionTest> test;
     int stepsTested = 0;
-    int supportCode = 0;
-    int messageNumber = 0;
+    ConnectionTestResult result;
 };
 
 }

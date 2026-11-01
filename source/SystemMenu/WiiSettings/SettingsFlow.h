@@ -8,6 +8,7 @@
 
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/Network/WirelessService.h"
+#include "Ios/Sockets/SocketService.h"
 #include "Settings/ConsoleClock.h"
 #include "Settings/PcSettings.h"
 #include "Settings/SystemMemoryFormatter.h"
@@ -29,6 +30,7 @@ struct SettingsFlowServices
     Settings::SystemSettings& settings;
     const Settings::ConsoleClock& clock;
     Ios::NetworkConfigService& networkConfig;
+    Ios::SocketService& sockets;
     AccessPointSearch searchForAccessPoints;
     Settings::SystemMemoryFormatter& formatter;
 

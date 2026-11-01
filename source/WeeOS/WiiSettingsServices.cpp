@@ -33,7 +33,7 @@ WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform
     , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
     , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
     , pcSettings(pcSettingsFile)
-    , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
+    , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), iosServices.GetSockets(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
           pcSettings, *this}
 {
     ApplyPcSettings(pcSettings.Values());

@@ -36,7 +36,7 @@ ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 }
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
+    const ChannelNetwork& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
     Ios::TitleId titleId)
     : runningTitle(titleId)
     , sharedFiles(SharedFilesOrFail(titleId))

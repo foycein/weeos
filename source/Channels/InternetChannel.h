@@ -2,11 +2,11 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
-#include "Channels/OfflineConnection.h"
 #include "Channels/OperaLanguageFile.h"
 #include "Channels/PagePainter.h"
 
 #include "SystemMenu/CursorManager.h"
+#include "SystemMenu/NetworkStart.h"
 
 #include "Formats/U8Archive.h"
 
@@ -19,8 +19,9 @@
 namespace Channels
 {
 
-// The Internet Channel without a network (docs/research/Channels.md 7). The channel shows its start page at once and joins the network
-// in the background (0x800320CC). The join fails, and while the start page is on screen the channel shows its dialog
+// The Internet Channel (docs/research/Channels.md 7). The channel shows its start page at once and joins the network in the background
+// (0x800320CC). The console is online through the PC (docs/DECISIONS.md, Online): while the PC is connected the join succeeds; while it
+// is not, the join fails after the time-out, and while the start page is on screen the channel shows its dialog
 // "%06d: Unable to connect to the internet. ..." with OK (0x800338B0). The page "Wii Menu" asks "Return to the Wii Menu?" with OK and
 // Cancel. The start page is the browser's local page startpage.html, built by startpage.js with the styles and pictures of its
 // widescreen folder; WeeOS draws it natively from those files and the texts of english.lng.
@@ -104,7 +105,7 @@ private:
     std::unique_ptr<PagePicture> cancelButton;
 
     Screen screen = Screen::StartPage;
-    ConnectionFailure failure{};
+    SystemMenu::NetworkStart networkStart;
     bool hasShownNetworkError = false;
     std::optional<Place> focusedPlace;
 };

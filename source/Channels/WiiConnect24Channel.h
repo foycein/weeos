@@ -2,16 +2,17 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
-#include "Channels/OfflineConnection.h"
-
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/NetworkStart.h"
+#include "SystemMenu/OwnServer.h"
 
 #include "Layout/LayoutArchive.h"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -36,10 +37,12 @@ struct WiiConnect24ChannelFiles
     std::uint16_t homeMenuContentIndex;
 };
 
-// The Forecast and the News Channel without a network (docs/research/Channels.md 5.5 and 6.4). Both need their data from WiiConnect24
-// before they can show anything, and WeeOS has none: the channel fades in "One moment, please..." (layout error1) while its
-// download tries to connect, fades out when the download fails, and fades in the error layout error0 with the message of an
-// Internet connection that cannot be made, the error code under it and the button "Back to the Wii Menu".
+// The Forecast and the News Channel (docs/research/Channels.md 5.5 and 6.4). Both need their data from a server before they can show
+// anything. Their server is the owner's own server, which does not exist yet (docs/DECISIONS.md, Online): the channel fades in
+// "One moment, please..." (layout error1) while its download tries to reach the server, fades out when the download fails, and fades in
+// the error layout error0 with the message of the failure, the error code under it and the button "Back to the Wii Menu".
+// The message and the code are the ones of the WiiConnect24 download of the original (CHN-04): the Internet cannot be reached while the
+// PC is not connected or the name of the server is not known, the service is unavailable while the server does not answer.
 // The order of the fades is the original's (Forecast 0x8000AD28), the choice of the message is the one of 0x8000B46C.
 class WiiConnect24Channel : public Channel
 {
@@ -56,8 +59,10 @@ public:
         ShowingError,
     };
 
-    // The error layout shows the message with this number when the download cannot connect to the Internet (0x8000B46C).
+    // The error layout shows the message with this number when the download cannot reach the Internet, and the next one when the
+    // service is unavailable (0x8000B46C).
     static constexpr int CannotConnectMessage = 2;
+    static constexpr int ServiceUnavailableMessage = 3;
 
     WiiConnect24Channel(ChannelServices& channelServices, const WiiConnect24ChannelFiles& files);
 
@@ -67,10 +72,20 @@ public:
 
     Stage CurrentStage() const;
 
-    // The text of the error code under the message, for example "Error Code: 107245".
+    // The message of the error layout, and the text of the error code under it, for example "Error Code: 107304".
+    // Nothing and an empty text while the download still tries.
+    std::optional<int> ShownMessage() const;
     std::u16string ErrorCodeText() const;
 
 private:
+    // How the download failed: the message of the error layout and the code of the WiiConnect24 module.
+    struct DownloadFailure
+    {
+        int message;
+        std::uint32_t code;
+    };
+
+    std::optional<DownloadFailure> FindDownloadFailure();
     void UpdateStage();
     void UpdateOneMoment();
     void UpdateLeavingOneMoment();
@@ -80,7 +95,9 @@ private:
     SystemMenu::MenuLayout& ShownLayout();
 
     ChannelServices& services;
-    ConnectionFailure failure;
+    SystemMenu::NetworkStart networkStart;
+    std::unique_ptr<SystemMenu::ServerContact> server;
+    std::optional<DownloadFailure> failure;
     std::unique_ptr<Layout::LayoutArchive> layoutArchive;
     SystemMenu::MenuFonts fonts;
     std::unique_ptr<SystemMenu::MenuLayout> oneMomentLayout;

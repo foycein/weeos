@@ -24,7 +24,9 @@ add_library(SystemMenu STATIC
     MenuSettings.cpp
     MenuSound.cpp
     MenuStateFile.cpp
+    NetworkStart.cpp
     MenuSystem.cpp
+    OwnServer.cpp
     OwnTitleContents.cpp
     ParentalDialogScreen.cpp
     PhysicalKeyboard.cpp

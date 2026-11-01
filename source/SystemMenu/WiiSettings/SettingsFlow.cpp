@@ -57,7 +57,7 @@ SettingsFlow::~SettingsFlow() = default;
 
 void SettingsFlow::MakeGroups(const SettingsFlowServices& services, const Text::MessageCatalog& messages)
 {
-    auto connectionTest = std::make_unique<ConnectionTestPages>(*this, services.networkConfig, messages);
+    auto connectionTest = std::make_unique<ConnectionTestPages>(*this, services.networkConfig, services.sockets, services.pcSettings, messages);
     ConnectionTestPages& connectionTestPages = *connectionTest;
     groups.push_back(std::move(connectionTest));
 

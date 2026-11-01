@@ -151,8 +151,10 @@ private:
     void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem()};
+        std::string serverAddress = wiiSettings.FlowServices().pcSettings.Values().serverAddress;
+        Channels::ChannelNetwork network{iosServices.GetNetworkConfig(), iosServices.GetSockets(), serverAddress};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+            network, storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
 
         std::vector<Sound::SoundSystem*> channelSounds;
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))

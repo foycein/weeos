@@ -57,7 +57,6 @@ IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock 
     : titles(iosServices.GetTitles())
     , fileSystem(iosServices.GetFileSystem())
     , pcClock(std::move(clockOfThePc))
-    , networkConfig(iosServices.GetNetworkConfig())
 {
 }
 
@@ -163,20 +162,6 @@ Ios::Result<Ios::OpenFile> IosMenuConsole::MakeFileAndOpenIt(const Ios::NandPath
         FailWith(std::format("The file {} cannot be made", path.ToString()), created.Error());
 
     return fileSystem.Open(path, Ios::OpenMode::ReadWrite, caller);
-}
-
-bool IosMenuConsole::HasTestedInternetConnection()
-{
-    Ios::Result<Ios::NetworkConfiguration> configuration = networkConfig.ReadConfiguration();
-    if (configuration.Failed())
-        return false;
-
-    for (const Ios::ConnectionProfile& profile : configuration.Value().profiles)
-    {
-        if (profile.isEnabled && profile.hasPassedConnectionTest)
-            return true;
-    }
-    return false;
 }
 
 void IosMenuConsole::WritePlayRecord(const Formats::PlayRecord& record)

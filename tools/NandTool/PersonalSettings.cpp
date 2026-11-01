@@ -1,7 +1,5 @@
 #include "PersonalSettings.h"
 
-#include "Ios/Network/NetworkConfiguration.h"
-
 #include "Formats/FormatError.h"
 
 #include <algorithm>
@@ -128,20 +126,6 @@ void ResetPersonalSettings(Formats::SystemConfiguration& configuration)
     SetNumber(configuration, FreeChannelCountSettingName, ChannelGridSlotCount - FactoryTileCount);
     RemoveSetting(configuration, NetworkProfileSettingName);
     RemoveSetting(configuration, NetworkConfigurationSettingName);
-}
-
-Formats::Bytes MakeWeeOSNetworkConfigurationFile()
-{
-    Ios::NetworkConfiguration configuration;
-    configuration.selectedMedia = Ios::SelectedMedia::Wired;
-
-    Ios::ConnectionProfile& connection = configuration.profiles[0];
-    connection.isEnabled = true;
-    connection.hasPassedConnectionTest = true;
-    connection.isWired = true;
-    connection.usesDhcpForAddress = true;
-    connection.usesDhcpForDns = true;
-    return Ios::EncodeNetworkConfiguration(configuration);
 }
 
 Formats::Bytes ResetPersonalSettingsOfFile(Formats::ByteView systemConfigurationBytes)
