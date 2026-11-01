@@ -17,4 +17,21 @@ constexpr bool IsSharedContent(const Formats::ContentRecord& record)
     return (record.type & SharedContentTypeFlag) != 0;
 }
 
+// The title can be installed without an optional content.
+constexpr bool IsOptionalContent(const Formats::ContentRecord& record)
+{
+    return (record.type & OptionalContentTypeFlag) != 0;
+}
+
+// The record of the content with this id, or nullptr when the title has none.
+inline const Formats::ContentRecord* FindContentById(const Formats::TitleMetadata& metadata, std::uint32_t contentId)
+{
+    for (const Formats::ContentRecord& record : metadata.contents)
+    {
+        if (record.id == contentId)
+            return &record;
+    }
+    return nullptr;
+}
+
 }

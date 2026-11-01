@@ -46,7 +46,8 @@ public:
 private:
     friend class SdCardService;
 
-    SdFile(std::shared_ptr<SdCardState> cardState, std::uint32_t openedOnCardNumber, OpenMode openMode, std::fstream hostStream, std::uint32_t fileLength);
+    SdFile(std::shared_ptr<SdCardState> cardState, std::uint32_t openedOnCardNumber, OpenMode openMode,
+        std::fstream hostStream, std::uint32_t fileLength);
 
     bool IsOpen() const;
     bool IsOnTheCardInTheSlot() const;

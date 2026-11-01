@@ -1,5 +1,6 @@
 #include "Ios/Network/NetworkConfiguration.h"
 
+#include <bit>
 #include <format>
 #include <optional>
 #include <string_view>
@@ -12,14 +13,17 @@ namespace
 
 // The rules are the ones of the network configuration module of IOS80 (docs/audit/Ios.md).
 
+constexpr std::uint32_t SupportedVersion = 0;
 constexpr std::uint8_t UsedPermissionBits = 0x07;
 constexpr std::uint16_t UnusedRateSetBits = 0xF000;
+constexpr std::uint16_t DefaultMtu = 0;
 constexpr std::uint16_t LowestMtu = 68;
 constexpr std::uint16_t HighestMtu = 1500;
 constexpr std::uint16_t WepKeyCount = 4;
 constexpr std::size_t LowestPassphraseLength = 8;
 constexpr std::size_t HighestPassphraseLength = 64;
-constexpr Ipv4Address EveryBit = 0xFFFFFFFF;
+constexpr int BitsPerIpv4Address = 32;
+constexpr Ipv4Address SingleAddressNetmask = 0xFFFFFFFF;
 constexpr Ipv4Address PointToPointNetmask = 0xFFFFFFFE;
 
 using Problems = std::vector<std::string>;
@@ -34,29 +38,21 @@ bool IsMedia(SelectedMedia media)
     return media == SelectedMedia::None || media == SelectedMedia::Wireless || media == SelectedMedia::Wired;
 }
 
-bool IsUsableWirelessConnection(const ConnectionProfile& profile)
-{
-    return profile.isEnabled && !profile.isWired;
-}
-
-bool IsUsableWiredConnection(const ConnectionProfile& profile)
-{
-    return profile.isEnabled && profile.isWired;
-}
-
 // Addresses
 
-// A netmask is a row of one bits followed by a row of zero bits.
+// A netmask is a row of one bits followed by a row of zero bits: the ones at the top and the zeros at the bottom fill all its bits.
 bool IsNetmask(Ipv4Address netmask)
 {
-    return ((0u - netmask) & ~netmask) == 0;
+    int onesAtTheTop = std::countl_one(netmask);
+    int zerosAtTheBottom = std::countr_zero(netmask);
+    return onesAtTheTop + zerosAtTheBottom == BitsPerIpv4Address;
 }
 
 // The address of the network itself and the broadcast address of the network cannot belong to a computer.
 // A network with two or one address (netmask 255.255.255.254 and 255.255.255.255) has neither.
 bool IsAddressOfTheNetworkOrBroadcast(Ipv4Address netmask, Ipv4Address address)
 {
-    if (netmask == EveryBit || netmask == PointToPointNetmask)
+    if (netmask == SingleAddressNetmask || netmask == PointToPointNetmask)
         return false;
 
     Ipv4Address hostPart = address & ~netmask;
@@ -81,7 +77,8 @@ std::optional<std::string_view> FindAddressProblem(Ipv4Address address, Ipv4Addr
     if (IsAddressOfTheNetworkOrBroadcast(netmask, gateway))
         return "the gateway is the address of the network or its broadcast address";
 
-    if (netmask != EveryBit && (address & netmask) != (gateway & netmask))
+    bool isInTheSameNetwork = (address & netmask) == (gateway & netmask);
+    if (netmask != SingleAddressNetmask && !isInTheSameNetwork)
         return "the gateway is not in the network of the address";
 
     if (address == gateway)
@@ -118,22 +115,24 @@ bool IsServerName(const std::string& name)
 
 // Checks
 
+void CheckTextLength(const std::string& text, std::size_t maximumLength, std::string_view what, int connectionNumber, Problems& problems)
+{
+    if (text.size() <= maximumLength)
+        return;
+
+    AddProblem(problems, connectionNumber, std::format("{} is longer than {} characters", what, maximumLength));
+}
+
 void CheckTextsFitTheirFields(const ConnectionProfile& profile, int connectionNumber, Problems& problems)
 {
     for (const ProxySettings* proxy : {&profile.httpProxy, &profile.secureProxy})
     {
-        if (proxy->serverName.size() > MaximumProxyServerNameLength)
-            AddProblem(problems, connectionNumber, std::format("a proxy server name is longer than {} characters", MaximumProxyServerNameLength));
-
-        if (proxy->userName.size() > MaximumProxyUserNameLength)
-            AddProblem(problems, connectionNumber, std::format("a proxy user name is longer than {} characters", MaximumProxyUserNameLength));
-
-        if (proxy->password.size() > MaximumProxyPasswordLength)
-            AddProblem(problems, connectionNumber, std::format("a proxy password is longer than {} characters", MaximumProxyPasswordLength));
+        CheckTextLength(proxy->serverName, MaximumProxyServerNameLength, "a proxy server name", connectionNumber, problems);
+        CheckTextLength(proxy->userName, MaximumProxyUserNameLength, "a proxy user name", connectionNumber, problems);
+        CheckTextLength(proxy->password, MaximumProxyPasswordLength, "a proxy password", connectionNumber, problems);
     }
 
-    if (profile.wireless.ssid.size() > MaximumSsidLength)
-        AddProblem(problems, connectionNumber, std::format("the name of the access point is longer than {} characters", MaximumSsidLength));
+    CheckTextLength(profile.wireless.ssid, MaximumSsidLength, "the name of the access point", connectionNumber, problems);
 }
 
 void CheckProxy(const ProxySettings& proxy, std::string_view label, int connectionNumber, Problems& problems)
@@ -148,17 +147,33 @@ void CheckProxy(const ProxySettings& proxy, std::string_view label, int connecti
         AddProblem(problems, connectionNumber, std::format("the {} port is 0", label));
 }
 
+bool IsWepEncryption(std::uint16_t encryption)
+{
+    return encryption == EncryptionWep64 || encryption == EncryptionWep128;
+}
+
+bool UsesPassphrase(std::uint16_t encryption)
+{
+    return encryption == EncryptionWpaTkip || encryption == EncryptionWpa2Aes || encryption == EncryptionWpaAes;
+}
+
 void CheckEncryption(const WirelessSettings& wireless, int connectionNumber, Problems& problems)
 {
-    bool isWep = wireless.encryption == EncryptionWep64 || wireless.encryption == EncryptionWep128;
-    bool usesPassphrase = wireless.encryption == EncryptionWpaTkip || wireless.encryption == EncryptionWpa2Aes || wireless.encryption == EncryptionWpaAes;
+    std::uint16_t keyNumberOrLength = wireless.keyLengthOrWepKeyNumber;
 
-    if (isWep && wireless.keyLengthOrWepKeyNumber >= WepKeyCount)
-        AddProblem(problems, connectionNumber, std::format("the WEP key number {} is not 0 to {}", wireless.keyLengthOrWepKeyNumber, WepKeyCount - 1));
+    if (IsWepEncryption(wireless.encryption) && keyNumberOrLength >= WepKeyCount)
+    {
+        std::string problem = std::format("the WEP key number {} is not 0 to {}", keyNumberOrLength, WepKeyCount - 1);
+        AddProblem(problems, connectionNumber, problem);
+    }
 
-    bool lengthIsAllowed = wireless.keyLengthOrWepKeyNumber >= LowestPassphraseLength && wireless.keyLengthOrWepKeyNumber <= HighestPassphraseLength;
-    if (usesPassphrase && !lengthIsAllowed)
-        AddProblem(problems, connectionNumber, std::format("the length {} of the passphrase is not {} to {}", wireless.keyLengthOrWepKeyNumber, LowestPassphraseLength, HighestPassphraseLength));
+    bool lengthIsAllowed = keyNumberOrLength >= LowestPassphraseLength && keyNumberOrLength <= HighestPassphraseLength;
+    if (UsesPassphrase(wireless.encryption) && !lengthIsAllowed)
+    {
+        std::string problem = std::format("the length {} of the passphrase is not {} to {}", keyNumberOrLength, LowestPassphraseLength,
+            HighestPassphraseLength);
+        AddProblem(problems, connectionNumber, problem);
+    }
 }
 
 // The connections that are set up with several securities are kept as they are and not looked at.
@@ -185,7 +200,9 @@ void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumb
             AddProblem(problems, connectionNumber, *addressProblem);
     }
 
-    if (profile.mtu != 0 && (profile.mtu < LowestMtu || profile.mtu > HighestMtu))
+    bool usesDefaultMtu = profile.mtu == DefaultMtu;
+    bool isMtuInRange = profile.mtu >= LowestMtu && profile.mtu <= HighestMtu;
+    if (!usesDefaultMtu && !isMtuInRange)
         AddProblem(problems, connectionNumber, std::format("the MTU {} is not 0 or {} to {}", profile.mtu, LowestMtu, HighestMtu));
 
     if (checksProxies && profile.usesProxy)
@@ -197,18 +214,32 @@ void CheckEnabledConnection(const ConnectionProfile& profile, int connectionNumb
 
 }
 
+bool IsUsableWirelessConnection(const ConnectionProfile& profile)
+{
+    return profile.isEnabled && !profile.isWired;
+}
+
+bool IsUsableWiredConnection(const ConnectionProfile& profile)
+{
+    return profile.isEnabled && profile.isWired;
+}
+
 std::vector<std::string> FindConfigurationProblems(const NetworkConfiguration& configuration, bool checksProxies)
 {
     Problems problems;
 
-    if (configuration.version != 0)
+    if (configuration.version != SupportedVersion)
         problems.push_back(std::format("the version {} is not 0", configuration.version));
 
     if (!IsMedia(configuration.selectedMedia))
         problems.push_back(std::format("the selected media {} is not 0, 1 or 2", static_cast<int>(configuration.selectedMedia)));
 
-    if ((configuration.wiiConnect24Permission & ~UsedPermissionBits) != 0)
-        problems.push_back(std::format("the WiiConnect24 permission {:#x} uses more than the three lowest bits", configuration.wiiConnect24Permission));
+    bool usesUnknownPermissionBits = (configuration.wiiConnect24Permission & ~UsedPermissionBits) != 0;
+    if (usesUnknownPermissionBits)
+    {
+        problems.push_back(std::format("the WiiConnect24 permission {:#x} uses more than the three lowest bits",
+            configuration.wiiConnect24Permission));
+    }
 
     bool hasUsableWirelessConnection = false;
     bool hasUsableWiredConnection = false;

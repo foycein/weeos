@@ -22,6 +22,7 @@ constexpr std::size_t HeaderSize = 0x20;
 constexpr std::size_t SectionStartSize = 8;
 constexpr std::uint8_t HighestNumber = 127;
 constexpr std::size_t TableAlignment = 4;
+constexpr std::size_t UnusedAfterIndexRangeSize = 2;
 
 // What lies behind a reference in the data section.
 constexpr std::uint8_t SingleNoteType = 1;
@@ -70,7 +71,8 @@ void AddRangeRegions(Formats::ByteReader& reader, const RegionBounds& bounds, in
     for (std::uint8_t regionNumber = 0; regionNumber < regionCount; ++regionNumber)
         highestNumbers.push_back(reader.ReadByte());
 
-    std::size_t referencesStart = tableStart + Formats::RoundUpToMultiple(sizeof(std::uint8_t) + regionCount, TableAlignment);
+    std::size_t countAndHighestNumbersSize = sizeof(regionCount) + regionCount;
+    std::size_t referencesStart = tableStart + Formats::RoundUpToMultiple(countAndHighestNumbersSize, TableAlignment);
     reader.MoveTo(referencesStart);
 
     std::vector<Reference> references;
@@ -94,7 +96,7 @@ void AddIndexedRegions(Formats::ByteReader& reader, const RegionBounds& bounds, 
 {
     std::uint8_t lowestNumber = reader.ReadByte();
     std::uint8_t highestNumber = reader.ReadByte();
-    reader.Skip(sizeof(std::uint16_t));
+    reader.Skip(UnusedAfterIndexRangeSize);
     if (highestNumber < lowestNumber || highestNumber > HighestNumber)
         reader.Fail(std::format("the index table goes from {} to {}", lowestNumber, highestNumber));
 

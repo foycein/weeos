@@ -20,6 +20,7 @@ constexpr int SymbolBitCount = 9;
 constexpr int DistanceBitCount = 11;
 constexpr std::uint32_t FirstLengthSymbol = 0x100;
 constexpr std::size_t ShortestMatchLength = 3;
+constexpr std::size_t ShortestDistance = 1;
 constexpr int NoNode = -1;
 
 // Reads single bits, the highest bit of each byte first, from one part of the compressed data.
@@ -179,7 +180,7 @@ Bytes DecompressAsh0(ByteView compressedBytes)
         }
 
         std::size_t length = symbol - FirstLengthSymbol + ShortestMatchLength;
-        std::size_t distance = distanceTree.ReadValue(distanceReader) + 1;
+        std::size_t distance = distanceTree.ReadValue(distanceReader) + ShortestDistance;
         CopyMatch(output, distance, length, outputSize);
     }
 

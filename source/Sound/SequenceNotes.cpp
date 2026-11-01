@@ -82,7 +82,7 @@ VoiceSettings SequencePlayer::SettingsOfNote(const SequenceTrack& track, const P
     VoiceSettings voiceSettings;
     voiceSettings.volume = volume * Square(trackLoudness) * Square(expressionLoudness) * Square(mainLoudness) * note.startVolume;
     voiceSettings.pan = note.startPan + track.pan;
-    double semitones = double(note.key - note.note.originalKey) + bentSemitones + note.sweep.SemitonesLeft();
+    double semitones = double(note.key - note.parameters.originalKey) + bentSemitones + note.sweep.SemitonesLeft();
 
     // The pitch and the pan take the wave as it was before the frame, the volume as it is after it.
     switch (track.modulation.target)
@@ -96,7 +96,7 @@ VoiceSettings SequencePlayer::SettingsOfNote(const SequenceTrack& track, const P
     voiceSettings.surroundPan = track.surroundPan;
     voiceSettings.mainSend = float(track.mainSend) / HighestNumber;
     voiceSettings.effectSend = float(track.effectSendA) / HighestNumber;
-    voiceSettings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.note.tune;
+    voiceSettings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.parameters.tune;
     voiceSettings.lowPass = LowPassValueFromCutoffNumber(track.lowPassCutoff);
     return voiceSettings;
 }
@@ -138,9 +138,9 @@ PlayingNote* SequencePlayer::StartNewNote(SequenceTrack& track, int key, int vel
 
     // A tied note is held until the tie ends.
     PlayingNote playingNote;
-    playingNote.ticksLeft = track.isTied ? -1 : length;
+    playingNote.ticksLeft = track.isTied ? HeldUntilReleased : length;
     playingNote.key = key;
-    playingNote.note = note;
+    playingNote.parameters = note;
     playingNote.startVolume = Square(float(velocity) / HighestNumber) * float(note.volume) / HighestNumber;
     playingNote.startPan = (float(note.pan) - MiddleNumber) / NumbersFromMiddleToSide + track.initialPan;
 

@@ -54,7 +54,8 @@ WadHeader ReadWadHeader(ByteReader& reader)
 // Every section of a WAD starts at a multiple of 64 bytes.
 ByteView ReadSection(ByteReader& reader, std::uint64_t sectionSize)
 {
-    reader.MoveTo(static_cast<std::size_t>(RoundUpToMultiple(reader.Position(), SectionAlignment)));
+    std::uint64_t sectionStart = RoundUpToMultiple(reader.Position(), SectionAlignment);
+    reader.MoveTo(static_cast<std::size_t>(sectionStart));
     return reader.ReadBytes(static_cast<std::size_t>(sectionSize));
 }
 

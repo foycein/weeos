@@ -28,7 +28,7 @@ bool IsValidName(std::string_view name)
     if (name == "." || name == "..")
         return false;
 
-    if (name.back() == '.' || name.back() == ' ')
+    if (EndsWithDotOrSpace(name))
         return false;
 
     for (char character : name)

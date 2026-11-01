@@ -1,5 +1,6 @@
 #include "Formats/U8Archive.h"
 
+#include "Formats/BitFields.h"
 #include "Formats/ByteReader.h"
 
 #include <format>
@@ -65,7 +66,7 @@ Node ReadNode(ByteReader& reader)
 
     Node node;
     node.type = static_cast<Byte>(typeAndNameOffset >> NameOffsetBitCount);
-    node.nameOffset = typeAndNameOffset & ((1u << NameOffsetBitCount) - 1);
+    node.nameOffset = ExtractBits(typeAndNameOffset, 0, NameOffsetBitCount);
     node.dataOffsetOrParentIndex = reader.ReadUint32();
     node.sizeOrEndIndex = reader.ReadUint32();
     return node;
@@ -120,7 +121,9 @@ void CloseFinishedDirectories(std::vector<OpenDirectory>& openDirectories, std::
 U8Entry MakeFileEntry(const ByteReader& reader, const ArchiveHeader& header, const std::string& path, const Node& node,
     std::size_t archiveSize)
 {
-    if (node.dataOffsetOrParentIndex < header.dataOffset || !IsRangeInside(node.dataOffsetOrParentIndex, node.sizeOrEndIndex, archiveSize))
+    bool startsBeforeTheData = node.dataOffsetOrParentIndex < header.dataOffset;
+    bool liesInsideTheArchive = IsRangeInside(node.dataOffsetOrParentIndex, node.sizeOrEndIndex, archiveSize);
+    if (startsBeforeTheData || !liesInsideTheArchive)
         reader.Fail(std::format("the data of the file {} lies outside the archive", path));
 
     U8Entry entry;

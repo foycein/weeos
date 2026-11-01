@@ -77,10 +77,15 @@ char LowerCase(char character)
     return static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
 }
 
-bool IsBeforeIgnoringCase(const std::string& first, const std::string& second)
+bool IsCharacterBeforeIgnoringCase(char left, char right)
 {
-    return std::lexicographical_compare(first.begin(), first.end(), second.begin(), second.end(),
-        [](char left, char right) { return LowerCase(left) < LowerCase(right); });
+    return LowerCase(left) < LowerCase(right);
+}
+
+bool IsEntryBeforeIgnoringCase(const SdEntry& first, const SdEntry& second)
+{
+    return std::lexicographical_compare(first.name.begin(), first.name.end(), second.name.begin(), second.name.end(),
+        IsCharacterBeforeIgnoringCase);
 }
 
 // Says why a new entry cannot be made at this place, or gives back a success when it can.
@@ -342,19 +347,24 @@ Result<std::vector<SdEntry>> SdCardService::ListDirectory(const SdPath& path) co
         return IosError::InvalidArgument;
 
     std::vector<SdEntry> entries;
-    for (std::filesystem::directory_iterator iterator(hostPath, error); !error && iterator != std::filesystem::directory_iterator(); iterator.increment(error))
+    std::filesystem::directory_iterator iterator(hostPath, error);
+    const std::filesystem::directory_iterator endOfDirectory;
+    while (!error && iterator != endOfDirectory)
     {
         bool isDirectory = iterator->is_directory(error);
         std::uint64_t length = 0;
         if (!isDirectory)
             length = iterator->file_size(error);
 
-        entries.push_back(SdEntry{NameOnTheCard(iterator->path()), isDirectory ? EntryKind::Directory : EntryKind::File, length});
+        std::string name = NameOnTheCard(iterator->path());
+        EntryKind kind = isDirectory ? EntryKind::Directory : EntryKind::File;
+        entries.push_back(SdEntry{name, kind, length});
+        iterator.increment(error);
     }
     if (error)
         return ErrorFromHost(error);
 
-    std::sort(entries.begin(), entries.end(), [](const SdEntry& first, const SdEntry& second) { return IsBeforeIgnoringCase(first.name, second.name); });
+    std::sort(entries.begin(), entries.end(), IsEntryBeforeIgnoringCase);
     return entries;
 }
 
@@ -408,8 +418,13 @@ Result<void> SdCardService::Format()
         return IosError::AccessDenied;
 
     std::error_code error;
-    for (std::filesystem::directory_iterator iterator(state->cardFolder, error); !error && iterator != std::filesystem::directory_iterator(); iterator.increment(error))
+    std::filesystem::directory_iterator iterator(state->cardFolder, error);
+    const std::filesystem::directory_iterator endOfDirectory;
+    while (!error && iterator != endOfDirectory)
+    {
         std::filesystem::remove_all(iterator->path(), error);
+        iterator.increment(error);
+    }
 
     if (error)
         return ErrorFromHost(error);

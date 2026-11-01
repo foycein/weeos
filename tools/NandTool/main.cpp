@@ -50,6 +50,14 @@ constexpr std::string_view RootPath = "/";
 constexpr std::uint32_t FirstPrintableCharacter = 0x20;
 constexpr std::uint32_t LastPrintableCharacter = 0x7E;
 
+// The low half of a title id is often four letters, like 48414241 ("HABA").
+constexpr int TitleCodeLength = 4;
+
+// The option --dump and the folder after it.
+constexpr std::size_t DumpOptionWordCount = 2;
+
+constexpr std::uint32_t EveryPage = 1;
+
 class UsageError : public std::runtime_error
 {
 public:
@@ -216,7 +224,7 @@ void ExtractCommand(Dump& dump, const Arguments& arguments)
 std::string TitleCodeOf(std::uint64_t titleId)
 {
     std::string code;
-    for (int byteNumber = 3; byteNumber >= 0; --byteNumber)
+    for (int byteNumber = TitleCodeLength - 1; byteNumber >= 0; --byteNumber)
     {
         std::uint32_t character = (titleId >> (byteNumber * Formats::BitsPerByte)) & Formats::ByteMask;
         if (character < FirstPrintableCharacter || character > LastPrintableCharacter)
@@ -362,7 +370,7 @@ std::string_view CheckText(Formats::SignatureCheck check)
 
 void PrintErrorCorrectionReport(Formats::NandImage& image)
 {
-    ErrorCorrectionReport report = CheckErrorCorrection(image, 1);
+    ErrorCorrectionReport report = CheckErrorCorrection(image, EveryPage);
     std::cout << std::format("Error correction of the pages: {} erased, {} correct, {} without error correction bytes, {} wrong\n",
         report.erasedPageCount, report.correctPageCount, report.unprotectedPages.size(), report.wrongPages.size());
 
@@ -470,10 +478,10 @@ const Command& FindCommand(const std::string& name)
 int Run(Arguments arguments)
 {
     std::filesystem::path dumpFolder;
-    if (arguments.size() >= 2 && arguments[0] == DumpOption)
+    if (arguments.size() >= DumpOptionWordCount && arguments[0] == DumpOption)
     {
         dumpFolder = arguments[1];
-        arguments.erase(arguments.begin(), arguments.begin() + 2);
+        arguments.erase(arguments.begin(), arguments.begin() + DumpOptionWordCount);
     }
 
     if (arguments.empty())

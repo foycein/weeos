@@ -200,6 +200,8 @@ private:
     Result<void> StoreSharedContent(const Formats::ContentRecord& record, Formats::ByteView content);
     Result<void> CheckAllContentsAreThere(const Installation& currentInstallation) const;
     Result<void> PublishInstallation(const Installation& currentInstallation);
+    Result<void> MoveImportIntoPlace(TitleId titleId);
+    Result<void> MakeDataFolder(TitleId titleId, std::uint16_t groupId);
     Result<void> RemoveFolderIfEmpty(const NandPath& folder);
     void CancelInstallationWhileLocked();
 

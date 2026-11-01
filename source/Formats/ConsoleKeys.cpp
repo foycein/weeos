@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace Formats
 {
@@ -38,8 +39,14 @@ public:
         while (!text.empty())
         {
             std::size_t lineEnd = text.find('\n');
+            if (lineEnd == std::string_view::npos)
+            {
+                AddLine(text);
+                return;
+            }
+
             AddLine(text.substr(0, lineEnd));
-            text.remove_prefix(lineEnd == std::string_view::npos ? text.size() : lineEnd + 1);
+            text.remove_prefix(lineEnd + 1);
         }
     }
 
@@ -82,9 +89,11 @@ private:
         std::string name(TrimWhiteSpace(line.substr(0, separatorPosition)));
         std::string_view valueText = TrimWhiteSpace(line.substr(separatorPosition + 1));
 
-        bool isNew = fields.emplace(name, ParseHexText(valueText)).second;
-        if (!isNew)
+        Bytes value = ParseHexText(valueText);
+        if (fields.contains(name))
             throw FormatError(std::format("keys.txt: the name \"{}\" is listed twice", name));
+
+        fields.emplace(name, std::move(value));
     }
 
     Bytes TakeValue(const std::string& name)

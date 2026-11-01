@@ -18,6 +18,9 @@ constexpr std::string_view IndexTemporaryFileName = ".attributes.new";
 // True when Windows can store a file or folder with this name, and the name is not one of the index files.
 bool IsValidHostName(std::string_view name);
 
+// Windows drops a dot or a space at the end of a name, so such a name cannot be stored as it is.
+bool EndsWithDotOrSpace(std::string_view name);
+
 // True when Windows takes the name for a device: "con", "nul", "com1", also with an extension like "con.txt".
 bool IsReservedDeviceName(std::string_view name);
 

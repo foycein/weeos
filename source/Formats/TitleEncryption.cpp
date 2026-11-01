@@ -90,7 +90,8 @@ Bytes DecryptContent(ByteView encryptedContent, const AesKey& titleKey, const Co
 Bytes EncryptContent(ByteView content, const AesKey& titleKey, const ContentRecord& record)
 {
     Bytes paddedContent(content.begin(), content.end());
-    paddedContent.resize(static_cast<std::size_t>(RoundUpToMultiple(paddedContent.size(), AesBlockSize)), 0);
+    std::uint64_t paddedSize = RoundUpToMultiple(paddedContent.size(), AesBlockSize);
+    paddedContent.resize(static_cast<std::size_t>(paddedSize), 0);
 
     AesBlock initializationVector = MakeContentInitializationVector(record.index);
     return EncryptAes128Cbc(paddedContent, titleKey, initializationVector);
