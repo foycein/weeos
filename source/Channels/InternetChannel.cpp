@@ -404,6 +404,9 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfStartPagePlace(Place pla
     if (view != View::StartPage)
         return std::nullopt;
 
+    if (place == Place::Controls)
+        return PageToPicture({containerLeft + ControllerPlace.left + ControllerPlace.width / 2, ControllerPlace.top + ControllerPlace.height / 2}, frame);
+
     std::size_t index = static_cast<std::size_t>(place);
     if (index < OrbTitles.size())
         return PageToPicture({containerLeft + OrbWidth * index + OrbWidth / 2, OrbsTop + OrbPictureSize / 2}, frame);
@@ -438,6 +441,20 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfFavorite(std::size_t ind
             if (favoritesScreen->FavoriteAt({x, y}, flatFrame, data->Favorites().size()) == index)
                 return PageToPicture({x + 40, y + 40}, flatFrame);
         }
+    }
+    return std::nullopt;
+}
+
+std::optional<Formats::Vector2> InternetChannel::PlaceOfSettingsItem(const SettingsScreen::Item& item) const
+{
+    if (view != View::Settings)
+        return std::nullopt;
+
+    for (float y = 0; y < flatFrame.height; y += 4)
+    {
+        Formats::Vector2 point = {flatFrame.width / 2, y};
+        if (settingsScreen->ItemAt(point, flatFrame) == item)
+            return PageToPicture({point.x, y + 10}, flatFrame);
     }
     return std::nullopt;
 }

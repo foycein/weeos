@@ -97,6 +97,7 @@ public:
     std::optional<Formats::Vector2> PlaceOfStartPagePlace(Place place) const;
     std::optional<Formats::Vector2> PlaceOfToolbarButton(ToolbarButton button) const;
     std::optional<Formats::Vector2> PlaceOfFavorite(std::size_t index) const;
+    std::optional<Formats::Vector2> PlaceOfSettingsItem(const SettingsScreen::Item& item) const;
     std::optional<Formats::Vector2> PlaceOfDialogOk() const;
 
 private:
