@@ -209,51 +209,9 @@ void JpegScanDecoder::DecodeFirstBand(JpegComponent& component, CoefficientBlock
 // before it counts only the coefficients that are still zero.
 void JpegScanDecoder::RefineBand(JpegComponent& component, CoefficientBlock& block, JpegBitReader& bits)
 {
-    const JpegHuffmanTable& acTable = AcTableOf(component);
-    int newCoefficient = 1 << scan.successiveLow;
     int zigZagPosition = scan.spectralStart;
-
     if (endOfBandRun == 0)
-    {
-        while (zigZagPosition <= scan.spectralEnd)
-        {
-            int value = acTable.ReadValue(bits);
-            int zerosToSkip = value >> RunShift;
-            int size = value & SizeMask;
-
-            int valueToPlace = 0;
-            if (size == 0 && zerosToSkip != SixteenZerosRun)
-            {
-                endOfBandRun = (1 << zerosToSkip) + bits.ReadBits(zerosToSkip);
-                break;
-            }
-
-            if (size != 0)
-                valueToPlace = bits.ReadBit() == 1 ? newCoefficient : -newCoefficient;
-
-            while (zigZagPosition <= scan.spectralEnd)
-            {
-                std::int16_t& coefficient = block[ZigZagToRowByRow[zigZagPosition]];
-                if (coefficient != 0)
-                {
-                    RefineNonZeroCoefficient(coefficient, bits);
-                }
-                else
-                {
-                    if (zerosToSkip == 0)
-                        break;
-
-                    --zerosToSkip;
-                }
-                ++zigZagPosition;
-            }
-
-            if (valueToPlace != 0 && zigZagPosition <= scan.spectralEnd)
-                block[ZigZagToRowByRow[zigZagPosition]] = static_cast<std::int16_t>(valueToPlace);
-
-            ++zigZagPosition;
-        }
-    }
+        zigZagPosition = RefineCodedCoefficients(component, block, bits);
 
     if (endOfBandRun == 0)
         return;
@@ -265,6 +223,58 @@ void JpegScanDecoder::RefineBand(JpegComponent& component, CoefficientBlock& blo
             RefineNonZeroCoefficient(coefficient, bits);
     }
     --endOfBandRun;
+}
+
+// Reads the codes of the band up to its end or up to an end-of-band run, and gives the place where the codes stopped.
+int JpegScanDecoder::RefineCodedCoefficients(JpegComponent& component, CoefficientBlock& block, JpegBitReader& bits)
+{
+    const JpegHuffmanTable& acTable = AcTableOf(component);
+    int newCoefficient = 1 << scan.successiveLow;
+    int zigZagPosition = scan.spectralStart;
+
+    while (zigZagPosition <= scan.spectralEnd)
+    {
+        int value = acTable.ReadValue(bits);
+        int zerosToSkip = value >> RunShift;
+        int size = value & SizeMask;
+
+        bool startsEndOfBandRun = size == 0 && zerosToSkip != SixteenZerosRun;
+        if (startsEndOfBandRun)
+        {
+            endOfBandRun = (1 << zerosToSkip) + bits.ReadBits(zerosToSkip);
+            return zigZagPosition;
+        }
+
+        int valueToPlace = 0;
+        if (size != 0)
+            valueToPlace = bits.ReadBit() == 1 ? newCoefficient : -newCoefficient;
+
+        zigZagPosition = SkipZeroCoefficients(block, zigZagPosition, zerosToSkip, bits);
+        if (valueToPlace != 0 && zigZagPosition <= scan.spectralEnd)
+            block[ZigZagToRowByRow[zigZagPosition]] = static_cast<std::int16_t>(valueToPlace);
+
+        ++zigZagPosition;
+    }
+    return zigZagPosition;
+}
+
+// Steps over zerosToSkip coefficients that are still zero and stops on the next zero one. The coefficients that are not zero
+// on the way get their correction bit.
+int JpegScanDecoder::SkipZeroCoefficients(CoefficientBlock& block, int zigZagPosition, int zerosToSkip, JpegBitReader& bits)
+{
+    while (zigZagPosition <= scan.spectralEnd)
+    {
+        std::int16_t& coefficient = block[ZigZagToRowByRow[zigZagPosition]];
+        if (coefficient != 0)
+            RefineNonZeroCoefficient(coefficient, bits);
+        else if (zerosToSkip == 0)
+            return zigZagPosition;
+        else
+            --zerosToSkip;
+
+        ++zigZagPosition;
+    }
+    return zigZagPosition;
 }
 
 void JpegScanDecoder::RefineNonZeroCoefficient(std::int16_t& coefficient, JpegBitReader& bits)

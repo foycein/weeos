@@ -11,6 +11,7 @@ constexpr Formats::Byte StuffedZero = 0x00;
 constexpr Formats::Byte FirstRestartMarker = 0xD0;
 constexpr Formats::Byte LastRestartMarker = 0xD7;
 constexpr int BitsPerByte = 8;
+constexpr std::size_t MarkerSize = 2;
 
 }
 
@@ -57,7 +58,7 @@ void JpegBitReader::Restart()
 {
     bitsLeftInByte = 0;
     if (IsRestartMarkerAt(position))
-        position += 2;
+        position += MarkerSize;
 }
 
 int JpegBitReader::ReadByte()
@@ -76,7 +77,7 @@ int JpegBitReader::ReadByte()
     if (!isStuffed)
         return 0;
 
-    position += 2;
+    position += MarkerSize;
     return value;
 }
 

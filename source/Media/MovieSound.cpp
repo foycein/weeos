@@ -38,6 +38,7 @@ constexpr std::array<int, 8> ImaIndexChanges = {-1, -1, -1, -1, 2, 4, 6, 8};
 constexpr int ImaHeaderSizePerChannel = 4;
 constexpr int ImaBytesPerGroup = 4;
 constexpr int ImaSamplesPerGroup = 8;
+constexpr int ImaSamplesPerByte = 2;
 constexpr int ImaNegativeBit = 8;
 constexpr int ImaFourStepsBit = 4;
 constexpr int ImaTwoStepsBit = 2;
@@ -86,6 +87,13 @@ struct ImaChannelState
     int stepIndex = 0;
 };
 
+int ClampStepIndex(int stepIndex)
+{
+    int lastStepIndex = static_cast<int>(ImaStepSizes.size()) - 1;
+    return std::clamp(stepIndex, 0, lastStepIndex);
+}
+
+// The difference is an eighth of the step, plus the step, half of it and a quarter of it for each bit the code has.
 std::int16_t DecodeImaCode(ImaChannelState& state, int code)
 {
     int step = ImaStepSizes[state.stepIndex];
@@ -103,8 +111,77 @@ std::int16_t DecodeImaCode(ImaChannelState& state, int code)
         state.predictor += difference;
 
     state.predictor = ClampToSample(state.predictor);
-    state.stepIndex = std::clamp(state.stepIndex + ImaIndexChanges[code & ImaMagnitudeMask], 0, static_cast<int>(ImaStepSizes.size()) - 1);
+    state.stepIndex = ClampStepIndex(state.stepIndex + ImaIndexChanges[code & ImaMagnitudeMask]);
     return static_cast<std::int16_t>(state.predictor);
+}
+
+// The bytes from start on, at most size of them; nothing when start lies at or past the end.
+Formats::ByteView BytesAtMost(Formats::ByteView data, std::size_t start, std::size_t size)
+{
+    if (start >= data.size())
+        return {};
+
+    return data.subspan(start, std::min(size, data.size() - start));
+}
+
+// The samples of one block, the channels of one moment one after the other.
+class ImaBlockSamples
+{
+public:
+    ImaBlockSamples(int channelCount, int samplesPerBlock)
+        : channels(channelCount)
+        , samplesPerChannel(samplesPerBlock)
+        , samples(static_cast<std::size_t>(samplesPerBlock) * channelCount, 0)
+    {
+    }
+
+    void Put(int sampleNumber, int channel, std::int16_t value)
+    {
+        samples[static_cast<std::size_t>(sampleNumber) * channels + channel] = value;
+    }
+
+    // A code past the last sample of the block is not decoded.
+    void DecodeInto(int sampleNumber, int channel, ImaChannelState& state, int code)
+    {
+        if (sampleNumber >= samplesPerChannel)
+            return;
+
+        Put(sampleNumber, channel, DecodeImaCode(state, code));
+    }
+
+    const std::vector<std::int16_t>& Samples() const
+    {
+        return samples;
+    }
+
+private:
+    int channels;
+    int samplesPerChannel;
+    std::vector<std::int16_t> samples;
+};
+
+// One group of a channel: four bytes, two samples a byte, the low four bits first.
+void DecodeImaGroup(Formats::ByteView groupBytes, int firstSample, int channel, ImaChannelState& state, ImaBlockSamples& block)
+{
+    for (std::size_t byteInGroup = 0; byteInGroup < groupBytes.size(); ++byteInGroup)
+    {
+        Formats::Byte codes = groupBytes[byteInGroup];
+        int sampleNumber = firstSample + static_cast<int>(byteInGroup) * ImaSamplesPerByte;
+        block.DecodeInto(sampleNumber, channel, state, codes & NibbleMask);
+        block.DecodeInto(sampleNumber + 1, channel, state, codes >> NibbleBits);
+    }
+}
+
+void DecodeImaAdpcmSound(const Formats::Bytes& bytes, const MovieSoundTrack& sound, std::vector<std::int16_t>& samples)
+{
+    if (sound.blockSize <= 0)
+        return;
+
+    for (std::size_t place = 0; place < bytes.size(); place += sound.blockSize)
+    {
+        Formats::ByteView block = BytesAtMost(bytes, place, sound.blockSize);
+        DecodeImaAdpcmBlock(block, sound.channelCount, sound.samplesPerBlock, samples);
+    }
 }
 
 }
@@ -139,14 +216,14 @@ void DecodeImaAdpcmBlock(Formats::ByteView block, int channelCount, int samplesP
     if (channelCount <= 0 || samplesPerBlock <= 0 || block.size() < headerSize)
         return;
 
+    ImaBlockSamples blockSamples(channelCount, samplesPerBlock);
     std::vector<ImaChannelState> states(channelCount);
-    std::vector<std::int16_t> blockSamples(static_cast<std::size_t>(samplesPerBlock) * channelCount, 0);
     for (int channel = 0; channel < channelCount; ++channel)
     {
         Formats::ByteView header = block.subspan(static_cast<std::size_t>(channel) * ImaHeaderSizePerChannel);
         states[channel].predictor = SixteenBitsOf(header[0], header[1], false);
-        states[channel].stepIndex = std::clamp(static_cast<int>(header[2]), 0, static_cast<int>(ImaStepSizes.size()) - 1);
-        blockSamples[channel] = static_cast<std::int16_t>(states[channel].predictor);
+        states[channel].stepIndex = ClampStepIndex(header[2]);
+        blockSamples.Put(0, channel, static_cast<std::int16_t>(states[channel].predictor));
     }
 
     Formats::ByteView data = block.subspan(headerSize);
@@ -154,25 +231,16 @@ void DecodeImaAdpcmBlock(Formats::ByteView block, int channelCount, int samplesP
     int groupCount = (codedSamples + ImaSamplesPerGroup - 1) / ImaSamplesPerGroup;
     for (int group = 0; group < groupCount; ++group)
     {
+        int firstSample = 1 + group * ImaSamplesPerGroup;
         for (int channel = 0; channel < channelCount; ++channel)
         {
             std::size_t groupStart = (static_cast<std::size_t>(group) * channelCount + channel) * ImaBytesPerGroup;
-            for (int byteInGroup = 0; byteInGroup < ImaBytesPerGroup && groupStart + byteInGroup < data.size(); ++byteInGroup)
-            {
-                Formats::Byte codes = data[groupStart + byteInGroup];
-                int firstSample = 1 + group * ImaSamplesPerGroup + byteInGroup * 2;
-                int lowCode = codes & NibbleMask;
-                int highCode = codes >> NibbleBits;
-
-                if (firstSample < samplesPerBlock)
-                    blockSamples[static_cast<std::size_t>(firstSample) * channelCount + channel] = DecodeImaCode(states[channel], lowCode);
-                if (firstSample + 1 < samplesPerBlock)
-                    blockSamples[static_cast<std::size_t>(firstSample + 1) * channelCount + channel] = DecodeImaCode(states[channel], highCode);
-            }
+            Formats::ByteView groupBytes = BytesAtMost(data, groupStart, ImaBytesPerGroup);
+            DecodeImaGroup(groupBytes, firstSample, channel, states[channel], blockSamples);
         }
     }
 
-    samples.insert(samples.end(), blockSamples.begin(), blockSamples.end());
+    samples.insert(samples.end(), blockSamples.Samples().begin(), blockSamples.Samples().end());
 }
 
 PcmSound DecodeMovieSound(const MovieSoundTrack& sound, Formats::ByteView fileBytes)
@@ -216,11 +284,7 @@ PcmSound DecodeMovieSound(const MovieSoundTrack& sound, Formats::ByteView fileBy
         break;
 
     case MovieSoundKind::ImaAdpcm:
-        for (std::size_t place = 0; sound.blockSize > 0 && place < bytes.size(); place += sound.blockSize)
-        {
-            std::size_t size = std::min<std::size_t>(sound.blockSize, bytes.size() - place);
-            DecodeImaAdpcmBlock(Formats::ByteView(bytes).subspan(place, size), sound.channelCount, sound.samplesPerBlock, pcm.samples);
-        }
+        DecodeImaAdpcmSound(bytes, sound, pcm.samples);
         break;
 
     default:

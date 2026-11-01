@@ -34,6 +34,8 @@ constexpr std::string_view MotionJpegCodec = "MJPG";
 constexpr std::size_t StreamHeaderTimeScalePlace = 20;
 constexpr std::size_t BitmapHeaderCodecPlace = 16;
 constexpr int DecimalBase = 10;
+constexpr std::size_t StreamNumberDigits = 2;
+constexpr int NoStreamNumber = -1;
 
 // The WAVE format tags of the sound that the Photo Channel plays.
 constexpr std::uint16_t PcmFormat = 0x0001;
@@ -70,12 +72,12 @@ bool IsDecimalDigit(char character)
 int StreamNumberOfDataChunk(const std::string& chunkName)
 {
     if (!IsDecimalDigit(chunkName[0]) || !IsDecimalDigit(chunkName[1]))
-        return -1;
+        return NoStreamNumber;
 
-    std::string_view content = std::string_view(chunkName).substr(2);
+    std::string_view content = std::string_view(chunkName).substr(StreamNumberDigits);
     bool isData = content == CompressedFrame || content == UncompressedFrame || content == SoundData;
     if (!isData)
-        return -1;
+        return NoStreamNumber;
 
     return (chunkName[0] - '0') * DecimalBase + (chunkName[1] - '0');
 }
@@ -158,8 +160,12 @@ private:
         }
 
         int streamNumber = StreamNumberOfDataChunk(chunkName);
-        if (streamNumber >= 0 && streamNumber < static_cast<int>(streams.size()))
-            streams[streamNumber].pieces.push_back({PlaceInFile(body), static_cast<std::uint32_t>(body.size())});
+        bool isKnownStream = streamNumber >= 0 && streamNumber < static_cast<int>(streams.size());
+        if (!isKnownStream)
+            return;
+
+        MoviePiece piece{PlaceInFile(body), static_cast<std::uint32_t>(body.size())};
+        streams[streamNumber].pieces.push_back(piece);
     }
 
     // The stream header: its kind, the codec, flags, priority, language, initial frames, then the time scale and the rate.

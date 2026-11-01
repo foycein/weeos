@@ -47,6 +47,8 @@ constexpr int SegmentLengthSize = 2;
 
 constexpr int DcTableClass = 0;
 constexpr int AcTableClass = 1;
+constexpr int LuminanceSlot = 0;
+constexpr int ChrominanceSlot = 1;
 constexpr int SixteenBitQuantizationEntries = 1;
 constexpr Formats::Byte AdobeTransformNone = 0;
 constexpr std::string_view AdobeSignature = "Adobe";
@@ -77,6 +79,13 @@ bool IsRestartMarker(Formats::Byte marker)
     return marker >= FirstRestartMarker && marker <= LastRestartMarker;
 }
 
+// The frame kinds of arithmetic coding, lossless and hierarchical pictures. DAC lies among their markers but is no frame.
+bool IsUnsupportedFrameMarker(Formats::Byte marker)
+{
+    bool isFrameMarker = marker >= FirstFrameMarker && marker <= LastFrameMarker;
+    return isFrameMarker && marker != DefineArithmeticConditioning;
+}
+
 // The marker walk of a JPEG file (Annex B): segments with a length, scans with their entropy coded data behind them.
 class JpegFileReader
 {
@@ -85,10 +94,10 @@ public:
         : fileBytes(bytes)
         , reader(bytes, DataDescription)
     {
-        frameHuffmanTables.dc[0] = JpegHuffmanTable(StandardLuminanceDcTable());
-        frameHuffmanTables.dc[1] = JpegHuffmanTable(StandardChrominanceDcTable());
-        frameHuffmanTables.ac[0] = JpegHuffmanTable(StandardLuminanceAcTable());
-        frameHuffmanTables.ac[1] = JpegHuffmanTable(StandardChrominanceAcTable());
+        frameHuffmanTables.dc[LuminanceSlot] = JpegHuffmanTable(StandardLuminanceDcTable());
+        frameHuffmanTables.dc[ChrominanceSlot] = JpegHuffmanTable(StandardChrominanceDcTable());
+        frameHuffmanTables.ac[LuminanceSlot] = JpegHuffmanTable(StandardLuminanceAcTable());
+        frameHuffmanTables.ac[ChrominanceSlot] = JpegHuffmanTable(StandardChrominanceAcTable());
     }
 
     JpegInformation ReadUpToFrame()
@@ -173,7 +182,7 @@ private:
             restartInterval = segment.ReadUint16();
         else if (marker == AdobeSegment)
             ReadAdobeSegment(segment);
-        else if (marker >= FirstFrameMarker && marker <= LastFrameMarker && marker != DefineArithmeticConditioning)
+        else if (IsUnsupportedFrameMarker(marker))
             segment.Fail(std::format("the frame kind {:#04x} (arithmetic coding, lossless or hierarchical) is not supported", marker));
     }
 
@@ -252,7 +261,8 @@ private:
             Formats::Byte classAndSlot = segment.ReadByte();
             int tableClass = HighNibble(classAndSlot);
             int slot = LowNibble(classAndSlot);
-            if (slot >= HuffmanTableSlots || (tableClass != DcTableClass && tableClass != AcTableClass))
+            bool isKnownClass = tableClass == DcTableClass || tableClass == AcTableClass;
+            if (slot >= HuffmanTableSlots || !isKnownClass)
                 segment.Fail("a Huffman table has a class or a slot that cannot exist");
 
             HuffmanTableDefinition definition;
@@ -383,7 +393,8 @@ private:
                 continue;
 
             Formats::Byte next = fileBytes[place + 1];
-            if (next != StuffedZero && !IsRestartMarker(next) && next != MarkerPrefix)
+            bool isPartOfTheData = next == StuffedZero || IsRestartMarker(next) || next == MarkerPrefix;
+            if (!isPartOfTheData)
                 return place;
         }
         return fileBytes.size();

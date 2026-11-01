@@ -91,7 +91,8 @@ std::optional<FieldHeader> ReadMotionJpegAFieldHeader(Formats::ByteView field)
 std::size_t FindSecondField(Formats::ByteView frame)
 {
     std::optional<FieldHeader> header = ReadMotionJpegAFieldHeader(frame);
-    if (header && header->nextFieldPlace > 0 && header->nextFieldPlace < frame.size())
+    bool headerNamesSecondField = header && header->nextFieldPlace > 0 && header->nextFieldPlace < frame.size();
+    if (headerNamesSecondField)
         return header->nextFieldPlace;
 
     for (std::size_t place = FirstSegmentPlace; place + 1 < frame.size(); ++place)
@@ -152,7 +153,8 @@ std::size_t SecondFieldStart(MovieVideoKind kind, Formats::ByteView frame)
         return FindSecondField(frame);
 
     std::optional<FieldHeader> header = ReadFieldHeader(frame);
-    if (!header || header->nextFieldPlace == 0 || header->nextFieldPlace >= frame.size())
+    bool headerNamesSecondField = header && header->nextFieldPlace > 0 && header->nextFieldPlace < frame.size();
+    if (!headerNamesSecondField)
         throw Formats::FormatError("Motion-JPEG B frame: the frame has no second field");
 
     return header->nextFieldPlace;
