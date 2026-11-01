@@ -40,17 +40,27 @@ public:
     // 1 when the point lies on the arrow to the next page, -1 on the arrow to the page before, 0 elsewhere.
     int PageArrowAt(Formats::Vector2 place);
 
+    // The balloons that name the Wii Menu button and the help button while a hand rests on them.
+    const Balloon& WiiMenuBalloon() const;
+    const Balloon& HelpBalloon() const;
+
 protected:
     bool RunMain() override;
     bool RunClosing() override;
 
 private:
     void DrawArrowsOnly();
+    void FollowTheFocusWithTheBalloons(const ButtonEvent& event);
+    void CalculateTheBalloons();
+    void CalculateBalloon(Balloon& balloon, std::optional<Formats::Vector2> placeOfTheButton);
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
+    std::unique_ptr<Layout::LayoutArchive> balloonArchive;
     std::unique_ptr<MenuLayout> layout;
     std::unique_ptr<ButtonController> buttons;
+    std::unique_ptr<Balloon> wiiMenuBalloon;
+    std::unique_ptr<Balloon> helpBalloon;
 };
 
 // The channels of the SD card (screen 0x22, sdChanSel.ash), 12 to a page in 20 pages, each in the place that loc.dat keeps for it.
