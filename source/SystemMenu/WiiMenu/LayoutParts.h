@@ -55,4 +55,7 @@ void CopyFirstTexture(MenuLayout& layout, std::string_view toPictureName, std::s
 // The animations of a layout play as their file says: once, or again and again.
 Layout::PlaybackMode ModeOfAnimationFile(const Layout::LayoutArchive& archive, std::string_view animationName);
 
+// A group of the first level below the root group, as the menu looks groups up. Nothing when the layout has none of that name.
+const Formats::Group* FindTopGroup(const Formats::Layout& file, std::string_view groupName);
+
 }

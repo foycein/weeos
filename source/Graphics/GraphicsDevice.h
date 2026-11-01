@@ -321,7 +321,7 @@ public:
     // use it in materials and destroy it with DestroyTexture. It must not be used while it is being drawn.
     // This may also be called between BeginFrame and Present: the screen picture goes on after EndOffscreen.
     // Outside of BeginFrame and Present the picture is finished when EndOffscreen returns.
-    // An offscreen picture cannot be drawn inside another one.
+    // An offscreen picture can be drawn inside another one: the outer picture goes on after EndOffscreen.
     virtual TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) = 0;
     virtual void EndOffscreen() = 0;
 

@@ -128,7 +128,7 @@ void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShap
     if (isFrameActive)
         throw GraphicsError("BeginFrame was called before Present ended the picture before");
 
-    if (offscreenTarget)
+    if (!offscreenPictures.empty())
         throw GraphicsError("BeginFrame was called while an offscreen picture is being drawn");
 
     PrepareFrame();
@@ -156,7 +156,7 @@ void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShap
 
 void VulkanGraphicsDevice::SetPictureSettings(const PictureSettings& settings)
 {
-    if (isFrameActive || offscreenTarget)
+    if (isFrameActive || !offscreenPictures.empty())
         throw GraphicsError("The picture settings cannot change while a picture is being drawn");
 
     pictureSettings = settings;
@@ -269,9 +269,6 @@ void VulkanGraphicsDevice::RecordMeshDraw(Recording& recording, std::uint32_t me
 
 TextureHandle VulkanGraphicsDevice::BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height)
 {
-    if (offscreenTarget)
-        throw GraphicsError("BeginOffscreen was called while another offscreen picture is being drawn");
-
     CanvasMapping mapping(canvas, {0, 0, static_cast<float>(width), static_cast<float>(height)});
 
     TextureHandle handle = textures.CreateDrawTarget(width, height, FilterMode::Linear);
@@ -279,36 +276,43 @@ TextureHandle VulkanGraphicsDevice::BeginOffscreen(const Canvas& canvas, std::ui
     texture.isBeingDrawn = true;
 
     // Between BeginFrame and Present the offscreen picture is part of the commands of the screen picture,
-    // otherwise it gets commands of its own, which run before the call returns.
-    if (frameRecording)
-        PauseScreenPass();
+    // otherwise it gets commands of its own, which run before the call returns. A picture that is drawn inside another
+    // offscreen picture is part of the commands of that one.
+    if (!offscreenPictures.empty())
+        PausePass(offscreenPictures.back().target);
+    else if (frameRecording)
+        PausePass(*screenTarget);
     else
         StartRecording(standaloneRecording, standaloneResources);
 
     TransitionImage(CurrentCommandBuffer(), texture.image->Handle(), StartDrawing);
 
+    // shortcut: an inner offscreen picture uses the depth buffer of the outer one, so meshes that the outer picture draws after it
+    // meet the depth of the inner picture. Give each level a depth buffer of its own when a picture with meshes holds another picture.
     const GraphicsImage& depthBuffer = depthBuffers.ForOffscreen({width, height}, lastFrameNumber);
-    offscreenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), {width, height}, &depthBuffer});
-    offscreenTexture = handle;
-    BeginPass(*offscreenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, TransparentBlack);
+    Target target = {mapping, std::nullopt, texture.image->Handle(), texture.image->View(), {width, height}, &depthBuffer};
+    offscreenPictures.push_back({target, handle});
+    BeginPass(offscreenPictures.back().target, VK_ATTACHMENT_LOAD_OP_CLEAR, TransparentBlack);
     return handle;
 }
 
 void VulkanGraphicsDevice::EndOffscreen()
 {
-    if (!offscreenTarget)
+    if (offscreenPictures.empty())
         throw GraphicsError("EndOffscreen was called but no offscreen picture is being drawn");
 
     EndPass();
-    TransitionImage(CurrentCommandBuffer(), offscreenTarget->image, FinishDrawingTexture);
+    const OffscreenPicture& finished = offscreenPictures.back();
+    TransitionImage(CurrentCommandBuffer(), finished.target.image, FinishDrawingTexture);
+    textures.Get(finished.texture).isBeingDrawn = false;
+    offscreenPictures.pop_back();
 
-    textures.Get(offscreenTexture).isBeingDrawn = false;
-    offscreenTarget.reset();
-
-    if (standaloneRecording)
+    if (!offscreenPictures.empty())
+        ResumePass(offscreenPictures.back().target);
+    else if (standaloneRecording)
         FinishStandaloneRecording();
     else
-        ResumeScreenPass();
+        ResumePass(*screenTarget);
 }
 
 void VulkanGraphicsDevice::Present()
@@ -316,7 +320,7 @@ void VulkanGraphicsDevice::Present()
     if (!isFrameActive)
         throw GraphicsError("Present was called without BeginFrame");
 
-    if (offscreenTarget)
+    if (!offscreenPictures.empty())
         throw GraphicsError("Present was called while an offscreen picture is being drawn");
 
     isFrameActive = false;
@@ -393,14 +397,14 @@ std::size_t VulkanGraphicsDevice::MemoryBlockCount() const
 
 void VulkanGraphicsDevice::RequireActivePicture(const char* functionName) const
 {
-    if (!isFrameActive && !offscreenTarget)
+    if (!isFrameActive && offscreenPictures.empty())
         throw GraphicsError(std::format("{} was called while no picture is being drawn", functionName));
 }
 
 VulkanGraphicsDevice::Target* VulkanGraphicsDevice::ActiveTarget()
 {
-    if (offscreenTarget)
-        return &*offscreenTarget;
+    if (!offscreenPictures.empty())
+        return &offscreenPictures.back().target;
 
     if (screenTarget)
         return &*screenTarget;
@@ -559,15 +563,15 @@ void VulkanGraphicsDevice::ApplyTargetState(const Target& target)
     vkCmdPushConstants(commandBuffer, pipeline.Layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(canvasConstants), &canvasConstants);
 }
 
-void VulkanGraphicsDevice::PauseScreenPass()
+void VulkanGraphicsDevice::PausePass(const Target& target)
 {
     EndPass();
-    TransitionImage(CurrentCommandBuffer(), screenTarget->image, KeepDrawing);
+    TransitionImage(CurrentCommandBuffer(), target.image, KeepDrawing);
 }
 
-void VulkanGraphicsDevice::ResumeScreenPass()
+void VulkanGraphicsDevice::ResumePass(const Target& target)
 {
-    BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_LOAD, OpaqueBlack);
+    BeginPass(target, VK_ATTACHMENT_LOAD_OP_LOAD, OpaqueBlack);
 }
 
 void VulkanGraphicsDevice::FinishStandaloneRecording()

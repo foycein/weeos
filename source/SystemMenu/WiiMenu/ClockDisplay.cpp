@@ -45,6 +45,11 @@ bool IsBlinkSecond(const LocalTime& time)
     return time.second % SecondsBetweenBlinks == 0;
 }
 
+bool IsSecondBetweenBlinks(const LocalTime& time)
+{
+    return !IsBlinkSecond(time);
+}
+
 }
 
 ClockDisplay::ClockDisplay(MenuServices& menuServices, const Layout::LayoutArchive& archive)
@@ -115,13 +120,13 @@ void ClockDisplay::ShowTheFace(const ClockFace& face)
     shownFace = face;
 }
 
-// The label changes to the time on a second that the colon would blink on, so that the two do not start at different times.
+// The label changes to the time on a second between two blinks, so that the colon starts its first blink after the change.
 void ClockDisplay::StartTheChangeWhenItIsTime(const LocalTime& time)
 {
     if (phase == Phase::ShowingTheLabel)
     {
         bool hasShownLongEnough = services.clock.Seconds() - labelStartedSeconds >= SecondsOfTheLabel;
-        if (hasShownLongEnough && IsBlinkSecond(time))
+        if (hasShownLongEnough && IsSecondBetweenBlinks(time))
         {
             change->PlayOnce(0, lastFrameOfTheChange);
             phase = Phase::ChangingToTheTime;

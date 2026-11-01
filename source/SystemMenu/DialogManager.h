@@ -4,6 +4,7 @@
 #include "SystemMenu/Display.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/SoundRequests.h"
 
 #include "Layout/LayoutArchive.h"
 
@@ -64,16 +65,23 @@ struct DialogRequest
 
     // Message layout only. A bar shows how far a job has come, see SetProgress. The picture behind the dialog is not darkened.
     bool showsProgress = false;
+
+    // The button that sounds WIPL_SE_CANCEL when it is pressed; the others sound WIPL_SE_DECIDE. In the original the second button of a
+    // window with two buttons cancels, and C of a window with three, unless the screen turns the two round (0x8134753C).
+    DialogAnswer cancelButton = DialogAnswer::ButtonA;
 };
 
 // The dialog windows of the menu (the DialogManager of the original, docs/audit/SystemMenu.md). One dialog is open at a time: it opens
 // with an animation, waits for a button, a time or a command, shows the button that was chosen and closes with an animation.
 // A screen that waits for a dialog looks at IsOpen and at TakeAnswer.
+// The sounds are the original's: a window opens with WIPL_SE_INFO_WINDOW, or with WIPL_SE_COPYING when it shows that the console is busy
+// (0x8134644C), which ends with WIPL_SE_COPY_FINISH when the window closes (0x81345364); the hand on a button sounds
+// WIPL_SE_BT_TARGETTING (0x81347284), a press WIPL_SE_DECIDE or WIPL_SE_CANCEL (0x8134753C).
 class DialogManager
 {
 public:
-    // The display and the files must outlive the dialog manager.
-    DialogManager(Display& menuDisplay, const MenuFiles& files);
+    // The display, the files and the sound requests must outlive the dialog manager.
+    DialogManager(Display& menuDisplay, const MenuFiles& files, SoundRequests& menuSounds);
 
     bool IsOpen() const;
 
@@ -118,8 +126,10 @@ private:
     void UpdateMessageWindow();
     void ReactToButton(const ButtonGroupEvent& event);
     void StartClosing(DialogAnswer reason);
+    std::string_view SoundOfPress(DialogAnswer pressed) const;
 
     Display& display;
+    SoundRequests& sounds;
     std::unique_ptr<Layout::LayoutArchive> archive;
     std::array<DialogWindow, 5> windows;
     DialogWindow* openWindow = nullptr;
@@ -132,6 +142,8 @@ private:
     std::uint32_t stepsBeforeClosing = 0;
     std::uint32_t stepsWaited = 0;
     bool showsProgress = false;
+    bool soundsBusy = false;
+    DialogAnswer cancelButton = DialogAnswer::ButtonA;
     int targetPercentage = 0;
     int shownPercentage = 0;
 };

@@ -118,6 +118,14 @@ bool HomeButton::IsOpen() const
     return isOpen;
 }
 
+float HomeButton::SoundVolume() const
+{
+    if (!isOpen || !menu)
+        return 1.0f;
+
+    return menu->SoundVolume();
+}
+
 void HomeButton::SetSpeakerVolumeSetting(std::uint8_t setting)
 {
     speakerVolumeSetting = setting;

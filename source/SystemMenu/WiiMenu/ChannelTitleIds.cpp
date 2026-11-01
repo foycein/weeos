@@ -20,4 +20,9 @@ bool IsFirstVersion(Ios::TitleId titleId)
     return (titleId.lowPart & ~FamilyMask) == FirstVersionLetter;
 }
 
+bool IsInFamily(Ios::TitleId titleId, std::uint32_t kind, std::uint32_t family)
+{
+    return titleId.highPart == kind && (titleId.lowPart & FamilyMask) == family;
+}
+
 }

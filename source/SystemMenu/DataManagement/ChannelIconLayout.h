@@ -33,8 +33,6 @@ public:
     void Draw();
 
 private:
-    void ShowOnlyEnglish();
-
     Graphics::GraphicsDevice& device;
     Graphics::ScissorRectangle box;
     std::unique_ptr<Layout::LayoutArchive> archive;
