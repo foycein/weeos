@@ -4,10 +4,8 @@
 
 #include "Formats/Bytes.h"
 #include "Formats/U8Archive.h"
-#include "Layout/LayoutArchive.h"
 
 #include <cstdint>
-#include <memory>
 #include <string_view>
 
 namespace Channels
@@ -21,9 +19,5 @@ Formats::ByteView FindFileOrFail(const Formats::U8Archive& archive, std::string_
 
 // A file of an archive that is packed with LZ77, as the files named "*.LZ" of the channels are, unpacked.
 Formats::Bytes ReadPackedFile(const Formats::U8Archive& archive, std::string_view path);
-
-// The hands of the four players from the channel's copy of the HOME Button Menu (a shared content). The channels' own hand is a
-// NintendoWare effect (nw4r_defcursor_all01) that WeeOS cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
-std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents& contents, std::uint16_t homeMenuContentIndex);
 
 }

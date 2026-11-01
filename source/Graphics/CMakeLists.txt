@@ -7,15 +7,17 @@ find_package(Vulkan REQUIRED COMPONENTS glslc)
 add_library(Graphics STATIC
     CanvasMapping.cpp
     ConsoleVideo.cpp
+    DepthBuffers.cpp
     DrawData.cpp
+    DrawPipelines.cpp
     FramePacer.cpp
     FrameResources.cpp
     GraphicsBuffer.cpp
     GraphicsImage.cpp
     ImageMemoryPool.cpp
     MaterialCheck.cpp
+    Matrix4.cpp
     OneTimeCommands.cpp
-    QuadPipeline.cpp
     RangeAllocator.cpp
     StageList.cpp
     Swapchain.cpp
@@ -32,7 +34,7 @@ target_link_libraries(Graphics PUBLIC Formats Platform Vulkan::Vulkan)
 # Call this for every program that draws with the Vulkan device.
 function(CompileGraphicsShaders programName)
     set(shaderFolder ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Shaders)
-    set(shaderNames Quad.vert Quad.frag)
+    set(shaderNames Quad.vert Quad.frag Mesh.vert)
     set(shaderIncludes ${shaderFolder}/DrawData.glsl ${shaderFolder}/StageConstants.glsl)
 
     foreach(shaderName ${shaderNames})

@@ -52,6 +52,32 @@ struct DrawRecord
     uint cornerColors[CornersPerQuad];
     uint firstStage;
     uint stageCount;
+
+    uint skipsTransparentPixels;
+
+    // For a mesh: its number in the mesh buffer.
+    uint meshNumber;
+    uint unused[2];
+};
+
+// One mesh: the rows of its matrices and its light.
+struct MeshRecord
+{
+    vec4 modelView[3];
+    vec4 normalMatrix[3];
+    vec4 projection[4];
+    vec4 lightPosition;
+    vec4 lightColor;
+    vec4 ambientColor;
+    uint hasLight;
+    uint textureCoordinatesFromNormal;
+    uint unused[2];
+};
+
+struct MeshCorner
+{
+    vec4 positionAndS;
+    vec4 normalAndT;
 };
 
 layout(std430, set = 0, binding = 0) readonly buffer DrawRecords
@@ -62,4 +88,14 @@ layout(std430, set = 0, binding = 0) readonly buffer DrawRecords
 layout(std430, set = 0, binding = 1) readonly buffer Stages
 {
     Stage stages[];
+};
+
+layout(std430, set = 0, binding = 2) readonly buffer MeshRecords
+{
+    MeshRecord meshRecords[];
+};
+
+layout(std430, set = 0, binding = 3) readonly buffer MeshCorners
+{
+    MeshCorner meshCorners[];
 };

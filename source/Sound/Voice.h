@@ -97,6 +97,9 @@ public:
     // Stops the voice at once.
     void Stop();
 
+    // A held voice makes no sound and stays where it is in its wave and in its envelope, until it is let go on.
+    void SetHeld(bool held);
+
     // Decides the gains for the coming sound frame, from the settings, the sound mode and the envelope, and moves the envelope on.
     // The gains of the last frame are the gains at the start of this one, so that the change is smooth.
     void BeginFrame(SoundMode mode);
@@ -114,6 +117,7 @@ private:
     VoiceSettings settings;
     int priority = 0;
     bool active = false;
+    bool isHeld = false;
     bool atTheFirstFrame = true;
     bool endsAfterThisFrame = false;
     double position = 0.0;

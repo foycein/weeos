@@ -32,6 +32,10 @@ constexpr std::string_view DownloadingMessagePane = "textTUS1";
 constexpr std::array<std::string_view, 2> TextParts = {"textT", "nextT"};
 constexpr std::array<std::string_view, 6> OtherLanguages = {"JP", "GE", "FR", "IT", "SP", "DU"};
 
+// The hands are the ones of the channel's HOME Button Menu, HomeButton3: the channels' own hand is a NintendoWare effect
+// (nw4r_defcursor_all01) that WeeOS cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
+constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
+
 // The label in front of the code is a text of the program (0x8000B9C8 of the Forecast, "%ls %ls%06d").
 constexpr std::u16string_view ErrorCodeLabel = u"Error Code: ";
 
@@ -50,6 +54,13 @@ void HideOtherLanguages(SystemMenu::MenuLayout& layout)
                 pane->isVisible = false;
         }
     }
+}
+
+std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents& contents, std::uint16_t homeMenuContentIndex)
+{
+    Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, homeMenuContentIndex);
+    Formats::Bytes handArchive = ReadPackedFile(homeMenuFiles, HandArchivePath);
+    return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(handArchive));
 }
 
 }
@@ -86,13 +97,16 @@ void WiiConnect24Channel::Update()
         UpdateStage();
 
     ShownLayout().Calculate();
-    cursors->Update(services.input);
 }
 
 void WiiConnect24Channel::Draw()
 {
     ShownLayout().Draw();
-    cursors->Draw();
+}
+
+SystemMenu::CursorManager& WiiConnect24Channel::Hands()
+{
+    return *cursors;
 }
 
 WiiConnect24Channel::Stage WiiConnect24Channel::CurrentStage() const

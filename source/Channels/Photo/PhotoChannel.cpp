@@ -28,14 +28,16 @@ void PhotoChannel::Update()
         if (waitingScreen)
             fader.StartFadeOut();
     }
-
-    session.Cursors().Update(services.input);
 }
 
 void PhotoChannel::Draw()
 {
     screen->Draw();
-    session.Cursors().Draw();
+}
+
+SystemMenu::CursorManager& PhotoChannel::Hands()
+{
+    return session.Cursors();
 }
 
 const PhotoScreen& PhotoChannel::CurrentScreen() const

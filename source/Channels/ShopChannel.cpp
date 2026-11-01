@@ -1,4 +1,4 @@
-﻿#include "Channels/ShopChannel.h"
+#include "Channels/ShopChannel.h"
 
 #include "Channels/ChannelError.h"
 #include "Channels/ChannelFiles.h"
@@ -7,7 +7,6 @@
 #include "Formats/Ash0.h"
 #include "Formats/ByteReader.h"
 #include "Formats/DolExecutable.h"
-#include "Formats/Font.h"
 #include "Formats/GifImage.h"
 #include "Formats/MessageFile.h"
 #include "Formats/TextureDecoder.h"
@@ -24,10 +23,9 @@ namespace Channels
 namespace
 {
 
-// The contents of the Shop (HABA v21): the program, the archive with the pages and the layouts, the shared bitmap fonts.
+// The contents of the Shop (HABA v21): the program and the archive with the pages and the layouts.
 constexpr std::uint16_t ProgramContentIndex = 1;
 constexpr std::uint16_t ResourceContentIndex = 2;
-constexpr std::uint16_t FontContentIndex = 9;
 
 // The Shop keeps its texts in message files inside its program, one for each area and language. 0x80019F30 gives the place of the
 // English one of the USA: 0x803053C0 of the program in memory.
@@ -176,10 +174,7 @@ ShopChannel::ShopChannel(ChannelServices& channelServices)
 {
     Graphics::GraphicsDevice& device = services.display.Device();
     Formats::U8Archive resources = ReadArchiveContent(services.contents, ResourceContentIndex);
-    Formats::U8Archive fontFiles = ReadArchiveContent(services.contents, FontContentIndex);
-
-    fonts.AddFont(device, Formats::ReadFont(FindFileOrFail(fontFiles, FontFile)), {FontFile});
-    painter = std::make_unique<PagePainter>(device, fonts.Fonts().Find(std::string(FontFile)));
+    painter = std::make_unique<PagePainter>(device, services.systemFonts.Find(std::string(FontFile)));
 
     Formats::Bytes startupPixels = Formats::DecompressAsh0(FindFileOrFail(resources, StartupPicturePath));
     startupPicture = std::make_unique<PagePicture>(device,
@@ -203,8 +198,6 @@ void ShopChannel::Update()
 
     if (!services.wiiMenu.IsRequested())
         UpdateStage();
-
-    cursors->Update(services.input);
 }
 
 void ShopChannel::Draw()
@@ -220,8 +213,11 @@ void ShopChannel::Draw()
         DrawConnecting();
     else
         DrawError();
+}
 
-    cursors->Draw();
+SystemMenu::CursorManager& ShopChannel::Hands()
+{
+    return *cursors;
 }
 
 ShopChannel::Stage ShopChannel::CurrentStage() const
@@ -321,7 +317,7 @@ std::optional<Formats::Vector2> ShopChannel::PointerOnPage(int playerIndex) cons
     if (!player || !player->state.pointerIsValid)
         return std::nullopt;
 
-    return PagePainter::PictureToPage(services.display.PointerToCanvas(player->state.pointer));
+    return painter->PictureToPage(services.display.PointerToCanvas(player->state.pointer));
 }
 
 void ShopChannel::DrawWallpaper()

@@ -54,6 +54,7 @@ add_library(Formats STATIC
     U8Archive.cpp
     Vectors.cpp
     WadFile.cpp
+    Yaz0.cpp
 )
 
 # Reading the NAND decrypts and hashes hundreds of megabytes. Without optimization these two files take most of the time of the tests of

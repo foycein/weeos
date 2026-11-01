@@ -1,5 +1,6 @@
-﻿add_library(WeeOSApplication STATIC
+add_library(WeeOSApplication STATIC
     Application.cpp
+    ProgramSound.cpp
     WiiSettingsServices.cpp
 )
 target_link_libraries(WeeOSApplication PUBLIC Boot Channels Graphics Input Ios Platform Settings Sound SystemMenu)

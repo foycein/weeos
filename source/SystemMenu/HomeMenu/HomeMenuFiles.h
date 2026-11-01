@@ -3,6 +3,7 @@
 #include "SystemMenu/MenuFiles.h"
 
 #include "Formats/RgbaImage.h"
+#include "Formats/U8Archive.h"
 #include "Input/RemoteOutputs.h"
 #include "Input/RemoteState.h"
 #include "Layout/LayoutArchive.h"
@@ -10,6 +11,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace SystemMenu
@@ -54,5 +56,11 @@ struct HomeMenuFiles
 
 // Throws a MenuError or a FormatError when a file is missing or damaged.
 HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files);
+
+// The same files of the copy that a channel carries, in the folder that its program opens, for example "./HomeButton3" of its shared
+// content of the HOME menu. The copies of the shared content are packed. The channel offers the first offeredButtonCount big buttons:
+// a channel whose manual cannot be shown leaves out the third one.
+HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, bool arePacked,
+    std::size_t offeredButtonCount);
 
 }

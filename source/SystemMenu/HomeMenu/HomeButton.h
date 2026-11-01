@@ -35,6 +35,9 @@ struct HomeButtonConnections
     // The user chose "Wii Menu": the menu starts again, through the front panel, as a press of RESET does.
     std::function<void()> startReset;
 
+    // The user chose a big button of the HOME menu of a channel, once the picture is black: 0 is "Wii Menu", 1 is "Reset".
+    std::function<void(std::size_t bigButton)> chooseBigButton;
+
     // Called whenever the menu closes, with the settings of the remotes for SYSCONF: BT.SPKV and BT.MOT.
     std::function<void(std::uint8_t speakerVolumeSetting, bool isRumbleOn)> saveRemoteSettings;
 };
@@ -48,6 +51,10 @@ public:
     // Everything given must outlive this object. Nothing is read before Start.
     HomeButton(Display& display, const MenuFiles& files, const InputManager& input, Ios::RemoteService& remotes, CursorManager& cursors,
         const Fader& fader, HomeButtonConnections connections = {});
+
+    // The HOME button of a channel: its files are the channel's own copy of the HOME menu, read by Start.
+    HomeButton(Display& display, std::function<HomeMenuFiles()> readHomeMenuFiles, const InputManager& input, Ios::RemoteService& remotes,
+        CursorManager& cursors, const Fader& fader, HomeButtonConnections connections);
     ~HomeButton();
 
     HomeButton(const HomeButton&) = delete;
@@ -91,7 +98,7 @@ private:
     void DrawBlack();
 
     Display& display;
-    const MenuFiles& menuFiles;
+    std::function<HomeMenuFiles()> readFiles;
     const InputManager& input;
     Ios::RemoteService& remotes;
     CursorManager& cursors;

@@ -29,12 +29,4 @@ Formats::Bytes ReadPackedFile(const Formats::U8Archive& archive, std::string_vie
     return Formats::DecompressLz77(FindFileOrFail(archive, path));
 }
 
-std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents& contents, std::uint16_t homeMenuContentIndex)
-{
-    constexpr std::string_view HandArchivePath = "./HomeButton2/LZ77_homeBtn.arc";
-    Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, homeMenuContentIndex);
-    Formats::Bytes handArchive = ReadPackedFile(homeMenuFiles, HandArchivePath);
-    return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(handArchive));
-}
-
 }

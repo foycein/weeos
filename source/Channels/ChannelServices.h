@@ -10,6 +10,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/SdCard/SdCardService.h"
+#include "Layout/TextFonts.h"
 
 namespace Channels
 {
@@ -33,6 +34,8 @@ private:
     bool isRequested = false;
 };
 
+// Everything a channel gets from the channel system: the same engines that the menu uses, the contents of its own title and the
+// network configuration module of IOS.
 // The storage of the console that a channel may use: the SD card slot and the file system of the NAND (the channel's own data folder).
 struct ChannelStorage
 {
@@ -40,8 +43,6 @@ struct ChannelStorage
     Ios::FileSystemService& fileSystem;
 };
 
-// Everything a channel gets from the channel system: the same engines that the menu uses, the contents of its own title, the
-// network configuration module of IOS and the storage.
 struct ChannelServices
 {
     SystemMenu::Display& display;
@@ -51,8 +52,12 @@ struct ChannelServices
     SystemMenu::SoundRequests& sounds;
     SystemMenu::TitleContents& contents;
     Ios::NetworkConfigService& network;
-    ChannelStorage storage;
     WiiMenuReturn& wiiMenu;
+
+    // The two bitmap fonts of the console, wbf1.brfna and wbf2.brfna, from the channel's shared content of fonts.
+    const Layout::TextFonts& systemFonts;
+
+    ChannelStorage storage;
 };
 
 }

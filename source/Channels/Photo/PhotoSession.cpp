@@ -20,11 +20,21 @@ constexpr std::string_view LayoutArchivePath = "./layout.arc.LZ";
 constexpr std::string_view FontPath = "arc/font/font_photo.brfnt";
 constexpr std::string_view FontName = "font_photo.brfnt";
 
+// The hands are the ones of the channel's HOME Button Menu, HomeButton2: the channels' own hand is a NintendoWare effect that WeeOS
+// cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
+constexpr std::string_view HandArchivePath = "./HomeButton2/LZ77_homeBtn.arc";
+
 // Every text and every picture with words is there once per language: the part of the pane, then T (text), I (picture with
 // words) or M (the hints of the tips window), then the language. The program shows the English ones (US).
 constexpr std::array<char, 3> LanguagePaneMarks = {'T', 'I', 'M'};
 constexpr std::array<std::string_view, 6> OtherLanguages = {"JP", "GE", "FR", "IT", "SP", "DU"};
 constexpr std::string_view ButtonPaneEnding = "B";
+
+std::unique_ptr<Layout::LayoutArchive> ReadHands(SystemMenu::TitleContents& contents)
+{
+    Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, HomeMenuContentIndex);
+    return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(ReadPackedFile(homeMenuFiles, HandArchivePath)));
+}
 
 bool IsPaneOfAnotherLanguage(std::string_view paneName)
 {
@@ -52,7 +62,7 @@ PhotoSession::PhotoSession(ChannelServices& channelServices)
     services.display.SetTextFonts(fonts.Fonts());
 
     layoutArchive = std::make_unique<Layout::LayoutArchive>(std::move(layoutFiles));
-    cursors = std::make_unique<SystemMenu::CursorManager>(services.display, ReadHandArchive(services.contents, HomeMenuContentIndex));
+    cursors = std::make_unique<SystemMenu::CursorManager>(services.display, ReadHands(services.contents));
 }
 
 ChannelServices& PhotoSession::Services()

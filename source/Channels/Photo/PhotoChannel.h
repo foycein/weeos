@@ -18,6 +18,7 @@ public:
 
     void Update() override;
     void Draw() override;
+    SystemMenu::CursorManager& Hands() override;
 
     const PhotoScreen& CurrentScreen() const;
     PhotoSession& Session();

@@ -2,7 +2,10 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
+#include "Channels/NativeChannels.h"
 
+#include "SystemMenu/HomeMenu/HomeButton.h"
+#include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/TitleLaunchRequest.h"
 
 #include "Graphics/GraphicsDevice.h"
@@ -11,22 +14,20 @@
 #include "Ios/Title/TitleId.h"
 #include "Platform/ScreenShape.h"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 
 namespace Channels
 {
 
-// The HOME button of the Wii Remote and of the Classic Controller.
-constexpr SystemMenu::ButtonSet HomeButtons = {Input::RemoteButtons::Home, Input::ClassicButtons::Home};
-
 // Runs the channel whose title the console has entered, as MenuSystem runs the menu: it makes the engines, the channel's program
 // (NativeChannels) and runs one step and one picture at a time. When the channel asks for the Wii Menu, the picture fades to black
 // and the System Menu is asked for.
 //
-// The POWER button switches the console off and the RESET button starts it again (CHN-27). The HOME button returns to the Wii Menu
-// as the channel's own buttons do, while the channel allows it. The original opens the HOME Button Menu there,
-// whose "Wii Menu" does the same; WeeOS has no HOME Button Menu yet (docs/audit/Channels.md).
+// HOME opens the HOME Button Menu of the channel's own files, as the HBM library inside every channel program does. While it is open
+// the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again (CHN-16).
+// The POWER button switches the console off and the RESET button starts it again (CHN-27).
 class ChannelSystem
 {
 public:
@@ -44,16 +45,24 @@ public:
     // Draws the picture into the picture that is open, for example an offscreen picture.
     void DrawScene();
 
-    // The title that the channel asked for in the steps since the last call: the System Menu, once the picture is black.
+    // The title that the channel asked for in the steps since the last call: the System Menu, or the channel itself after "Reset".
     std::optional<Ios::TitleId> TakeTitleToLaunch();
 
     ChannelServices& Services();
     Channel& RunningChannel();
+    bool IsHomeMenuOpen() const;
 
 private:
+    void LoadSystemFonts(SystemMenu::TitleContents& contents);
+    SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
+    SystemMenu::HomeButtonConnections ConnectHomeButton();
+    void LeaveThroughHomeMenu(std::size_t bigButton);
+    void FollowHomeButtonPermission();
     void AnswerFrontPanel();
     void LeaveWhenAsked();
 
+    Ios::TitleId runningTitle;
+    ChannelSharedFiles sharedFiles;
     Ios::PowerService& power;
     SystemMenu::Display display;
     SystemMenu::MenuClock clock;
@@ -61,8 +70,10 @@ private:
     SystemMenu::InputManager input;
     SystemMenu::SoundRequests sounds;
     WiiMenuReturn wiiMenu;
+    SystemMenu::MenuFonts systemFonts;
     ChannelServices services;
     std::unique_ptr<Channel> channel;
+    std::unique_ptr<SystemMenu::HomeButton> homeButton;
     SystemMenu::TitleLaunchRequest titleLaunch;
     bool hasAskedForMenu = false;
 };
