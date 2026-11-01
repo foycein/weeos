@@ -37,6 +37,14 @@ Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
     return *pane;
 }
 
+Layout::LiveMaterial& MenuLayout::MaterialOf(const Formats::Pane& pane)
+{
+    if (!pane.picture)
+        throw MenuError(std::format("The pane {} of the layout {} has no picture", pane.name, layoutName));
+
+    return layout.MaterialAt(pane.picture->materialIndex);
+}
+
 void MenuLayout::SetText(std::string_view paneName, std::u16string_view text)
 {
     Formats::Pane& pane = PaneNamed(paneName);
@@ -50,6 +58,25 @@ std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::str
 {
     animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, layout.PanesOfGroup(groupName)));
     return animations.size() - 1;
+}
+
+std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::string_view groupName)
+{
+    Layout::PlaybackMode mode = ModeOfAnimationFile(animationName);
+    return BindAnimation(animationName, groupName, mode);
+}
+
+std::size_t MenuLayout::BindAnimationToAllPanes(const std::string& animationName)
+{
+    Layout::PlaybackMode mode = ModeOfAnimationFile(animationName);
+    animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, std::vector<Formats::Pane*>{&layout.RootPane()}));
+    return animations.size() - 1;
+}
+
+Layout::PlaybackMode MenuLayout::ModeOfAnimationFile(const std::string& animationName) const
+{
+    bool isLooping = archive.ReadAnimation(animationName).isLooping;
+    return isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
 }
 
 std::size_t MenuLayout::BindAnimationToPane(const std::string& animationName, std::string_view paneName, Layout::PlaybackMode mode)
@@ -72,6 +99,11 @@ void MenuLayout::StopAnimation(std::size_t slot)
 bool MenuLayout::IsAnimationPlaying(std::size_t slot) const
 {
     return animations.at(slot)->IsPlaying();
+}
+
+void MenuLayout::ShowAnimationFrame(std::size_t slot, float frame)
+{
+    animations.at(slot)->ShowFrame(frame);
 }
 
 void MenuLayout::ShowLastFrameOfAnimation(std::size_t slot)
