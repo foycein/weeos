@@ -33,6 +33,7 @@ VersionHeader = RepositoryFolder / "source" / "SystemMenu" / "WeeOSVersion.h"
 ProgramFolderName = "WeeOS"
 SetupFileName = "weeossetup.exe"
 SourceFolderName = "Source"
+ReadmeFileName = "README.md"
 ToReleaseOption = "--to-release"
 
 # What WeeOS.exe needs beside it, in the build folder of the program (source/WeeOS/CMakeLists.txt).
@@ -131,11 +132,31 @@ def WriteCleanSource(sourceFolder):
         sourceFiles.extractall(sourceFolder, filter="data")
 
 
-# RELEASE holds only what this script puts there. Anything else in it stops the copy, so nothing of the owner's is replaced.
+def WriteReadme(releaseFolder, version):
+    zipName = ZipPathOf(Path(), version).name
+    text = (f"# WeeOS {version}
+
+"
+            "A hand-written reconstruction of the Wii system for the PC.
+
+"
+            f"- `{SetupFileName}` installs WeeOS (by default into Programs\WeeOS of your local application data) with shortcuts and an uninstaller.
+"
+            f"- `{zipName}` is the same WeeOS as a portable folder: unpack it anywhere and start `WeeOS.exe`.
+"
+            f"- `{ProgramFolderName}` is that folder, unpacked.
+"
+            f"- `{SourceFolderName}` is the source code it was built from.
+")
+    (releaseFolder / ReadmeFileName).write_text(text, encoding="utf-8")
+
+
+# RELEASE holds only what this script puts there (and the README that waited for it). Anything else in it stops the copy, so nothing
+# of the owner's is replaced.
 def CopyToRelease(version):
     RequireCommittedWork()
     releaseFolder = FindReleaseFolder()
-    releaseNames = [SourceFolderName, ProgramFolderName, ZipPathOf(Path(), version).name, SetupFileName]
+    releaseNames = [SourceFolderName, ProgramFolderName, ZipPathOf(Path(), version).name, SetupFileName, ReadmeFileName]
 
     releaseFolder.mkdir(exist_ok=True)
     for path in releaseFolder.iterdir():
@@ -148,6 +169,7 @@ def CopyToRelease(version):
     shutil.copytree(StagingFolder / ProgramFolderName, releaseFolder / ProgramFolderName)
     shutil.copy2(ZipPathOf(StagingFolder, version), releaseFolder)
     shutil.copy2(StagingFolder / SetupFileName, releaseFolder)
+    WriteReadme(releaseFolder, version)
     print(f"Copied the release into {releaseFolder}")
 
 
