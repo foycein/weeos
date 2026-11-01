@@ -11,6 +11,7 @@ namespace SystemMenu
 {
 
 class CursorManager;
+struct DataManagementServices;
 class DialogManager;
 class Display;
 class Fader;
@@ -49,6 +50,9 @@ struct MenuServices
 
     // The POWER and RESET buttons. A screen can press them too, and see whether one was pressed.
     FrontPanel& frontPanel;
+
+    // The titles, the NAND, the SD card and the identity for Data Management and the SD Card Menu. Nothing when the menu runs without IOS.
+    DataManagementServices* dataManagement = nullptr;
 };
 
 }

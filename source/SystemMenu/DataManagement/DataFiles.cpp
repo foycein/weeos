@@ -72,19 +72,19 @@ Ios::NandPath MetaFolderPath(Ios::TitleId titleId)
     return MakeNandPath(std::format("/meta/{:08x}/{:08x}", titleId.highPart, titleId.lowPart));
 }
 
-NandFiles::NandFiles(Ios::FileSystemService& nandFileSystem, const Ios::Caller& nandCaller)
+NandAccess::NandAccess(Ios::FileSystemService& nandFileSystem, const Ios::Caller& nandCaller)
     : fileSystem(nandFileSystem)
     , caller(nandCaller)
 {
 }
 
-bool NandFiles::Exists(const Ios::NandPath& path) const
+bool NandAccess::Exists(const Ios::NandPath& path) const
 {
     return fileSystem.GetAttributes(path, caller).Succeeded();
 }
 
 // Only a directory has a usage.
-Ios::EntryKind NandFiles::KindOf(const Ios::NandPath& path) const
+Ios::EntryKind NandAccess::KindOf(const Ios::NandPath& path) const
 {
     if (fileSystem.GetDirectoryUsage(path).Succeeded())
         return Ios::EntryKind::Directory;
@@ -92,17 +92,17 @@ Ios::EntryKind NandFiles::KindOf(const Ios::NandPath& path) const
     return Ios::EntryKind::File;
 }
 
-Ios::EntryAttributes NandFiles::AttributesOf(const Ios::NandPath& path) const
+Ios::EntryAttributes NandAccess::AttributesOf(const Ios::NandPath& path) const
 {
     return Require(fileSystem.GetAttributes(path, caller), std::format("read the attributes of {}", path.ToString()));
 }
 
-std::vector<std::string> NandFiles::List(const Ios::NandPath& directory) const
+std::vector<std::string> NandAccess::List(const Ios::NandPath& directory) const
 {
     return Require(fileSystem.ListDirectory(directory, caller), std::format("list {}", directory.ToString()));
 }
 
-Formats::Bytes NandFiles::ReadFile(const Ios::NandPath& path) const
+Formats::Bytes NandAccess::ReadFile(const Ios::NandPath& path) const
 {
     std::string what = std::format("read {}", path.ToString());
     Ios::OpenFile file = Require(fileSystem.Open(path, Ios::OpenMode::Read, caller), what);
@@ -110,7 +110,7 @@ Formats::Bytes NandFiles::ReadFile(const Ios::NandPath& path) const
     return Require(file.Read(statistics.length), what);
 }
 
-void NandFiles::WriteNewFile(const Ios::NandPath& path, Formats::ByteView bytes, const Ios::EntryPermissions& permissions, std::uint8_t flags)
+void NandAccess::WriteNewFile(const Ios::NandPath& path, Formats::ByteView bytes, const Ios::EntryPermissions& permissions, std::uint8_t flags)
 {
     std::string what = std::format("write {}", path.ToString());
     Require(fileSystem.CreateFile(path, permissions, flags, caller), what);
@@ -119,19 +119,19 @@ void NandFiles::WriteNewFile(const Ios::NandPath& path, Formats::ByteView bytes,
     Require(file.Close(), what);
 }
 
-void NandFiles::CreateDirectory(const Ios::NandPath& path, const Ios::EntryPermissions& permissions, std::uint8_t flags)
+void NandAccess::CreateDirectory(const Ios::NandPath& path, const Ios::EntryPermissions& permissions, std::uint8_t flags)
 {
     Require(fileSystem.CreateDirectory(path, permissions, flags, caller), std::format("make {}", path.ToString()));
 }
 
-void NandFiles::SetPermissions(const Ios::NandPath& path, const Ios::EntryPermissions& permissions)
+void NandAccess::SetPermissions(const Ios::NandPath& path, const Ios::EntryPermissions& permissions)
 {
     Ios::EntryAttributes attributes = AttributesOf(path);
     attributes.permissions = permissions;
     Require(fileSystem.SetAttributes(path, attributes, caller), std::format("set the rights of {}", path.ToString()));
 }
 
-void NandFiles::DeleteIfPresent(const Ios::NandPath& path)
+void NandAccess::DeleteIfPresent(const Ios::NandPath& path)
 {
     if (!Exists(path))
         return;
@@ -139,7 +139,7 @@ void NandFiles::DeleteIfPresent(const Ios::NandPath& path)
     Require(fileSystem.DeleteEntry(path, caller), std::format("delete {}", path.ToString()));
 }
 
-void NandFiles::Move(const Ios::NandPath& from, const Ios::NandPath& to)
+void NandAccess::Move(const Ios::NandPath& from, const Ios::NandPath& to)
 {
     Require(fileSystem.RenameEntry(from, to, caller), std::format("move {} to {}", from.ToString(), to.ToString()));
 }

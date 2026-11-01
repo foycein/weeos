@@ -60,7 +60,7 @@ bool IsTopLevelEntryLeftOut(std::string_view name)
     return name == NoCopyFolder || name == BannerFile;
 }
 
-void CollectEntries(const NandFiles& files, const Ios::NandPath& folder, const std::string& namePrefix, std::vector<SaveEntry>& entries)
+void CollectEntries(const NandAccess& files, const Ios::NandPath& folder, const std::string& namePrefix, std::vector<SaveEntry>& entries)
 {
     bool isTopLevel = namePrefix.empty();
     for (const std::string& name : files.List(folder))
@@ -198,7 +198,7 @@ Formats::ByteView TakePart(Formats::ByteView bytes, std::size_t offset, std::siz
 
 }
 
-Formats::Bytes WriteSaveArchive(DataManagementServices& services, Ios::TitleId titleId, const NandFiles& titleFiles,
+Formats::Bytes WriteSaveArchive(DataManagementServices& services, Ios::TitleId titleId, const NandAccess& titleFiles,
     const std::array<Formats::Byte, Formats::TransferIdSize>& transferId)
 {
     std::vector<SaveEntry> entries;
@@ -334,7 +334,7 @@ void BecomeSystemMenuAgain(Ios::TitleService& titles)
     titles.BecomeTitle(Ios::SystemMenuTitleId);
 }
 
-std::array<Formats::Byte, Formats::TransferIdSize> ReadTransferId(const NandFiles& menuFiles)
+std::array<Formats::Byte, Formats::TransferIdSize> ReadTransferId(const NandAccess& menuFiles)
 {
     std::array<Formats::Byte, Formats::TransferIdSize> transferId = {};
 

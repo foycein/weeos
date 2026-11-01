@@ -3,6 +3,8 @@
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
+#include "SystemMenu/DataManagement/DataManagementServices.h"
+#include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
@@ -39,9 +41,12 @@ public:
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
+        , dataManagement{iosServices.GetTitles(), iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
+              SystemMenu::ReadMenuCertificates(menu.Services().program)}
     {
         virtualRemote.SetScreenShape(PictureShape);
         menu.UsePhysicalKeyboard(iosServices.GetKeyboard());
+        menu.Services().dataManagement = &dataManagement;
         window.SetListener(&hostKeys);
     }
 
@@ -71,6 +76,7 @@ private:
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
+    SystemMenu::DataManagementServices dataManagement;
 };
 
 Application::Application(const Ios::IosFolders& iosFolders)

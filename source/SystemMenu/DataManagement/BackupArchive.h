@@ -19,7 +19,7 @@ namespace SystemMenu
 // The save data of a title: every file and directory of its data folder, read as the title, the directories before what they hold.
 // The directory "nocopy" at the top and the file banner.bin are left out (the banner goes into the header of data.bin).
 // The data of the files is encrypted with the SD key. The transfer id is the one of this console (ReadTransferId).
-Formats::Bytes WriteSaveArchive(DataManagementServices& services, Ios::TitleId titleId, const NandFiles& titleFiles,
+Formats::Bytes WriteSaveArchive(DataManagementServices& services, Ios::TitleId titleId, const NandAccess& titleFiles,
     const std::array<Formats::Byte, Formats::TransferIdSize>& transferId);
 
 // A channel: its title metadata and the contents that only it has, as the title service exports them.
@@ -67,6 +67,6 @@ void BecomeSystemMenuAgain(Ios::TitleService& titles);
 
 // The first bytes of /shared2/succession/transfer.id, or zeros when the console has no such file.
 // Save data in a directory "notransfer" goes back only to the console with the same bytes.
-std::array<Formats::Byte, Formats::TransferIdSize> ReadTransferId(const NandFiles& menuFiles);
+std::array<Formats::Byte, Formats::TransferIdSize> ReadTransferId(const NandAccess& menuFiles);
 
 }

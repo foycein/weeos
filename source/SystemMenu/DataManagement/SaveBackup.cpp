@@ -33,7 +33,7 @@ Ios::NandPath BannerPath(Ios::TitleId titleId)
     return ChildOf(Ios::DataFolderPath(titleId), BannerFileName);
 }
 
-bool HasEntriesIn(const NandFiles& titleFiles, const Ios::NandPath& dataFolder, std::string_view folderName)
+bool HasEntriesIn(const NandAccess& titleFiles, const Ios::NandPath& dataFolder, std::string_view folderName)
 {
     Ios::NandPath folder = ChildOf(dataFolder, folderName);
     if (!titleFiles.Exists(folder) || titleFiles.KindOf(folder) != Ios::EntryKind::Directory)
@@ -59,11 +59,11 @@ SaveCopyReport CopyToCard(DataManagementServices& services, Ios::TitleId titleId
     Ios::SdPath file = SaveBackupPath(titleId.lowPart);
     PrepareBackupFile(services.sdCard, file, Formats::SaveBackupHeaderSize);
 
-    NandFiles menuFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess menuFiles(services.fileSystem, services.titles.GetCaller());
     std::array<Formats::Byte, Formats::TransferIdSize> transferId = ReadTransferId(menuFiles);
 
     Require(services.titles.BecomeTitle(titleId), std::format("become the title {}", titleId.ToString()));
-    NandFiles titleFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess titleFiles(services.fileSystem, services.titles.GetCaller());
 
     Formats::Bytes banner = titleFiles.ReadFile(BannerPath(titleId));
     Formats::SaveBanner parsedBanner = ReadBannerOrFail(banner);
@@ -149,7 +149,7 @@ Ios::EntryPermissions PermissionsWhileWriting(std::uint8_t permissionsByte)
     return permissions;
 }
 
-void PutFilesTogether(const DataManagementServices& services, NandFiles& titleFiles, const Ios::NandPath& workFolder,
+void PutFilesTogether(const DataManagementServices& services, NandAccess& titleFiles, const Ios::NandPath& workFolder,
     const std::vector<const ArchiveFile*>& files)
 {
     for (const ArchiveFile* file : files)
@@ -170,7 +170,7 @@ void PutFilesTogether(const DataManagementServices& services, NandFiles& titleFi
     }
 }
 
-void MoveIntoDataFolder(NandFiles& titleFiles, const Ios::NandPath& workFolder, const Ios::NandPath& dataFolder)
+void MoveIntoDataFolder(NandAccess& titleFiles, const Ios::NandPath& workFolder, const Ios::NandPath& dataFolder)
 {
     for (const std::string& name : titleFiles.List(workFolder))
         titleFiles.Move(ChildOf(workFolder, name), ChildOf(dataFolder, name));
@@ -210,14 +210,14 @@ SaveRestoreReport CopyToNand(DataManagementServices& services, std::uint32_t low
     if (archive.header.titleId != header.titleId)
         throw DataError(DataResult::DamagedBackup, "the archive belongs to another title than the header");
 
-    NandFiles menuFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess menuFiles(services.fileSystem, services.titles.GetCaller());
     std::array<Formats::Byte, Formats::TransferIdSize> transferId = ReadTransferId(menuFiles);
 
     Ios::TitleId titleId = Ios::TitleId::FromValue(header.titleId);
     if (services.titles.BecomeTitle(titleId).Failed())
         throw DataError(DataResult::TitleNotInstalled, std::format("the title {} is not on the NAND", titleId.ToString()));
 
-    NandFiles titleFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess titleFiles(services.fileSystem, services.titles.GetCaller());
     if (titleFiles.Exists(BannerPath(titleId)))
         throw DataError(DataResult::AlreadyThere, "the NAND has save data of the title");
 

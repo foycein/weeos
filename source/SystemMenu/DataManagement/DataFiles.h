@@ -54,11 +54,11 @@ Ios::NandPath ChildOf(const Ios::NandPath& directory, std::string_view name);
 Ios::NandPath MetaFolderPath(Ios::TitleId titleId);
 
 // The NAND, as one caller sees it.
-class NandFiles
+class NandAccess
 {
 public:
     // The file system must outlive this object.
-    NandFiles(Ios::FileSystemService& fileSystem, const Ios::Caller& caller);
+    NandAccess(Ios::FileSystemService& fileSystem, const Ios::Caller& caller);
 
     bool Exists(const Ios::NandPath& path) const;
     Ios::EntryKind KindOf(const Ios::NandPath& path) const;

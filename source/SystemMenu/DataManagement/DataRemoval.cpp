@@ -66,7 +66,7 @@ void EraseChannel(DataManagementServices& services, Ios::TitleId titleId)
     if (!IsChannelKind(titleId))
         throw DataError(DataResult::Failed, std::format("{} is no channel", titleId.ToString()));
 
-    NandFiles menuFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess menuFiles(services.fileSystem, services.titles.GetCaller());
     menuFiles.DeleteIfPresent(MetaFolderPath(titleId));
     Require(services.titles.DeleteTitleContents(titleId), std::format("delete the contents of {}", titleId.ToString()));
     DeleteTitleWhenNothingIsLeft(services, titleId);
@@ -75,7 +75,7 @@ void EraseChannel(DataManagementServices& services, Ios::TitleId titleId)
 void EraseSaveData(DataManagementServices& services, Ios::TitleId titleId)
 {
     Require(services.titles.BecomeTitle(titleId), std::format("become the title {}", titleId.ToString()));
-    NandFiles titleFiles(services.fileSystem, services.titles.GetCaller());
+    NandAccess titleFiles(services.fileSystem, services.titles.GetCaller());
 
     Ios::NandPath dataFolder = Ios::DataFolderPath(titleId);
     titleFiles.DeleteIfPresent(ChildOf(dataFolder, BannerFileName));
