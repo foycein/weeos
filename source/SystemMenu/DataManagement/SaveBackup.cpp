@@ -1,12 +1,11 @@
 #include "SystemMenu/DataManagement/SaveBackup.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/TitleCleanup.h"
 #include "SystemMenu/DataManagement/BackupArchive.h"
 #include "SystemMenu/DataManagement/DataFiles.h"
 #include "SystemMenu/DataManagement/NandRoom.h"
 #include "SystemMenu/DataManagement/TitleKinds.h"
-
-#include "SystemMenu/BackgroundServices/NandFileAccess.h"
-#include "SystemMenu/BackgroundServices/TitleCleanup.h"
 
 #include "Formats/FormatError.h"
 #include "Formats/SaveBanner.h"

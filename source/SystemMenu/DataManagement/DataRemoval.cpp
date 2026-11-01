@@ -1,13 +1,11 @@
 #include "SystemMenu/DataManagement/DataRemoval.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/TitleCleanup.h"
 #include "SystemMenu/DataManagement/BackupArchive.h"
 #include "SystemMenu/DataManagement/ChannelBackup.h"
 #include "SystemMenu/DataManagement/DataFiles.h"
 #include "SystemMenu/DataManagement/TitleKinds.h"
-
-#include "SystemMenu/BackgroundServices/NandFileAccess.h"
-#include "SystemMenu/BackgroundServices/TitleCleanup.h"
-
 #include "Ios/Title/TitlePaths.h"
 
 #include <algorithm>

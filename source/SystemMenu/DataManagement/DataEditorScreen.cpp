@@ -14,6 +14,7 @@
 #include "Text/MessageCatalog.h"
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <string_view>
 
