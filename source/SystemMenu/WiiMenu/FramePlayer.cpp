@@ -1,11 +1,20 @@
 #include "SystemMenu/WiiMenu/FramePlayer.h"
 
+#include <utility>
+
 namespace SystemMenu
 {
 
-FramePlayer::FramePlayer(MenuLayout& layoutToAnimate, std::size_t animationSlot)
+FramePlayer::FramePlayer(MenuLayout& layoutToAnimate, const Layout::LayoutArchive& archive, std::string_view animationName,
+    std::vector<Formats::Pane*> panesToAnimate)
     : layout(layoutToAnimate)
-    , slot(animationSlot)
+    , animation(archive.ReadAnimation(std::string(animationName)))
+    , panes(std::move(panesToAnimate))
+{
+}
+
+FramePlayer::FramePlayer(MenuLayout& layoutToAnimate, const Layout::LayoutArchive& archive, std::string_view animationName)
+    : FramePlayer(layoutToAnimate, archive, animationName, {&layoutToAnimate.Live().RootPane()})
 {
 }
 
@@ -23,7 +32,7 @@ void FramePlayer::Show(float frameToShow)
 {
     frame = frameToShow;
     isPlaying = false;
-    layout.ShowAnimationFrame(slot, frame);
+    ShowCurrentFrame();
 }
 
 bool FramePlayer::IsPlaying() const
@@ -34,6 +43,11 @@ bool FramePlayer::IsPlaying() const
 float FramePlayer::Frame() const
 {
     return frame;
+}
+
+float FramePlayer::LastFrameOfTheFile() const
+{
+    return static_cast<float>(animation.frameCount) - 1;
 }
 
 void FramePlayer::Step()
@@ -50,7 +64,7 @@ void FramePlayer::Step()
     if (frame > last)
         frame = last;
 
-    layout.ShowAnimationFrame(slot, frame);
+    ShowCurrentFrame();
 }
 
 void FramePlayer::Start(float firstFrame, float lastFrame, bool shouldLoop)
@@ -60,7 +74,14 @@ void FramePlayer::Start(float firstFrame, float lastFrame, bool shouldLoop)
     frame = firstFrame;
     isLooping = shouldLoop;
     isPlaying = firstFrame < lastFrame;
-    layout.ShowAnimationFrame(slot, frame);
+    ShowCurrentFrame();
+}
+
+// A new player stands at frame 0 and jumps to the frame in one go.
+void FramePlayer::ShowCurrentFrame()
+{
+    player.emplace(layout.Live(), animation, Layout::PlaybackMode::PlayOnce, panes);
+    player->Advance(frame);
 }
 
 }

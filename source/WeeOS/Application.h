@@ -10,6 +10,7 @@
 #include "Platform/Window.h"
 #include "SystemMenu/MenuSystem.h"
 #include "SystemMenu/OwnTitleContents.h"
+#include "SystemMenu/WiiMenu/IosMenuConsole.h"
 
 #include <optional>
 
@@ -50,6 +51,7 @@ private:
     Ios::PcKeyboard keyboard;
     Graphics::VulkanGraphicsDevice device;
     SystemMenu::OwnTitleContents titleContents;
+    SystemMenu::IosMenuConsole wiiMenuConsole;
     SystemMenu::MenuSystem menu;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;

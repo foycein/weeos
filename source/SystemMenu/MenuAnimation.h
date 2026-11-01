@@ -23,10 +23,13 @@ public:
     // Plays from the first frame. An animation that plays already starts again.
     void Start();
 
-    bool IsPlaying() const;
+    // Shows the last frame at once and stands still. The animation is not playing then.
+    void ShowLastFrame();
 
-    // Shows one frame and plays nothing, for an animation that a value drives, like a progress bar.
-    void ShowFrame(float frame);
+    // The animation stops where it is. The panes keep what it did to them.
+    void Stop();
+
+    bool IsPlaying() const;
 
     // One frame further, if the animation is playing.
     void Step();

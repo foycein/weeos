@@ -60,12 +60,11 @@ void BottomBarScreen::Build()
 
     for (std::string_view group : GroupsOfTheBar)
     {
-        std::size_t slot = layout->BindAnimation(std::string(AnimationName), group);
-        stillGroups.push_back(std::make_unique<FramePlayer>(*layout, slot));
+        stillGroups.push_back(std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(group)));
         stillGroups.back()->Show(FrameOfTheWiiMenu);
     }
 
-    arrowLoop = std::make_unique<FramePlayer>(*layout, layout->BindAnimation(std::string(AnimationName), ArrowLoopGroup));
+    arrowLoop = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(ArrowLoopGroup));
     arrowLoop->Loop(FirstFrameOfTheArrowLoop, LastFrameOfTheArrowLoop);
 
     ShowPageArrows(false, false);

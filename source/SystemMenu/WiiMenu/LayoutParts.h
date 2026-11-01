@@ -4,6 +4,8 @@
 #include "SystemMenu/MenuLayout.h"
 
 #include "Formats/Vectors.h"
+#include "Layout/AnimationPlayer.h"
+#include "Layout/LayoutArchive.h"
 #include "Layout/PanePlacement.h"
 
 #include <functional>
@@ -50,7 +52,7 @@ void MoveLayoutTo(MenuLayout& layout, Formats::Vector2 place);
 // A picture shows the first texture of another picture, as the digits of the clock do.
 void CopyFirstTexture(MenuLayout& layout, std::string_view toPictureName, std::string_view fromPictureName);
 
-// The width of the text of a text box, in layout units, with the fonts of the display. Nothing is measured while the display has none.
-float MeasureTextWidth(MenuLayout& layout, Display& display, std::string_view textBoxName);
+// The animations of a layout play as their file says: once, or again and again.
+Layout::PlaybackMode ModeOfAnimationFile(const Layout::LayoutArchive& archive, std::string_view animationName);
 
 }

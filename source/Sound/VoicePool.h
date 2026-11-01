@@ -38,11 +38,11 @@ public:
     std::size_t ActiveVoiceCount() const;
 
     // Moves every voice on to the next sound frame.
-    void BeginFrame();
+    void BeginFrame(SoundMode mode);
 
-    // Adds every voice to the outputs. See Voice::Mix.
-    void Mix(const Resampler& resampler, double deviceSampleRate, std::span<float> left, std::span<float> right,
-        std::size_t firstSampleInFrame, std::size_t frameLength);
+    // Adds every voice to the buffers. See Voice::Mix.
+    void Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
+        std::size_t frameLength);
 
 private:
     struct Slot

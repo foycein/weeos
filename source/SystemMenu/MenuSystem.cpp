@@ -7,20 +7,20 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, Ios::RemoteService& remoteService,
-    Platform::ScreenShape screenShape, MenuConsole& console)
+    Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole)
     : display(device, screenShape)
     , files(titleContents)
+    , fonts(device, titleContents, files)
     , messages(files.OpenEnglishMessages())
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
-    , fonts(device, titleContents, files)
-    , wiiMenu(console)
+    , wiiMenu(wiiMenuConsole)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
-    , services{display, files, messages, clock, fader, input, cursors, screens, wiiMenu}
+    , keyboard(display, files, messages, clock, input, sounds)
+    , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, wiiMenu}
 {
-    display.SetTextFonts(&fonts.Fonts());
-    remoteService.SetSensorBarPosition(wiiMenu.settings.sensorBarPosition);
+    display.SetTextFonts(fonts.Fonts());
 
     FirstScreen firstScreen = ChooseFirstScreen();
     screens.Start(firstScreen.screen, firstScreen.argument);
@@ -28,9 +28,11 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
 
 void MenuSystem::Update()
 {
+    sounds.StartNextStep();
     clock.Advance();
     input.Poll();
     screens.Update();
+    keyboard.Update();
     cursors.Update(input);
     fader.Calculate();
 }
@@ -44,8 +46,14 @@ void MenuSystem::Draw()
 void MenuSystem::DrawScene()
 {
     screens.Draw();
+    keyboard.Draw();
     cursors.Draw();
     fader.Draw();
+}
+
+void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
+{
+    keyboard.UsePhysicalKeyboard(keyboardService);
 }
 
 MenuServices& MenuSystem::Services()

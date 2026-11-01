@@ -34,6 +34,10 @@ struct Instrument
 struct BankFile
 {
     std::vector<Instrument> instruments;
+
+    // A bank of version 1.1 describes its waves itself, and the wave data holds their samples one after the other. A bank of
+    // version 1.2 describes none: its wave data is a wave archive (RWAR), and the notes number its waves.
+    bool describesItsWaves = true;
     std::vector<WaveInfo> waves;
 
     // The note that the instrument plays for the key and velocity, both 0 to 127.
@@ -42,5 +46,8 @@ struct BankFile
 };
 
 BankFile ReadBankFile(Formats::ByteView bytes);
+
+// Fails when a note plays a wave that is not among the waveCount waves.
+void CheckThatTheWavesExist(const BankFile& bankFile, std::size_t waveCount);
 
 }

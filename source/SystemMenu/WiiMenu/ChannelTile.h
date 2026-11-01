@@ -75,7 +75,7 @@ public:
 private:
     ChannelTile(Display& display, TileKind kind, std::unique_ptr<MenuLayout> picture, const TileArchives& archives);
 
-    void PlayAnimation(const std::string& animationName);
+    void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
     void AddBalloon(const TileArchives& archives, const std::u16string& name);
 
     Display& display;

@@ -42,7 +42,7 @@ Balloon::Balloon(Display& menuDisplay, const Layout::LayoutArchive& archive)
     : display(menuDisplay)
     , layout(std::make_unique<MenuLayout>(menuDisplay, archive, std::string(LayoutName)))
 {
-    animationSlot = layout->BindAnimationToAllPanes(std::string(AnimationName));
+    growing = std::make_unique<FramePlayer>(*layout, archive, AnimationName);
     BecomeHidden();
 }
 
@@ -52,7 +52,7 @@ void Balloon::SetText(std::u16string_view newText)
     layout->SetText(TextPane, text);
     ShortenUntilItFits();
 
-    float textWidth = MeasureTextWidth(*layout, display, TextPane);
+    float textWidth = TextWidth();
     balloonWidth = std::max(textWidth + SpaceAroundTheText, LeastWidth);
     layout->PaneNamed(BasePane).width = balloonWidth;
     layout->PaneNamed(ShadePane).width = balloonWidth;
@@ -61,11 +61,20 @@ void Balloon::SetText(std::u16string_view newText)
 void Balloon::ShortenUntilItFits()
 {
     std::u16string shortened = text;
-    while (!shortened.empty() && MeasureTextWidth(*layout, display, TextPane) > WidestText)
+    while (!shortened.empty() && TextWidth() > WidestText)
     {
         shortened.pop_back();
         layout->SetText(TextPane, shortened + std::u16string(Ellipsis));
     }
+}
+
+// The width of the words with the fonts of the menu. A display without fonts draws no words, and they take no room.
+float Balloon::TextWidth()
+{
+    if (display.TextFonts() == nullptr)
+        return 0;
+
+    return layout->LayOutText(TextPane).block.width;
 }
 
 void Balloon::PlaceBelow(Formats::Vector2 targetMiddle, float targetHalfHeight)
@@ -172,7 +181,7 @@ void Balloon::Draw()
 
 void Balloon::ShowFrameOfTheAnimation()
 {
-    layout->ShowAnimationFrame(animationSlot, animationFrame);
+    growing->Show(animationFrame);
 }
 
 }

@@ -5,7 +5,6 @@
 #include "Layout/LayoutDrawer.h"
 #include "Layout/PaneRectangle.h"
 #include "Layout/TransformMatrix.h"
-#include "Text/TextStyle.h"
 
 #include <format>
 
@@ -17,6 +16,15 @@ namespace
 
 constexpr std::string_view RootPaneName = "RootPane";
 constexpr std::size_t FirstTextureMap = 0;
+
+Layout::LiveMaterial& MaterialOfPicture(MenuLayout& layout, std::string_view pictureName)
+{
+    Formats::Pane& pane = layout.PaneNamed(pictureName);
+    if (!pane.picture)
+        throw MenuError(std::format("The pane {} is not a picture", pictureName));
+
+    return layout.Live().MaterialAt(pane.picture->materialIndex);
+}
 
 }
 
@@ -69,7 +77,7 @@ void DrawPanes(MenuLayout& layout, Display& display, const PlacedPanes& placedPa
     for (const Layout::PanePlacement& placement : placedPanes.InDrawingOrder())
     {
         if (isDrawn(*placement.pane))
-            Layout::DrawPlacedPane(display.Device(), layout.Live(), placement, display.GetTextFonts());
+            Layout::DrawPlacedPane(display.Device(), layout.Live(), placement, display.TextFonts());
     }
 }
 
@@ -80,28 +88,18 @@ void MoveLayoutTo(MenuLayout& layout, Formats::Vector2 place)
 
 void CopyFirstTexture(MenuLayout& layout, std::string_view toPictureName, std::string_view fromPictureName)
 {
-    Layout::LiveMaterial& source = layout.MaterialOf(layout.PaneNamed(fromPictureName));
-    Layout::LiveMaterial& target = layout.MaterialOf(layout.PaneNamed(toPictureName));
+    Layout::LiveMaterial& source = MaterialOfPicture(layout, fromPictureName);
+    Layout::LiveMaterial& target = MaterialOfPicture(layout, toPictureName);
     if (source.textureNames.empty() || target.textureNames.empty())
         throw MenuError(std::format("The pictures {} and {} need a texture each", fromPictureName, toPictureName));
 
     target.textureNames[FirstTextureMap] = source.textureNames[FirstTextureMap];
 }
 
-float MeasureTextWidth(MenuLayout& layout, Display& display, std::string_view textBoxName)
+Layout::PlaybackMode ModeOfAnimationFile(const Layout::LayoutArchive& archive, std::string_view animationName)
 {
-    const Layout::TextFonts* fonts = display.GetTextFonts();
-    Formats::Pane& pane = layout.PaneNamed(textBoxName);
-    if (fonts == nullptr || !pane.textBox)
-        return 0;
-
-    const Formats::TextBox& textBox = *pane.textBox;
-    const Layout::DrawableFont& font = fonts->Find(layout.Live().FontNameAt(textBox.fontIndex));
-    Text::TextStyle style = Text::MakeTextStyle(textBox, layout.Live().MaterialAt(textBox.materialIndex).description);
-
-    Layout::PaneRectangle rectangle = Layout::RectangleOfPane(pane);
-    Text::TextArea area = {rectangle.left, rectangle.top, rectangle.width, rectangle.height};
-    return font.layouter.LayOut(textBox.text, style, area).block.width;
+    bool isLooping = archive.ReadAnimation(std::string(animationName)).isLooping;
+    return isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
 }
 
 }

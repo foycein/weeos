@@ -3,7 +3,7 @@
 #include "Formats/Bytes.h"
 
 #include <cstdint>
-#include <initializer_list>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -20,8 +20,16 @@ struct SoundFile
     std::vector<Formats::ByteView> sections;
 };
 
-// Reads the header and cuts out the sections. The sections must have exactly the expected tags.
-SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expectedTag, std::uint16_t expectedVersion,
-    std::size_t expectedHeaderSize, std::initializer_list<std::string_view> expectedSectionTags, std::string_view dataDescription);
+// A version of a file type that is known, and the tags of the sections that files of this version have, in order.
+struct KnownVersion
+{
+    std::uint16_t version;
+    std::vector<std::string_view> sectionTags;
+};
+
+// Reads the header and cuts out the sections. The version must be one of the known ones, and the sections must have exactly
+// the tags that go with it.
+SoundFile ReadSoundFileHeader(Formats::ByteView bytes, std::string_view expectedTag, std::span<const KnownVersion> knownVersions,
+    std::size_t expectedHeaderSize, std::string_view dataDescription);
 
 }

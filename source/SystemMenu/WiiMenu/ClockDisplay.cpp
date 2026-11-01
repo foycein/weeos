@@ -45,21 +45,16 @@ bool IsBlinkSecond(const LocalTime& time)
     return time.second % SecondsBetweenBlinks == 0;
 }
 
-float LastFrameOf(const Layout::LayoutArchive& archive, std::string_view animationName)
-{
-    return static_cast<float>(archive.ReadAnimation(std::string(animationName)).frameCount - 1);
-}
-
 }
 
 ClockDisplay::ClockDisplay(MenuServices& menuServices, const Layout::LayoutArchive& archive)
     : services(menuServices)
     , layout(std::make_unique<MenuLayout>(menuServices.display, archive, std::string(LayoutName)))
 {
-    change = std::make_unique<FramePlayer>(*layout, layout->BindAnimationToAllPanes(std::string(ChangeAnimation)));
-    blink = std::make_unique<FramePlayer>(*layout, layout->BindAnimationToAllPanes(std::string(BlinkAnimation)));
-    lastFrameOfTheChange = LastFrameOf(archive, ChangeAnimation);
-    lastFrameOfTheBlink = LastFrameOf(archive, BlinkAnimation);
+    change = std::make_unique<FramePlayer>(*layout, archive, ChangeAnimation);
+    blink = std::make_unique<FramePlayer>(*layout, archive, BlinkAnimation);
+    lastFrameOfTheChange = change->LastFrameOfTheFile();
+    lastFrameOfTheBlink = blink->LastFrameOfTheFile();
 
     layout->PaneNamed(LeftAfternoonPane).isVisible = false;
     layout->SetText(LabelPane, services.messages.Find(LabelMessage));

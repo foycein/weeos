@@ -25,10 +25,12 @@ Application::Application(const Ios::IosFolders& folders)
     , keyboard(console.Services().GetKeyboard(), console.Services().GetRemote().GetVirtualRemote())
     , device(window)
     , titleContents(console.Services().GetTitles())
-    , menu(device, titleContents, console.Services().GetRemote(), PictureShape)
+    , wiiMenuConsole(console.Services())
+    , menu(device, titleContents, console.Services().GetRemote(), PictureShape, wiiMenuConsole)
     , pacer(timer.ElapsedSeconds())
 {
     GetVirtualRemote().SetScreenShape(PictureShape);
+    menu.UsePhysicalKeyboard(console.Services().GetKeyboard());
     window.SetListener(&keyboard);
 }
 

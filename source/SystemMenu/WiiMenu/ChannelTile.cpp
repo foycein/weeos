@@ -25,11 +25,6 @@ constexpr float HalfHeightOfAPlace = 48;
 
 constexpr Formats::Vector2 UnstretchedScale = {1, 1};
 
-float LastFrameOf(const Layout::LayoutArchive& archive, std::string_view animationName)
-{
-    return static_cast<float>(archive.ReadAnimation(std::string(animationName)).frameCount - 1);
-}
-
 }
 
 ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_ptr<MenuLayout> pictureOfTheTile, const TileArchives& archives)
@@ -38,10 +33,10 @@ ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_pt
     , picture(std::move(pictureOfTheTile))
     , focusFrame(std::make_unique<MenuLayout>(menuDisplay, archives.channelSelection, std::string(FocusFrameLayout)))
 {
-    focusOn = std::make_unique<FramePlayer>(*focusFrame, focusFrame->BindAnimationToAllPanes(std::string(FocusOnAnimation)));
-    focusOff = std::make_unique<FramePlayer>(*focusFrame, focusFrame->BindAnimationToAllPanes(std::string(FocusOffAnimation)));
-    lastFrameOfFocusOn = LastFrameOf(archives.channelSelection, FocusOnAnimation);
-    lastFrameOfFocusOff = LastFrameOf(archives.channelSelection, FocusOffAnimation);
+    focusOn = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, FocusOnAnimation);
+    focusOff = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, FocusOffAnimation);
+    lastFrameOfFocusOn = focusOn->LastFrameOfTheFile();
+    lastFrameOfFocusOff = focusOff->LastFrameOfTheFile();
 }
 
 std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const Layout::LayoutArchive& icon,
@@ -50,7 +45,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const Ti
     auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
     if (iconAnimation)
-        tile->PlayAnimation(*iconAnimation);
+        tile->PlayAnimation(icon, *iconAnimation);
 
     tile->AddBalloon(archives, name);
     return tile;
@@ -60,7 +55,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeDamagedChannel(Display& display, c
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.damagedIcon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::DamagedChannel, std::move(picture), archives));
-    tile->PlayAnimation(std::string(IconAnimation));
+    tile->PlayAnimation(archives.damagedIcon, std::string(IconAnimation));
     return tile;
 }
 
@@ -68,7 +63,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeDiscChannel(Display& display, cons
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.discThumbnail, std::string(DiscLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::DiscChannel, std::move(picture), archives));
-    tile->PlayAnimation(std::string(DiscAnimation));
+    tile->PlayAnimation(archives.discThumbnail, std::string(DiscAnimation));
     tile->AddBalloon(archives, name);
     return tile;
 }
@@ -77,7 +72,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeEmptySlot(Display& display, const 
 {
     auto picture = std::make_unique<MenuLayout>(display, archives.channelSelection, std::string(EmptySlotLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::EmptySlot, std::move(picture), archives));
-    tile->PlayAnimation(std::string(EmptySlotAnimation));
+    tile->PlayAnimation(archives.channelSelection, std::string(EmptySlotAnimation));
     return tile;
 }
 
@@ -143,9 +138,12 @@ void ChannelTile::DrawBalloonAt(Formats::Vector2 place)
     balloon->Draw();
 }
 
-void ChannelTile::PlayAnimation(const std::string& animationName)
+// The original starts the animations of the tiles at a frame that depends on the time, so that the televisions do not flicker
+// together. WeeOS starts them at frame 0.
+void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName)
 {
-    std::size_t slot = picture->BindAnimationToAllPanes(animationName);
+    Layout::PlaybackMode mode = ModeOfAnimationFile(archive, animationName);
+    std::size_t slot = picture->BindAnimationToPane(animationName, RootPaneName, mode);
     picture->StartAnimation(slot);
 }
 

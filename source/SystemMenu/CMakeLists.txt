@@ -1,11 +1,12 @@
 add_library(SystemMenu STATIC
+    ButtonController.cpp
     CursorManager.cpp
     Display.cpp
     Fader.cpp
     FirstScreen.cpp
     HealthAndSafetyScreen.cpp
     InputManager.cpp
-    IosMenuConsole.cpp
+    KeyboardView.cpp
     LauncherScreen.cpp
     MenuAnimation.cpp
     MenuFiles.cpp
@@ -13,9 +14,16 @@ add_library(SystemMenu STATIC
     MenuLayout.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
+    PhysicalKeyboard.cpp
     Screen.cpp
     ScreenFactory.cpp
     ScreenManager.cpp
+    SoftKeyboard.cpp
+    TextField.cpp
+    UsKeyboardLayout.cpp
+    WiiOptionsBackgroundScreen.cpp
+    WiiOptionsBarScreen.cpp
+    WiiOptionsChoicesScreen.cpp
 )
 
 add_subdirectory(WiiMenu)

@@ -41,8 +41,8 @@ void MainFrameScreen::Load()
 void MainFrameScreen::Build()
 {
     background = std::make_unique<MenuLayout>(services.display, *archive, std::string(LayoutName));
-    std::size_t slot = background->BindAnimationToAllPanes(std::string(AnimationName));
-    background->ShowAnimationFrame(slot, FrameOfToday);
+    backgroundAnimation = std::make_unique<FramePlayer>(*background, *archive, AnimationName);
+    backgroundAnimation->Show(FrameOfToday);
     WriteTheDates(services.wiiMenu.console.GetLocalTime());
 }
 

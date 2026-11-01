@@ -7,6 +7,8 @@
 
 #include <format>
 #include <optional>
+#include <string>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -14,49 +16,52 @@ namespace SystemMenu
 namespace
 {
 
-// The content that holds the two bitmap fonts.
-constexpr std::uint16_t FontContentIndex = 5;
+// The two small fonts are files of an archive that is a shared content of the title.
+constexpr std::uint16_t SmallFontsContentIndex = 5;
+constexpr std::string_view FirstSmallFontFile = "wbf1.brfna";
+constexpr std::string_view SecondSmallFontFile = "wbf2.brfna";
 
-constexpr std::string_view FirstBitmapFontFile = "wbf1.brfna";
-constexpr std::string_view SecondBitmapFontFile = "wbf2.brfna";
+// The large font is in a packed archive of the resource archive.
 constexpr std::string_view LargeFontArchivePath = "font/font.ash";
-constexpr std::string_view LargeFontPath = "arc/font/RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt";
+constexpr std::string_view LargeFontFile = "arc/font/RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt";
 
-// The names that the layouts of the menu give to their three fonts.
-const std::vector<std::string> FirstBitmapFontNames = {"RevoIpl_RodinNTLGPro_DB_32_I4.brfnt", "WiiBitmapFontType1.brfnt", "wbf1.brfna"};
-const std::vector<std::string> SecondBitmapFontNames = {"RevoIpl_UtrilloProGrecoStd_M_32_I4.brfnt", "WiiBitmapFontType2.brfnt", "wbf2.brfna"};
-const std::vector<std::string> LargeFontNames = {"RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt"};
-
-Formats::Font ReadFontFile(const Formats::U8Archive& archive, std::string_view path)
+Formats::Font ReadFontFile(const Formats::U8Archive& archive, std::string_view fileName)
 {
-    std::optional<Formats::ByteView> file = archive.FindFile(path);
+    std::optional<Formats::ByteView> file = archive.FindFile(fileName);
     if (!file)
-        throw MenuError(std::format("The font archive has no file {}", path));
+        throw MenuError(std::format("The font archive has no file {}", fileName));
 
     return Formats::ReadFont(*file);
 }
 
 }
 
-MenuFonts::MenuFonts(Graphics::GraphicsDevice& graphicsDevice, TitleContents& titleContents, const MenuFiles& menuFiles)
-    : device(graphicsDevice)
+MenuFonts::LoadedFont::LoadedFont(Graphics::GraphicsDevice& device, Formats::Font loadedFont)
+    : font(std::move(loadedFont))
+    , layouter(font)
+    , drawer(device, font)
 {
-    Formats::U8Archive bitmapFonts = Formats::ReadU8Archive(titleContents.ReadContent(FontContentIndex));
-    AddFont(ReadFontFile(bitmapFonts, FirstBitmapFontFile), FirstBitmapFontNames);
-    AddFont(ReadFontFile(bitmapFonts, SecondBitmapFontFile), SecondBitmapFontNames);
-
-    Formats::U8Archive largeFontArchive = Formats::ReadU8Archive(Formats::DecompressAsh0(menuFiles.ReadFile(LargeFontArchivePath)));
-    AddFont(ReadFontFile(largeFontArchive, LargeFontPath), LargeFontNames);
 }
 
-void MenuFonts::AddFont(Formats::Font font, const std::vector<std::string>& names)
+MenuFonts::MenuFonts(Graphics::GraphicsDevice& device, TitleContents& titleContents, const MenuFiles& files)
 {
-    fonts.push_back(std::make_unique<Formats::Font>(std::move(font)));
-    layouters.push_back(std::make_unique<Text::TextLayouter>(*fonts.back()));
-    drawers.push_back(std::make_unique<Text::TextDrawer>(device, *fonts.back()));
+    Formats::U8Archive smallFonts = Formats::ReadU8Archive(titleContents.ReadContent(SmallFontsContentIndex));
+    AddFont(device, ReadFontFile(smallFonts, FirstSmallFontFile),
+        {"RevoIpl_RodinNTLGPro_DB_32_I4.brfnt", "WiiBitmapFontType1.brfnt", FirstSmallFontFile});
+    AddFont(device, ReadFontFile(smallFonts, SecondSmallFontFile),
+        {"RevoIpl_UtrilloProGrecoStd_M_32_I4.brfnt", "WiiBitmapFontType2.brfnt", SecondSmallFontFile});
 
-    for (const std::string& name : names)
-        textFonts.Add(name, *layouters.back(), *drawers.back());
+    Formats::U8Archive largeFontArchive = Formats::ReadU8Archive(Formats::DecompressAsh0(files.ReadFile(LargeFontArchivePath)));
+    AddFont(device, ReadFontFile(largeFontArchive, LargeFontFile), {"RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt"});
+}
+
+void MenuFonts::AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames)
+{
+    loadedFonts.push_back(std::make_unique<LoadedFont>(device, std::move(font)));
+    LoadedFont& loadedFont = *loadedFonts.back();
+
+    for (std::string_view layoutName : layoutNames)
+        textFonts.Add(std::string(layoutName), loadedFont.layouter, loadedFont.drawer);
 }
 
 const Layout::TextFonts& MenuFonts::Fonts() const

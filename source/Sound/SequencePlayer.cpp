@@ -14,11 +14,7 @@ constexpr int MostCommandsInOneTick = 10000;
 
 constexpr int BitsInOneByte = 8;
 
-constexpr std::uint8_t HighestVolume = 127;
-constexpr float HighestNumber = 127.0f;
-constexpr float BendRangeInSemitones = 2.0f;
-constexpr float BendNumbersForTheRange = 128.0f;
-constexpr double SemitonesPerOctave = 12.0;
+constexpr std::uint8_t HighestSetting = 127;
 
 // The commands. A command below 0x80 is a note, and its number is the key.
 constexpr std::uint8_t FirstControlCommand = 0x80;
@@ -27,20 +23,52 @@ constexpr std::uint8_t ProgramCommand = 0x81;
 constexpr std::uint8_t OpenTrackCommand = 0x88;
 constexpr std::uint8_t JumpCommand = 0x89;
 constexpr std::uint8_t CallCommand = 0x8A;
+
+// The commands from 0xC0 to 0xDF have a byte as their number.
+constexpr std::uint8_t FirstByteCommand = 0xC0;
+constexpr std::uint8_t LastByteCommand = 0xDF;
 constexpr std::uint8_t PanCommand = 0xC0;
 constexpr std::uint8_t VolumeCommand = 0xC1;
+constexpr std::uint8_t MainVolumeCommand = 0xC2;
 constexpr std::uint8_t TransposeCommand = 0xC3;
 constexpr std::uint8_t BendCommand = 0xC4;
+constexpr std::uint8_t BendRangeCommand = 0xC5;
+constexpr std::uint8_t PriorityCommand = 0xC6;
 constexpr std::uint8_t NoteWaitCommand = 0xC7;
+constexpr std::uint8_t TieCommand = 0xC8;
+constexpr std::uint8_t PortamentoCommand = 0xC9;
+constexpr std::uint8_t ModulationDepthCommand = 0xCA;
+constexpr std::uint8_t ModulationSpeedCommand = 0xCB;
+constexpr std::uint8_t ModulationTargetCommand = 0xCC;
+constexpr std::uint8_t ModulationRangeCommand = 0xCD;
+constexpr std::uint8_t PortamentoSwitchCommand = 0xCE;
+constexpr std::uint8_t PortamentoTimeCommand = 0xCF;
 constexpr std::uint8_t AttackCommand = 0xD0;
 constexpr std::uint8_t DecayCommand = 0xD1;
 constexpr std::uint8_t SustainCommand = 0xD2;
 constexpr std::uint8_t ReleaseCommand = 0xD3;
+constexpr std::uint8_t LoopStartCommand = 0xD4;
+constexpr std::uint8_t ExpressionCommand = 0xD5;
+constexpr std::uint8_t PrintVariableCommand = 0xD6;
 constexpr std::uint8_t SurroundPanCommand = 0xD7;
+constexpr std::uint8_t LowPassCutoffCommand = 0xD8;
 constexpr std::uint8_t EffectSendACommand = 0xD9;
 constexpr std::uint8_t EffectSendBCommand = 0xDA;
+constexpr std::uint8_t MainSendCommand = 0xDB;
+constexpr std::uint8_t InitialPanCommand = 0xDC;
+constexpr std::uint8_t MuteCommand = 0xDD;
+constexpr std::uint8_t EffectSendCCommand = 0xDE;
+constexpr std::uint8_t DamperCommand = 0xDF;
+
+// The commands from 0xE0 to 0xEF have two bytes as their number.
+constexpr std::uint8_t FirstShortCommand = 0xE0;
+constexpr std::uint8_t LastShortCommand = 0xEF;
+constexpr std::uint8_t ModulationDelayCommand = 0xE0;
 constexpr std::uint8_t TempoCommand = 0xE1;
+constexpr std::uint8_t SweepPitchCommand = 0xE3;
+
 constexpr std::uint8_t ExtendedCommand = 0xF0;
+constexpr std::uint8_t LoopEndCommand = 0xFC;
 constexpr std::uint8_t ReturnCommand = 0xFD;
 constexpr std::uint8_t AllocateTracksCommand = 0xFE;
 constexpr std::uint8_t EndCommand = 0xFF;
@@ -80,32 +108,17 @@ constexpr std::uint32_t RandomIncrement = 0x3C6EF35F;
 constexpr int RandomBitsToDrop = 16;
 constexpr int ShiftLimit = 31;
 
-float Square(float number)
-{
-    return number * number;
-}
+// How much the numbers of the modulation and sweep commands are worth (0x81695328, 0x8169532c, 0x81695330 and 0x81502250).
+constexpr float ModulationDepthPerNumber = 1.0f / 128.0f;
+constexpr float ModulationSpeedPerNumber = 0.390625f;
+constexpr int ModulationDelayMillisecondsPerNumber = 5;
+constexpr float SweepSemitonesPerNumber = 1.0f / 32.0f;
 
 // A number between the lowest and the highest, both included.
 std::int32_t RandomNumberBetween(SequenceGlobals& globals, std::int32_t lowest, std::int32_t highest)
 {
     std::int64_t choices = std::int64_t(highest) - lowest + 1;
     return static_cast<std::int32_t>(((std::int64_t(globals.NextRandomNumber()) * choices) >> RandomBitsToDrop) + lowest);
-}
-
-// What a note needs from its track to be heard: loudness, place, pitch.
-VoiceSettings SettingsOfNote(const SequenceTrack& track, const PlayingNote& note, float soundVolume)
-{
-    float trackLoudness = float(track.volume) / HighestNumber;
-    float bentSemitones = float(track.bend) / BendNumbersForTheRange * BendRangeInSemitones;
-    double semitones = double(note.key - note.note.originalKey) + bentSemitones;
-
-    VoiceSettings settings;
-    settings.volume = soundVolume * Square(trackLoudness) * note.startVolume;
-    settings.pan = note.startPan + track.pan;
-    settings.surroundPan = track.surroundPan;
-    settings.mainSend = float(track.mainSend) / HighestNumber;
-    settings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.note.tune;
-    return settings;
 }
 
 // The result of one of the commands that compare a variable with a number.
@@ -120,11 +133,6 @@ bool CompareVariable(std::uint8_t command, std::int16_t variable, std::int32_t n
     case IsLessCommand: return variable < number;
     default: return variable != number;
     }
-}
-
-std::uint8_t EnvelopeNumber(std::uint8_t trackNumber, std::uint8_t instrumentNumber)
-{
-    return trackNumber == EnvelopeNumberNotSet ? instrumentNumber : trackNumber;
 }
 
 }
@@ -216,24 +224,6 @@ void SequencePlayer::RunTick()
     }
 }
 
-// The notes with a length count down, and let go of their key when the length is over.
-void SequencePlayer::TickNotes(SequenceTrack& track)
-{
-    for (PlayingNote& note : track.notes)
-    {
-        if (note.ticksLeft <= 0)
-            continue;
-
-        --note.ticksLeft;
-        if (note.ticksLeft > 0)
-            continue;
-
-        Voice* voice = voices.Find(note.voice);
-        if (voice != nullptr)
-            voice->Release();
-    }
-}
-
 // Waits, or runs commands until one of them makes the track wait. True when the track has ended.
 bool SequencePlayer::TickTrack(SequenceTrack& track)
 {
@@ -271,14 +261,7 @@ bool SequencePlayer::TickTrack(SequenceTrack& track)
 void SequencePlayer::EndTrack(SequenceTrack& track)
 {
     UpdateNotes(track);
-    for (PlayingNote& note : track.notes)
-    {
-        Voice* voice = voices.Find(note.voice);
-        if (voice != nullptr)
-            voice->Release();
-    }
-
-    track.notes.clear();
+    ReleaseAndForgetNotes(track);
     track.isRunning = false;
     track.isWaitingForNotes = false;
 }
@@ -431,6 +414,12 @@ bool SequencePlayer::RunNote(SequenceTrack& track, int key, bool shouldRun, Numb
 
 bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source)
 {
+    if (command >= FirstByteCommand && command <= LastByteCommand)
+        return RunByteCommand(track, command, shouldRun, source);
+
+    if (command >= FirstShortCommand && command <= LastShortCommand)
+        return RunShortCommand(track, command, shouldRun, source);
+
     switch (command)
     {
     case WaitCommand:
@@ -465,9 +454,9 @@ bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t comman
     case CallCommand:
     {
         std::size_t position = ReadThreeBytes(track);
-        if (shouldRun && track.returnPositionCount < MaximumCallDepth)
+        if (shouldRun && track.returnFrameCount < MaximumCallDepth)
         {
-            track.returnPositions[track.returnPositionCount++] = track.position;
+            track.returnFrames[track.returnFrameCount++] = ReturnFrame{track.position, 0};
             track.position = position;
         }
         return false;
@@ -475,6 +464,10 @@ bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t comman
     case ReturnCommand:
         if (shouldRun)
             ReturnFromCall(track);
+        return false;
+    case LoopEndCommand:
+        if (shouldRun)
+            EndLoop(track);
         return false;
     case AllocateTracksCommand:
         ReadByte(track);
@@ -484,52 +477,78 @@ bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t comman
         return true;
     case ExtendedCommand:
         return RunExtendedCommand(track, shouldRun, source);
-    case TempoCommand:
-    {
-        std::int32_t newTempo = ReadNumber(track, source, NumberWidth::Short);
-        if (shouldRun)
-            tempo = std::max(0, newTempo);
-        return false;
-    }
     default:
-        return RunSettingCommand(track, command, shouldRun, source);
-    }
-}
-
-// The commands that set one value of the track: the number is a byte.
-bool SequencePlayer::RunSettingCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source)
-{
-    bool isSettingCommand = command == PanCommand || command == VolumeCommand || command == TransposeCommand || command == BendCommand ||
-        command == NoteWaitCommand || (command >= AttackCommand && command <= ReleaseCommand) || command == SurroundPanCommand ||
-        command == EffectSendACommand || command == EffectSendBCommand;
-    if (!isSettingCommand)
-    {
         FailTrack(track);
         return true;
     }
+}
 
+// The commands with a byte as their number set one value of the track, or of the whole sequence. The ones for the effect buses B and C,
+// the damper and the printing of a variable do nothing here: no effect hangs on those buses, and the other two make no sound.
+bool SequencePlayer::RunByteCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source)
+{
     std::int32_t number = ReadNumber(track, source, NumberWidth::Byte);
     if (!shouldRun)
         return false;
 
     std::uint8_t unsignedNumber = static_cast<std::uint8_t>(number);
     int signedNumber = static_cast<std::int8_t>(number);
+    std::uint8_t settingNumber = std::min(unsignedNumber, HighestSetting);
     switch (command)
     {
     case PanCommand: track.pan = PanFromNumber(unsignedNumber); break;
-    case VolumeCommand: track.volume = std::min<std::uint8_t>(unsignedNumber, HighestVolume); break;
+    case VolumeCommand: track.volume = settingNumber; break;
+    case MainVolumeCommand: mainVolume = settingNumber; break;
     case TransposeCommand: track.transpose = signedNumber; break;
     case BendCommand: track.bend = signedNumber; break;
+    case BendRangeCommand: track.bendRange = unsignedNumber; break;
+    case PriorityCommand: track.priority = unsignedNumber; break;
     case NoteWaitCommand: track.noteWait = unsignedNumber != 0; break;
+    case TieCommand: SetTie(track, unsignedNumber != 0); break;
+    case PortamentoCommand: StartPortamento(track, unsignedNumber); break;
+    case PortamentoSwitchCommand: track.isPortamentoOn = unsignedNumber != 0; break;
+    case PortamentoTimeCommand: track.portamentoTime = unsignedNumber; break;
+    case ModulationDepthCommand: track.modulation.depth = float(unsignedNumber) * ModulationDepthPerNumber; break;
+    case ModulationSpeedCommand: track.modulation.speed = float(unsignedNumber) * ModulationSpeedPerNumber; break;
+    case ModulationTargetCommand: track.modulation.target = ModulationTargetFromNumber(unsignedNumber); break;
+    case ModulationRangeCommand: track.modulation.range = unsignedNumber; break;
     case AttackCommand: track.attack = unsignedNumber; break;
     case DecayCommand: track.decay = unsignedNumber; break;
     case SustainCommand: track.sustain = unsignedNumber; break;
     case ReleaseCommand: track.release = unsignedNumber; break;
+    case LoopStartCommand: StartLoop(track, unsignedNumber); break;
+    case ExpressionCommand: track.expression = settingNumber; break;
     case SurroundPanCommand: track.surroundPan = SurroundPanFromNumber(unsignedNumber); break;
+    case LowPassCutoffCommand: track.lowPassCutoff = unsignedNumber; break;
+    case EffectSendACommand: track.effectSendA = settingNumber; break;
+    case MainSendCommand: track.mainSend = settingNumber; break;
+    case InitialPanCommand: track.initialPan = PanFromNumber(unsignedNumber); break;
+    case MuteCommand: MuteTrack(track, unsignedNumber); break;
 
-    // The sends to the effect buses are read and dropped, because the effects of the menu are not built (docs/audit/OpenPoints/Sound.md).
-    case EffectSendACommand:
-    case EffectSendBCommand: break;
+    case EffectSendBCommand:
+    case EffectSendCCommand:
+    case PrintVariableCommand:
+    case DamperCommand:
+        break;
+    }
+    return false;
+}
+
+// The commands with two bytes as their number.
+bool SequencePlayer::RunShortCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source)
+{
+    std::int32_t number = ReadNumber(track, source, NumberWidth::Short);
+    if (!shouldRun)
+        return false;
+
+    switch (command)
+    {
+    case ModulationDelayCommand: track.modulation.delayMilliseconds = std::max(0, number) * ModulationDelayMillisecondsPerNumber; break;
+    case TempoCommand: tempo = std::max(0, number); break;
+    case SweepPitchCommand: track.sweepSemitones = float(number) * SweepSemitonesPerNumber; break;
+    default:
+        FailTrack(track);
+        return true;
     }
     return false;
 }
@@ -612,53 +631,76 @@ void SequencePlayer::OpenTrack(std::size_t trackNumber, std::size_t position, co
 
 void SequencePlayer::ReturnFromCall(SequenceTrack& track)
 {
-    if (track.returnPositionCount == 0)
+    if (track.returnFrameCount == 0)
         return;
 
-    --track.returnPositionCount;
-    track.position = track.returnPositions[track.returnPositionCount];
+    --track.returnFrameCount;
+    track.position = track.returnFrames[track.returnFrameCount].position;
 }
 
-// ---- Notes
-
-void SequencePlayer::StartNote(SequenceTrack& track, int key, int velocity, int length)
+void SequencePlayer::StartLoop(SequenceTrack& track, std::uint8_t roundCount)
 {
-    std::optional<NoteParameters> foundNote = bank.file.FindNote(track.program, key, velocity);
-    if (!foundNote)
+    if (track.returnFrameCount >= MaximumCallDepth)
         return;
 
-    const NoteParameters& note = *foundNote;
-    std::uint8_t attack = EnvelopeNumber(track.attack, note.attack);
-    std::uint8_t decay = EnvelopeNumber(track.decay, note.decay);
-    std::uint8_t sustain = EnvelopeNumber(track.sustain, note.sustain);
-    std::uint8_t release = EnvelopeNumber(track.release, note.release);
-    Envelope envelope(attack, decay, sustain, release);
-
-    constexpr float NumbersFromMiddleToSide = 63.0f;
-    constexpr float MiddleNumber = 64.0f;
-    PlayingNote playingNote;
-    playingNote.ticksLeft = length;
-    playingNote.key = key;
-    playingNote.note = note;
-    playingNote.startVolume = Square(float(velocity) / HighestNumber) * float(note.volume) / HighestNumber;
-    playingNote.startPan = (float(note.pan) - MiddleNumber) / NumbersFromMiddleToSide;
-
-    int priority = settings.channelPriority + track.priority;
-    VoiceSettings voiceSettings = SettingsOfNote(track, playingNote, volume);
-    std::optional<VoiceHandle> voice = voices.Start(bank.waves[note.waveIndex], envelope, priority, voiceSettings);
-    if (!voice)
-        return;
-
-    playingNote.voice = *voice;
-    track.notes.push_back(playingNote);
+    track.returnFrames[track.returnFrameCount++] = ReturnFrame{track.position, roundCount};
 }
 
-// Gives every voice of the track the settings of the track, and forgets the notes whose voice has ended.
-void SequencePlayer::UpdateNotes(SequenceTrack& track)
+// At the end of a round the loop goes back to its start, until it has gone round as many times as it was told. A loop of 0 rounds never ends.
+void SequencePlayer::EndLoop(SequenceTrack& track)
 {
-    std::erase_if(track.notes, [&](const PlayingNote& note) { return voices.Find(note.voice) == nullptr; });
-    for (const PlayingNote& note : track.notes)
-        voices.Find(note.voice)->SetSettings(SettingsOfNote(track, note, volume));
+    if (track.returnFrameCount == 0)
+        return;
+
+    ReturnFrame& frame = track.returnFrames[track.returnFrameCount - 1];
+    if (frame.loopCount != 0)
+    {
+        --frame.loopCount;
+        if (frame.loopCount == 0)
+        {
+            --track.returnFrameCount;
+            return;
+        }
+    }
+    track.position = frame.position;
+}
+
+void SequencePlayer::StartPortamento(SequenceTrack& track, std::uint8_t startKey)
+{
+    track.isPortamentoOn = true;
+    track.portamentoKey = startKey + track.transpose;
+}
+
+// A tie that starts or ends lets go of the notes that sound, and the track forgets them.
+void SequencePlayer::SetTie(SequenceTrack& track, bool isTied)
+{
+    track.isTied = isTied;
+    ReleaseAndForgetNotes(track);
+}
+
+// The modes of the mute command: 0 lets the track sound again, 1 keeps it from starting notes, 2 also lets go of the notes that
+// sound, and 3 also stops them at once.
+void SequencePlayer::MuteTrack(SequenceTrack& track, std::uint8_t mode)
+{
+    constexpr std::uint8_t UnmuteMode = 0;
+    constexpr std::uint8_t MuteMode = 1;
+    constexpr std::uint8_t MuteAndReleaseMode = 2;
+    constexpr std::uint8_t MuteAndStopMode = 3;
+
+    switch (mode)
+    {
+    case UnmuteMode: track.isMuted = false; break;
+    case MuteMode: track.isMuted = true; break;
+    case MuteAndReleaseMode:
+        ReleaseAndForgetNotes(track);
+        track.isMuted = true;
+        break;
+    case MuteAndStopMode:
+        StopAndForgetNotes(track);
+        track.isMuted = true;
+        break;
+    default: break;
+    }
 }
 
 }

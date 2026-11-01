@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/WiiMenu/FramePlayer.h"
 
 #include "Formats/Vectors.h"
 
@@ -49,10 +50,11 @@ private:
     void BecomeHidden();
     void ShowFrameOfTheAnimation();
     void ShortenUntilItFits();
+    float TextWidth();
 
     Display& display;
     std::unique_ptr<MenuLayout> layout;
-    std::size_t animationSlot = 0;
+    std::unique_ptr<FramePlayer> growing;
     State state = State::Hidden;
     bool isPointerOnTheTarget = false;
     int stepsWaited = 0;

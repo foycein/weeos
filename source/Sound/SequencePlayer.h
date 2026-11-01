@@ -53,8 +53,8 @@ public:
     // The number of sounding notes.
     std::size_t NoteCount() const;
 
-    // The number of times a track was ended because it ran a command that is not supported, ran out of commands,
-    // or ran too long without waiting.
+    // The number of times something went wrong: a track was ended because it ran a command that is not supported, ran out of
+    // commands, or ran too long without waiting; or a note had no sound in the bank for its instrument, key and velocity.
     std::size_t ErrorCount() const;
 
 private:
@@ -87,19 +87,42 @@ private:
 
     bool RunNote(SequenceTrack& track, int key, bool shouldRun, NumberSource source);
     bool RunControlCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source);
-    bool RunSettingCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source);
+    bool RunByteCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source);
+    bool RunShortCommand(SequenceTrack& track, std::uint8_t command, bool shouldRun, NumberSource source);
     bool RunExtendedCommand(SequenceTrack& track, bool shouldRun, NumberSource source);
     void ChangeVariable(std::uint8_t command, std::int16_t& variable, std::int32_t number);
     void OpenTrack(std::size_t trackNumber, std::size_t position, const SequenceTrack& openingTrack);
     void ReturnFromCall(SequenceTrack& track);
+    void StartLoop(SequenceTrack& track, std::uint8_t roundCount);
+    void EndLoop(SequenceTrack& track);
+    void StartPortamento(SequenceTrack& track, std::uint8_t startKey);
+    void SetTie(SequenceTrack& track, bool isTied);
+    void MuteTrack(SequenceTrack& track, std::uint8_t mode);
+
+    // How far the modulation of a note was from the middle before the sound frame and is after it.
+    struct ModulationValues
+    {
+        float beforeTheFrame;
+        float afterTheFrame;
+    };
 
     void StartNote(SequenceTrack& track, int key, int velocity, int length);
+    PlayingNote* StartNewNote(SequenceTrack& track, int key, int velocity, int length);
+    PlayingNote* FindNoteToTie(SequenceTrack& track);
+    void TieNote(SequenceTrack& track, PlayingNote& note, int key, int velocity);
+    void ChangeEnvelopeOfNote(const SequenceTrack& track, const PlayingNote& note);
     void UpdateNotes(SequenceTrack& track);
+    void ReleaseAndForgetNotes(SequenceTrack& track);
+    void StopAndForgetNotes(SequenceTrack& track);
+    VoiceSettings SettingsOfNote(const SequenceTrack& track, const PlayingNote& note, const ModulationValues& modulation) const;
 
     // A tick is 1/48 of a beat. A frame of 3 milliseconds adds the tempo (the beats per minute) to the progress towards the next tick,
     // and a tick is complete at 416. At 120 beats per minute that is 3.47 frames, 10.4 milliseconds, which is 1/48 of 500 milliseconds.
     static constexpr int TickProgressForOneTick = 416;
     static constexpr int StartTempo = 120;
+
+    // The loudness of all the tracks together, from 0 to 127. A command can change it.
+    static constexpr std::uint8_t StartMainVolume = 127;
 
     const SequenceFile& sequence;
     const LoadedBank& bank;
@@ -112,6 +135,7 @@ private:
     std::array<std::int16_t, VariableCount> variables;
 
     int tempo = StartTempo;
+    std::uint8_t mainVolume = StartMainVolume;
 
     // The progress starts complete, so that the first commands run in the first frame.
     int tickProgress = TickProgressForOneTick;

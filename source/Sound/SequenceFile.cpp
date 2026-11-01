@@ -75,7 +75,8 @@ std::optional<std::uint32_t> SequenceFile::FindLabelOffset(std::string_view name
 
 SequenceFile ReadSequenceFile(Formats::ByteView bytes)
 {
-    SoundFile file = ReadSoundFileHeader(bytes, "RSEQ", SupportedVersion, HeaderSize, {"DATA", "LABL"}, DataDescription);
+    const KnownVersion knownVersions[] = {{SupportedVersion, {"DATA", "LABL"}}};
+    SoundFile file = ReadSoundFileHeader(bytes, "RSEQ", knownVersions, HeaderSize, DataDescription);
 
     SequenceFile sequenceFile;
     sequenceFile.commands = ReadCommands(file.sections[0]);
