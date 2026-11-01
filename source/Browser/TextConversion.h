@@ -12,4 +12,7 @@ std::wstring WideTextOf(std::u16string_view text);
 std::string Utf8TextOf(std::wstring_view wideText);
 std::u16string TextOf(std::wstring_view wideText);
 
+std::string Utf8TextOf(std::u16string_view text);
+std::u16string TextOfUtf8(std::string_view utf8Text);
+
 }

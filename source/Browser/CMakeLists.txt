@@ -15,7 +15,8 @@ add_library(Browser STATIC
 target_include_directories(Browser PRIVATE "${WEBVIEW2_FOLDER}/include")
 # WebView2.h needs the COM headers that WIN32_LEAN_AND_MEAN would leave out.
 target_compile_definitions(Browser PRIVATE NOMINMAX UNICODE _UNICODE)
-target_link_libraries(Browser PUBLIC Formats PRIVATE "${WEBVIEW2_FOLDER}/x64/WebView2Loader.dll.lib" d3d11 dxgi shlwapi windowsapp delayimp)
+target_link_libraries(Browser PUBLIC Formats PRIVATE "${WEBVIEW2_FOLDER}/x64/WebView2Loader.dll.lib" d3d11 dxgi shlwapi windowsapp
+    CoreMessaging delayimp)
 
 # The loader is only loaded when a program opens its first page, so programs that never browse do not need the DLL beside them.
 target_link_options(Browser INTERFACE "/DELAYLOAD:WebView2Loader.dll")

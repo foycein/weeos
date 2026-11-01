@@ -7,6 +7,8 @@
 #include "WebView2.h"
 
 #include <windows.h>
+#include <winrt/Windows.System.h>
+#include <winrt/Windows.UI.Composition.h>
 #include <wrl/client.h>
 
 #include <cstdint>
@@ -19,8 +21,9 @@
 namespace Browser
 {
 
-// The browser engine in the thread of the page (PageThread): the window outside the screens that the engine draws into, the
-// WebView2 controller with its events, the capture of the window and the input through the DevTools protocol. Every function runs on
+// The browser engine in the thread of the page (PageThread): the hidden window that the engine belongs to, the visual of Windows'
+// composition that it draws into, the WebView2 controller with its events, the capture of the visual and the input through the
+// DevTools protocol. Every function runs on
 // that thread, which is a single-threaded COM apartment with a message loop, as WebView2 needs.
 class PageEngine
 {
@@ -60,7 +63,7 @@ private:
     void PlaceHostWindow();
     void StartEnvironment(const BrowserSettings& settings);
     HRESULT OnEnvironmentMade(HRESULT result, ICoreWebView2Environment* madeEnvironment);
-    HRESULT OnControllerMade(HRESULT result, ICoreWebView2Controller* madeController);
+    HRESULT OnControllerMade(HRESULT result, ICoreWebView2CompositionController* madeController);
     void ChooseSettings();
     void ListenToPageEvents();
     void ListenToLoadEvents();
@@ -68,6 +71,8 @@ private:
     void ReportStartError(const std::string& message);
     void ReportLoadStep(bool isLoading, double progress);
     void ReportFailure(const std::string& address, LoadError error);
+    void MakeVisual();
+    void StartCapture();
     void ReportPicture(Formats::RgbaImage&& picture);
 
     bool RedirectIfNeeded(ICoreWebView2NavigationStartingEventArgs& arguments);
@@ -85,7 +90,11 @@ private:
     double pointerY = 0;
     std::string lastStartedAddress;
 
+    winrt::Windows::System::DispatcherQueueController queueController = nullptr;
+    winrt::Windows::UI::Composition::Compositor compositor = nullptr;
+    winrt::Windows::UI::Composition::ContainerVisual pageVisual = nullptr;
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment;
+    Microsoft::WRL::ComPtr<ICoreWebView2CompositionController> compositionController;
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
     Microsoft::WRL::ComPtr<ICoreWebView2> webView;
     Microsoft::WRL::ComPtr<ICoreWebView2ScriptDialogOpeningEventArgs> openDialog;

@@ -121,10 +121,10 @@ struct AddressRedirect
     std::string serverAddress;
 };
 
-// One web page shown by Chromium through WebView2, the engine of Windows 11 (docs/audit/Browser.md). The engine draws the page in a
-// window of its own that lies outside every screen; Windows' screen capture hands over a picture of that window whenever the page
+// One web page shown by Chromium through WebView2, the engine of Windows 11 (docs/audit/Browser.md). The engine draws the page into a
+// visual of Windows' composition that no window shows; Windows' screen capture hands over a picture of that visual whenever the page
 // changes, and the program draws that picture itself. Pointer, clicks, wheel and keys reach the page through the engine's DevTools
-// protocol, so the page never needs the focus of Windows.
+// protocol, so the page never needs the focus of Windows and nothing of the engine appears on the screen.
 //
 // The engine runs in a thread of its own. Every call returns at once; what the engine answers shows up in State and the Take functions.
 class WebPage

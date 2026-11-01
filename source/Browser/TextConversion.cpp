@@ -39,4 +39,14 @@ std::u16string TextOf(std::wstring_view wideText)
     return std::u16string(wideText.begin(), wideText.end());
 }
 
+std::string Utf8TextOf(std::u16string_view text)
+{
+    return Utf8TextOf(WideTextOf(text));
+}
+
+std::u16string TextOfUtf8(std::string_view utf8Text)
+{
+    return TextOf(WideTextOf(utf8Text));
+}
+
 }

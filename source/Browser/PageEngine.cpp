@@ -5,6 +5,8 @@
 #include "Browser/DevToolsMessages.h"
 #include "Browser/TextConversion.h"
 
+#include <DispatcherQueue.h>
+
 #include "WebView2EnvironmentOptions.h"
 
 #include <shlwapi.h>
@@ -24,8 +26,6 @@ using Microsoft::WRL::ComPtr;
 
 constexpr wchar_t HostWindowClass[] = L"WeeOSWebPage";
 
-// The window of the engine lies this far to the right of every screen, so the person at the PC never sees it.
-constexpr int DistanceBeyondTheScreens = 200;
 
 // The steps of a load, as parts of the whole (PageState::loadingProgress, Assumed: the engine does not count bytes).
 constexpr double ProgressWhenStarted = 0.1;
@@ -144,6 +144,7 @@ PageEngine::PageEngine(const BrowserSettings& settings, PageReport& pageReport, 
     , isMuted(settings.isMuted)
 {
     MakeHostWindow();
+    MakeVisual();
     StartEnvironment(settings);
 }
 
@@ -175,17 +176,27 @@ void PageEngine::MakeHostWindow()
         throw BrowserError("The window of the web page could not be made");
 
     PlaceHostWindow();
-    ShowWindow(hostWindow, SW_SHOWNOACTIVATE);
 }
 
-// The window has the size of the page's picture and lies to the right of all screens.
+// The window has the size of the page's picture. It is never shown: the engine draws into the visual.
 void PageEngine::PlaceHostWindow()
 {
-    int left = GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN) + DistanceBeyondTheScreens;
-    int top = GetSystemMetrics(SM_YVIRTUALSCREEN);
     int width = std::max(1, static_cast<int>(viewSize.pageWidth * viewSize.pixelsPerPagePixel + 0.5));
     int height = std::max(1, static_cast<int>(viewSize.pageHeight * viewSize.pixelsPerPagePixel + 0.5));
-    SetWindowPos(hostWindow, HWND_BOTTOM, left, top, width, height, SWP_NOACTIVATE);
+    SetWindowPos(hostWindow, HWND_BOTTOM, 0, 0, width, height, SWP_NOACTIVATE | SWP_NOMOVE | SWP_HIDEWINDOW);
+}
+
+// The composition of Windows needs a dispatcher queue on the thread; the thread's message loop runs it.
+void PageEngine::MakeVisual()
+{
+    DispatcherQueueOptions options = {sizeof(DispatcherQueueOptions), DQTYPE_THREAD_CURRENT, DQTAT_COM_STA};
+    ABI::Windows::System::IDispatcherQueueController* madeController = nullptr;
+    if (FAILED(CreateDispatcherQueueController(options, &madeController)))
+        throw BrowserError("The composition of Windows cannot run in the thread of the web page");
+
+    winrt::attach_abi(queueController, madeController);
+    compositor = winrt::Windows::UI::Composition::Compositor();
+    pageVisual = compositor.CreateContainerVisual();
 }
 
 void PageEngine::StartEnvironment(const BrowserSettings& settings)
@@ -212,13 +223,22 @@ HRESULT PageEngine::OnEnvironmentMade(HRESULT result, ICoreWebView2Environment* 
     }
 
     environment = madeEnvironment;
-    auto whenMade = Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-        [this](HRESULT controllerResult, ICoreWebView2Controller* madeController) { return OnControllerMade(controllerResult, madeController); });
-    environment->CreateCoreWebView2Controller(hostWindow, whenMade.Get());
+    ComPtr<ICoreWebView2Environment3> compositionEnvironment;
+    if (FAILED(environment.As(&compositionEnvironment)))
+    {
+        ReportStartError("The WebView2 Runtime of Windows is too old to draw into a visual");
+        return S_OK;
+    }
+
+    auto whenMade = Callback<ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler>(
+        [this](HRESULT controllerResult, ICoreWebView2CompositionController* madeController) {
+            return OnControllerMade(controllerResult, madeController);
+        });
+    compositionEnvironment->CreateCoreWebView2CompositionController(hostWindow, whenMade.Get());
     return S_OK;
 }
 
-HRESULT PageEngine::OnControllerMade(HRESULT result, ICoreWebView2Controller* madeController)
+HRESULT PageEngine::OnControllerMade(HRESULT result, ICoreWebView2CompositionController* madeController)
 {
     if (FAILED(result) || madeController == nullptr)
     {
@@ -226,8 +246,10 @@ HRESULT PageEngine::OnControllerMade(HRESULT result, ICoreWebView2Controller* ma
         return S_OK;
     }
 
-    controller = madeController;
+    compositionController = madeController;
+    compositionController.As(&controller);
     controller->get_CoreWebView2(&webView);
+    compositionController->put_RootVisualTarget(winrt::get_unknown(pageVisual));
 
     ChooseSettings();
     ListenToPageEvents();
@@ -236,16 +258,8 @@ HRESULT PageEngine::OnControllerMade(HRESULT result, ICoreWebView2Controller* ma
     SetViewSize(viewSize);
     controller->put_IsVisible(TRUE);
     CallDevTools(L"Emulation.setFocusEmulationEnabled", FocusEmulationParameters());
-
-    try
-    {
-        capture = std::make_unique<PageCapture>(hostWindow, [this](Formats::RgbaImage&& picture) { ReportPicture(std::move(picture)); });
-    }
-    catch (const BrowserError& error)
-    {
-        ReportStartError(error.what());
+    if (!capture)
         return S_OK;
-    }
 
     {
         std::lock_guard<std::mutex> guard(report.lock);
@@ -555,6 +569,25 @@ void PageEngine::SetViewSize(const ViewSize& size)
     RECT clientArea = {};
     GetClientRect(hostWindow, &clientArea);
     controller->put_Bounds(clientArea);
+
+    float width = static_cast<float>(clientArea.right - clientArea.left);
+    float height = static_cast<float>(clientArea.bottom - clientArea.top);
+    pageVisual.Size({width, height});
+    StartCapture();
+}
+
+// The capture of a visual keeps the size the visual had when it started, so a new size starts a new capture.
+void PageEngine::StartCapture()
+{
+    capture.reset();
+    try
+    {
+        capture = std::make_unique<PageCapture>(pageVisual, [this](Formats::RgbaImage&& picture) { ReportPicture(std::move(picture)); });
+    }
+    catch (const BrowserError& error)
+    {
+        ReportStartError(error.what());
+    }
 }
 
 void PageEngine::SetRedirect(const AddressRedirect& newRedirect)

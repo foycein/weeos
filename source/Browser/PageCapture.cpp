@@ -4,7 +4,6 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-#include <windows.graphics.capture.interop.h>
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Graphics.Capture.h>
@@ -50,16 +49,16 @@ DirectX::Direct3D11::IDirect3DDevice CaptureDeviceOf(ID3D11Device& device)
     return inspectable.as<DirectX::Direct3D11::IDirect3DDevice>();
 }
 
-Capture::GraphicsCaptureItem CaptureItemOf(HWND window)
+Capture::GraphicsCaptureItem CaptureItemOf(const winrt::Windows::UI::Composition::Visual& visual)
 {
-    auto interop = winrt::get_activation_factory<Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
-
-    Capture::GraphicsCaptureItem item = nullptr;
-    HRESULT result = interop->CreateForWindow(window, winrt::guid_of<Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
-    if (FAILED(result))
-        throw BrowserError("Windows cannot capture the window of the page");
-
-    return item;
+    try
+    {
+        return Capture::GraphicsCaptureItem::CreateFromVisual(visual);
+    }
+    catch (const winrt::hresult_error&)
+    {
+        throw BrowserError("Windows cannot capture the visual of the page");
+    }
 }
 
 ComPtr<ID3D11Texture2D> TextureOf(const Capture::Direct3D11CaptureFrame& frame)
@@ -101,13 +100,13 @@ struct PageCapture::Parts
     void MakeReadableCopy(const D3D11_TEXTURE2D_DESC& textureDescription);
 };
 
-PageCapture::PageCapture(HWND window, PictureReceiver receiver)
+PageCapture::PageCapture(const winrt::Windows::UI::Composition::Visual& visual, PictureReceiver receiver)
     : parts(std::make_unique<Parts>())
 {
     parts->receiver = std::move(receiver);
     parts->device = MakeGraphicsDevice(parts->context);
     parts->captureDevice = CaptureDeviceOf(*parts->device.Get());
-    parts->item = CaptureItemOf(window);
+    parts->item = CaptureItemOf(visual);
     parts->poolSize = parts->item.Size();
 
     parts->pool = Capture::Direct3D11CaptureFramePool::CreateFreeThreaded(parts->captureDevice, CapturedFormat, FramesInPool, parts->poolSize);
