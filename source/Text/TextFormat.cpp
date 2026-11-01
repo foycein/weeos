@@ -17,6 +17,7 @@ constexpr std::u16string_view PercentConversion = u"%";
 constexpr std::u16string_view TextConversion = u"ls";
 constexpr std::size_t ZeroFlagLength = 1;
 constexpr std::size_t NumberLetterLength = 1;
+constexpr int DecimalBase = 10;
 
 // A number of digits above this is a mistake in the format.
 constexpr int MostMinimumDigits = 99;
@@ -58,7 +59,8 @@ Conversion ReadNumberWithZeros(std::u16string_view afterMarker)
     int minimumDigits = 0;
     while (length < afterMarker.size() && IsDigit(afterMarker[length]))
     {
-        minimumDigits = minimumDigits * 10 + (afterMarker[length] - u'0');
+        int digit = afterMarker[length] - u'0';
+        minimumDigits = minimumDigits * DecimalBase + digit;
         if (minimumDigits > MostMinimumDigits)
             throw TextError("a place for a number in the format asks for too many digits");
 

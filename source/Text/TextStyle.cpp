@@ -15,9 +15,12 @@ namespace
 constexpr int AlignmentColumnCount = 3;
 constexpr int AlignmentRowCount = 3;
 
+constexpr std::int16_t LowestColorValue = 0;
+constexpr std::int16_t HighestColorValue = 255;
+
 Formats::Byte CutToByte(std::int16_t value)
 {
-    return static_cast<Formats::Byte>(std::clamp<std::int16_t>(value, 0, 255));
+    return static_cast<Formats::Byte>(std::clamp(value, LowestColorValue, HighestColorValue));
 }
 
 Formats::Rgba8Color ColorOfRegister(const Formats::SignedColor& registerColor)
