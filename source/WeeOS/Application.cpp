@@ -1,4 +1,4 @@
-﻿#include "WeeOS/Application.h"
+#include "WeeOS/Application.h"
 
 #include "Channels/ChannelSystem.h"
 #include "Channels/NativeChannels.h"
@@ -59,6 +59,7 @@ public:
     ~Session()
     {
         sound.StopAllSounds();
+        sound.StopTitleArchives();
         window.SetListener(nullptr);
     }
 
@@ -82,6 +83,7 @@ public:
         else
         {
             channel->Update();
+            PlayChannelSoundsOfTheStep();
         }
 
         virtualRemote.TakeSpeakerSounds();
@@ -140,6 +142,34 @@ private:
     {
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
             iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+
+        for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
+        {
+            Sound::SoundSystem* soundSystem = sound.StartTitleArchive(archive);
+            if (soundSystem != nullptr)
+                channelSounds.push_back(soundSystem);
+        }
+    }
+
+    // A channel asks for its sounds by name; each one plays from the first of the channel's archives that has it.
+    void PlayChannelSoundsOfTheStep()
+    {
+        sound.SetSoundMode(wiiSettings.SoundMode());
+        for (const std::string& soundName : channel->Services().sounds.RequestedInThisStep())
+            PlayChannelSound(soundName);
+    }
+
+    void PlayChannelSound(const std::string& soundName)
+    {
+        for (Sound::SoundSystem* soundSystem : channelSounds)
+        {
+            std::optional<std::size_t> soundNumber = soundSystem->Archive().FindSoundNumber(soundName);
+            if (soundNumber)
+            {
+                soundSystem->Play(*soundNumber);
+                return;
+            }
+        }
     }
 
     Platform::Window& window;
@@ -157,6 +187,7 @@ private:
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
     std::optional<SystemMenu::MenuSound> menuSound;
+    std::vector<Sound::SoundSystem*> channelSounds;
 };
 
 Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)

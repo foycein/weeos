@@ -63,6 +63,7 @@ public:
 
     void Update() override;
     void Draw() override;
+    SystemMenu::CursorManager& Hands() override;
 
     Stage CurrentStage() const;
 

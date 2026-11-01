@@ -9,8 +9,10 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace WeeOS
 {
@@ -40,6 +42,13 @@ public:
     // cannot play sound; the program says why on its console once, and the menu runs without sound.
     Sound::SoundSystem* Start(Formats::ByteView menuSoundArchive);
 
+    // A channel plays its own sound archives (CHN-30): each one gets a sound system of its own, which plays beside the menu's into the
+    // same output. Gives nothing before Start or when the PC cannot play sound.
+    Sound::SoundSystem* StartTitleArchive(Formats::ByteView titleSoundArchive);
+
+    // The channel has ended: the sound systems of its archives go.
+    void StopTitleArchives();
+
     // The sound mode of the console, IPL.SND. The sounds follow it from the next sound frame on.
     void SetSoundMode(Settings::SoundMode mode);
 
@@ -58,6 +67,8 @@ public:
 
 private:
     void Render(std::span<float> interleavedStereo);
+    void AddTitleSounds(std::span<float> interleavedStereo);
+    void ChangeSampleRate(std::uint32_t sampleRate);
 
     bool isSilent;
     std::u16string deviceName;
@@ -65,6 +76,12 @@ private:
     bool hasTriedToStart = false;
     std::atomic<std::uint64_t> renderedSoundingSamples{0};
     std::atomic<std::uint64_t> deliveredSoundingSamples{0};
+
+    // The sound systems of the channel's archives. The audio thread renders them, so it takes the lock while it does, and the program
+    // takes it to add or remove one, which happens only when a channel starts or ends.
+    std::mutex titleSoundsMutex;
+    std::vector<std::unique_ptr<Sound::SoundSystem>> titleSounds;
+    std::vector<float> titleMixBuffer;
 
     // The output comes last, so that it goes first: its audio thread stops before the sound system that it renders goes.
     std::unique_ptr<Sound::SoundSystem> sounds;

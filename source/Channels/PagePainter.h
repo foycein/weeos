@@ -11,11 +11,19 @@
 namespace Channels
 {
 
-// The Shop and the Internet Channel show web pages, laid out by the browser in pixels of a page of 608 by 456 pixels,
-// from its top left corner. WeeOS draws them natively: one pixel of the page is one layout unit, and the page lies in the middle of
+// The Shop and the Internet Channel show web pages, laid out by the browser in pixels of the page from its top left corner.
+// WeeOS draws them natively. The Shop's pages are 608 by 456 pixels, one pixel is one layout unit, and the page lies in the middle of
 // the picture.
 constexpr float PageWidth = 608;
 constexpr float PageHeight = 456;
+
+// Where a page lies: its size in pixels of the page and how many layout units one pixel is. The page lies in the middle of the picture.
+struct PageFrame
+{
+    float width = PageWidth;
+    float height = PageHeight;
+    float scale = 1;
+};
 
 struct PageRectangle
 {
@@ -38,10 +46,14 @@ public:
     PagePicture& operator=(const PagePicture&) = delete;
 
     Graphics::TextureHandle Texture() const;
+    float Width() const;
+    float Height() const;
 
 private:
     Graphics::GraphicsDevice& device;
     Graphics::TextureHandle texture;
+    float width;
+    float height;
 };
 
 // How a text of a page looks: its size in pixels, its color and where it sits in its box.
@@ -57,27 +69,33 @@ class PagePainter
 {
 public:
     // The device and the font must outlive the painter.
-    PagePainter(Graphics::GraphicsDevice& device, const Layout::DrawableFont& font);
+    PagePainter(Graphics::GraphicsDevice& device, const Layout::DrawableFont& font, PageFrame pageFrame = {});
 
     void FillRectangle(const PageRectangle& place, Formats::Rgba8Color color);
 
     // A picture that is mirrored is flipped from left to right.
     void DrawPicture(const PagePicture& picture, const PageRectangle& place, bool isMirrored = false);
 
+    // A part of a picture, in pixels of the picture, as a page shows one state of a picture that holds several (a CSS sprite).
+    void DrawPicturePart(const PagePicture& picture, const PageRectangle& place, const PageRectangle& part);
+
     // The text is broken into lines at the line breaks and at the right edge of the box.
     void DrawText(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box);
 
     // A point of the picture, in layout units, as a point of the page.
-    static Formats::Vector2 PictureToPage(Formats::Vector2 picturePoint);
+    Formats::Vector2 PictureToPage(Formats::Vector2 picturePoint) const;
 
 private:
     // Wide enough for the longest text of a page on one line.
     static constexpr float UnlimitedWidth = 100000;
 
     std::u16string WrapAtSpaces(std::u16string_view text, const Text::TextStyle& style, float width) const;
+    Formats::Vector2 PageToPicture(float pageX, float pageY) const;
+    Graphics::Quad QuadOf(const PageRectangle& place, Formats::Rgba8Color color) const;
 
     Graphics::GraphicsDevice& device;
     const Layout::DrawableFont& font;
+    PageFrame frame;
 };
 
 }

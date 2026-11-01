@@ -50,8 +50,15 @@ double MillisecondsOf(int steps)
 
 HomeButton::HomeButton(Display& menuDisplay, const MenuFiles& files, const InputManager& inputManager, Ios::RemoteService& remoteService,
     CursorManager& cursorManager, const Fader& screenFader, HomeButtonConnections homeConnections)
-    : display(menuDisplay)
-    , menuFiles(files)
+    : HomeButton(menuDisplay, [&files] { return ReadHomeMenuFiles(files); }, inputManager, remoteService, cursorManager, screenFader,
+          std::move(homeConnections))
+{
+}
+
+HomeButton::HomeButton(Display& programDisplay, std::function<HomeMenuFiles()> readHomeMenuFiles, const InputManager& inputManager,
+    Ios::RemoteService& remoteService, CursorManager& cursorManager, const Fader& screenFader, HomeButtonConnections homeConnections)
+    : display(programDisplay)
+    , readFiles(std::move(readHomeMenuFiles))
     , input(inputManager)
     , remotes(remoteService)
     , cursors(cursorManager)
@@ -72,7 +79,7 @@ void HomeButton::Start()
     if (files)
         return;
 
-    files = ReadHomeMenuFiles(menuFiles);
+    files = readFiles();
     menu = std::make_unique<HomeButtonMenu>(display, *files, input, remotes, cursors, connections.textFonts, connections.playSound);
 
     Graphics::TextureDescription icon;
@@ -194,6 +201,9 @@ void HomeButton::CloseMenu(HomeMenuOutcome outcome)
     isPictureBlack = true;
     if (connections.startReset)
         connections.startReset();
+
+    if (connections.chooseBigButton)
+        connections.chooseBigButton(menu->ChosenBigButton());
 }
 
 void HomeButton::UpdateIcon()

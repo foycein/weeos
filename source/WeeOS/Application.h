@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Boot/ConsoleStartup.h"
 #include "Graphics/FramePacer.h"

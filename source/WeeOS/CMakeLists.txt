@@ -1,4 +1,4 @@
-﻿add_library(WeeOSApplication STATIC
+add_library(WeeOSApplication STATIC
     Application.cpp
     ProgramSound.cpp
     WiiSettingsServices.cpp

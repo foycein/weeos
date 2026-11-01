@@ -8,6 +8,7 @@
 #include "SystemMenu/TitleContents.h"
 
 #include "Ios/Network/NetworkConfigService.h"
+#include "Layout/TextFonts.h"
 
 namespace Channels
 {
@@ -43,6 +44,9 @@ struct ChannelServices
     SystemMenu::TitleContents& contents;
     Ios::NetworkConfigService& network;
     WiiMenuReturn& wiiMenu;
+
+    // The two bitmap fonts of the console, wbf1.brfna and wbf2.brfna, from the channel's shared content of fonts.
+    const Layout::TextFonts& systemFonts;
 };
 
 }

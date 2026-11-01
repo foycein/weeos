@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
@@ -6,7 +6,6 @@
 #include "Channels/PagePainter.h"
 
 #include "SystemMenu/CursorManager.h"
-#include "SystemMenu/MenuFonts.h"
 
 #include "Text/MessageCatalog.h"
 
@@ -48,6 +47,7 @@ public:
 
     void Update() override;
     void Draw() override;
+    SystemMenu::CursorManager& Hands() override;
 
     Stage CurrentStage() const;
     ErrorPage ShownErrorPage() const;
@@ -83,7 +83,6 @@ private:
 
     ChannelServices& services;
     Text::MessageCatalog messages;
-    SystemMenu::MenuFonts fonts;
     std::unique_ptr<PagePainter> painter;
     std::unique_ptr<PagePicture> startupPicture;
     std::unique_ptr<PagePicture> wallpaper;

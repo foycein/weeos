@@ -10,23 +10,6 @@ namespace
 
 constexpr Formats::Rgba8Color OpaqueWhite = {255, 255, 255, 255};
 
-Formats::Vector2 PageToPicture(float pageX, float pageY)
-{
-    return {pageX - PageWidth / 2, PageHeight / 2 - pageY};
-}
-
-Graphics::Quad QuadOf(const PageRectangle& place, Formats::Rgba8Color color)
-{
-    float right = place.left + place.width;
-    float bottom = place.top + place.height;
-
-    Graphics::Quad quad{};
-    quad.positions = {PageToPicture(place.left, place.top), PageToPicture(right, place.top), PageToPicture(right, bottom),
-        PageToPicture(place.left, bottom)};
-    quad.colors = {color, color, color, color};
-    return quad;
-}
-
 }
 
 bool PageRectangle::Contains(Formats::Vector2 pagePoint) const
@@ -38,6 +21,8 @@ bool PageRectangle::Contains(Formats::Vector2 pagePoint) const
 
 PagePicture::PagePicture(Graphics::GraphicsDevice& graphicsDevice, const Formats::RgbaImage& image)
     : device(graphicsDevice)
+    , width(static_cast<float>(image.width))
+    , height(static_cast<float>(image.height))
 {
     Graphics::TextureDescription description;
     description.width = image.width;
@@ -56,9 +41,20 @@ Graphics::TextureHandle PagePicture::Texture() const
     return texture;
 }
 
-PagePainter::PagePainter(Graphics::GraphicsDevice& graphicsDevice, const Layout::DrawableFont& pageFont)
+float PagePicture::Width() const
+{
+    return width;
+}
+
+float PagePicture::Height() const
+{
+    return height;
+}
+
+PagePainter::PagePainter(Graphics::GraphicsDevice& graphicsDevice, const Layout::DrawableFont& pageFont, PageFrame pageFrame)
     : device(graphicsDevice)
     , font(pageFont)
+    , frame(pageFrame)
 {
 }
 
@@ -80,10 +76,25 @@ void PagePainter::DrawPicture(const PagePicture& picture, const PageRectangle& p
     device.DrawQuad(quad, material);
 }
 
+void PagePainter::DrawPicturePart(const PagePicture& picture, const PageRectangle& place, const PageRectangle& part)
+{
+    float left = part.left / picture.Width();
+    float right = (part.left + part.width) / picture.Width();
+    float top = part.top / picture.Height();
+    float bottom = (part.top + part.height) / picture.Height();
+
+    Graphics::Quad quad = QuadOf(place, OpaqueWhite);
+    quad.textureCoordinates[0] = {Formats::Vector2{left, top}, {right, top}, {right, bottom}, {left, bottom}};
+
+    Graphics::Material material;
+    material.textures.push_back({picture.Texture(), Graphics::TextureMatrix()});
+    device.DrawQuad(quad, material);
+}
+
 void PagePainter::DrawText(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box)
 {
     Text::TextStyle textStyle;
-    textStyle.fontSize = {style.size, style.size};
+    textStyle.fontSize = {style.size * frame.scale, style.size * frame.scale};
     textStyle.topColor = style.color;
     textStyle.bottomColor = style.color;
     textStyle.alignment = {style.alignment, Text::VerticalAlignment::Top};
@@ -92,10 +103,10 @@ void PagePainter::DrawText(std::u16string_view text, const PageTextStyle& style,
     Text::TextArea area;
     area.left = topLeft.x;
     area.top = topLeft.y;
-    area.width = box.width;
-    area.height = box.height;
+    area.width = box.width * frame.scale;
+    area.height = box.height * frame.scale;
 
-    std::u16string wrappedText = WrapAtSpaces(text, textStyle, box.width);
+    std::u16string wrappedText = WrapAtSpaces(text, textStyle, area.width);
     Text::LaidOutText laidOutText = font.layouter.LayOut(wrappedText, textStyle, area);
     font.drawer.Draw(laidOutText);
 }
@@ -136,9 +147,26 @@ std::u16string PagePainter::WrapAtSpaces(std::u16string_view text, const Text::T
     return wrappedText;
 }
 
-Formats::Vector2 PagePainter::PictureToPage(Formats::Vector2 picturePoint)
+Formats::Vector2 PagePainter::PictureToPage(Formats::Vector2 picturePoint) const
 {
-    return {picturePoint.x + PageWidth / 2, PageHeight / 2 - picturePoint.y};
+    return {picturePoint.x / frame.scale + frame.width / 2, frame.height / 2 - picturePoint.y / frame.scale};
+}
+
+Formats::Vector2 PagePainter::PageToPicture(float pageX, float pageY) const
+{
+    return {(pageX - frame.width / 2) * frame.scale, (frame.height / 2 - pageY) * frame.scale};
+}
+
+Graphics::Quad PagePainter::QuadOf(const PageRectangle& place, Formats::Rgba8Color color) const
+{
+    float right = place.left + place.width;
+    float bottom = place.top + place.height;
+
+    Graphics::Quad quad{};
+    quad.positions = {PageToPicture(place.left, place.top), PageToPicture(right, place.top), PageToPicture(right, bottom),
+        PageToPicture(place.left, bottom)};
+    quad.colors = {color, color, color, color};
+    return quad;
 }
 
 }
