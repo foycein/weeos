@@ -6,11 +6,20 @@
 namespace Ios
 {
 
-FileSystemState::FileSystemState(NandStorage nandStorage, const VolumeCapacity& volumeCapacity)
+FileSystemState::FileSystemState(NandStorage nandStorage, const VolumeCapacity& volumeCapacity, bool checksNameLength)
     : storage(std::move(nandStorage))
     , capacity(volumeCapacity)
     , isShutDown(false)
+    , checksNameLengthInLookUp(checksNameLength)
 {
+}
+
+NandPath FileSystemState::LookUpPathOf(const NandPath& path) const
+{
+    if (checksNameLengthInLookUp)
+        return path;
+
+    return path.WithNamesCutAt(MaximumNameLength);
 }
 
 std::uint32_t FileSystemState::FreeClusterCount() const

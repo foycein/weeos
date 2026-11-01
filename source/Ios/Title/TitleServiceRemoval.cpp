@@ -1,6 +1,7 @@
 #include "Ios/Title/TitleService.h"
 
 #include "Ios/Title/ContentTypes.h"
+#include "Ios/Title/EsCommands.h"
 #include "Ios/Title/StoredFiles.h"
 #include "Ios/Title/TitlePaths.h"
 
@@ -70,6 +71,10 @@ Result<void> TitleService::DeleteTitleContents(TitleId titleId)
 
 Result<void> TitleService::DeleteContent(TitleId titleId, std::uint32_t contentId)
 {
+    Result<void> commandExists = RequireCommand(DeleteTitleContentCommand);
+    if (commandExists.Failed())
+        return commandExists;
+
     if (IsSystemSoftware(titleId))
         return IosError::TitleInvalidArgument;
 

@@ -32,7 +32,8 @@ public:
     // Brings IOS up. First the identity of the console is read, then the NAND folder is made ready, as the console does every time IOS starts,
     // then the services start. Gives back NoFileSystem when the NAND folder cannot be used and AlreadyExists when the services are running already.
     // The files of the identity folder can be missing (NotFound), unreadable (StorageFailure) or wrong (ShortRead).
-    // The profile tells which version of IOS this is. Unless a title needs another one, it is IOS80, the IOS of the System Menu.
+    // The profile tells which version of IOS this is, and the services behave like it. Unless a title needs another one, it is IOS80,
+    // the IOS of the System Menu. Stop and Start with another profile switch to another IOS on the same NAND.
     Result<void> Start(const IosFolders& folders, const IosProfile& startProfile = SystemMenuProfile());
 
     // Stops the services. The file system shuts down, so a file that is still open cannot be used any more,

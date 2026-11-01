@@ -72,11 +72,12 @@ struct IosProfile
 
     // The file system.
     FileSystemFlavor fileSystemFlavor = FileSystemFlavor::Fs;
+    bool fileSystemChecksNameLengthInLookUp = false;
+    bool fileSystemRecreatesTmpAtEveryStart = false;
 
-    // The disc drive, the SD card and the power service.
+    // The disc drive and the SD card.
     bool discDriveHasNoDiscCommands = false;
     bool sdSupportsHighCapacityCards = false;
-    bool powerHasWakeupCommand = false;
 
     // USB and the keyboard.
     UsbHostGeneration usbHostGeneration = UsbHostGeneration::RootPortsOnly;

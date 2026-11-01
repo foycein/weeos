@@ -1,4 +1,7 @@
 add_library(NandImporter STATIC
+    DumpVerification.cpp
+    FolderFiles.cpp
+    IdentityImporter.cpp
     ImportRules.cpp
     NandImporter.cpp
     PersonalSettings.cpp

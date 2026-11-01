@@ -1,3 +1,6 @@
+#include "DumpVerification.h"
+#include "FolderFiles.h"
+#include "IdentityImporter.h"
 #include "NandImporter.h"
 
 #include "Formats/ConsoleKeys.h"
@@ -10,6 +13,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -29,6 +33,8 @@ constexpr std::string_view UsageText =
     "  import <folder>             the system part of the NAND into <folder>, as the NAND folder of the IOS part keeps it;\n"
     "                              SYSCONF comes without the nickname, parental controls, Wii Remotes, address and clock bias;\n"
     "                              BC and MIOS (the GameCube) are left out\n"
+    "  identity <folder>           keys.txt, device.cert and seeprom.bin into <folder>, the identity folder of the IOS part\n"
+    "  verify                     the error correction of all pages, the HMAC of all clusters, the contents and the signatures of all titles\n"
     "\n"
     "The dump is the folder with nand.bin and keys.txt. Without --dump it is assets/console-dump, searched from here upwards.\n"
     "The NAND keeps the contents of titles already decrypted, so title and extract write them as they are stored;\n"
@@ -58,12 +64,14 @@ class Dump
 {
 public:
     explicit Dump(const std::filesystem::path& dumpFolder)
-        : keys(Formats::ReadConsoleKeys(Formats::ReadFileBytes(dumpFolder / KeysFileName)))
+        : folder(dumpFolder)
+        , keys(Formats::ReadConsoleKeys(Formats::ReadFileBytes(dumpFolder / KeysFileName)))
         , image(dumpFolder / NandImageFileName)
         , fileSystem(image, keys.nandAesKey)
     {
     }
 
+    std::filesystem::path folder;
     Formats::ConsoleKeys keys;
     Formats::NandImage image;
     Formats::NandFileSystem fileSystem;
@@ -119,15 +127,6 @@ const Formats::NandEntry& FindEntryOrFail(const Formats::NandFileSystem& fileSys
         throw std::runtime_error(std::format("{} does not exist on the NAND", path));
 
     return *entry;
-}
-
-void WriteBytesToFile(const std::filesystem::path& filePath, const Formats::Bytes& bytes)
-{
-    std::ofstream file(filePath, std::ios::binary);
-    file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-    file.close();
-    if (!file)
-        throw std::runtime_error(std::format("Cannot write the file {}", filePath.string()));
 }
 
 void PrintEntry(const Formats::NandEntry& entry, const std::string& shownName)
@@ -347,6 +346,99 @@ void ImportCommand(Dump& dump, const Arguments& arguments)
     PrintImportReport(plan);
 }
 
+std::string_view CheckText(Formats::SignatureCheck check)
+{
+    switch (check)
+    {
+    case Formats::SignatureCheck::Valid:
+        return "valid";
+    case Formats::SignatureCheck::SignerNotFound:
+        return "signer not found";
+    case Formats::SignatureCheck::Invalid:
+        return "invalid";
+    }
+    return "unknown";
+}
+
+void PrintErrorCorrectionReport(Formats::NandImage& image)
+{
+    ErrorCorrectionReport report = CheckErrorCorrection(image, 1);
+    std::cout << std::format("Error correction of the pages: {} erased, {} correct, {} without error correction bytes, {} wrong\n",
+        report.erasedPageCount, report.correctPageCount, report.unprotectedPages.size(), report.wrongPages.size());
+
+    for (std::uint32_t pageNumber : report.unprotectedPages)
+        std::cout << std::format("  page {} (cluster {}, block {}) has data and no error correction bytes\n", pageNumber,
+            pageNumber / Formats::NandPagesPerCluster, pageNumber / Formats::NandPagesPerBlock);
+
+    for (std::uint32_t pageNumber : report.wrongPages)
+        std::cout << std::format("  page {} (cluster {}, block {}) has wrong error correction\n", pageNumber,
+            pageNumber / Formats::NandPagesPerCluster, pageNumber / Formats::NandPagesPerBlock);
+}
+
+void PrintHmacReport(Dump& dump)
+{
+    HmacReport report = CheckHmacs(dump.fileSystem, dump.keys.nandHmacKey, std::numeric_limits<std::uint32_t>::max());
+    std::cout << std::format("HMAC of the clusters: {} files with {} clusters, {} wrong; the superblock {}\n", report.checkedFileCount,
+        report.checkedClusterCount, report.wrongClusterCount, report.superblockIsCorrect ? "is right" : "is wrong");
+}
+
+void PrintContentReport(Formats::NandFileSystem& fileSystem)
+{
+    std::vector<std::uint64_t> titleIds = Formats::NandTitles(fileSystem).ListTitleIds();
+    ContentReport report = CheckContentsOfTitles(fileSystem, titleIds);
+    std::cout << std::format("Contents of the titles against their title metadata: {} checked, {} missing, {} wrong\n", report.checkedCount,
+        report.missingCount, report.wrongCount);
+}
+
+void PrintSignatureReport(Formats::NandFileSystem& fileSystem)
+{
+    std::vector<std::uint64_t> titleIds = Formats::NandTitles(fileSystem).ListTitleIds();
+    std::vector<TitleSignatureReport> reports = CheckSignaturesOfTitles(fileSystem, titleIds);
+
+    std::size_t titleCountWithValidMetadata = 0;
+    std::size_t ticketCount = 0;
+    std::size_t ticketCountThatIsValid = 0;
+    for (const TitleSignatureReport& report : reports)
+    {
+        if (report.metadata == Formats::SignatureCheck::Valid)
+            ++titleCountWithValidMetadata;
+        else
+            std::cout << std::format("  {} title metadata: {}\n", Formats::FormatTitleId(report.titleId), CheckText(report.metadata));
+
+        for (Formats::SignatureCheck ticketCheck : report.tickets)
+        {
+            ++ticketCount;
+            if (ticketCheck == Formats::SignatureCheck::Valid)
+                ++ticketCountThatIsValid;
+            else
+                std::cout << std::format("  {} ticket: {}\n", Formats::FormatTitleId(report.titleId), CheckText(ticketCheck));
+        }
+    }
+
+    std::cout << std::format("Signatures: {} of {} title metadata files and {} of {} tickets are valid\n", titleCountWithValidMetadata,
+        reports.size(), ticketCountThatIsValid, ticketCount);
+}
+
+void IdentityCommand(Dump& dump, const Arguments& arguments)
+{
+    if (arguments.size() != 1)
+        throw UsageError();
+
+    WriteIdentity(dump.folder, arguments[0]);
+    std::cout << std::format("The identity of the console {:08X} is in {}\n", dump.keys.consoleId, arguments[0]);
+}
+
+void VerifyCommand(Dump& dump, const Arguments& arguments)
+{
+    if (!arguments.empty())
+        throw UsageError();
+
+    PrintErrorCorrectionReport(dump.image);
+    PrintHmacReport(dump);
+    PrintContentReport(dump.fileSystem);
+    PrintSignatureReport(dump.fileSystem);
+}
+
 struct Command
 {
     std::string_view name;
@@ -361,6 +453,8 @@ constexpr Command Commands[] =
     {"titles", TitlesCommand},
     {"title", TitleCommand},
     {"import", ImportCommand},
+    {"identity", IdentityCommand},
+    {"verify", VerifyCommand},
 };
 
 const Command& FindCommand(const std::string& name)
