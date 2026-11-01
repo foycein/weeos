@@ -36,6 +36,9 @@ public:
     // A button that is not enabled goes dark.
     void SetButtonEnabled(std::string_view boundPaneName, bool isEnabled);
 
+    // A button that is the area of a pane that is not a bounding pane, as the photo viewer's "<name>B" panes. It has no light.
+    void AddAreaButton(const std::string& paneName);
+
     // Plays an animation of the bundle once from its start, by the part of its name after "<layout>_", for example "all_inOut".
     // Nothing happens when the bundle has no such animation.
     void PlayAnimation(const std::string& animationName);
@@ -77,16 +80,19 @@ private:
         bool isLit = false;
     };
 
+    std::optional<std::string> TakePressedAreaButton(const SystemMenu::InputManager& input);
     BoundAnimation* FindOrBindAnimation(const std::string& animationName);
     BoundAnimation BindToItsGroups(Formats::LayoutAnimation animation);
     ButtonLight* FindLight(std::string_view boundPaneName);
     void MoveLights();
 
+    SystemMenu::Display& display;
     std::unique_ptr<Layout::LayoutArchive> archive;
     std::string layoutName;
     SystemMenu::MenuLayout layout;
     SystemMenu::ButtonController buttons;
     std::vector<ButtonLight> lights;
+    std::vector<std::string> areaButtons;
 
     // In the order they were bound, which is the order they change the panes in a step. An animation that the bundle does not have
     // is remembered as missing.

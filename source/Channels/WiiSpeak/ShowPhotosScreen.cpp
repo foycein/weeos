@@ -46,7 +46,7 @@ ShowPhotosScreen::ShowPhotosScreen(WiiSpeakSession& photoSession)
     , layout(session.services.display, session.files.PhotoLayouts(), "view")
 {
     for (const std::string& button : {PreviousButton, NextButton, ShowButton, FinishButton})
-        layout.AddButton(button);
+        layout.AddAreaButton(button);
     for (const ButtonText& text : ButtonTexts)
         layout.SetText(text.pane, session.Text(text.messageId));
     for (std::string_view pane : PanesNotBuilt)

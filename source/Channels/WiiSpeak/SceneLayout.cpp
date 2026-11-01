@@ -23,11 +23,12 @@ std::string ButtonNameOf(std::string_view boundPaneName)
 
 }
 
-SceneLayout::SceneLayout(SystemMenu::Display& display, std::unique_ptr<Layout::LayoutArchive> layoutArchive, const std::string& name)
-    : archive(std::move(layoutArchive))
+SceneLayout::SceneLayout(SystemMenu::Display& menuDisplay, std::unique_ptr<Layout::LayoutArchive> layoutArchive, const std::string& name)
+    : display(menuDisplay)
+    , archive(std::move(layoutArchive))
     , layoutName(name)
-    , layout(display, *archive, name)
-    , buttons(layout, display)
+    , layout(menuDisplay, *archive, name)
+    , buttons(layout, menuDisplay)
 {
 }
 
@@ -41,6 +42,12 @@ void SceneLayout::AddButton(const std::string& boundPaneName)
     buttons.AddButton(boundPaneName);
     buttons.SetEnabled(boundPaneName, true);
     lights.push_back({boundPaneName});
+}
+
+void SceneLayout::AddAreaButton(const std::string& paneName)
+{
+    layout.PaneNamed(paneName);
+    areaButtons.push_back(paneName);
 }
 
 void SceneLayout::SetButtonEnabled(std::string_view boundPaneName, bool isEnabled)
@@ -87,7 +94,29 @@ std::optional<std::string> SceneLayout::TakePressedButton(const SystemMenu::Inpu
             pressed = event.buttonName;
         }
     }
+
+    if (!pressed)
+        pressed = TakePressedAreaButton(input);
     return pressed;
+}
+
+// The pointer of the player who pressed A, in the area of a shown pane.
+std::optional<std::string> SceneLayout::TakePressedAreaButton(const SystemMenu::InputManager& input)
+{
+    for (int playerIndex = 0; playerIndex < SystemMenu::PlayerCount; ++playerIndex)
+    {
+        const std::optional<SystemMenu::PlayerInput>& player = input.Player(playerIndex);
+        if (!player || !player->state.pointerIsValid || !input.HasPlayerPressed(playerIndex, SystemMenu::SelectButtons))
+            continue;
+
+        Formats::Vector2 place = display.PointerToCanvas(player->state.pointer);
+        for (const std::string& paneName : areaButtons)
+        {
+            if (layout.IsPointInPane(paneName, place))
+                return paneName;
+        }
+    }
+    return std::nullopt;
 }
 
 void SceneLayout::Calculate()
