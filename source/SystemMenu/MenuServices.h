@@ -17,6 +17,7 @@ class MenuFiles;
 class ScreenManager;
 class SoftKeyboard;
 class SoundRequests;
+class TitleLaunchRequest;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -32,6 +33,9 @@ struct MenuServices
     ScreenManager& screens;
     SoundRequests& sounds;
     SoftKeyboard& keyboard;
+
+    // How the menu starts a channel: titleLaunch.Request(channelTitleId) once the start window has faded out.
+    TitleLaunchRequest& titleLaunch;
 };
 
 }

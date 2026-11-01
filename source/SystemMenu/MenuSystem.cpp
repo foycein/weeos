@@ -17,7 +17,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , cursors(display, files)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
     , keyboard(display, files, messages, clock, input, sounds)
-    , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard}
+    , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -58,6 +58,11 @@ void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
 MenuServices& MenuSystem::Services()
 {
     return services;
+}
+
+std::optional<Ios::TitleId> MenuSystem::TakeTitleToLaunch()
+{
+    return titleLaunch.Take();
 }
 
 }

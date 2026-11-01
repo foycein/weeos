@@ -12,6 +12,7 @@
 #include "SystemMenu/SoftKeyboard.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
+#include "SystemMenu/TitleLaunchRequest.h"
 
 #include "Ios/Remote/RemoteService.h"
 #include "Text/MessageCatalog.h"
@@ -43,6 +44,10 @@ public:
 
     MenuServices& Services();
 
+    // The title that a screen asked for in the steps since the last call (MenuServices::titleLaunch). The program ends the menu then and
+    // starts that title.
+    std::optional<Ios::TitleId> TakeTitleToLaunch();
+
 private:
     Display display;
     MenuFiles files;
@@ -55,6 +60,7 @@ private:
     ScreenManager screens;
     SoundRequests sounds;
     SoftKeyboard keyboard;
+    TitleLaunchRequest titleLaunch;
     MenuServices services;
 };
 

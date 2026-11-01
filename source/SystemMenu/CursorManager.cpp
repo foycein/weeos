@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <format>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -40,6 +41,17 @@ CursorManager::CursorManager(Display& menuDisplay, const MenuFiles& files)
     scrollArrowLayout = std::make_unique<MenuLayout>(display, *archive, std::string(ScrollArrowLayoutName));
 }
 
+CursorManager::CursorManager(Display& channelDisplay, std::unique_ptr<Layout::LayoutArchive> handArchive)
+    : display(channelDisplay)
+    , archive(std::move(handArchive))
+{
+    for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
+    {
+        int playerNumber = playerIndex + 1;
+        pointingHands[playerIndex] = std::make_unique<MenuLayout>(display, *archive, std::format("P{}_Def", playerNumber));
+    }
+}
+
 void CursorManager::SetVisible(bool shouldBeVisible)
 {
     isVisible = shouldBeVisible;
@@ -70,7 +82,7 @@ void CursorManager::Update(const InputManager& input)
     for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
         UpdateHand(playerIndex, input.Player(playerIndex));
 
-    if (scrollArrow)
+    if (scrollArrow && scrollArrowLayout)
         UpdateScrollArrow();
 }
 
@@ -82,7 +94,8 @@ void CursorManager::UpdateHand(int playerIndex, const std::optional<PlayerInput>
     if (!playerInput || !playerInput->state.pointerIsValid)
         return;
 
-    MenuLayout& handLayout = hand.isGrabbing ? *grabbingHands[playerIndex] : *pointingHands[playerIndex];
+    bool hasGrabbingHand = grabbingHands[playerIndex] != nullptr;
+    MenuLayout& handLayout = hand.isGrabbing && hasGrabbingHand ? *grabbingHands[playerIndex] : *pointingHands[playerIndex];
     PlaceHand(handLayout, playerInput->state);
     handLayout.Calculate();
     hand.shownLayout = &handLayout;
@@ -138,7 +151,7 @@ void CursorManager::Draw()
             hand.shownLayout->Draw();
     }
 
-    if (scrollArrow)
+    if (scrollArrow && scrollArrowLayout)
         scrollArrowLayout->Draw();
 }
 

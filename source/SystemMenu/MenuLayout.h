@@ -33,6 +33,12 @@ public:
     // The first pane with this name, anywhere in the tree. Throws a MenuError when the layout has none.
     Formats::Pane& PaneNamed(std::string_view paneName);
 
+    // The same, or nothing when the layout has no such pane.
+    Formats::Pane* FindPane(std::string_view paneName);
+
+    // True when the pane is shown and the point of the picture, in layout units, lies inside its rectangle.
+    bool IsPointInPane(std::string_view paneName, Formats::Vector2 point);
+
     // Puts the text into the text box with this name. Throws a MenuError when the layout has no such text box.
     void SetText(std::string_view paneName, std::u16string_view text);
 

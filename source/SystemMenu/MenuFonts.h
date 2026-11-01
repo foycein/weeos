@@ -26,6 +26,12 @@ public:
     // The device, the contents and the files are only used here. The device must stay alive as long as the fonts.
     MenuFonts(Graphics::GraphicsDevice& device, TitleContents& titleContents, const MenuFiles& files);
 
+    // No fonts yet. A channel adds the fonts of its own files.
+    MenuFonts() = default;
+
+    // The font is drawn for each of the names. The device must stay alive as long as the fonts.
+    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
+
     const Layout::TextFonts& Fonts() const;
 
 private:
@@ -37,8 +43,6 @@ private:
 
         LoadedFont(Graphics::GraphicsDevice& device, Formats::Font loadedFont);
     };
-
-    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
 
     std::vector<std::unique_ptr<LoadedFont>> loadedFonts;
     Layout::TextFonts textFonts;
