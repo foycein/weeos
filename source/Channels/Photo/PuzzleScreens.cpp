@@ -39,6 +39,7 @@ constexpr float BoardTop = 150;
 constexpr float BoardBottom = -150;
 constexpr std::string_view PickSound = "SE_PUZZULE_GET";
 constexpr std::string_view PutSound = "SE_PUZZULE_PUT";
+constexpr std::string_view ShiftSound = "SE_PUZZULE_SHIFT";
 constexpr std::string_view SolvedMusic = "BGM_PUZZULE_FANFARE";
 constexpr std::string_view PuzzleMusic = "BGM_PUZZULE";
 constexpr std::string_view NewRecordMessage = "textTUS1A";
@@ -252,6 +253,9 @@ private:
             return;
         }
 
+        if (MoveHeldPieceByArrow())
+            return;
+
         std::optional<Formats::Vector2> place = session.PlaceOfPress();
         if (!place)
             return;
@@ -272,6 +276,38 @@ private:
         heldSlot = std::nullopt;
         if (puzzle->IsSolved())
             Solve();
+    }
+
+    // The arrows move the piece in the hand one place over; the piece that lay there takes its place.
+    bool MoveHeldPieceByArrow()
+    {
+        const PuzzleSize& size = PuzzleSizes[sizeIndex];
+        int columnStep = 0;
+        int rowStep = 0;
+        if (session.IsButtonPressed(*board, "left"))
+            columnStep = -1;
+        else if (session.IsButtonPressed(*board, "right"))
+            columnStep = 1;
+        else if (session.IsButtonPressed(*board, "up"))
+            rowStep = -1;
+        else if (session.IsButtonPressed(*board, "down"))
+            rowStep = 1;
+        else
+            return false;
+
+        if (!heldSlot)
+            return true;
+
+        int column = *heldSlot % size.columns + columnStep;
+        int row = *heldSlot / size.columns + rowStep;
+        if (column < 0 || row < 0 || column >= size.columns || row >= size.rows)
+            return true;
+
+        int newSlot = row * size.columns + column;
+        session.Services().sounds.Request(ShiftSound);
+        puzzle->Swap(*heldSlot, newSlot);
+        heldSlot = newSlot;
+        return true;
     }
 
     std::optional<int> SlotAt(Formats::Vector2 place) const
