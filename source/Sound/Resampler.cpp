@@ -12,7 +12,7 @@ namespace
 
 // The filter reaches this many samples to the left and to the right of the position (so 2 * 24 = 48 weights are used).
 // The window is flat in the passband to 0.43 of the sample rate and cuts everything above 0.57 by 100 dB.
-constexpr int HalfWidth = 24;
+constexpr int HalfWidth = ResamplerHalfWidth;
 constexpr double KaiserBeta = 10.0;
 
 // The filter is stored with this many entries between two samples. The value between two entries is found by a straight line,

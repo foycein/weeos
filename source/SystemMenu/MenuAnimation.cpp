@@ -6,23 +6,24 @@ namespace SystemMenu
 {
 
 MenuAnimation::MenuAnimation(Layout::LiveLayout& layoutToAnimate, Formats::LayoutAnimation animationToPlay, Layout::PlaybackMode playbackMode,
-    std::vector<Formats::Pane*> panesToAnimate)
+    std::vector<Formats::Pane*> panesToAnimate, Layout::PaneReach paneReach)
     : layout(layoutToAnimate)
     , animation(std::move(animationToPlay))
     , mode(playbackMode)
     , panes(std::move(panesToAnimate))
+    , reach(paneReach)
 {
 }
 
 void MenuAnimation::Start()
 {
-    player.emplace(layout, animation, mode, panes);
+    player.emplace(layout, animation, mode, panes, reach);
     isPlaying = true;
 }
 
 void MenuAnimation::ShowLastFrame()
 {
-    player.emplace(layout, animation, mode, panes);
+    player.emplace(layout, animation, mode, panes, reach);
     player->Advance(static_cast<float>(animation.frameCount) - 1);
     isPlaying = false;
 }
@@ -39,7 +40,7 @@ bool MenuAnimation::IsPlaying() const
 
 void MenuAnimation::ShowFrame(float frame)
 {
-    player.emplace(layout, animation, mode, panes);
+    player.emplace(layout, animation, mode, panes, reach);
     player->Advance(frame);
     isPlaying = false;
 }

@@ -52,7 +52,8 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     identity = std::make_unique<ConsoleIdentityService>(std::move(consoleIdentity.Value()));
 
     // The order of the modules of IOS80: file system, DIP (disc drive), OH1 (the Bluetooth device of the remotes), SDI (SD card),
-    // WD (wireless), NCD (network configuration), SO (sockets), STM (power), KBD (keyboard), SSL (secure sockets).
+    // WD (wireless), NCD (network configuration), SO (sockets), STM (power), KBD (keyboard), SSL (secure sockets). The Wii Speak microphone
+    // is a device on the USB port of OH0, like the keyboard, and starts after it.
     // The sockets use the network configuration, so they start after it.
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()), startProfile);
     titles = std::make_unique<TitleService>(*fileSystem, *identity, startProfile);
@@ -65,6 +66,7 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     sockets = std::make_unique<SocketService>(*networkConfig);
     power = std::make_unique<PowerService>();
     keyboard = std::make_unique<KeyboardService>(startProfile);
+    microphone = std::make_unique<MicrophoneService>();
     secureSockets = std::make_unique<SecureSocketService>();
     profile = startProfile;
     isRunning = true;
@@ -76,6 +78,7 @@ void IosServices::Stop()
     if (!isRunning)
         return;
 
+    microphone->Close();
     keyboard->Close();
     power->Close();
     remote->Close();
@@ -88,6 +91,7 @@ void IosServices::Stop()
 void IosServices::DestroyServices()
 {
     secureSockets.reset();
+    microphone.reset();
     keyboard.reset();
     power.reset();
     sockets.reset();
@@ -158,6 +162,12 @@ RemoteService& IosServices::GetRemote()
 {
     RequireRunning();
     return *remote;
+}
+
+MicrophoneService& IosServices::GetMicrophone()
+{
+    RequireRunning();
+    return *microphone;
 }
 
 PowerService& IosServices::GetPower()

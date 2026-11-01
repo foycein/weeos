@@ -203,9 +203,10 @@ private:
         const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
+        Channels::ChannelAudio audio{iosServices.GetMicrophone(), sound.Waves()};
         Channels::ChannelPc pc{&iosServices.GetKeyboard(), {browserFolder, sound.IsSilent()}};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
+            iosServices.GetNetworkConfig(), storage, audio, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()), pc);
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -289,7 +290,33 @@ void Application::StartSession()
     std::filesystem::path browserFolder = folders.nandFolder.parent_path() / BrowserFolderName;
     session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer,
         browserFolder);
+    AttachMicrophone();
     StopOnTheKeyOfKoreanConsoles();
+}
+
+// IOS is new in every session, so the accessory is plugged into the new microphone service. A channel looks for it in its first step.
+void Application::AttachMicrophone()
+{
+    Ios::MicrophoneService& microphone = console.GetServices().GetMicrophone();
+    if (givenMicrophone != nullptr)
+    {
+        microphone.AttachSource(*givenMicrophone);
+        return;
+    }
+
+    if (Sound::HasCaptureDevice())
+        microphone.AttachSource(pcMicrophone);
+}
+
+void Application::UseMicrophoneSource(Ios::MicrophoneSource& source)
+{
+    givenMicrophone = &source;
+    console.GetServices().GetMicrophone().AttachSource(source);
+}
+
+const PcMicrophone& Application::GetPcMicrophone() const
+{
+    return pcMicrophone;
 }
 
 // The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.

@@ -1,5 +1,6 @@
 add_library(WeeOSApplication STATIC
     Application.cpp
+    PcMicrophone.cpp
     ConsoleImporter.cpp
     NewConsole.cpp
     ProgramSound.cpp

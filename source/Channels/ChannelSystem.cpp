@@ -7,6 +7,7 @@
 #include "SystemMenu/HomeMenu/HomeMenuFiles.h"
 
 #include "Formats/Font.h"
+#include "Formats/Yaz0.h"
 
 #include <format>
 #include <utility>
@@ -41,15 +42,15 @@ ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 }
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-    Ios::TitleId titleId, Settings::PcClock consoleTime, std::optional<Formats::Bytes> consoleFontArchive, const ChannelPc& pc)
+    Ios::NetworkConfigService& network, const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService,
+    Platform::ScreenShape screenShape, Ios::TitleId titleId, Settings::PcClock consoleTime, std::optional<Formats::Bytes> consoleFontArchive, const ChannelPc& pc)
     : runningTitle(titleId)
     , sharedFiles(SharedFilesOrFail(titleId))
     , power(powerService)
     , display(device, screenShape)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, std::move(consoleTime), pc}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, audio, std::move(consoleTime), pc}
 {
     LoadSystemFonts(contents, std::move(consoleFontArchive));
     channel = MakeChannel(titleId, services);
