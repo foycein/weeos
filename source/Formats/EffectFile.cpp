@@ -57,8 +57,9 @@ constexpr std::size_t Version11ChildValueSize = 12;
 constexpr std::size_t TextureKeyValueSize = 4;
 constexpr std::size_t Version11FieldHeaderSize = 4;
 
-// The texture header of a .breft entry.
-constexpr std::size_t TextureHeaderSize = 0x20;
+// The texture header of a .breft entry: version 11 adds a filter and a level of detail bias and pads the header to 0x40 bytes.
+constexpr std::size_t Version5TextureHeaderSize = 0x20;
+constexpr std::size_t Version11TextureHeaderSize = 0x40;
 constexpr std::size_t TextureFormatPlace = 0x0C;
 
 struct TableEntry
@@ -972,7 +973,8 @@ std::vector<EffectTexture> ReadEffectTextureFile(ByteView bytes)
         if (IsPaletteFormat(format))
             reader.Fail(std::format("the texture {} has a palette, which no effect file uses", entry.name));
 
-        reader.MoveTo(block + TextureHeaderSize);
+        std::size_t headerSize = version == EffectFileVersion5 ? Version5TextureHeaderSize : Version11TextureHeaderSize;
+        reader.MoveTo(block + headerSize);
         ByteView pixels = reader.ReadBytes(imageSize);
         texture.image = DecodeTexture(format, texture.width, texture.height, pixels, std::nullopt);
         textures.push_back(std::move(texture));

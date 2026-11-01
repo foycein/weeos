@@ -24,7 +24,7 @@ constexpr float PointSpreadGrowth = 0.34f;
 
 enum FormParameter
 {
-    RadiusX = 0,
+    RadiusAlongX = 0,
     InnerRadiusPercent = 1,
     StartAngle = 2,
     EndAngle = 3,
@@ -84,7 +84,7 @@ std::vector<float> RingAngles(const EmitterSettings& settings, std::uint32_t cou
 
 float RadiusX(const EmitterSettings& settings)
 {
-    float radius = settings.formParameters[RadiusX];
+    float radius = settings.formParameters[RadiusAlongX];
     if (std::abs(radius) < SmallestRadius)
         return SmallestRadius;
     return radius;

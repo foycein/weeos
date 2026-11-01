@@ -190,8 +190,8 @@ ViewQuad AlongTheDirectionQuad(const EmitterView& view, const Particle& particle
     };
 }
 
-// A picture standing in the world: its height along the particle's direction, its width along the emitter's up axis, turned about
-// one of its own axes by the particle's rotation.
+// A picture lying in the world: its height along the particle's direction, its width across it in the plane of the emitter's form
+// (DirectionalWidthAcross), turned about one of its own axes by the particle's rotation.
 ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, float width, float height)
 {
     constexpr std::uint8_t TurnsAboutX = 0;
@@ -199,7 +199,7 @@ ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, floa
 
     Vector3 direction = ParticleDirection(view, particle);
     Vector3 side = NormalizeOr(Cross(view.upAxis, direction), {0, 0, 1});
-    Vector3 axis = Cross(direction, side);
+    Vector3 upward = Cross(direction, side);
 
     Vector3 rotation = Add(Add(particle.rotation, particle.rotationOffset), view.effect.RotationOffset());
     std::uint8_t turnAxis = view.resource.shape.axis;
@@ -214,7 +214,7 @@ ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, floa
 
     auto corner = [&](float x, float y, float s, float t) {
         Vector3 local = Add(Graphics::TransformDirection(turn, {x * width, y * stretch * height, 0}), shift);
-        Vector3 world = Add(particle.position, Add(Add(Multiply(axis, local.x), Multiply(direction, local.y)), Multiply(side, local.z)));
+        Vector3 world = Add(particle.position, Add(Add(Multiply(side, local.x), Multiply(direction, local.y)), Multiply(upward, local.z)));
         return CornerOf(Graphics::TransformPoint(view.cameraView, world), s, t);
     };
     return {corner(-1, 1, 0, 0), corner(1, 1, 1, 0), corner(1, -1, 1, 1), corner(-1, -1, 0, 1)};
