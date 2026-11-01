@@ -20,6 +20,9 @@ namespace
 // the Wii button and the envelope; the others belong to the buttons of the Message Board.
 constexpr std::array<std::string_view, 10> HousingsOfTheButtons = {
     "BtnL_a0", "BtnL_a1", "BtnL_a3", "BtnL_a4", "BtnL_a5", "BtnL_a6", "BtnL_a7", "BtnL_a8", "BtnR_a0", "BtnR_a1"};
+constexpr std::string_view FirstEnd = "_0";
+constexpr std::string_view MiddlePiece = "_1";
+constexpr std::string_view SecondEnd = "_2";
 
 // A screen this little wider than the picture shows nothing beside it.
 constexpr float SideTolerance = 0.5f;
@@ -79,7 +82,7 @@ public:
 
     std::optional<StretchedHousing> StretchToTheSide(std::string_view housing)
     {
-        std::string middleName = PieceName(housing, "_1");
+        std::string middleName = PieceName(housing, MiddlePiece);
         std::optional<HorizontalSpan> middleSpan = placedPanes.SpanOf(middleName);
         if (!middleSpan)
             return std::nullopt;
@@ -108,8 +111,8 @@ private:
     // not say which one it is.
     Formats::Pane& OuterEnd(std::string_view housing, Side side)
     {
-        std::string firstName = PieceName(housing, "_0");
-        std::string secondName = PieceName(housing, "_2");
+        std::string firstName = PieceName(housing, FirstEnd);
+        std::string secondName = PieceName(housing, SecondEnd);
         float firstX = placedPanes.PlaceOf(firstName).value_or(Formats::Vector2{}).x;
         float secondX = placedPanes.PlaceOf(secondName).value_or(Formats::Vector2{}).x;
 
@@ -135,20 +138,9 @@ bool IsStretched(const std::vector<StretchedHousing>& stretchedHousings, const F
         [&pane](const StretchedHousing& housing) { return housing.middle == &pane || housing.outerEnd == &pane; });
 }
 
-}
-
-void DrawBarWithHousingsToTheSides(MenuLayout& layout, Display& display)
+std::vector<StretchedHousing> StretchTheHousingsToTheSides(MenuLayout& layout, const Graphics::ScissorRectangle& canvasArea,
+    const Graphics::ScissorRectangle& screenArea)
 {
-    Graphics::GraphicsDevice& device = display.Device();
-    Graphics::ScissorRectangle canvasArea = AreaOfCanvas(display.GetCanvas());
-    Graphics::ScissorRectangle screenArea = device.WholeArea();
-    bool isWiderThanThePicture = screenArea.left < canvasArea.left - SideTolerance || screenArea.right > canvasArea.right + SideTolerance;
-    if (!isWiderThanThePicture)
-    {
-        layout.Draw();
-        return;
-    }
-
     std::vector<StretchedHousing> stretchedHousings;
     HousingStretcher stretcher(layout, canvasArea, screenArea);
     for (std::string_view housing : HousingsOfTheButtons)
@@ -157,9 +149,14 @@ void DrawBarWithHousingsToTheSides(MenuLayout& layout, Display& display)
         if (stretched)
             stretchedHousings.push_back(*stretched);
     }
+    return stretchedHousings;
+}
 
-    // Only the stretched housings reach beside the picture, and only sideways.
-    Graphics::ScissorRectangle sidesOfTheScreen = {screenArea.left, screenArea.right, canvasArea.bottom, canvasArea.top};
+// Only the stretched housings reach beside the picture, and only sideways.
+void DrawWithTheStretchedHousings(MenuLayout& layout, Display& display, const std::vector<StretchedHousing>& stretchedHousings,
+    const Graphics::ScissorRectangle& sidesOfTheScreen)
+{
+    Graphics::GraphicsDevice& device = display.Device();
     PlacedPanes placedPanes(layout);
     for (const Layout::PanePlacement& placement : placedPanes.InDrawingOrder())
     {
@@ -171,6 +168,25 @@ void DrawBarWithHousingsToTheSides(MenuLayout& layout, Display& display)
             device.ClearScissor();
     }
     display.NoteDrawnLayout(layout.Live(), layout.Placement());
+}
+
+}
+
+void DrawBarWithHousingsToTheSides(MenuLayout& layout, Display& display)
+{
+    Graphics::ScissorRectangle canvasArea = AreaOfCanvas(display.GetCanvas());
+    Graphics::ScissorRectangle screenArea = display.Device().WholeArea();
+    bool reachesBeyondTheLeft = screenArea.left < canvasArea.left - SideTolerance;
+    bool reachesBeyondTheRight = screenArea.right > canvasArea.right + SideTolerance;
+    if (!reachesBeyondTheLeft && !reachesBeyondTheRight)
+    {
+        layout.Draw();
+        return;
+    }
+
+    std::vector<StretchedHousing> stretchedHousings = StretchTheHousingsToTheSides(layout, canvasArea, screenArea);
+    Graphics::ScissorRectangle sidesOfTheScreen = {screenArea.left, screenArea.right, canvasArea.bottom, canvasArea.top};
+    DrawWithTheStretchedHousings(layout, display, stretchedHousings, sidesOfTheScreen);
 
     for (const StretchedHousing& stretched : stretchedHousings)
         PutBack(stretched);
