@@ -77,14 +77,16 @@ void CheckEmitterIsBuilt(const EmitterResource& resource)
     if (!IsFormBuilt(settings))
         FailNotBuilt(resource, std::format("the emitter form {}", static_cast<int>(settings.form)));
 
-    bool hasCameraFeature = (settings.emitFlags & (Formats::EmitFlag::LevelOfDetail | EmitterTurnsToTheCamera | EmitterTurnsToTheCameraOnY)) != 0;
+    std::uint32_t cameraFlags = Formats::EmitFlag::LevelOfDetail | EmitterTurnsToTheCamera | EmitterTurnsToTheCameraOnY;
+    bool hasCameraFeature = (settings.emitFlags & cameraFlags) != 0;
     if (hasCameraFeature)
         FailNotBuilt(resource, "an emitter that follows the camera");
     if (settings.emitIntervalRandomPercent != 0)
         FailNotBuilt(resource, "a random emit interval");
 
-    if (!IsShapeBuilt(resource.shape))
-        FailNotBuilt(resource, std::format("the particle draw type {} option {}", static_cast<int>(resource.shape.type), resource.shape.option));
+    const Formats::ParticleShape& shape = resource.shape;
+    if (!IsShapeBuilt(shape))
+        FailNotBuilt(resource, std::format("the particle draw type {} option {}", static_cast<int>(shape.type), shape.option));
 
     const Formats::EffectDrawSetting& drawSetting = resource.drawSetting;
     if (!BlendModeOf(drawSetting))

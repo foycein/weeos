@@ -83,6 +83,9 @@ private:
     float EmitAmount();
     void MakeParticles(std::uint32_t count);
     Particle NewParticle(Formats::Vector3 localPosition, Formats::Vector3 localVelocity);
+    std::uint32_t RandomParticleLife();
+    void RandomizeSize(Particle& particle);
+    Formats::Vector3 RandomRotationOffset();
     void InheritFromTheSource(Particle& particle) const;
 
     const Formats::EmitterResource& resource;

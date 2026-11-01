@@ -30,7 +30,15 @@ constexpr std::uint8_t FactorInverseSourceAlpha = 5;
 constexpr std::uint8_t AlwaysPasses = 7;
 constexpr std::uint8_t AmbientLighting = 1;
 constexpr std::uint8_t NoStageTexture = 0xFF;
+constexpr std::size_t StageTextureCount = 2;
 constexpr std::size_t IndirectTextureSlot = 2;
+
+// The bytes of a stage's color or alpha operation, in their order in the file.
+constexpr std::size_t OperationKind = 0;
+constexpr std::size_t OperationBias = 1;
+constexpr std::size_t OperationScale = 2;
+constexpr std::size_t OperationClamp = 3;
+constexpr std::size_t OperationOutput = 4;
 
 constexpr std::uint8_t WrapBitsMask = 0xF;
 constexpr std::size_t BitsPerTextureWrap = 4;
@@ -41,6 +49,15 @@ constexpr int VerticalWrapShift = 2;
 constexpr std::uint8_t MirrorWrap = 2;
 constexpr std::uint8_t ReversesHorizontally = 0x1;
 constexpr std::uint8_t ReversesVertically = 0x2;
+
+// A mirrored wrap shows the picture twice over the texture coordinates of one picture.
+constexpr float MirrorRepeat = 2;
+constexpr std::size_t TextureTranslationColumn = 2;
+
+constexpr Rgba8Color OpaqueWhite = {255, 255, 255, 255};
+
+// A quad among the models is drawn as two triangles of three corners.
+constexpr std::size_t TwoTrianglesCornerCount = 6;
 
 // The chip multiplies two 8-bit colors as (a * b + 128) / 256.
 constexpr int ProductRounding = 0x80;
@@ -91,7 +108,7 @@ EmitterView MakeEmitterView(const Effect& effect, const Emitter& emitter, const 
     }
 
     Graphics::Matrix4 world = emitter.WorldMatrix();
-    view.origin = ColumnOf(world, 3);
+    view.origin = ColumnOf(world, TranslationColumn);
     view.upAxis = NormalizeOr(ColumnOf(world, 1), {0, 1, 0});
     return view;
 }
@@ -141,7 +158,12 @@ ViewQuad FacingQuad(const EmitterView& view, const Particle& particle, float wid
         Vector2 turned = Turn(x, y, angle);
         return CornerOf(Add(center, RollIntoView(view, turned.x, turned.y)), pictureX, pictureY);
     };
-    return {corner(-width, height, 0, 0), corner(width, height, 1, 0), corner(width, -height, 1, 1), corner(-width, -height, 0, 1)};
+    return {
+        corner(-width, height, 0, 0),
+        corner(width, height, 1, 0),
+        corner(width, -height, 1, 1),
+        corner(-width, -height, 0, 1),
+    };
 }
 
 Vector3 ParticleDirection(const EmitterView& view, const Particle& particle)
@@ -183,30 +205,39 @@ ViewQuad AlongTheDirectionQuad(const EmitterView& view, const Particle& particle
 
     Vector3 halfAcross = Multiply(across, width);
     Vector3 halfAlong = Multiply(along, stretch * height);
+    Vector3 top = Add(center, halfAlong);
+    Vector3 bottom = Subtract(center, halfAlong);
     return {
-        CornerOf(Add(Subtract(center, halfAcross), halfAlong), 0, 0),
-        CornerOf(Add(Add(center, halfAcross), halfAlong), 1, 0),
-        CornerOf(Subtract(Add(center, halfAcross), halfAlong), 1, 1),
-        CornerOf(Subtract(Subtract(center, halfAcross), halfAlong), 0, 1),
+        CornerOf(Subtract(top, halfAcross), 0, 0),
+        CornerOf(Add(top, halfAcross), 1, 0),
+        CornerOf(Add(bottom, halfAcross), 1, 1),
+        CornerOf(Subtract(bottom, halfAcross), 0, 1),
     };
+}
+
+// The turn of a directional picture about the one axis the shape names: 0 is X, 1 is Y, anything else Z.
+Graphics::Matrix4 TurnAboutTheShapeAxis(std::uint8_t turnAxis, Vector3 rotation)
+{
+    constexpr std::uint8_t TurnsAboutX = 0;
+    constexpr std::uint8_t TurnsAboutY = 1;
+
+    if (turnAxis == TurnsAboutX)
+        return MakeRotationXyz({rotation.x, 0, 0});
+    if (turnAxis == TurnsAboutY)
+        return MakeRotationXyz({0, rotation.y, 0});
+    return MakeRotationXyz({0, 0, rotation.z});
 }
 
 // A picture lying in the world: its height along the particle's direction, its width across it in the plane of the emitter's form
 // (EFF-06, Assumed), turned about one of its own axes by the particle's rotation.
 ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, float width, float height)
 {
-    constexpr std::uint8_t TurnsAboutX = 0;
-    constexpr std::uint8_t TurnsAboutY = 1;
-
     Vector3 direction = ParticleDirection(view, particle);
     Vector3 side = NormalizeOr(Cross(view.upAxis, direction), {0, 0, 1});
     Vector3 upward = Cross(direction, side);
 
     Vector3 rotation = Add(Add(particle.rotation, particle.rotationOffset), view.effect.RotationOffset());
-    std::uint8_t turnAxis = view.resource.shape.axis;
-    float angle = turnAxis == TurnsAboutX ? rotation.x : (turnAxis == TurnsAboutY ? rotation.y : rotation.z);
-    Graphics::Matrix4 turn = MakeRotationXyz({turnAxis == TurnsAboutX ? angle : 0, turnAxis == TurnsAboutY ? angle : 0,
-        turnAxis > TurnsAboutY ? angle : 0});
+    Graphics::Matrix4 turn = TurnAboutTheShapeAxis(view.resource.shape.axis, rotation);
 
     float stretch = Stretch(view, particle, height);
     Vector2 pivot = view.resource.shape.pivot;
@@ -215,10 +246,16 @@ ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, floa
 
     auto corner = [&](float x, float y, float pictureX, float pictureY) {
         Vector3 local = Add(Graphics::TransformDirection(turn, {x * width, y * stretch * height, 0}), shift);
-        Vector3 world = Add(particle.position, Add(Add(Multiply(side, local.x), Multiply(direction, local.y)), Multiply(upward, local.z)));
+        Vector3 inTheWorld = Add(Add(Multiply(side, local.x), Multiply(direction, local.y)), Multiply(upward, local.z));
+        Vector3 world = Add(particle.position, inTheWorld);
         return CornerOf(Graphics::TransformPoint(view.cameraView, world), pictureX, pictureY);
     };
-    return {corner(-1, 1, 0, 0), corner(1, 1, 1, 0), corner(1, -1, 1, 1), corner(-1, -1, 0, 1)};
+    return {
+        corner(-1, 1, 0, 0),
+        corner(1, 1, 1, 0),
+        corner(1, -1, 1, 1),
+        corner(-1, -1, 0, 1),
+    };
 }
 
 // The two edges of a stripe at one particle, and how far along the stripe's texture it lies.
@@ -245,7 +282,10 @@ SplineWeights WeightsAt(float fraction)
 
 Vector3 Weighted(Vector3 first, Vector3 second, Vector3 third, const SplineWeights& weights)
 {
-    return Add(Add(Multiply(first, weights.first), Multiply(second, weights.second)), Multiply(third, weights.third));
+    Vector3 firstShare = Multiply(first, weights.first);
+    Vector3 secondShare = Multiply(second, weights.second);
+    Vector3 thirdShare = Multiply(third, weights.third);
+    return Add(Add(firstShare, secondShare), thirdShare);
 }
 
 StripePoint PointOnTheSpline(const StripePoint& first, const StripePoint& second, const StripePoint& third, float fraction)
@@ -273,8 +313,10 @@ StripePoint EdgesAt(const EmitterView& view, const std::vector<const Particle*>&
 {
     std::size_t count = walk.size();
     const Particle& particle = *walk[index];
-    Vector3 toNext = NormalizeOr(Subtract(walk[(index + 1) % count]->position, particle.position), {0, 0, 0});
-    Vector3 toPrevious = NormalizeOr(Subtract(walk[(index + count - 1) % count]->position, particle.position), {0, 0, 0});
+    const Particle& next = *walk[(index + 1) % count];
+    const Particle& previous = *walk[(index + count - 1) % count];
+    Vector3 toNext = NormalizeOr(Subtract(next.position, particle.position), {0, 0, 0});
+    Vector3 toPrevious = NormalizeOr(Subtract(previous.position, particle.position), {0, 0, 0});
     Vector3 direction = NormalizeOr(Subtract(toNext, toPrevious), view.upAxis);
     Vector3 side = NormalizeOr(Cross(direction, view.upAxis), {1, 0, 0});
     Vector3 axis = NormalizeOr(Cross(side, direction), view.upAxis);
@@ -343,11 +385,19 @@ std::vector<ViewQuad> SmoothStripeQuads(const EmitterView& view, const std::vect
     return QuadsOfTheStrip(view, strip);
 }
 
+std::uint8_t ChannelProduct(std::uint8_t first, std::uint8_t second)
+{
+    return static_cast<std::uint8_t>((first * second + ProductRounding) >> ProductShift);
+}
+
 Rgba8Color Product(Rgba8Color first, Rgba8Color second)
 {
-    auto multiply = [](std::uint8_t one, std::uint8_t other) { return static_cast<std::uint8_t>((one * other + ProductRounding) >> ProductShift); };
-    return {multiply(first.red, second.red), multiply(first.green, second.green), multiply(first.blue, second.blue),
-        multiply(first.alpha, second.alpha)};
+    Rgba8Color product;
+    product.red = ChannelProduct(first.red, second.red);
+    product.green = ChannelProduct(first.green, second.green);
+    product.blue = ChannelProduct(first.blue, second.blue);
+    product.alpha = ChannelProduct(first.alpha, second.alpha);
+    return product;
 }
 
 std::array<Rgba8Color, Formats::ParticleColorCount> ShownColors(const EmitterView& view, const Particle& particle)
@@ -409,8 +459,8 @@ void FillColors(Graphics::Material& material, const EffectDrawSetting& drawSetti
     }
 }
 
-Graphics::TevStage MakeStage(const Formats::EffectStage& stage, std::size_t stageNumber, const std::array<std::uint8_t, 2>& materialSlots,
-    std::uint8_t indirectStageMask)
+Graphics::TevStage MakeStage(const Formats::EffectStage& stage, std::size_t stageNumber,
+    const std::array<std::uint8_t, StageTextureCount>& materialSlots, std::uint8_t indirectStageMask)
 {
     Graphics::TevStage converted;
     if (stage.textureNumber < materialSlots.size())
@@ -422,21 +472,21 @@ Graphics::TevStage MakeStage(const Formats::EffectStage& stage, std::size_t stag
     converted.color.inputB = static_cast<Graphics::TevColorInput>(stage.colorInputs[1]);
     converted.color.inputC = static_cast<Graphics::TevColorInput>(stage.colorInputs[2]);
     converted.color.inputD = static_cast<Graphics::TevColorInput>(stage.colorInputs[3]);
-    converted.color.operation = static_cast<Graphics::TevOperation>(stage.colorOperation[0]);
-    converted.color.bias = static_cast<Graphics::TevBias>(stage.colorOperation[1]);
-    converted.color.scale = static_cast<Graphics::TevScale>(stage.colorOperation[2]);
-    converted.color.clamp = stage.colorOperation[3] != 0;
-    converted.color.output = static_cast<Graphics::TevRegister>(stage.colorOperation[4]);
+    converted.color.operation = static_cast<Graphics::TevOperation>(stage.colorOperation[OperationKind]);
+    converted.color.bias = static_cast<Graphics::TevBias>(stage.colorOperation[OperationBias]);
+    converted.color.scale = static_cast<Graphics::TevScale>(stage.colorOperation[OperationScale]);
+    converted.color.clamp = stage.colorOperation[OperationClamp] != 0;
+    converted.color.output = static_cast<Graphics::TevRegister>(stage.colorOperation[OperationOutput]);
 
     converted.alpha.inputA = static_cast<Graphics::TevAlphaInput>(stage.alphaInputs[0]);
     converted.alpha.inputB = static_cast<Graphics::TevAlphaInput>(stage.alphaInputs[1]);
     converted.alpha.inputC = static_cast<Graphics::TevAlphaInput>(stage.alphaInputs[2]);
     converted.alpha.inputD = static_cast<Graphics::TevAlphaInput>(stage.alphaInputs[3]);
-    converted.alpha.operation = static_cast<Graphics::TevOperation>(stage.alphaOperation[0]);
-    converted.alpha.bias = static_cast<Graphics::TevBias>(stage.alphaOperation[1]);
-    converted.alpha.scale = static_cast<Graphics::TevScale>(stage.alphaOperation[2]);
-    converted.alpha.clamp = stage.alphaOperation[3] != 0;
-    converted.alpha.output = static_cast<Graphics::TevRegister>(stage.alphaOperation[4]);
+    converted.alpha.operation = static_cast<Graphics::TevOperation>(stage.alphaOperation[OperationKind]);
+    converted.alpha.bias = static_cast<Graphics::TevBias>(stage.alphaOperation[OperationBias]);
+    converted.alpha.scale = static_cast<Graphics::TevScale>(stage.alphaOperation[OperationScale]);
+    converted.alpha.clamp = stage.alphaOperation[OperationClamp] != 0;
+    converted.alpha.output = static_cast<Graphics::TevRegister>(stage.alphaOperation[OperationOutput]);
 
     converted.isMovedByIndirectTexture = ((indirectStageMask >> stageNumber) & 1u) != 0;
     return converted;
@@ -453,7 +503,8 @@ std::uint8_t ReverseBitsOf(const Particle& particle, std::size_t texture)
 }
 
 // Adds a texture of the particle to the material; its number in the material, or none when the particle has no such picture.
-std::optional<std::uint8_t> AddTexture(Graphics::Material& material, EffectResources& resources, const Particle& particle, std::size_t texture)
+std::optional<std::uint8_t> AddTexture(Graphics::Material& material, EffectResources& resources, const Particle& particle,
+    std::size_t texture)
 {
     std::string_view name = particle.textureNames[texture];
     if (name.empty())
@@ -469,52 +520,65 @@ std::optional<std::uint8_t> AddTexture(Graphics::Material& material, EffectResou
     return static_cast<std::uint8_t>(material.textures.size() - 1);
 }
 
+// Adds the indirect texture that moves the stages of the mask; the mask of the stages it moves, 0 when there is none.
+std::uint8_t AddIndirectTexture(Graphics::Material& material, EffectResources& resources, const Particle& particle,
+    const EffectDrawSetting& drawSetting)
+{
+    if (drawSetting.indirectStageMask == 0)
+        return 0;
+
+    std::optional<std::uint8_t> slot = AddTexture(material, resources, particle, IndirectTextureSlot);
+    if (!slot)
+        return 0;
+
+    float scale = std::ldexp(1.0f, drawSetting.indirectScaleExponent);
+    Graphics::IndirectTexture indirect;
+    indirect.textureIndex = *slot;
+    for (std::size_t row = 0; row < indirect.matrix.size(); ++row)
+    {
+        for (std::size_t column = 0; column < indirect.matrix[row].size(); ++column)
+            indirect.matrix[row][column] = drawSetting.indirectMatrix[row][column] * scale;
+    }
+    material.indirectTexture = indirect;
+    return drawSetting.indirectStageMask;
+}
+
+std::optional<Graphics::AlphaTest> AlphaTestOf(const EffectDrawSetting& drawSetting, const Particle& particle)
+{
+    bool testsAlpha = drawSetting.firstAlphaComparison != AlwaysPasses || drawSetting.secondAlphaComparison != AlwaysPasses;
+    if (!testsAlpha)
+        return std::nullopt;
+
+    Graphics::AlphaTest test;
+    test.firstComparison = static_cast<Graphics::AlphaComparison>(drawSetting.firstAlphaComparison);
+    test.firstReference = particle.firstAlphaReference;
+    test.secondComparison = static_cast<Graphics::AlphaComparison>(drawSetting.secondAlphaComparison);
+    test.secondReference = particle.secondAlphaReference;
+    test.join = static_cast<Graphics::AlphaJoin>(drawSetting.alphaComparisonJoin);
+    return test;
+}
+
 Graphics::Material ParticleMaterial(const EmitterView& view, const Particle& particle)
 {
     const EffectDrawSetting& drawSetting = view.resource.drawSetting;
     EffectResources& resources = view.effect.Resources();
 
     Graphics::Material material;
-    std::array<std::uint8_t, 2> materialSlots = {NoStageTexture, NoStageTexture};
+    std::array<std::uint8_t, StageTextureCount> materialSlots = {NoStageTexture, NoStageTexture};
     for (std::size_t texture = 0; texture < materialSlots.size(); ++texture)
     {
         if (std::optional<std::uint8_t> slot = AddTexture(material, resources, particle, texture))
             materialSlots[texture] = *slot;
     }
 
-    std::uint8_t indirectStageMask = 0;
-    if (drawSetting.indirectStageMask != 0)
-    {
-        if (std::optional<std::uint8_t> slot = AddTexture(material, resources, particle, IndirectTextureSlot))
-        {
-            indirectStageMask = drawSetting.indirectStageMask;
-            float scale = std::ldexp(1.0f, drawSetting.indirectScaleExponent);
-            Graphics::IndirectTexture indirect;
-            indirect.textureIndex = *slot;
-            for (std::size_t row = 0; row < indirect.matrix.size(); ++row)
-                for (std::size_t column = 0; column < indirect.matrix[row].size(); ++column)
-                    indirect.matrix[row][column] = drawSetting.indirectMatrix[row][column] * scale;
-            material.indirectTexture = indirect;
-        }
-    }
-
+    std::uint8_t indirectStageMask = AddIndirectTexture(material, resources, particle, drawSetting);
     for (std::size_t stage = 0; stage < drawSetting.stages.size(); ++stage)
         material.stages.push_back(MakeStage(drawSetting.stages[stage], stage, materialSlots, indirectStageMask));
 
     FillColors(material, drawSetting, ShownColors(view, particle));
     material.blendMode = BlendModeOf(drawSetting).value_or(Graphics::BlendMode::StandardAlpha);
-
-    bool testsAlpha = drawSetting.firstAlphaComparison != AlwaysPasses || drawSetting.secondAlphaComparison != AlwaysPasses;
-    if (testsAlpha)
-    {
-        Graphics::AlphaTest test;
-        test.firstComparison = static_cast<Graphics::AlphaComparison>(drawSetting.firstAlphaComparison);
-        test.firstReference = particle.firstAlphaReference;
-        test.secondComparison = static_cast<Graphics::AlphaComparison>(drawSetting.secondAlphaComparison);
-        test.secondReference = particle.secondAlphaReference;
-        test.join = static_cast<Graphics::AlphaJoin>(drawSetting.alphaComparisonJoin);
-        material.alphaTest = test;
-    }
+    if (std::optional<Graphics::AlphaTest> test = AlphaTestOf(drawSetting, particle))
+        material.alphaTest = *test;
     return material;
 }
 
@@ -524,9 +588,10 @@ void DrawFlat(Graphics::GraphicsDevice& device, const ViewQuad& quad, const Grap
     for (std::size_t corner = 0; corner < Graphics::QuadCornerCount; ++corner)
     {
         Vector3 position = quad[corner].position;
-        drawn.positions[corner] = {position.x * camera.boxToCanvasScale.x + camera.boxToCanvasOffset.x,
-            position.y * camera.boxToCanvasScale.y + camera.boxToCanvasOffset.y};
-        drawn.colors[corner] = {255, 255, 255, 255};
+        float canvasX = position.x * camera.boxToCanvasScale.x + camera.boxToCanvasOffset.x;
+        float canvasY = position.y * camera.boxToCanvasScale.y + camera.boxToCanvasOffset.y;
+        drawn.positions[corner] = {canvasX, canvasY};
+        drawn.colors[corner] = OpaqueWhite;
         for (auto& textureCoordinates : drawn.textureCoordinates)
             textureCoordinates[corner] = quad[corner].textureCoordinate;
     }
@@ -543,7 +608,7 @@ void DrawAmongModels(Graphics::GraphicsDevice& device, const ViewQuad& quad, con
         meshVertex.textureCoordinate = quad[corner].textureCoordinate;
         return meshVertex;
     };
-    std::array<Graphics::MeshVertex, 6> corners = {vertex(0), vertex(1), vertex(2), vertex(0), vertex(2), vertex(3)};
+    std::array<Graphics::MeshVertex, TwoTrianglesCornerCount> corners = {vertex(0), vertex(1), vertex(2), vertex(0), vertex(2), vertex(3)};
 
     Graphics::MeshPlacement placement;
     placement.projection = *camera.projection;
@@ -624,7 +689,8 @@ std::optional<Graphics::BlendMode> BlendModeOf(const EffectDrawSetting& drawSett
 }
 
 // newS = factor * s' (+ factor when reversed), s' = the coordinate moved, turned and scaled around the middle of the picture.
-Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTransform& transform, std::uint8_t wrapBits, std::uint8_t reverseBits)
+Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTransform& transform, std::uint8_t wrapBits,
+    std::uint8_t reverseBits)
 {
     constexpr float Middle = 0.5f;
 
@@ -638,26 +704,29 @@ Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTran
     std::array<float, 3> rowT = {scaleT * sine, scaleT * cosine, 0};
     float movedS = transform.translation.x - Middle;
     float movedT = transform.translation.y - Middle;
-    rowS[2] = scaleS * (cosine * movedS - sine * movedT) + Middle;
-    rowT[2] = scaleT * (sine * movedS + cosine * movedT) + Middle;
+    rowS[TextureTranslationColumn] = scaleS * (cosine * movedS - sine * movedT) + Middle;
+    rowT[TextureTranslationColumn] = scaleT * (sine * movedS + cosine * movedT) + Middle;
 
     bool mirrorsS = (wrapBits & WrapMask) == MirrorWrap;
     bool mirrorsT = ((wrapBits >> VerticalWrapShift) & WrapMask) == MirrorWrap;
-    float factorS = mirrorsS ? 2.0f : 1.0f;
-    float factorT = mirrorsT ? 2.0f : 1.0f;
+    float factorS = mirrorsS ? MirrorRepeat : 1.0f;
+    float factorT = mirrorsT ? MirrorRepeat : 1.0f;
     bool reversesS = (reverseBits & ReversesHorizontally) != 0;
     bool reversesT = (reverseBits & ReversesVertically) != 0;
+
+    float signedFactorS = reversesS ? -factorS : factorS;
+    float signedFactorT = reversesT ? -factorT : factorT;
 
     Graphics::TextureMatrix matrix;
     for (std::size_t column = 0; column < rowS.size(); ++column)
     {
-        matrix.rows[0][column] = (reversesS ? -factorS : factorS) * rowS[column];
-        matrix.rows[1][column] = (reversesT ? -factorT : factorT) * rowT[column];
+        matrix.rows[0][column] = signedFactorS * rowS[column];
+        matrix.rows[1][column] = signedFactorT * rowT[column];
     }
     if (reversesS)
-        matrix.rows[0][2] += factorS;
+        matrix.rows[0][TextureTranslationColumn] += factorS;
     if (reversesT)
-        matrix.rows[1][2] += factorT;
+        matrix.rows[1][TextureTranslationColumn] += factorT;
     return matrix;
 }
 
