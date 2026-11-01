@@ -48,7 +48,7 @@ WiiSpeakChannel::WiiSpeakChannel(ChannelServices& channelServices)
     , messages(files.EnglishMessages())
     , hands(std::make_unique<SystemMenu::CursorManager>(channelServices.display, ReadHandArchive(channelServices.contents)))
     , dialog(channelServices.display, files)
-    , saveFile(channelServices.storage.fileSystem, channelServices.storage.caller, Ios::DataFolderPath(WiiSpeakChannelTitleId))
+    , saveFile(channelServices.storage.fileSystem, channelServices.storage.fileSystemCaller, Ios::DataFolderPath(WiiSpeakChannelTitleId))
     , session(channelServices, files, messages, dialog, saveFile)
 {
     fonts.AddFont(services.display.Device(), Formats::ReadFont(files.LayoutFont()), {LayoutFontName});
@@ -165,7 +165,7 @@ void WiiSpeakChannel::Start()
 bool WiiSpeakChannel::CheckMiiDatabase()
 {
     Ios::NandPath path = Ios::NandPath::Parse(MiiDatabasePath).Value();
-    Ios::Result<Ios::OpenFile> opened = services.storage.fileSystem.Open(path, Ios::OpenMode::Read, services.storage.caller);
+    Ios::Result<Ios::OpenFile> opened = services.storage.fileSystem.Open(path, Ios::OpenMode::Read, services.storage.fileSystemCaller);
     if (opened.Failed())
         return false;
 

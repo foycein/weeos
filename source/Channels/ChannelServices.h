@@ -43,7 +43,9 @@ struct ChannelStorage
 {
     Ios::SdCardService& sdCard;
     Ios::FileSystemService& fileSystem;
-    Ios::Caller caller;
+
+    // Who the channel is to the file system: the user and the group of its title.
+    Ios::Caller fileSystemCaller;
 };
 
 // What a channel hears and plays beyond its sound archives: the Wii Speak accessory of IOS and the player of the waves that the

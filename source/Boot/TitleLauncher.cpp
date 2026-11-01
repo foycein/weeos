@@ -107,6 +107,11 @@ BootInformation TitleLauncher::EnterRequestedTitle(const Ios::IosProfile& profil
 
     Ios::LaunchPlan plan = PrepareLaunchOrThrow(titles, titleId, request.Value().ticketView);
     Formats::TitleMetadata titleMetadata = ReadTitleMetadataOrThrow(titles, titleId);
+
+    Ios::Result<void> dataFolder = titles.EnsureDataFolder(titleId);
+    if (dataFolder.Failed())
+        throw BootError("The data folder of the title cannot be made", dataFolder.Error());
+
     titles.EnterTitle(plan);
 
     return MakeBootInformation(plan, titleMetadata.titleVersion, profile);

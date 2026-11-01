@@ -78,10 +78,31 @@ unsigned HighHalf(Formats::Byte byte)
     return Formats::ExtractBits(byte, HighHalfBit, HalfByteBitCount);
 }
 
-void RequireNoSwapTable(const Formats::TevStage& record)
+// A swap table byte holds two bits for each channel, red in the lowest bits.
+std::array<std::uint8_t, 4> ReadSwapTable(Formats::Byte table)
 {
-    if (Formats::ExtractBits(record[TextureMapAndSwapByte], SwapTablesBit, SwapTablesBitCount) != 0)
-        FailStage("a stage uses a swap table other than the plain one");
+    constexpr int BitsPerChannel = 2;
+    std::array<std::uint8_t, 4> swap = {};
+    for (std::size_t channel = 0; channel < swap.size(); ++channel)
+        swap[channel] = static_cast<std::uint8_t>(Formats::ExtractBits(table, static_cast<int>(channel) * BitsPerChannel, BitsPerChannel));
+    return swap;
+}
+
+// The stage names its raster table in two bits and its texture table in the next two.
+void ReadSwaps(const Formats::TevStage& record, const std::optional<Formats::TevSwapTable>& swapTables, Graphics::TevStage& stage)
+{
+    constexpr int TableNumberBits = 2;
+    unsigned rasterTable = Formats::ExtractBits(record[TextureMapAndSwapByte], SwapTablesBit, TableNumberBits);
+    unsigned textureTable = Formats::ExtractBits(record[TextureMapAndSwapByte], SwapTablesBit + TableNumberBits, TableNumberBits);
+    if (!swapTables)
+    {
+        if (rasterTable != 0 || textureTable != 0)
+            FailStage("a stage uses a swap table that its material does not have");
+        return;
+    }
+
+    stage.rasterSwap = ReadSwapTable((*swapTables)[rasterTable]);
+    stage.textureSwap = ReadSwapTable((*swapTables)[textureTable]);
 }
 
 // The stage reads the texture with the same number as its texture map, and the quad supplies the coordinates with that number too.
@@ -214,11 +235,11 @@ Graphics::TevConstant ReadConstantAlpha(const Formats::TevStage& record)
 
 // The last four bytes are the indirect part, which moves the place where the stage reads its texture. Only the water of the Wii Speak
 // Channel's chat room has one; WeeOS reads the texture where it is, so that water stands still (docs/audit/WiiSpeak.md).
-Graphics::TevStage ConvertTevStage(const Formats::TevStage& record)
+Graphics::TevStage ConvertTevStage(const Formats::TevStage& record, const std::optional<Formats::TevSwapTable>& swapTables)
 {
-    RequireNoSwapTable(record);
 
     Graphics::TevStage stage;
+    ReadSwaps(record, swapTables, stage);
     stage.textureIndex = ReadTextureIndex(record);
     stage.usesRasterColor = ReadUsesRasterColor(record);
     stage.constantColor = ReadConstantColor(record);

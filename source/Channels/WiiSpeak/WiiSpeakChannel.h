@@ -2,6 +2,7 @@
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
+#include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/WiiSpeak/WiiSpeakDialog.h"
 #include "Channels/WiiSpeak/WiiSpeakFiles.h"
 #include "Channels/WiiSpeak/WiiSpeakMessages.h"
@@ -17,9 +18,6 @@
 
 namespace Channels
 {
-
-// The path of the console's Mii database, which the channel reads at its start (the face library of the program).
-constexpr std::string_view MiiDatabasePath = "/shared2/menu/FaceLib/RFL_DB.dat";
 
 // The Wii Speak Channel 2.0 (HCFE v512) without a network (docs/research/Channels.md 8, docs/audit/WiiSpeak.md).
 //

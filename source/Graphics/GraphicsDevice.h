@@ -195,6 +195,12 @@ struct MeshVertex
 
     // Every texture of the material reads these, each through its own texture matrix.
     Formats::Vector2 textureCoordinate;
+
+    // For a mesh whose corners hang on bones (MeshPlacement::boneMatrices): the bone of this corner. Position and normal are in its space.
+    std::uint32_t boneNumber = 0;
+
+    // The color of the corner, the raster color of a mesh drawn with MeshPlacement::usesCornerColors.
+    Formats::Rgba8Color color = {255, 255, 255, 255};
 };
 
 // The front side of a triangle is the side from which its corners go around clockwise in the picture (the rule of the
@@ -227,6 +233,19 @@ struct PointLight
     Formats::Rgba8Color ambientColor;
 };
 
+// Names the corners of a mesh that live on the graphics device (CreateMesh). A handle with the number zero names nothing.
+struct MeshHandle
+{
+    std::uint32_t number = 0;
+
+    bool IsValid() const
+    {
+        return number != 0;
+    }
+
+    bool operator==(const MeshHandle& other) const = default;
+};
+
 // Where a mesh lands in the picture and how it is lit.
 struct MeshPlacement
 {
@@ -244,8 +263,16 @@ struct MeshPlacement
     // a lit sphere that follow the surface (environment maps). The texture matrices then bring them into the picture.
     bool textureCoordinatesFromNormal = false;
 
+    // The raster color is the color of the corners (the vertex colors of a model) instead of the light or white.
+    bool usesCornerColors = false;
+
     FaceCulling culling = FaceCulling::Back;
     DepthMode depth = DepthMode::TestAndWrite;
+
+    // For a mesh whose corners hang on bones, like the body of a Mii: the matrix of every bone, from the space of the bone into the
+    // units of the mesh. Every corner is moved by the matrix of its bone before the model view. Empty for a mesh without bones.
+    // The device copies the matrices during the draw.
+    std::span<const Matrix4> boneMatrices;
 };
 
 // ---- The device
@@ -278,6 +305,15 @@ public:
 
     // Draws triangles, three corners each, with the depth buffer of the picture. The device copies the corners during the call.
     virtual void DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material) = 0;
+
+    // Puts the corners of a mesh on the graphics device once, for a mesh that is drawn in many pictures, like the Miis of the Mii Plaza.
+    virtual MeshHandle CreateMesh(std::span<const MeshVertex> triangleCorners) = 0;
+
+    // The device keeps the corners until the pictures that use them are finished, so a mesh may be destroyed right after its last draw.
+    virtual void DestroyMesh(MeshHandle mesh) = 0;
+
+    // Draws a mesh that lives on the device, as DrawMesh draws the corners it is given.
+    virtual void DrawMesh(MeshHandle mesh, const MeshPlacement& placement, const Material& material) = 0;
 
     // Draws into a new picture of width * height pixels instead of the screen, until EndOffscreen.
     // The canvas covers the whole picture. The picture starts transparent black.
