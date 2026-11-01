@@ -487,12 +487,19 @@ std::optional<int> ChannelStartWindowScreen::ChangeAskedForByTheArrows()
         if (!player || !player->state.pointerIsValid || !WentDown(*player, ArrowPressButtons))
             continue;
 
+        // The pressed arrow flashes: the window sends the bar the event 0x14 for the left arrow and 0x13 for the right one.
         std::optional<BarButton> button = bar->ButtonAt(services.display.PointerToCanvas(player->state.pointer));
         if (button == BarButton::PreviousPage)
+        {
+            bar->FlashPageArrow(BarButton::PreviousPage);
             return PreviousChannel;
+        }
 
         if (button == BarButton::NextPage)
+        {
+            bar->FlashPageArrow(BarButton::NextPage);
             return NextChannel;
+        }
     }
     return std::nullopt;
 }

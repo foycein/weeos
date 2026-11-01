@@ -98,6 +98,7 @@ public:
 
     // A pressed arrow flashes.
     void FlashPageArrow(BarButton arrow);
+    bool IsPageArrowFlashing(BarButton arrow) const;
 
     // The SD card button plays its press.
     void PressSdCardButton();
