@@ -2,6 +2,7 @@
 
 #include "Channels/ChannelFiles.h"
 #include "Channels/ChannelText.h"
+#include "Channels/Internet/ThumbnailPicture.h"
 #include "Channels/Internet/TypedAddresses.h"
 
 #include "Browser/TextConversion.h"
@@ -125,6 +126,34 @@ constexpr std::int32_t SecureConnectionFailedTextId = -609046020;
 constexpr std::int32_t LoadFailedTextId = -767243423;
 
 constexpr std::string_view ReturnQuestionText = "S_HOKKAIDO_LABEL_RETURN_WII_MENU";
+constexpr std::string_view EditTitleText = "S_EDIT_TITLE";
+constexpr std::int32_t SingleColumnTextId = 2004134353;
+
+// The sounds of remote/operaSound.brsar in content 2 that the pages ask for with "tv-remote-sound" (startpage.js, favorites.js,
+// modalBox.js); the channel plays the ones of the television, not of the remote's speaker. The moments of the toolbar, the zoom and
+// the load are the names' own (Assumed: the program's calls were not read).
+namespace OperaSound
+{
+
+constexpr std::string_view Decide = "WOP_SE_DECIDE_TV";
+constexpr std::string_view Rollover = "WOP_SE_ROLLOVER_TV";
+constexpr std::string_view Invalid = "WOP_SE_INVALID";
+constexpr std::string_view DialogAppears = "WOP_SE_DIALOG_APP";
+constexpr std::string_view DialogOk = "WOP_SE_DIALOG_OK";
+constexpr std::string_view DialogNo = "WOP_SE_DIALOG_NO";
+constexpr std::string_view FavoriteAdded = "WOP_SE_FAVORITE_ADD";
+constexpr std::string_view FavoriteDeleted = "WOP_SE_FAVORITE_DEL";
+constexpr std::string_view ToolbarIn = "WOP_SE_TOOLBAR_IN";
+constexpr std::string_view ToolbarOut = "WOP_SE_TOOLBAR_OUT";
+constexpr std::string_view PageLoaded = "WOP_SE_LOAD_FINISH";
+constexpr std::string_view ZoomIn = "WOP_SE_IZOOM_IN";
+constexpr std::string_view ZoomOut = "WOP_SE_IZOOM_OUT";
+constexpr std::string_view ZoomBackToNormal = "WOP_SE_ZOOM_100";
+
+}
+
+// The longest title of a favorite (the original's "Edit Title" prompt, favorites.js).
+constexpr std::size_t LongestFavoriteTitle = 64;
 
 // The help of the remote that "Controls" shows (helpRemoteDialogTemplate of startpage.js): the sign of the button in the console's font
 // and its text. The line of Single Column Mode is left out, because WeeOS has no such mode (BRW-16).
@@ -270,6 +299,7 @@ void InternetChannel::Update()
 
     if (pageView)
         pageView->Update();
+    PlayLoadFinishWhenThePageIsLoaded();
 
     if (keyboard->IsOpen())
     {
@@ -300,17 +330,18 @@ void InternetChannel::Update()
     {
     case View::StartPage:
         UpdateStartPage();
-        return;
+        break;
     case View::Page:
         UpdatePage();
-        return;
+        break;
     case View::Favorites:
         UpdateFavorites();
-        return;
+        break;
     case View::Settings:
         UpdateSettings();
-        return;
+        break;
     }
+    PlayRolloverWhenTheFocusMoves();
 }
 
 void InternetChannel::Draw()
@@ -324,7 +355,7 @@ void InternetChannel::Draw()
         pageView->Draw(*flatPainter);
         break;
     case View::Favorites:
-        favoritesScreen->Draw(*flatPainter, flatFrame, data->Favorites(), focusedFavorite);
+        favoritesScreen->Draw(*flatPainter, flatFrame, data->Favorites(), focusedFavorite, focusedEditOption);
         break;
     case View::Settings:
         settingsScreen->Draw(*flatPainter, flatFrame, *data, focusedSettingsItem);
@@ -459,6 +490,22 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfSettingsItem(const Setti
     return std::nullopt;
 }
 
+std::optional<Formats::Vector2> InternetChannel::PlaceOfEditOption(FavoritesScreen::EditOption option) const
+{
+    if (view != View::Favorites)
+        return std::nullopt;
+
+    for (float y = 0; y < flatFrame.height; y += 2)
+    {
+        for (float x = 0; x < flatFrame.width; x += 8)
+        {
+            if (favoritesScreen->EditOptionAt({x, y}, flatFrame, data->Favorites().size()) == option)
+                return PageToPicture({x + 30, y + 20}, flatFrame);
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogOk() const
 {
     if (!dialog)
@@ -556,15 +603,41 @@ void InternetChannel::UpdatePageButtons(const Input::RemoteState& state)
         return;
     }
 
-    if (HasButton(pressed, Input::RemoteButtons::Plus))
+    bool wantsZoom = HasButton(pressed, Input::RemoteButtons::Plus) || HasButton(pressed, Input::RemoteButtons::Minus);
+    if (wantsZoom && isSingleColumn)
+        PlaySound(OperaSound::Invalid);
+    else if (HasButton(pressed, Input::RemoteButtons::Plus))
+    {
         pageView->ZoomIn();
-    if (HasButton(pressed, Input::RemoteButtons::Minus))
+        PlaySound(OperaSound::ZoomIn);
+    }
+    else if (HasButton(pressed, Input::RemoteButtons::Minus))
+    {
         pageView->ZoomOut();
+        PlaySound(pageView->IsAtNormalZoom() ? OperaSound::ZoomBackToNormal : OperaSound::ZoomOut);
+    }
+
+    if (HasButton(pressed, Input::RemoteButtons::Two))
+        ToggleSingleColumn();
+
     if (HasButton(pressed, Input::RemoteButtons::One) && data->GetToolbarMode() == ToolbarMode::ToggledWithOne)
     {
         isToolbarToggledOn = !isToolbarToggledOn;
+        PlaySound(isToolbarToggledOn ? OperaSound::ToolbarIn : OperaSound::ToolbarOut);
         pageView->SetArea(flatFrame.width, PageAreaHeight());
     }
+}
+
+// Button 2 switches Single Column Mode; switched on, the channel tells what it does, and the zoom goes back to the page's size.
+void InternetChannel::ToggleSingleColumn()
+{
+    isSingleColumn = !isSingleColumn;
+    pageView->Page().SetSingleColumn(isSingleColumn);
+    if (!isSingleColumn)
+        return;
+
+    pageView->ResetZoom();
+    Ask(Question::SingleColumn, texts.FindById(SingleColumnTextId));
 }
 
 // The +Control Pad scrolls the way it points; with B held, the page follows the hand.
@@ -600,11 +673,23 @@ void InternetChannel::UpdatePageScrolling(const Input::RemoteState& state)
 
 void InternetChannel::UpdateFavorites()
 {
+    const std::optional<SystemMenu::PlayerInput>& player = services.input.Player(0);
+    if (player && favoritesScreen->MovingFavorite())
+    {
+        UpdateMovingFavorite(player->state);
+        return;
+    }
+
+    if (favoritesScreen->EditedFavorite())
+    {
+        UpdateEditOptions();
+        return;
+    }
+
     std::optional<Formats::Vector2> pointer = PointerOnFlatPage();
     std::size_t favoriteCount = data->Favorites().size();
     focusedFavorite = pointer ? favoritesScreen->FavoriteAt(*pointer, flatFrame, favoriteCount) : std::nullopt;
 
-    const std::optional<SystemMenu::PlayerInput>& player = services.input.Player(0);
     if (player && HasButton(player->state.buttonsPressed, Input::RemoteButtons::Up))
         favoritesScreen->ScrollRows(-1, favoriteCount);
     if (player && HasButton(player->state.buttonsPressed, Input::RemoteButtons::Down))
@@ -617,6 +702,87 @@ void InternetChannel::UpdateFavorites()
         PressToolbarButton(*focusedToolbarButton);
     else if (focusedFavorite)
         PressFavorite(*focusedFavorite);
+}
+
+// The menu of edit options of a favorite: a press on a row does what it says, a press beside the menu or B closes it.
+void InternetChannel::UpdateEditOptions()
+{
+    std::optional<Formats::Vector2> pointer = PointerOnFlatPage();
+    std::size_t favoriteCount = data->Favorites().size();
+    focusedEditOption = pointer ? favoritesScreen->EditOptionAt(*pointer, flatFrame, favoriteCount) : std::nullopt;
+
+    bool isBPressed = services.input.HasPlayerPressed(0, {Input::RemoteButtons::B, Input::ClassicButtons::B});
+    if (isBPressed)
+    {
+        favoritesScreen->CloseEditOptions();
+        focusedEditOption.reset();
+        return;
+    }
+
+    if (!IsPressed())
+        return;
+
+    if (focusedEditOption)
+        PressEditOption(*focusedEditOption);
+    else
+        favoritesScreen->CloseEditOptions();
+    focusedEditOption.reset();
+}
+
+// The +Control Pad moves the favorite one place to the side or one row up or down; A or B puts it down where it is.
+void InternetChannel::UpdateMovingFavorite(const Input::RemoteState& state)
+{
+    std::size_t index = *favoritesScreen->MovingFavorite();
+    std::size_t lastIndex = data->Favorites().size() - 1;
+    std::size_t newIndex = index;
+    Input::ButtonMask pressed = state.buttonsPressed;
+    if (HasButton(pressed, Input::RemoteButtons::Left) && index > 0)
+        newIndex = index - 1;
+    if (HasButton(pressed, Input::RemoteButtons::Right) && index < lastIndex)
+        newIndex = index + 1;
+    if (HasButton(pressed, Input::RemoteButtons::Up) && index >= FavoritesScreen::TilesPerRow)
+        newIndex = index - FavoritesScreen::TilesPerRow;
+    if (HasButton(pressed, Input::RemoteButtons::Down) && index + FavoritesScreen::TilesPerRow <= lastIndex)
+        newIndex = index + FavoritesScreen::TilesPerRow;
+
+    if (newIndex != index)
+    {
+        data->MoveFavorite(data->Favorites()[index].number, newIndex);
+        favoritesScreen->SetMovingFavorite(newIndex);
+        PlaySound(OperaSound::Rollover);
+    }
+
+    bool isPutDown = HasButton(pressed, Input::RemoteButtons::A) || HasButton(pressed, Input::RemoteButtons::B);
+    if (isPutDown)
+    {
+        favoritesScreen->StopMoving();
+        PlaySound(OperaSound::Decide);
+    }
+}
+
+void InternetChannel::PressEditOption(FavoritesScreen::EditOption option)
+{
+    std::size_t index = *favoritesScreen->EditedFavorite();
+    PlaySound(OperaSound::Decide);
+    switch (option)
+    {
+    case FavoritesScreen::EditOption::Delete:
+        favoritesScreen->CloseEditOptions();
+        favoriteToDelete = index;
+        Ask(Question::DeleteFavorite, Text(DeleteFavoriteText), true);
+        return;
+    case FavoritesScreen::EditOption::Rename:
+        favoritesScreen->CloseEditOptions();
+        renamedFavorite = index;
+        OpenKeyboard(Typing::FavoriteTitle, Text(EditTitleText), data->Favorites()[index].title);
+        return;
+    case FavoritesScreen::EditOption::Move:
+        favoritesScreen->StartMoving(index);
+        return;
+    case FavoritesScreen::EditOption::Close:
+        favoritesScreen->CloseEditOptions();
+        return;
+    }
 }
 
 void InternetChannel::UpdateSettings()
@@ -687,16 +853,17 @@ void InternetChannel::TakeWhatThePageAsks()
 
 void InternetChannel::PressStartPagePlace(Place place)
 {
+    PlaySound(OperaSound::Decide);
     switch (place)
     {
     case Place::Search:
-        PressToolbarButton(ToolbarButton::Search);
+        OpenKeyboard(Typing::Search, texts.FindById(EnterSearchTextId), {});
         return;
     case Place::Favorites:
         OpenFavorites();
         return;
     case Place::WebAddress:
-        PressToolbarButton(ToolbarButton::WebAddress);
+        OpenKeyboard(Typing::WebAddress, texts.FindById(EnterWebAddressTextId), {});
         return;
     case Place::OperationsGuide:
         OpenOperationsGuide();
@@ -716,7 +883,11 @@ void InternetChannel::PressStartPagePlace(Place place)
 void InternetChannel::PressToolbarButton(ToolbarButton pressedButton)
 {
     if (CurrentToolbarState().disabledButtons.contains(pressedButton))
+    {
+        PlaySound(OperaSound::Invalid);
         return;
+    }
+    PlaySound(OperaSound::Decide);
 
     Browser::PageState pageState = pageView ? pageView->Page().State() : Browser::PageState{};
     switch (pressedButton)
@@ -767,10 +938,10 @@ void InternetChannel::PressToolbarButton(ToolbarButton pressedButton)
 
 void InternetChannel::PressFavorite(std::size_t index)
 {
+    PlaySound(OperaSound::Decide);
     if (favoritesScreen->IsEditing())
     {
-        favoriteToDelete = index;
-        Ask(Question::DeleteFavorite, Text(DeleteFavoriteText), true);
+        favoritesScreen->OpenEditOptions(index);
         return;
     }
 
@@ -779,6 +950,7 @@ void InternetChannel::PressFavorite(std::size_t index)
 
 void InternetChannel::PressSettingsItem(const SettingsScreen::Item& item)
 {
+    PlaySound(OperaSound::Decide);
     if (item.entry == SettingsScreen::Entry::DeleteCookies)
     {
         Ask(Question::DeleteCookies, texts.FindById(DeleteCookiesQuestionTextId), true);
@@ -802,6 +974,7 @@ void InternetChannel::Answer(DialogAnswer answer)
     Dialog answered = *dialog;
     dialog.reset();
     bool isOk = answer == DialogAnswer::Ok;
+    PlaySound(answer == DialogAnswer::Cancel ? OperaSound::DialogNo : OperaSound::DialogOk);
 
     switch (answered.question)
     {
@@ -815,7 +988,10 @@ void InternetChannel::Answer(DialogAnswer answer)
         return;
     case Question::DeleteFavorite:
         if (isOk && favoriteToDelete && *favoriteToDelete < data->Favorites().size())
+        {
             data->RemoveFavorite(data->Favorites()[*favoriteToDelete].number);
+            PlaySound(OperaSound::FavoriteDeleted);
+        }
         favoriteToDelete.reset();
         return;
     case Question::ChooseSearchEngine:
@@ -877,6 +1053,11 @@ void InternetChannel::UseKeyboardAnswer(const SystemMenu::KeyboardAnswer& answer
     case Typing::PageField:
         pageView->Page().FillTextField(answer.text);
         return;
+    case Typing::FavoriteTitle:
+        if (renamedFavorite && *renamedFavorite < data->Favorites().size() && !answer.text.empty())
+            data->RenameFavorite(data->Favorites()[*renamedFavorite].number, answer.text);
+        renamedFavorite.reset();
+        return;
     default:
         return;
     }
@@ -914,7 +1095,20 @@ void InternetChannel::OpenFavorites()
     if (view != View::Favorites && view != View::Settings)
         viewBeforeList = view;
     favoritesScreen->Open();
+    ShowThumbnails();
     ShowView(View::Favorites);
+}
+
+void InternetChannel::ShowThumbnails()
+{
+    std::map<int, std::unique_ptr<PagePicture>> thumbnails;
+    for (const Favorite& favorite : data->Favorites())
+    {
+        std::optional<Formats::RgbaImage> thumbnail = data->Thumbnail(favorite.number);
+        if (thumbnail)
+            thumbnails[favorite.number] = std::make_unique<PagePicture>(services.display.Device(), *thumbnail);
+    }
+    favoritesScreen->SetThumbnails(std::move(thumbnails));
 }
 
 void InternetChannel::OpenSettings()
@@ -931,6 +1125,7 @@ void InternetChannel::ShowView(View newView)
     focusedPlace.reset();
     focusedFavorite.reset();
     focusedSettingsItem.reset();
+    focusedEditOption.reset();
     ShowToolbarButtons();
     if (pageView)
         pageView->SetArea(flatFrame.width, PageAreaHeight());
@@ -952,7 +1147,16 @@ void InternetChannel::AddThePageToFavorites()
     }
 
     if (!data->AddFavorite(pageState.title, pageState.address))
+    {
         Ask(Question::FavoritesFull, texts.FindById(FavoritesFullTextId));
+        return;
+    }
+
+    const std::optional<Formats::RgbaImage>& pagePicture = pageView->LatestPicture();
+    if (pagePicture)
+        data->SetThumbnail(data->Favorites().back().number, MakeThumbnail(*pagePicture));
+    ShowThumbnails();
+    PlaySound(OperaSound::FavoriteAdded);
 }
 
 void InternetChannel::OpenKeyboard(Typing purpose, const std::u16string& title, const std::u16string& text)
@@ -961,7 +1165,7 @@ void InternetChannel::OpenKeyboard(Typing purpose, const std::u16string& title, 
     SystemMenu::KeyboardRequest request;
     request.title = title;
     request.initialText = text;
-    request.rules.maximumLength = LongestTypedText;
+    request.rules.maximumLength = purpose == Typing::FavoriteTitle ? LongestFavoriteTitle : LongestTypedText;
     request.rules.allowsLineFeeds = false;
     keyboard->Open(request);
 }
@@ -970,6 +1174,41 @@ void InternetChannel::Ask(Question question, std::u16string text, bool hasCancel
 {
     dialog = Dialog{question, std::move(text), hasCancel};
     focusedToolbarButton.reset();
+    PlaySound(OperaSound::DialogAppears);
+}
+
+void InternetChannel::PlaySound(std::string_view soundName)
+{
+    services.sounds.Request(soundName);
+}
+
+// Every place that the hand comes onto rolls over: the places of the start page, the toolbar, the favorites, the edit options and the settings.
+void InternetChannel::PlayRolloverWhenTheFocusMoves()
+{
+    std::string focus;
+    if (focusedPlace)
+        focus = std::format("place {}", static_cast<int>(*focusedPlace));
+    else if (focusedToolbarButton)
+        focus = std::format("toolbar {}", static_cast<int>(*focusedToolbarButton));
+    else if (focusedEditOption)
+        focus = std::format("edit option {}", static_cast<int>(*focusedEditOption));
+    else if (focusedFavorite)
+        focus = std::format("favorite {}", *focusedFavorite);
+    else if (focusedSettingsItem)
+        focus = std::format("setting {} {}", static_cast<int>(focusedSettingsItem->entry), focusedSettingsItem->choice.value_or(-1));
+
+    bool hasMoved = focus != focusBeforeTheStep;
+    focusBeforeTheStep = focus;
+    if (hasMoved && !focus.empty())
+        PlaySound(OperaSound::Rollover);
+}
+
+void InternetChannel::PlayLoadFinishWhenThePageIsLoaded()
+{
+    bool isLoading = pageView && pageView->Page().State().isLoading;
+    if (wasPageLoading && !isLoading)
+        PlaySound(OperaSound::PageLoaded);
+    wasPageLoading = isLoading;
 }
 
 PageView& InternetChannel::EnsurePageView()

@@ -6,6 +6,7 @@ add_library(Channels STATIC
     Internet/PageToolbar.cpp
     Internet/PageView.cpp
     Internet/SettingsScreen.cpp
+    Internet/ThumbnailPicture.cpp
     Internet/TypedAddresses.cpp
     InternetChannel.cpp
     MiiChannel/ButtonFocus.cpp

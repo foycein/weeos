@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Formats/Bytes.h"
+#include "Formats/RgbaImage.h"
 #include "Formats/VirtualFatVolume.h"
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Settings/ConsoleClock.h"
@@ -80,6 +81,16 @@ public:
     void RemoveFavorite(int number);
     std::optional<Favorite> FindFavorite(const std::string& address) const;
 
+    // A new title for the favorite (the original's "Edit Title" takes at most 64 characters).
+    void RenameFavorite(int number, const std::u16string& title);
+
+    // Puts the favorite at another place of the list; the positions follow the new order.
+    void MoveFavorite(int number, std::size_t newIndex);
+
+    // The picture of a favorite, 90 x 68 pixels (ThumbnailPicture.h). Nothing for a favorite without one.
+    void SetThumbnail(int number, const Formats::RgbaImage& thumbnail);
+    std::optional<Formats::RgbaImage> Thumbnail(int number) const;
+
     SearchEngine GetSearchEngine() const;
     void SetSearchEngine(SearchEngine engine);
     ToolbarMode GetToolbarMode() const;
@@ -89,12 +100,19 @@ private:
     void SetPreference(std::string_view key, int value);
     int PreferenceNumber(std::string_view key) const;
     void Save();
+    void SaveThumbnails();
+    void ReadThumbnails();
+    std::optional<std::size_t> ThumbnailPlaceOf(int number) const;
 
     std::unique_ptr<SystemMenu::IosNandFiles> files;
     Settings::PcClock clock;
     Formats::VirtualFatVolume volume;
     std::vector<Favorite> favorites;
     std::string preferences;
+
+    // The lines of BMARKS.TXT, one for every place of bmarks.bmp, and the bytes of bmarks.bmp.
+    std::vector<std::string> thumbnailNames;
+    Formats::Bytes thumbnailFile;
 };
 
 }

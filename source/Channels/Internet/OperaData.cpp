@@ -1,6 +1,7 @@
 #include "Channels/Internet/OperaData.h"
 
 #include "Browser/TextConversion.h"
+#include "Channels/Internet/ThumbnailPicture.h"
 #include "SystemMenu/IosNandFiles.h"
 
 #include "Formats/FormatError.h"
@@ -23,6 +24,17 @@ constexpr std::string_view SearchEngineKey = "Search Engine";
 constexpr std::string_view ToolbarModeKey = "Toolbar Mode";
 
 constexpr std::size_t LinesPerFavorite = 6;
+
+// The pictures of the favorites (the reference console's data folder): bmarks.bmp beside opera.vff has 140 places of 18560 bytes,
+// each a bitmap of 90 x 68 pixels; BMARKS.TXT in opera.vff has a line for every place, the name of its picture or "*" for a free place.
+// The name of a picture is WeeOS's own: the number of the favorite in eight hexadecimal digits (Assumed: the original's names were not
+// traced to the favorites).
+constexpr std::string_view ThumbnailFilePath = "/title/00010001/48414445/data/bmarks.bmp";
+constexpr std::string_view ThumbnailListFileName = "BMARKS.TXT";
+constexpr std::size_t ThumbnailPlaceCount = 140;
+constexpr std::size_t ThumbnailPlaceSize = 18560;
+constexpr std::string_view FreeThumbnailPlace = "*";
+constexpr std::size_t LongestTitle = 64;
 
 // opera.vff is 1.5 MB, as the original's (the dump's /title/00010001/48414445/data/opera.vff), which makes it a FAT12 volume.
 constexpr std::uint32_t VolumeSize = 1572864;
@@ -196,6 +208,8 @@ OperaData::OperaData(Ios::FileSystemService& fileSystem, Ios::Caller caller, For
     std::optional<Formats::Bytes> preferenceFile = volume.ReadFile(PreferencesFileName);
     if (preferenceFile)
         preferences = std::string(TextOf(*preferenceFile));
+
+    ReadThumbnails();
 }
 
 OperaData::~OperaData() = default;
@@ -232,6 +246,102 @@ void OperaData::RemoveFavorite(int number)
 {
     std::erase_if(favorites, [number](const Favorite& favorite) { return favorite.number == number; });
     Save();
+
+    std::optional<std::size_t> place = ThumbnailPlaceOf(number);
+    if (!place)
+        return;
+
+    thumbnailNames[*place] = std::string(FreeThumbnailPlace);
+    SaveThumbnails();
+}
+
+void OperaData::RenameFavorite(int number, const std::u16string& title)
+{
+    for (Favorite& favorite : favorites)
+    {
+        if (favorite.number == number)
+            favorite.title = title.substr(0, LongestTitle);
+    }
+    Save();
+}
+
+void OperaData::MoveFavorite(int number, std::size_t newIndex)
+{
+    auto found = std::find_if(favorites.begin(), favorites.end(), [number](const Favorite& favorite) { return favorite.number == number; });
+    if (found == favorites.end() || newIndex >= favorites.size())
+        return;
+
+    Favorite moved = *found;
+    favorites.erase(found);
+    favorites.insert(favorites.begin() + static_cast<std::ptrdiff_t>(newIndex), moved);
+
+    for (std::size_t index = 0; index < favorites.size(); ++index)
+        favorites[index].position = static_cast<int>(index) + 1;
+    Save();
+}
+
+void OperaData::SetThumbnail(int number, const Formats::RgbaImage& thumbnail)
+{
+    std::optional<std::size_t> place = ThumbnailPlaceOf(number);
+    if (!place)
+    {
+        auto freePlace = std::find(thumbnailNames.begin(), thumbnailNames.end(), FreeThumbnailPlace);
+        if (freePlace == thumbnailNames.end())
+            return;
+        place = static_cast<std::size_t>(freePlace - thumbnailNames.begin());
+    }
+
+    thumbnailNames[*place] = std::format("/title/00010001/48414445/data/bmarks/{:08x}.bmp", static_cast<std::uint32_t>(number));
+    Formats::Bytes bitmap = WriteThumbnailBitmap(thumbnail);
+    std::copy(bitmap.begin(), bitmap.end(), thumbnailFile.begin() + static_cast<std::ptrdiff_t>(*place * ThumbnailPlaceSize));
+    SaveThumbnails();
+}
+
+std::optional<Formats::RgbaImage> OperaData::Thumbnail(int number) const
+{
+    std::optional<std::size_t> place = ThumbnailPlaceOf(number);
+    if (!place)
+        return std::nullopt;
+
+    return ReadThumbnailBitmap(Formats::ByteView(thumbnailFile).subspan(*place * ThumbnailPlaceSize, ThumbnailPlaceSize));
+}
+
+std::optional<std::size_t> OperaData::ThumbnailPlaceOf(int number) const
+{
+    std::string name = std::format("/{:08x}.bmp", static_cast<std::uint32_t>(number));
+    for (std::size_t place = 0; place < thumbnailNames.size(); ++place)
+    {
+        if (thumbnailNames[place].ends_with(name))
+            return place;
+    }
+    return std::nullopt;
+}
+
+// A console whose channel never kept a picture has neither file: every place is free.
+void OperaData::ReadThumbnails()
+{
+    std::optional<Formats::Bytes> listFile = volume.ReadFile(ThumbnailListFileName);
+    if (listFile)
+    {
+        for (std::string_view line : SplitLines(TextOf(*listFile)))
+            thumbnailNames.emplace_back(line);
+    }
+    thumbnailNames.resize(ThumbnailPlaceCount, std::string(FreeThumbnailPlace));
+
+    std::optional<Formats::Bytes> stored = files->ReadFile(ThumbnailFilePath);
+    thumbnailFile = stored ? *stored : Formats::Bytes();
+    thumbnailFile.resize(ThumbnailPlaceCount * ThumbnailPlaceSize, 0);
+}
+
+void OperaData::SaveThumbnails()
+{
+    std::string list;
+    for (const std::string& name : thumbnailNames)
+        list += name + "\n";
+
+    volume.WriteFile(ThumbnailListFileName, BytesOf(list), VolumeTimeOf(clock()));
+    files->WriteFile(VolumePath, volume.FileBytes());
+    files->WriteFile(ThumbnailFilePath, thumbnailFile);
 }
 
 std::optional<Favorite> OperaData::FindFavorite(const std::string& address) const

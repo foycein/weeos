@@ -55,6 +55,7 @@ public:
     void TypeText(const std::u16string& text);
     void PressKey(PageKey key);
     void FillTextField(const std::u16string& text);
+    void SetSingleColumn(bool isSingleColumnOn);
     void AnswerScriptDialog(bool isAccepted, const std::u16string& text);
     void DeleteCookies();
 
@@ -88,6 +89,7 @@ private:
     std::map<std::string, std::map<std::string, std::vector<std::uint8_t>>> servedHosts;
     double pointerX = 0;
     double pointerY = 0;
+    bool isSingleColumn = false;
     std::string lastStartedAddress;
 
     winrt::Windows::System::DispatcherQueueController queueController = nullptr;

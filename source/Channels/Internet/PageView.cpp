@@ -37,8 +37,11 @@ bool PageView::Contains(Formats::Vector2 pagePoint) const
 void PageView::Update()
 {
     std::optional<Formats::RgbaImage> newPicture = page->TakeNewPicture();
-    if (newPicture)
-        picture = std::make_unique<PagePicture>(device, *newPicture);
+    if (!newPicture)
+        return;
+
+    picture = std::make_unique<PagePicture>(device, *newPicture);
+    latestPicture = std::move(newPicture);
 }
 
 void PageView::Draw(PagePainter& painter) const
@@ -62,6 +65,22 @@ void PageView::ZoomIn()
     if (zoomStep + 1 < ZoomSteps.size())
         ++zoomStep;
     page->SetZoom(ZoomSteps[zoomStep]);
+}
+
+void PageView::ResetZoom()
+{
+    zoomStep = 0;
+    page->SetZoom(ZoomSteps[zoomStep]);
+}
+
+bool PageView::IsAtNormalZoom() const
+{
+    return zoomStep == 0;
+}
+
+const std::optional<Formats::RgbaImage>& PageView::LatestPicture() const
+{
+    return latestPicture;
 }
 
 void PageView::ZoomOut()

@@ -39,6 +39,10 @@ std::string FocusEmulationParameters();
 // A script for the page that puts the text into the text field that has the focus and tells the page's scripts, as typing would.
 std::string FillTextFieldScript(std::u16string_view text);
 
+// A script for the page that lays it out as one column, or as the page wants it again: a style sheet that takes away floats, fixed
+// widths, tables and columns and makes the text larger, as the single column mode of the Wii's Opera does.
+std::string SingleColumnScript(bool isSingleColumn);
+
 // The script that runs in every page before its own scripts (WebPage): a click on a text field reports the field to the program, and
 // the page cannot open the PC's file picker or print dialog.
 std::u16string_view PageHelperScript();

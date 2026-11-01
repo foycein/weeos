@@ -392,6 +392,8 @@ void PageEngine::ListenToLoadEvents()
         documentEvents->add_DOMContentLoaded(Callback<ICoreWebView2DOMContentLoadedEventHandler>(
             [this](ICoreWebView2*, ICoreWebView2DOMContentLoadedEventArgs*) {
                 ReportLoadStep(true, ProgressWhenDocumentIsRead);
+                if (isSingleColumn)
+                    webView->ExecuteScript(WideTextOf(SingleColumnScript(true)).c_str(), nullptr);
                 return S_OK;
             }).Get(), &token);
     }
@@ -663,6 +665,12 @@ void PageEngine::PressKey(PageKey key)
 {
     CallDevTools(L"Input.dispatchKeyEvent", KeyEventParameters(key, true));
     CallDevTools(L"Input.dispatchKeyEvent", KeyEventParameters(key, false));
+}
+
+void PageEngine::SetSingleColumn(bool isSingleColumnOn)
+{
+    isSingleColumn = isSingleColumnOn;
+    webView->ExecuteScript(WideTextOf(SingleColumnScript(isSingleColumn)).c_str(), nullptr);
 }
 
 void PageEngine::FillTextField(const std::u16string& text)

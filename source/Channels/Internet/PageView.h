@@ -43,11 +43,17 @@ public:
 
     void ZoomIn();
     void ZoomOut();
+    void ResetZoom();
+    bool IsAtNormalZoom() const;
+
+    // The newest picture of the page as it came from the engine, for the picture of a favorite.
+    const std::optional<Formats::RgbaImage>& LatestPicture() const;
 
 private:
     Graphics::GraphicsDevice& device;
     std::unique_ptr<Browser::WebPage> page;
     std::unique_ptr<PagePicture> picture;
+    std::optional<Formats::RgbaImage> latestPicture;
     float areaWidth = 0;
     float areaHeight = 0;
     std::optional<Formats::Vector2> sentPointer;

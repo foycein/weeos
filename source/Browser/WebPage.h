@@ -172,6 +172,9 @@ public:
     // Puts the text into the field that TakeTextFieldRequest named.
     void FillTextField(const std::u16string& text);
 
+    // Single Column Mode: every page from now on is laid out as one column, until it is switched off.
+    void SetSingleColumn(bool isSingleColumn);
+
     void AnswerScriptDialog(bool isAccepted, const std::u16string& text = {});
     void DeleteCookies();
 

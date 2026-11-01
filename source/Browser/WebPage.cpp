@@ -114,6 +114,11 @@ void WebPage::FillTextField(const std::u16string& text)
     thread->Send([text](PageEngine& engine) { engine.FillTextField(text); });
 }
 
+void WebPage::SetSingleColumn(bool isSingleColumn)
+{
+    thread->Send([isSingleColumn](PageEngine& engine) { engine.SetSingleColumn(isSingleColumn); });
+}
+
 void WebPage::AnswerScriptDialog(bool isAccepted, const std::u16string& text)
 {
     thread->Send([isAccepted, text](PageEngine& engine) { engine.AnswerScriptDialog(isAccepted, text); });

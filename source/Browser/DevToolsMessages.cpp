@@ -151,6 +151,25 @@ std::string FillTextFieldScript(std::u16string_view text)
         JsonText(text));
 }
 
+std::string SingleColumnScript(bool isSingleColumn)
+{
+    return std::format("(function(isOn) {{"
+                       " var id = 'weeos-single-column';"
+                       " var old = document.getElementById(id);"
+                       " if (old) old.remove();"
+                       " if (!isOn) return;"
+                       " var style = document.createElement('style');"
+                       " style.id = id;"
+                       " style.textContent = '* {{ float: none !important; position: static !important; width: auto !important;"
+                       " min-width: 0 !important; max-width: 100% !important; columns: auto !important; box-sizing: border-box !important; }}"
+                       " table, thead, tbody, tfoot, tr, td, th {{ display: block !important; }}"
+                       " img, video {{ height: auto !important; }}"
+                       " body {{ font-size: 125% !important; }}';"
+                       " (document.head || document.documentElement).appendChild(style);"
+                       " }})({});",
+        isSingleColumn ? "true" : "false");
+}
+
 std::u16string_view PageHelperScript()
 {
     return u"(function() {"

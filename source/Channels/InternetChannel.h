@@ -99,6 +99,7 @@ public:
     std::optional<Formats::Vector2> PlaceOfToolbarButton(ToolbarButton button) const;
     std::optional<Formats::Vector2> PlaceOfFavorite(std::size_t index) const;
     std::optional<Formats::Vector2> PlaceOfSettingsItem(const SettingsScreen::Item& item) const;
+    std::optional<Formats::Vector2> PlaceOfEditOption(FavoritesScreen::EditOption option) const;
     std::optional<Formats::Vector2> PlaceOfDialogOk() const;
 
 private:
@@ -129,6 +130,7 @@ private:
         DeleteCookies,
         CookiesDeleted,
         Controls,
+        SingleColumn,
     };
 
     struct Dialog
@@ -145,6 +147,7 @@ private:
         Search,
         PageField,
         PagePrompt,
+        FavoriteTitle,
     };
 
     // The answer of a dialog: OK, Cancel, or for the choice of the search engine the engine itself.
@@ -161,6 +164,14 @@ private:
     void UpdatePageButtons(const Input::RemoteState& state);
     void UpdatePageScrolling(const Input::RemoteState& state);
     void UpdateFavorites();
+    void UpdateEditOptions();
+    void UpdateMovingFavorite(const Input::RemoteState& state);
+    void PressEditOption(FavoritesScreen::EditOption option);
+    void ShowThumbnails();
+    void ToggleSingleColumn();
+    void PlaySound(std::string_view soundName);
+    void PlayRolloverWhenTheFocusMoves();
+    void PlayLoadFinishWhenThePageIsLoaded();
     void UpdateSettings();
     void UpdateDialog();
     void UpdateToolbarVisibility();
@@ -254,6 +265,11 @@ private:
     std::optional<ToolbarButton> focusedToolbarButton;
     std::optional<std::size_t> focusedFavorite;
     std::optional<SettingsScreen::Item> focusedSettingsItem;
+    std::optional<FavoritesScreen::EditOption> focusedEditOption;
+    std::optional<std::size_t> renamedFavorite;
+    bool isSingleColumn = false;
+    bool wasPageLoading = false;
+    std::string focusBeforeTheStep;
     std::optional<std::size_t> favoriteToDelete;
     std::u16string wordsToSearch;
     SearchEngine engineToConfirm = SearchEngine::None;
