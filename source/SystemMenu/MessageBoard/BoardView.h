@@ -61,6 +61,9 @@ public:
     // The letters, the mask over them and the open letter. The background is the main frame's.
     void Draw();
 
+    // Reads the letters of the shown day again, after the menu made room on the board.
+    void ShowTheDay();
+
     // For the checks of the tests.
     const std::vector<std::unique_ptr<SmallLetter>>& Letters() const;
     LetterView* OpenLetter();
@@ -69,7 +72,6 @@ public:
 
 private:
     void LoadTheLettersOfTheDay();
-    void ShowTheDay();
     void ShowTheArrows();
     void PlaceTheLetters();
     void RunIdle();

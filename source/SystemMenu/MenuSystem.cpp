@@ -4,6 +4,7 @@
 #include "SystemMenu/FirstScreen.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuStateFile.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenFactory.h"
 #include "SystemMenu/WiiSettings/SettingsFlow.h"
 
@@ -84,6 +85,12 @@ void MenuSystem::RunStep()
         return;
     }
 
+    if (MustTheBoardMakeRoom())
+    {
+        RunStepOfMakingRoom();
+        return;
+    }
+
     bool isHomeMenuOpen = homeButton.IsOpen();
     if (!isHomeMenuOpen)
         screens.Update();
@@ -108,6 +115,36 @@ void MenuSystem::RunStep()
 
     cursors.Update(input);
     fader.Calculate();
+}
+
+const FullBoardProcedure* MenuSystem::BoardMakingRoom() const
+{
+    return fullBoard.get();
+}
+
+bool MenuSystem::MustTheBoardMakeRoom() const
+{
+    return services.messageBoard != nullptr && services.messageBoard->mustMakeRoom;
+}
+
+// While the Message Board makes room the original runs a loop of its own (0x81335150): the screens stand still under the dialogs
+// of the procedure, and the HOME button does nothing.
+void MenuSystem::RunStepOfMakingRoom()
+{
+    if (!fullBoard)
+        fullBoard = std::make_unique<FullBoardProcedure>(services, services.messageBoard->store);
+
+    fullBoard->Run();
+    dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
+    cursors.Update(input);
+    fader.Calculate();
+
+    if (!fullBoard->IsFinished())
+        return;
+
+    fullBoard.reset();
+    services.messageBoard->mustMakeRoom = false;
+    services.messageBoard->hasMadeRoom = true;
 }
 
 void MenuSystem::RunStepOfTheTurnOffQuestion()

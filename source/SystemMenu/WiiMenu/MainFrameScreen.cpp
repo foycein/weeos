@@ -4,6 +4,7 @@
 #include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/FullBoard.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/ClockFace.h"
@@ -96,6 +97,9 @@ bool MainFrameScreen::RunMain()
     backgroundAnimation->Step();
     if (board && board->IsShown())
     {
+        ReadTheDayAgainAfterMakingRoom();
+        if (board->State() == BoardState::Idle)
+            AskForRoomWhenTheBoardIsNearlyFull();
         board->Run();
         background->Calculate();
         if (!board->IsShown())
@@ -115,9 +119,32 @@ bool MainFrameScreen::RunMain()
     OpenTheBoardWhenTheGridHasGone();
 
     if (!hasFadedIn && AreTheChildrenBuilt())
+    {
         hasFadedIn = services.fader.StartFadeIn();
+        AskForRoomWhenTheBoardIsNearlyFull();
+    }
 
     return false;
+}
+
+// The Wii Menu looks at the room of the board once, when it has faded in (0x81390478); the board in every step it waits (0x81390ADC).
+void MainFrameScreen::AskForRoomWhenTheBoardIsNearlyFull()
+{
+    if (services.messageBoard == nullptr)
+        return;
+
+    if (IsBoardNearlyFull(services.messageBoard->store))
+        services.messageBoard->mustMakeRoom = true;
+}
+
+// The letters of the day may have gone to the SD card or been erased (0x813932D8).
+void MainFrameScreen::ReadTheDayAgainAfterMakingRoom()
+{
+    if (!services.messageBoard->hasMadeRoom)
+        return;
+
+    services.messageBoard->hasMadeRoom = false;
+    board->ShowTheDay();
 }
 
 void MainFrameScreen::WriteTheDates(const LocalTime& today)

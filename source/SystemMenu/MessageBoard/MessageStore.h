@@ -59,6 +59,10 @@ std::string PathOf(const RecordPlace& place);
 // Nothing for a path that is not the path of a record.
 std::optional<RecordPlace> PlaceOfPath(std::string_view path);
 
+// The key by which the database names a record: "<seconds, 10 digits>_<source>_<number, 3 digits>.<kind>", for example
+// "0752022178_HAEA_#1_000.txt" (0x8148E378).
+std::string RecordKeyOf(const RecordPlace& place);
+
 struct StoredMessage
 {
     RecordPlace place;
@@ -103,14 +107,27 @@ public:
     // Deletes the record and the folders that it leaves empty.
     void DeleteMessage(const RecordPlace& place);
 
+    // The same, but cdb.vff on the NAND changes only at the next SaveToNand: for a board that deletes many records one after the other.
+    void DeleteMessageWithoutSaving(const RecordPlace& place);
+    void SaveToNand();
+
+    // Every record of every kind and source, the oldest first, as the database goes through them from 2000 on (0x8148967C).
+    std::vector<RecordPlace> RecordsOldestFirst();
+
+    // The whole file of a record. Nothing when it is not there.
+    std::optional<Formats::Bytes> ReadRecordFile(const RecordPlace& place);
+
     std::uint64_t FreeBytes();
 
     // The first eight bytes of cdbwiiid.dat: the SHA-1 of the wireless address and "uyy" (0x8148FD3C).
     std::array<Formats::Byte, Formats::CdbConsoleIdSize> ConsoleId();
 
+    // The key of the HMAC of the copies on the SD card: the 12 bytes of cdbwiiid.dat after the console id (0x8149010C).
+    Formats::Bytes SdCopyKey();
+
 private:
     Formats::VirtualFatVolume& Volume();
-    void Save();
+    Formats::Bytes ConsoleIdFile();
 
     std::vector<std::string> RecordPathsOfDay(BoardDay day);
 

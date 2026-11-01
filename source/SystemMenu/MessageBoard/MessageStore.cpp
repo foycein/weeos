@@ -22,6 +22,8 @@ constexpr std::string_view CounterFileName = "cdb.conf";
 // The text that the database adds to the wireless address before it takes the SHA-1 (0x8148FD3C).
 constexpr std::string_view ConsoleIdSalt = "uyy";
 constexpr std::size_t ConsoleIdFileSize = 0x28;
+constexpr std::size_t SdCopyKeyStart = 0x08;
+constexpr std::size_t SdCopyKeyEnd = 0x14;
 
 constexpr std::array<std::string_view, 3> LetterKindFolders = {KindFolder::Text, KindFolder::Picture, KindFolder::Data};
 
@@ -140,6 +142,11 @@ std::optional<RecordPlace> PlaceOfPath(std::string_view path)
     return place;
 }
 
+std::string RecordKeyOf(const RecordPlace& place)
+{
+    return std::format("{:010}_{}_{:03}.{}", place.time, place.sourceFolder, place.number, place.kindFolder);
+}
+
 MessageStore::MessageStore(NandFiles& nandFiles, const WirelessAddress& wirelessAddress)
     : nand(nandFiles)
     , address(wirelessAddress)
@@ -169,7 +176,7 @@ Formats::VirtualFatVolume& MessageStore::Volume()
     return *volume;
 }
 
-void MessageStore::Save()
+void MessageStore::SaveToNand()
 {
     nand.WriteFile(BoardVolumePath, Volume().FileBytes());
 }
@@ -179,7 +186,7 @@ void MessageStore::CreateWhenMissing()
     if (nand.ReadFile(BoardVolumePath))
         return;
 
-    Save();
+    SaveToNand();
 }
 
 std::vector<std::string> MessageStore::RecordPathsOfDay(BoardDay day)
@@ -319,7 +326,7 @@ StoredMessage MessageStore::AddMessage(std::string_view typeName, std::string_vi
     {
         throw MenuError(std::format("The Message Board cannot take the message: {}", error.what()));
     }
-    Save();
+    SaveToNand();
     return stored;
 }
 
@@ -336,10 +343,16 @@ void MessageStore::ChangeMessage(StoredMessage& stored, const LocalTime& now)
     {
         throw MenuError(std::format("The Message Board cannot take the changed message: {}", error.what()));
     }
-    Save();
+    SaveToNand();
 }
 
 void MessageStore::DeleteMessage(const RecordPlace& place)
+{
+    DeleteMessageWithoutSaving(place);
+    SaveToNand();
+}
+
+void MessageStore::DeleteMessageWithoutSaving(const RecordPlace& place)
 {
     std::string path = PathOf(place);
     if (!Volume().DeleteFile(path))
@@ -351,7 +364,32 @@ void MessageStore::DeleteMessage(const RecordPlace& place)
         std::size_t slash = folder.rfind('/');
         folder = slash == std::string::npos ? std::string() : folder.substr(0, slash);
     }
-    Save();
+}
+
+std::vector<RecordPlace> MessageStore::RecordsOldestFirst()
+{
+    std::vector<RecordPlace> places;
+    for (BoardDay day : DaysWithRecords())
+    {
+        for (const std::string& path : RecordPathsOfDay(day))
+        {
+            std::optional<RecordPlace> place = PlaceOfPath(path);
+            if (place)
+                places.push_back(*place);
+        }
+    }
+
+    std::stable_sort(places.begin(), places.end(), [](const RecordPlace& first, const RecordPlace& second) {
+        if (first.time != second.time)
+            return first.time < second.time;
+        return first.number < second.number;
+    });
+    return places;
+}
+
+std::optional<Formats::Bytes> MessageStore::ReadRecordFile(const RecordPlace& place)
+{
+    return Volume().ReadFile(PathOf(place));
 }
 
 std::uint64_t MessageStore::FreeBytes()
@@ -359,22 +397,30 @@ std::uint64_t MessageStore::FreeBytes()
     return Volume().FreeBytes();
 }
 
-std::array<Formats::Byte, Formats::CdbConsoleIdSize> MessageStore::ConsoleId()
+// cdbwiiid.dat, or what the database would write into it: the SHA-1 of the wireless address and "uyy".
+Formats::Bytes MessageStore::ConsoleIdFile()
 {
-    Formats::Bytes idFile;
     std::optional<Formats::Bytes> stored = nand.ReadFile(BoardConsoleIdPath);
     if (stored && stored->size() == ConsoleIdFileSize)
-    {
-        idFile = *stored;
-    }
-    else
-    {
-        Formats::Bytes addressAndSalt(address.begin(), address.end());
-        addressAndSalt.insert(addressAndSalt.end(), ConsoleIdSalt.begin(), ConsoleIdSalt.end());
-        Formats::Sha1Digest digest = Formats::ComputeSha1(addressAndSalt);
-        idFile.assign(digest.begin(), digest.end());
-    }
+        return *stored;
 
+    Formats::Bytes addressAndSalt(address.begin(), address.end());
+    addressAndSalt.insert(addressAndSalt.end(), ConsoleIdSalt.begin(), ConsoleIdSalt.end());
+    Formats::Sha1Digest digest = Formats::ComputeSha1(addressAndSalt);
+    return Formats::Bytes(digest.begin(), digest.end());
+}
+
+// The database reads the 0x28 bytes of the file and then sets the last 0x14 to zero, so only the bytes 8 to 0x13 remain of the key
+// (0x8148FD3C); the HMAC fills a short key with zeros anyway.
+Formats::Bytes MessageStore::SdCopyKey()
+{
+    Formats::Bytes idFile = ConsoleIdFile();
+    return Formats::Bytes(idFile.begin() + SdCopyKeyStart, idFile.begin() + SdCopyKeyEnd);
+}
+
+std::array<Formats::Byte, Formats::CdbConsoleIdSize> MessageStore::ConsoleId()
+{
+    Formats::Bytes idFile = ConsoleIdFile();
     std::array<Formats::Byte, Formats::CdbConsoleIdSize> id;
     std::copy(idFile.begin(), idFile.begin() + id.size(), id.begin());
     return id;
