@@ -51,17 +51,17 @@ constexpr std::uint32_t RemoteCommunicationError = 65;
 constexpr std::uint32_t ReadingRemote = 101501;
 constexpr std::uint32_t WaitingForDs = 101504;
 
-// Assumed (CHN-05, CHN-40): how long the plaza shows "Reading..." of a Wii Remote and the search for a Nintendo DS before their answers.
+// Assumed (CHN-05, CHN-68): how long the plaza shows "Reading..." of a Wii Remote and the search for a Nintendo DS before their answers.
 constexpr int RemoteReadingSteps = 60;
 constexpr int DsSearchSteps = 300;
 
-// The name balloon stays for 3 seconds after A on a Mii (Assumed, CHN-38).
+// The name balloon stays for 3 seconds after A on a Mii (Assumed, CHN-66).
 constexpr int BalloonSteps = 180;
 
 // A Mii's middle in the picture: 80 units above its feet, leaning back with the plaza's 45 degrees.
 constexpr float MiddleHeight = 80.0f * 0.70710678f;
 
-// B held with the hand near an edge scrolls the plaza (Assumed, CHN-34): beyond 70 percent of the way from the middle to the edge.
+// B held with the hand near an edge scrolls the plaza (Assumed, CHN-62): beyond 70 percent of the way from the middle to the edge.
 constexpr float EdgeScrollFraction = 0.7f;
 
 constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";
@@ -189,7 +189,7 @@ void PlazaScreen::Update(bool acceptsInput)
     HandleButtons();
 }
 
-// Beyond the ground the plaza is white, the color its edges fade into (Assumed, CHN-43).
+// Beyond the ground the plaza is white, the color its edges fade into (Assumed, CHN-71).
 void PlazaScreen::Draw()
 {
     Graphics::Canvas canvas = Canvas();
@@ -396,8 +396,12 @@ void PlazaScreen::HandleCamera()
         plaza.ScrollCamera(scroll);
 }
 
+// Only a question of the plaza's own takes its answer: the window serves the whole channel.
 void PlazaScreen::HandleMessageAnswer()
 {
+    if (pending == Pending::Nothing)
+        return;
+
     std::optional<MessageAnswer> answer = message.TakeAnswer();
     if (!answer)
         return;

@@ -331,7 +331,7 @@ void MiiEditor::ChooseColor(ColorPart part, int color)
     }
 }
 
-// Larger and smaller change the size; the turns change the rotation (turning left counts up, Assumed: MCH-10); closer and farther the
+// Larger and smaller change the size; the turns change the rotation (turning left counts up, Assumed: CHN-65); closer and farther the
 // spacing; up and down the vertical place, which grows downward on the face; left and right the place of a mole across the face.
 AdjustResult MiiEditor::Adjust(EditorPart part, Adjustment adjustment)
 {

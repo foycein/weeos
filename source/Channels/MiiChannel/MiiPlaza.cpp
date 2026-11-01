@@ -33,13 +33,13 @@ constexpr float WalkFramesPerUnit = 0.6f;
 constexpr float WalkAnimationFrames = 40.0f;
 constexpr float WaitAnimationFrames = 120.0f;
 
-// Assumed (MCH-05): how long a Mii stands, how far it walks and how fast it turns; the rules that choose them were not traced.
+// Assumed (CHN-63): how long a Mii stands, how far it walks and how fast it turns; the rules that choose them were not traced.
 constexpr int ShortestWaitSteps = 120;
 constexpr int LongestWaitSteps = 600;
 constexpr float LongestWalk = 900.0f;
 constexpr float TurnDegreesPerStep = 8.0f;
 
-// The whistle's lines (Assumed, MCH-06): ten Miis to a line, 160 units apart, the first line in front.
+// The whistle's lines (Assumed, CHN-64): ten Miis to a line, 160 units apart, the first line in front.
 constexpr int MiisPerLine = 10;
 constexpr float LineSpacing = 160.0f;
 constexpr float FirstLineZ = 700.0f;
@@ -65,7 +65,7 @@ constexpr float FarDistance = 100000.0f;
 constexpr float StandardAspect = 4.0f / 3.0f;
 constexpr float WideAspect = 16.0f / 9.0f;
 
-// The D-pad moves the camera 15 units a step (8001295C). The eye glides a tenth of the way to its destination every step (Assumed, MCH-04).
+// The D-pad moves the camera 15 units a step (8001295C). The eye glides a tenth of the way to its destination every step (Assumed, CHN-62).
 constexpr float ScrollPerStep = 15.0f;
 constexpr float GlidePerStep = 0.1f;
 

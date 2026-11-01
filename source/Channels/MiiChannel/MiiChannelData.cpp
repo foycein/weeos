@@ -20,7 +20,7 @@ constexpr Ios::EntryPermissions EverybodyReadsAndWrites = {
     Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite};
 constexpr std::uint8_t NoAttributeFlags = 0;
 
-// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21); WeeOS keeps nothing else in it.
+// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps nothing else in it.
 constexpr std::size_t MiiChannelSaveSize = 0x60;
 
 }

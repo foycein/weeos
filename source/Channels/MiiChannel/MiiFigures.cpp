@@ -15,7 +15,7 @@ namespace
 constexpr std::string_view StandingAnimation = "bodyWait";
 constexpr std::string_view WalkingAnimation = "bodyWalk";
 
-// A Mii in the hand dangles and kicks (bodyWallow, 12 frames), lifted above the ground (Assumed, CHN-38).
+// A Mii in the hand dangles and kicks (bodyWallow, 12 frames), lifted above the ground (Assumed, CHN-66).
 constexpr std::string_view HeldAnimation = "bodyWallow";
 constexpr float HeldLift = 80.0f;
 
@@ -36,7 +36,7 @@ constexpr float HeadFar = 700.0f;
 constexpr Formats::Vector3 Upward = {0.0f, 1.0f, 0.0f};
 
 // The ground reaches from 0 to 5400 in depth with the middle of its paving at 2700; it lies with that middle under the middle of the plaza
-// (Assumed, CHN-43).
+// (Assumed, CHN-71).
 constexpr Formats::Vector3 GroundPlace = {0.0f, 0.0f, -2700.0f};
 constexpr std::uint32_t FaceTextureSize = 128;
 

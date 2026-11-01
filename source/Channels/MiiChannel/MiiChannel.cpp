@@ -307,7 +307,7 @@ void MiiChannel::FollowNewMiiQuestions()
 }
 
 // The face of a look-alike becomes a new Mii without names, and like the templates of "Start from scratch" it may not travel
-// (Assumed, CHN-41).
+// (Assumed, CHN-69).
 void MiiChannel::FollowLookAlike()
 {
     std::optional<LookAlikeResult> result = lookAlike.TakeResult();

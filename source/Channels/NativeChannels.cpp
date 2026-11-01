@@ -53,7 +53,7 @@ constexpr std::array<ChannelSoundArchive, 2> ForecastSounds = {{{9, "./rev_wtr.b
 constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsar", false}, HomeButton3Sounds}};
 constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSound.brsar", false}}};
 
-// The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts (CHN-42).
+// The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts (CHN-70).
 constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/NigaoeSound.brsar", false},
     {4, "./HomeButton2/Huf8_HomeButtonSe.brsar", true}}};
 

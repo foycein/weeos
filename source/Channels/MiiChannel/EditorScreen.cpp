@@ -136,7 +136,7 @@ constexpr std::uint32_t MingleOnWord = 200802;
 constexpr std::uint32_t EnterNickname = 300001;
 constexpr std::uint32_t EnterCreatorName = 300007;
 
-// Assumed (CHN-39): the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
+// Assumed (CHN-67): the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
 constexpr Formats::Rgba8Color ChosenTint = {255, 210, 90, 255};
 constexpr Formats::Rgba8Color NotChosenTint = {255, 255, 255, 255};
 
@@ -842,6 +842,9 @@ void EditorScreen::HandleKeyboardAnswer()
 
 void EditorScreen::HandleMessageAnswer()
 {
+    if (pending == Pending::Nothing)
+        return;
+
     std::optional<MessageAnswer> answer = message.TakeAnswer();
     if (!answer)
         return;
