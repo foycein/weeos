@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <format>
 #include <string>
+#include <vector>
 
 namespace Formats
 {
@@ -23,16 +24,21 @@ constexpr std::size_t ChunkCheckNumberSize = 4;
 constexpr std::string_view HeaderChunk = "IHDR";
 constexpr std::string_view DataChunk = "IDAT";
 constexpr std::string_view EndChunk = "IEND";
+constexpr std::string_view PaletteChunk = "PLTE";
+constexpr std::string_view TransparencyChunk = "tRNS";
 
 constexpr Byte EightBitsPerColor = 8;
 constexpr Byte RedGreenBlueAlphaColors = 6;
 constexpr Byte RedGreenBlueColors = 2;
+constexpr Byte PaletteColors = 3;
 constexpr Byte DeflateCompression = 0;
 constexpr Byte AdaptiveFiltering = 0;
 constexpr Byte NotInterlaced = 0;
 
 constexpr std::size_t BytesPerPixelWithAlpha = 4;
 constexpr std::size_t BytesPerPixelWithoutAlpha = 3;
+constexpr std::size_t BytesPerPaletteIndex = 1;
+constexpr std::size_t BytesPerPaletteColor = 3;
 constexpr Byte OpaqueAlpha = 255;
 
 // The first byte of every row says how the row was filtered before it was compressed.
@@ -47,9 +53,14 @@ struct Header
     std::uint32_t width = 0;
     std::uint32_t height = 0;
 
-    // 4 with alpha, 3 for a picture without (the start page of the Internet Channel has one).
+    // 4 with alpha, 3 for a picture without (the start page of the Internet Channel has one), 1 for a picture whose pixels are the
+    // numbers of colors of its palette (the manuals of the channels have them).
     std::size_t bytesPerPixel = BytesPerPixelWithAlpha;
+    bool hasPalette = false;
 };
+
+// The colors of a picture with a palette (PLTE), with the alpha of the first ones from tRNS; the others are opaque.
+using Palette = std::vector<Rgba8Color>;
 
 Header ReadHeader(ByteReader& chunkReader)
 {
@@ -63,14 +74,20 @@ Header ReadHeader(ByteReader& chunkReader)
     Byte filtering = chunkReader.ReadByte();
     Byte interlacing = chunkReader.ReadByte();
 
-    bool hasKnownColors = colorKind == RedGreenBlueAlphaColors || colorKind == RedGreenBlueColors;
+    bool hasKnownColors = colorKind == RedGreenBlueAlphaColors || colorKind == RedGreenBlueColors || colorKind == PaletteColors;
     bool isUnderstood = bitsPerColor == EightBitsPerColor && hasKnownColors && compression == DeflateCompression
         && filtering == AdaptiveFiltering && interlacing == NotInterlaced;
     if (!isUnderstood)
-        chunkReader.Fail("only pictures with 8 bits of red, green, blue and maybe alpha, in rows one after the other, are understood");
+        chunkReader.Fail("only pictures with 8 bits of red, green, blue and maybe alpha or of a palette, in rows one after the other, are understood");
 
     if (colorKind == RedGreenBlueColors)
         header.bytesPerPixel = BytesPerPixelWithoutAlpha;
+
+    if (colorKind == PaletteColors)
+    {
+        header.bytesPerPixel = BytesPerPaletteIndex;
+        header.hasPalette = true;
+    }
 
     return header;
 }
@@ -142,11 +159,47 @@ Bytes Unfilter(ByteView filteredRows, const Header& header)
     return pixels;
 }
 
-RgbaImage MakeImage(const Header& header, const Bytes& pixelBytes)
+Palette ReadPalette(ByteReader& chunkReader)
+{
+    Palette palette;
+    while (chunkReader.RemainingSize() >= BytesPerPaletteColor)
+    {
+        Byte red = chunkReader.ReadByte();
+        Byte green = chunkReader.ReadByte();
+        Byte blue = chunkReader.ReadByte();
+        palette.push_back({red, green, blue, OpaqueAlpha});
+    }
+    return palette;
+}
+
+void ReadPaletteAlpha(ByteReader& chunkReader, Palette& palette)
+{
+    for (Rgba8Color& color : palette)
+    {
+        if (chunkReader.IsAtEnd())
+            return;
+
+        color.alpha = chunkReader.ReadByte();
+    }
+}
+
+RgbaImage MakeImage(const Header& header, const Bytes& pixelBytes, const Palette& palette)
 {
     RgbaImage image;
     image.width = header.width;
     image.height = header.height;
+
+    if (header.hasPalette)
+    {
+        for (Byte colorNumber : pixelBytes)
+        {
+            if (colorNumber >= palette.size())
+                throw FormatError(std::format("{}: the color {} is not in the palette", DataDescription, colorNumber));
+
+            image.pixels.push_back(palette[colorNumber]);
+        }
+        return image;
+    }
 
     std::size_t bytesPerPixel = header.bytesPerPixel;
     for (std::size_t pixelNumber = 0; pixelNumber < pixelBytes.size() / bytesPerPixel; ++pixelNumber)
@@ -170,6 +223,7 @@ RgbaImage ReadPngImage(ByteView bytes)
     Header header;
     bool hasHeader = false;
     Bytes compressedRows;
+    Palette palette;
 
     while (true)
     {
@@ -188,6 +242,14 @@ RgbaImage ReadPngImage(ByteView bytes)
             ByteView data = chunkReader.ReadBytes(chunkSize);
             compressedRows.insert(compressedRows.end(), data.begin(), data.end());
         }
+        else if (chunkType == PaletteChunk)
+        {
+            palette = ReadPalette(chunkReader);
+        }
+        else if (chunkType == TransparencyChunk && header.hasPalette)
+        {
+            ReadPaletteAlpha(chunkReader, palette);
+        }
         else if (chunkType == EndChunk)
         {
             break;
@@ -197,7 +259,7 @@ RgbaImage ReadPngImage(ByteView bytes)
     if (!hasHeader)
         reader.Fail("the header chunk is missing");
 
-    return MakeImage(header, Unfilter(InflateZlib(compressedRows), header));
+    return MakeImage(header, Unfilter(InflateZlib(compressedRows), header), palette);
 }
 
 }

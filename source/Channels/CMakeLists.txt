@@ -1,7 +1,16 @@
 add_library(Channels STATIC
     ChannelFiles.cpp
+    ChannelText.cpp
     ChannelSystem.cpp
     InternetChannel.cpp
+    Manual/HtmlDocument.cpp
+    Manual/ManualViewer.cpp
+    Manual/PageLayouter.cpp
+    Manual/PageMeasure.cpp
+    Manual/PageScript.cpp
+    Manual/PageStyle.cpp
+    Manual/PageStyleSheet.cpp
+    Manual/PageTableLayout.cpp
     MiiChannel/ButtonFocus.cpp
     MiiChannel/EditorScreen.cpp
     MiiChannel/LookAlikeScreen.cpp

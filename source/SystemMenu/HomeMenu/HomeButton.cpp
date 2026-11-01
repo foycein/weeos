@@ -126,6 +126,11 @@ float HomeButton::SoundVolume() const
     return menu->SoundVolume();
 }
 
+void HomeButton::ShowPictureAgain()
+{
+    isPictureBlack = false;
+}
+
 void HomeButton::SetSpeakerVolumeSetting(std::uint8_t setting)
 {
     speakerVolumeSetting = setting;
