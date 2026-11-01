@@ -8,6 +8,7 @@ add_library(Formats STATIC
     ByteReader.cpp
     ByteWriter.cpp
     Certificate.cpp
+    Crc32.cpp
     ConsoleKeys.cpp
     DeviceCertificate.cpp
     DolExecutable.cpp

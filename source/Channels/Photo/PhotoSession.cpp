@@ -1,6 +1,7 @@
 #include "Channels/Photo/PhotoSession.h"
 
 #include "Channels/ChannelFiles.h"
+#include "Channels/Photo/PhotoPictures.h"
 
 #include "Formats/Font.h"
 
@@ -19,6 +20,7 @@ constexpr std::uint16_t HomeMenuContentIndex = 3;
 constexpr std::string_view LayoutArchivePath = "./layout.arc.LZ";
 constexpr std::string_view FontPath = "arc/font/font_photo.brfnt";
 constexpr std::string_view FontName = "font_photo.brfnt";
+constexpr std::string_view TexturesPath = "./TPLPhoto.tpl.LZ";
 
 // The hands are the ones of the channel's HOME Button Menu, HomeButton2: the channels' own hand is a NintendoWare effect that WeeOS
 // cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
@@ -53,9 +55,11 @@ bool IsPaneOfAnotherLanguage(std::string_view paneName)
 }
 
 PhotoSession::PhotoSession(ChannelServices& channelServices)
-    : services(channelServices)
+    : storage(channelServices.storage)
+    , services(channelServices)
 {
     Formats::U8Archive resources = ReadArchiveContent(services.contents, ResourceContentIndex);
+    channelTextures = Formats::ReadTplTextures(ReadPackedFile(resources, TexturesPath));
     Formats::U8Archive layoutFiles = Formats::ReadU8Archive(ReadPackedFile(resources, LayoutArchivePath));
 
     fonts.AddFont(services.display.Device(), Formats::ReadFont(FindFileOrFail(layoutFiles, FontPath)), {FontName});
@@ -123,6 +127,70 @@ std::optional<Formats::Vector2> PhotoSession::PlaceOfPress()
             return services.display.PointerToCanvas(player->state.pointer);
     }
     return std::nullopt;
+}
+
+PictureBox PhotoSession::BoxOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName)
+{
+    const Formats::Pane& pane = layout.PaneNamed(paneName);
+    Formats::Vector2 stretch = services.display.LayoutStretch();
+    return {pane.translation.x * stretch.x, pane.translation.y * stretch.y, pane.width * stretch.x, pane.height * stretch.y};
+}
+
+std::optional<Formats::RgbaImage> PhotoSession::PhotoOfFile(int fileIndex)
+{
+    auto changed = changedPhotos.find(fileIndex);
+    if (changed != changedPhotos.end())
+        return changed->second;
+
+    return OriginalPhotoOfFile(fileIndex);
+}
+
+std::optional<Formats::RgbaImage> PhotoSession::OriginalPhotoOfFile(int fileIndex)
+{
+    const PhotoFile& file = library.files[fileIndex];
+    std::optional<Formats::Bytes> bytes = ReadCardFile(services.storage.sdCard, file.path);
+    if (!bytes)
+        return std::nullopt;
+
+    if (file.IsMovie())
+        return FirstFrameOfMovie(*bytes, file.kind);
+
+    return MakeShownPhoto(*bytes);
+}
+
+void PhotoSession::ChangePhoto(int fileIndex, const Formats::RgbaImage& changedPhoto)
+{
+    changedPhotos[fileIndex] = changedPhoto;
+}
+
+void PhotoSession::ForgetChanges(int fileIndex)
+{
+    changedPhotos.erase(fileIndex);
+}
+
+bool PhotoSession::HasChangedPhotos() const
+{
+    return !changedPhotos.empty();
+}
+
+bool PhotoSession::IsPhotoChanged(int fileIndex) const
+{
+    return changedPhotos.contains(fileIndex);
+}
+
+const Layout::DrawableFont& PhotoSession::Font() const
+{
+    return fonts.Fonts().Find(std::string(FontName));
+}
+
+const Formats::RgbaImage& PhotoSession::ChannelTexture(int textureIndex)
+{
+    auto decoded = decodedTextures.find(textureIndex);
+    if (decoded != decodedTextures.end())
+        return decoded->second;
+
+    decodedTextures[textureIndex] = Formats::DecodeTexture(channelTextures.at(textureIndex));
+    return decodedTextures[textureIndex];
 }
 
 void PhotoSession::GoTo(std::unique_ptr<PhotoScreen> screen)

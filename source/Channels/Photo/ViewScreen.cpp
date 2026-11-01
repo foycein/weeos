@@ -27,8 +27,6 @@ constexpr std::string_view UnsupportedPhotoMessage = "textTUS0A";
 constexpr std::string_view UnsupportedMovieMessage = "textTUS1A";
 constexpr std::string_view OtherUnsupportedMessage = "textTUS2A";
 
-// The buttons of a feature of the view that WeeOS does not have yet: they are not shown (Fun!, Post).
-constexpr std::array<std::string_view, 2> ButtonsNotBuilt = {"today", "play"};
 constexpr std::array<std::string_view, 2> ButtonsAtTheEndOfAMovie = {"again", "playback"};
 constexpr std::array<std::string_view, 3> ButtonsOfAPhotoOnly = {"rot", "zoom_in", "zoom_out"};
 
@@ -40,9 +38,6 @@ public:
         , buttons(session.MakeLayout("view"))
         , unsupported(session.MakeLayout("error"))
     {
-        for (std::string_view button : ButtonsNotBuilt)
-            buttons->PaneNamed(button).isVisible = false;
-
         Open(fileIndex);
     }
 
@@ -109,7 +104,7 @@ private:
 
     void OpenPhoto()
     {
-        std::optional<Formats::RgbaImage> photo = MakeShownPhoto(fileBytes);
+        std::optional<Formats::RgbaImage> photo = session.PhotoOfFile(index);
         if (!photo)
         {
             ShowUnsupported(UnsupportedPhotoMessage);
@@ -247,6 +242,16 @@ private:
         else if (session.IsButtonPressed(*buttons, "zoom_out") || (!File().IsMovie() && session.IsRemoteButtonPressed(Input::RemoteButtons::Minus)))
         {
             ChangeZoom(-1, PhotoSound::ZoomOut);
+        }
+        else if (session.IsButtonPressed(*buttons, "play") && !isUnsupported)
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            session.GoTo(MakeFunScreen(session, index));
+        }
+        else if (session.IsButtonPressed(*buttons, "today") && !isUnsupported)
+        {
+            services.sounds.Request(PhotoSound::Decide);
+            session.GoTo(MakePostScreen(session, index));
         }
         else if (session.IsButtonPressed(*buttons, "again"))
         {

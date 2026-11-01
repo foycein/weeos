@@ -41,7 +41,7 @@ public:
     ThumbnailScreen(PhotoSession& photoSession, int firstShownFile)
         : session(photoSession)
         , buttons(session.MakeLayout("thumb"))
-        , quitQuestion(session.MakeLayout("thumb_quit1"))
+        , quitQuestion(session.MakeLayout(session.HasChangedPhotos() ? "thumb_quit2" : "thumb_quit1"))
         , unsupportedMarker(MakeUnsupportedMarker(session.Services().display.Device()))
     {
         firstRow = firstShownFile / Columns();

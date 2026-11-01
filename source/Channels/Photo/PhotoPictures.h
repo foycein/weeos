@@ -46,6 +46,9 @@ std::optional<Formats::RgbaImage> MakeThumbnail(Formats::ByteView fileBytes, Pho
 // A photo as the channel shows it, turned by its orientation. Nothing when its format is not supported.
 std::optional<Formats::RgbaImage> MakeShownPhoto(Formats::ByteView fileBytes);
 
+// The first frame of a movie at its own size. Nothing when the channel cannot play its video.
+std::optional<Formats::RgbaImage> FirstFrameOfMovie(Formats::ByteView fileBytes, PhotoFileKind kind);
+
 // The movie of a file, when the channel can play its video.
 std::optional<Media::Movie> ReadPlayableMovie(Formats::ByteView fileBytes, PhotoFileKind kind);
 
