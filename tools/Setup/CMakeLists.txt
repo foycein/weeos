@@ -18,5 +18,5 @@ add_executable(weeossetup WIN32
     Setup.manifest
     ${SetupResources}
 )
-target_link_libraries(weeossetup PRIVATE Formats Msimg32 Ole32 Shell32 Uuid)
+target_link_libraries(weeossetup PRIVATE Formats Msimg32 Ole32 Shell32 Shlwapi Uuid)
 target_compile_definitions(weeossetup PRIVATE UNICODE _UNICODE NOMINMAX)

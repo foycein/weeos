@@ -2,6 +2,7 @@
 
 #include "Installation.h"
 
+#include <shlwapi.h>
 #include <shobjidl.h>
 #include <wrl/client.h>
 
@@ -42,6 +43,7 @@ constexpr RECT LogoLineArea = {205, 108, 355, 111};
 constexpr RECT TitleArea = {40, 128, 520, 160};
 constexpr RECT TextArea = {50, 166, 510, 240};
 constexpr RECT FolderArea = {50, 246, 400, 282};
+constexpr RECT FolderAloneArea = {105, 246, 455, 282};
 constexpr RECT ChangeFolderButtonArea = {410, 246, 510, 282};
 constexpr RECT ProgressArea = {80, 256, 480, 272};
 constexpr RECT FirstButtonArea = {100, 320, 270, 364};
@@ -55,7 +57,7 @@ constexpr int ButtonTextSize = 16;
 constexpr int FolderCornerSize = 14;
 constexpr int FrameWidth = 2;
 constexpr int FocusFrameWidth = 3;
-constexpr int TextMargin = 10;
+constexpr int TextMargin = 14;
 
 constexpr int FirstButtonId = 1001;
 constexpr int SecondButtonId = 1002;
@@ -127,11 +129,6 @@ std::wstring WideText(const char* text)
     MultiByteToWideChar(CP_ACP, 0, text, -1, wideText.data(), length);
     wideText.resize(length - 1);
     return wideText;
-}
-
-RECT Shrunk(const RECT& area, int margin)
-{
-    return {area.left + margin, area.top + margin, area.right - margin, area.bottom - margin};
 }
 
 }
@@ -293,8 +290,7 @@ SetupWindow::PageWords SetupWindow::WordsOfThePage() const
             L"Keep my Wii", L"Remove them too"};
     case Page::Removed:
         if (consoleWasKept)
-            return {L"WeeOS was removed", L"Your Wii stays in " + installFolder.wstring() + L".\nInstall WeeOS there again to go on with it.",
-                L"Close", L""};
+            return {L"WeeOS was removed", L"Your Wii stays in this folder.\nInstall WeeOS there again to go on with it.", L"Close", L""};
         return {L"WeeOS was removed", L"WeeOS and your Wii are gone from this PC.", L"Close", L""};
     case Page::RemoveFailed:
         return {L"WeeOS could not be removed", failureMessage, L"Close", L""};
@@ -534,7 +530,7 @@ void SetupWindow::Paint(HDC deviceContext)
     DrawBackground(pictureContext, clientArea, 0);
     DrawLogo(pictureContext);
     DrawWords(pictureContext);
-    if (page == Page::ChooseFolder)
+    if (page == Page::ChooseFolder || (page == Page::Removed && consoleWasKept))
         DrawFolderBox(pictureContext);
     if (page == Page::Installing)
         DrawProgressBar(pictureContext);
@@ -566,11 +562,21 @@ void SetupWindow::DrawWords(HDC deviceContext)
 
 void SetupWindow::DrawFolderBox(HDC deviceContext)
 {
-    RECT box = ScaledRectangle(FolderArea);
+    RECT box = ScaledRectangle(page == Page::ChooseFolder ? FolderArea : FolderAloneArea);
     DrawRoundedBox(deviceContext, box, Scaled(FolderCornerSize), White, FrameBlue, Scaled(FrameWidth));
 
-    RECT textArea = Shrunk(box, Scaled(TextMargin));
-    DrawTextIn(deviceContext, installFolder.wstring(), textArea, textFont, TextGray, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS);
+    int margin = Scaled(TextMargin);
+    RECT textArea = {box.left + margin, box.top, box.right - margin, box.bottom};
+
+    // A long folder loses parts in its middle ("C:\Users\...\WeeOS"), measured with the font of the text.
+    std::wstring shownFolder = installFolder.wstring();
+    shownFolder.resize(shownFolder.size() + 1);
+    HGDIOBJ oldFont = SelectObject(deviceContext, textFont);
+    PathCompactPathW(deviceContext, shownFolder.data(), static_cast<UINT>(textArea.right - textArea.left));
+    SelectObject(deviceContext, oldFont);
+    shownFolder.resize(wcslen(shownFolder.c_str()));
+
+    DrawTextIn(deviceContext, shownFolder, textArea, textFont, TextGray, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 }
 
 void SetupWindow::DrawProgressBar(HDC deviceContext)
