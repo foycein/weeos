@@ -32,6 +32,9 @@ constexpr float SlideOfPageChange = 0.15f;
 constexpr float ScrollAcceleration = 2;
 constexpr float FastestScroll = 40;
 
+// A page this close to its place stops there.
+constexpr float StoppingDistance = 1;
+
 // How far the place to scroll to moves while the +Control Pad is held (Assumed: the key handling of the browser was not read).
 constexpr float ScrollPerStep = 8;
 
@@ -361,7 +364,7 @@ void ManualViewer::Scroll()
 
     // Faster while the page could still stop in time, then as fast as lets it stop on the place (v = 2 (sqrt(d + 1/4) - 1/2)).
     float distance = scrollTarget - scrollPosition;
-    if (std::abs(distance) <= 1)
+    if (std::abs(distance) <= StoppingDistance)
     {
         scrollPosition = scrollTarget;
         scrollSpeed = 0;
@@ -370,8 +373,9 @@ void ManualViewer::Scroll()
 
     float direction = distance > 0 ? 1.0f : -1.0f;
     float speed = std::abs(scrollSpeed);
-    float stoppingDistance = speed / 2 * (speed / 2 + 1);
-    if (std::abs(distance) > stoppingDistance)
+    float stepsToStop = speed / ScrollAcceleration;
+    float distanceToStop = stepsToStop * (stepsToStop + 1);
+    if (std::abs(distance) > distanceToStop)
         speed = std::min(speed + ScrollAcceleration, FastestScroll);
     else
         speed = ScrollAcceleration * (std::sqrt(std::abs(distance) + 0.25f) - 0.5f);

@@ -210,11 +210,14 @@ void PageScript::ActionsOfBody(const ScriptFunction& function, const std::vector
 
         std::size_t lookup = target.find(ElementLookup);
         std::size_t url = value.find(UrlStart);
-        if (target.find(BackgroundChange) != std::string_view::npos && lookup != std::string_view::npos && url != std::string_view::npos)
+        bool changesBackground = target.find(BackgroundChange) != std::string_view::npos;
+        bool namesElementAndPicture = lookup != std::string_view::npos && url != std::string_view::npos;
+        if (changesBackground && namesElementAndPicture)
         {
             std::string_view elementWord = InsideBrackets(target, lookup + ElementLookup.size() - 1, '(', ')');
             std::string_view path = InsideBrackets(value, url + UrlStart.size() - 1, '(', ')');
-            actions.push_back({PageActionKind::SwapBackground, ValueOf(elementWord, function.parameters, arguments), std::string(WithoutQuotes(path))});
+            std::string elementName = ValueOf(elementWord, function.parameters, arguments);
+            actions.push_back({PageActionKind::SwapBackground, elementName, std::string(WithoutQuotes(path))});
         }
     }
 }

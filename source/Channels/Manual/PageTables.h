@@ -42,6 +42,13 @@ struct ColumnMeasures
     std::vector<float> widest;
 };
 
+// The height of a row, and whether the row or one of its cells asks for a height.
+struct RowHeight
+{
+    float height = 0;
+    bool isAsked = false;
+};
+
 TableLayoutValues TableValuesOf(const HtmlNode& table);
 
 // The rows of the table, also those inside <tbody>, <thead> and <tfoot>.

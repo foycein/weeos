@@ -81,7 +81,7 @@ private:
     };
 
     const ManualPicture* PictureOf(const std::string& path);
-    void OpenPage(const std::string& path, PageChange change);
+    void OpenPage(const std::string& path, PageChange pageChange);
     void RunActions(const std::vector<PageAction>& actions);
     void FollowPointer();
     void PressAtPointer();
@@ -92,13 +92,13 @@ private:
     float LowestScrollPosition() const;
     bool IsScrolledLink(std::size_t linkIndex) const;
 
-    void DrawPage(const LaidOutPage& page, float offsetX, float scroll);
-    void DrawParts(const LaidOutPage& page, std::size_t first, std::size_t end, float offsetX, float offsetY);
+    void DrawPage(const LaidOutPage& shownPage, float offsetX, float scroll);
+    void DrawParts(const LaidOutPage& shownPage, std::size_t first, std::size_t end, float offsetX, float offsetY);
     void DrawPart(const PagePart& part, float offsetX, float offsetY);
     void DrawText(const PagePart& part, float offsetX, float offsetY);
     void DrawPicture(const ManualPicture& picture, const PageRectangle& place, bool isTiled, float offsetX, float offsetY, std::uint8_t alpha);
     void DrawLeavingPage();
-    Graphics::TextureHandle CapturePage(const LaidOutPage& page);
+    Graphics::TextureHandle CapturePage(const LaidOutPage& shownPage);
     Formats::Vector2 PageToPicture(float pageX, float pageY) const;
 
     ChannelServices& services;
