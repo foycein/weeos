@@ -4,6 +4,8 @@
 
 #include "Formats/Ash0.h"
 #include "Formats/ByteReader.h"
+#include "Formats/Huffman.h"
+#include "Formats/Lz77.h"
 #include "Formats/TplTexture.h"
 #include "Formats/U8Archive.h"
 
@@ -23,20 +25,42 @@ constexpr std::string_view TextsPath = "homebutton/home.csv";
 constexpr std::string_view SpeakerSoundsPath = "homebutton/SpeakerSe.arc";
 constexpr std::string_view ProhibitedIconPath = "homebutton/homeBtnIcon.tpl";
 
+// The copy of the HOME menu that a channel carries, in a folder of its version (HomeButton2, HomeButton3 of the shared content, or
+// homebutton of the Internet Channel's own content). In the shared content the archives are packed with LZ77 and the speaker sounds
+// with Huffman, and their names say so.
+constexpr std::string_view ChannelLanguageArchiveName = "homeBtn_ENG.arc";
+constexpr std::string_view ChannelCommonArchiveName = "homeBtn.arc";
+constexpr std::string_view ChannelSpeakerSoundsName = "SpeakerSe.arc";
+constexpr std::string_view Lz77NamePrefix = "LZ77_";
+constexpr std::string_view HuffmanNamePrefix = "Huf8_";
+constexpr std::string_view ChannelConfigurationName = "config.txt";
+constexpr std::string_view ChannelTextsName = "home.csv";
+constexpr std::string_view ChannelProhibitedIconName = "homeBtnIcon.tpl";
+
 constexpr std::string_view LayoutFileExtension = ".brlyt";
 constexpr char ConfigurationSeparator = ',';
 constexpr char ButtonAsksMark = '1';
 
 // home.csv holds one row for every message and one column for every language. English is the second column.
-constexpr std::size_t LanguageCount = 10;
+// The menu's file has ten languages, the copies in the channels seven.
 constexpr std::size_t EnglishColumn = 1;
 constexpr std::size_t ReconnectInstructionRow = 0;
 constexpr std::size_t DisconnectingRow = 1;
 constexpr std::size_t FirstButtonQuestionRow = 2;
 constexpr char16_t ByteOrderMark = 0xFEFF;
 constexpr char16_t QuotationMark = u'"';
+constexpr char16_t LineFeed = u'\n';
 
 constexpr std::string_view VolumeSoundName = "volume.bwav";
+
+Formats::ByteView FindFileOfContent(const Formats::U8Archive& content, const std::string& path)
+{
+    std::optional<Formats::ByteView> file = content.FindFile(path);
+    if (!file)
+        throw MenuError(std::format("The HOME menu of the channel has no file {}", path));
+
+    return *file;
+}
 
 Formats::U8Archive ReadLayoutArchive(const MenuFiles& files, std::string_view path)
 {
@@ -73,9 +97,9 @@ std::vector<std::string> SplitConfiguration(Formats::ByteView bytes)
     return fields;
 }
 
-void ReadConfiguration(const MenuFiles& files, HomeMenuFiles& homeMenuFiles)
+void ReadConfiguration(Formats::ByteView configuration, HomeMenuFiles& homeMenuFiles)
 {
-    std::vector<std::string> fields = SplitConfiguration(files.ReadFile(ConfigurationPath));
+    std::vector<std::string> fields = SplitConfiguration(configuration);
     if (fields.size() < 3 || !fields[0].ends_with(LayoutFileExtension))
         throw MenuError(std::format("{} does not name a layout, its animations and its buttons", ConfigurationPath));
 
@@ -85,11 +109,12 @@ void ReadConfiguration(const MenuFiles& files, HomeMenuFiles& homeMenuFiles)
         homeMenuFiles.buttonAsks.push_back(!fields[field].empty() && fields[field][0] == ButtonAsksMark);
 }
 
-// The texts are UTF-16, most significant byte first. Every text stands between two quotation marks.
-std::vector<std::u16string> ReadQuotedTexts(Formats::ByteView bytes)
+// The texts are UTF-16, most significant byte first. Every text stands between two quotation marks; a line feed outside the
+// quotation marks ends a row.
+std::vector<std::vector<std::u16string>> ReadQuotedRows(Formats::ByteView bytes)
 {
     Formats::ByteReader reader(bytes, TextsPath);
-    std::vector<std::u16string> texts;
+    std::vector<std::vector<std::u16string>> rows(1);
     bool isInsideText = false;
 
     while (reader.RemainingSize() >= sizeof(char16_t))
@@ -102,27 +127,37 @@ std::vector<std::u16string> ReadQuotedTexts(Formats::ByteView bytes)
         {
             isInsideText = !isInsideText;
             if (isInsideText)
-                texts.emplace_back();
+                rows.back().emplace_back();
             continue;
         }
 
         if (isInsideText)
-            texts.back().push_back(character);
+            rows.back().back().push_back(character);
+        else if (character == LineFeed)
+            rows.emplace_back();
     }
-    return texts;
+    return rows;
 }
 
-void ReadTexts(const MenuFiles& files, HomeMenuFiles& homeMenuFiles)
+const std::u16string& EnglishTextOf(const std::vector<std::u16string>& row)
 {
-    std::vector<std::u16string> texts = ReadQuotedTexts(files.ReadFile(TextsPath));
-    std::size_t rowCount = texts.size() / LanguageCount;
-    if (rowCount <= FirstButtonQuestionRow)
+    if (row.size() <= EnglishColumn)
+        throw MenuError(std::format("A row of {} has no English text", TextsPath));
+
+    return row[EnglishColumn];
+}
+
+void ReadTexts(Formats::ByteView textFile, HomeMenuFiles& homeMenuFiles)
+{
+    std::vector<std::vector<std::u16string>> rows = ReadQuotedRows(textFile);
+    std::erase_if(rows, [](const std::vector<std::u16string>& row) { return row.empty(); });
+    if (rows.size() <= FirstButtonQuestionRow)
         throw MenuError(std::format("{} holds too few texts", TextsPath));
 
-    homeMenuFiles.texts.reconnectInstruction = texts[ReconnectInstructionRow * LanguageCount + EnglishColumn];
-    homeMenuFiles.texts.disconnecting = texts[DisconnectingRow * LanguageCount + EnglishColumn];
-    for (std::size_t row = FirstButtonQuestionRow; row < rowCount; ++row)
-        homeMenuFiles.texts.buttonQuestions.push_back(texts[row * LanguageCount + EnglishColumn]);
+    homeMenuFiles.texts.reconnectInstruction = EnglishTextOf(rows[ReconnectInstructionRow]);
+    homeMenuFiles.texts.disconnecting = EnglishTextOf(rows[DisconnectingRow]);
+    for (std::size_t row = FirstButtonQuestionRow; row < rows.size(); ++row)
+        homeMenuFiles.texts.buttonQuestions.push_back(EnglishTextOf(rows[row]));
 }
 
 // The speaker sounds have no head: they are samples of 16 bits, most significant byte first.
@@ -140,18 +175,17 @@ Input::SpeakerSound ReadSpeakerSound(const Formats::U8Archive& sounds, std::stri
     return sound;
 }
 
-void ReadSpeakerSounds(const MenuFiles& files, HomeMenuFiles& homeMenuFiles)
+void ReadSpeakerSounds(const Formats::U8Archive& sounds, HomeMenuFiles& homeMenuFiles)
 {
-    Formats::U8Archive sounds = Formats::ReadU8Archive(files.ReadFile(SpeakerSoundsPath));
     homeMenuFiles.volumeSound = ReadSpeakerSound(sounds, VolumeSoundName);
 
     for (std::size_t player = 0; player < homeMenuFiles.connectSounds.size(); ++player)
         homeMenuFiles.connectSounds[player] = ReadSpeakerSound(sounds, std::format("connect{}.bwav", player + 1));
 }
 
-Formats::RgbaImage ReadProhibitedIcon(const MenuFiles& files)
+Formats::RgbaImage ReadProhibitedIcon(Formats::ByteView iconFile)
 {
-    std::vector<Formats::TplTexture> textures = Formats::ReadTplTextures(files.ReadFile(ProhibitedIconPath));
+    std::vector<Formats::TplTexture> textures = Formats::ReadTplTextures(iconFile);
     if (textures.empty())
         throw MenuError(std::format("{} holds no picture", ProhibitedIconPath));
 
@@ -168,10 +202,48 @@ HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files)
     Formats::U8Archive commonArchive = ReadLayoutArchive(files, CommonArchivePath);
     homeMenuFiles.archive = std::make_unique<Layout::LayoutArchive>(JoinArchives(languageArchive, commonArchive));
 
-    ReadConfiguration(files, homeMenuFiles);
-    ReadTexts(files, homeMenuFiles);
-    ReadSpeakerSounds(files, homeMenuFiles);
-    homeMenuFiles.prohibitedIcon = ReadProhibitedIcon(files);
+    ReadConfiguration(files.ReadFile(ConfigurationPath), homeMenuFiles);
+    ReadTexts(files.ReadFile(TextsPath), homeMenuFiles);
+    ReadSpeakerSounds(Formats::ReadU8Archive(files.ReadFile(SpeakerSoundsPath)), homeMenuFiles);
+    homeMenuFiles.prohibitedIcon = ReadProhibitedIcon(files.ReadFile(ProhibitedIconPath));
+    return homeMenuFiles;
+}
+
+Formats::U8Archive ReadChannelArchive(const Formats::U8Archive& content, std::string_view folder, std::string_view name, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, name)));
+
+    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, Lz77NamePrefix, name));
+    return Formats::ReadU8Archive(Formats::DecompressLz77(packedFile));
+}
+
+Formats::U8Archive ReadChannelSpeakerSounds(const Formats::U8Archive& content, std::string_view folder, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, ChannelSpeakerSoundsName)));
+
+    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, HuffmanNamePrefix, ChannelSpeakerSoundsName));
+    return Formats::ReadU8Archive(Formats::DecompressHuffman(packedFile));
+}
+
+HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, bool arePacked,
+    std::size_t offeredButtonCount)
+{
+    auto readFile = [&](std::string_view name) { return FindFileOfContent(homeMenuContent, std::format("{}/{}", folder, name)); };
+
+    HomeMenuFiles homeMenuFiles;
+    Formats::U8Archive languageArchive = ReadChannelArchive(homeMenuContent, folder, ChannelLanguageArchiveName, arePacked);
+    Formats::U8Archive commonArchive = ReadChannelArchive(homeMenuContent, folder, ChannelCommonArchiveName, arePacked);
+    homeMenuFiles.archive = std::make_unique<Layout::LayoutArchive>(JoinArchives(languageArchive, commonArchive));
+
+    ReadConfiguration(readFile(ChannelConfigurationName), homeMenuFiles);
+    if (homeMenuFiles.buttonAsks.size() > offeredButtonCount)
+        homeMenuFiles.buttonAsks.resize(offeredButtonCount);
+
+    ReadTexts(readFile(ChannelTextsName), homeMenuFiles);
+    ReadSpeakerSounds(ReadChannelSpeakerSounds(homeMenuContent, folder, arePacked), homeMenuFiles);
+    homeMenuFiles.prohibitedIcon = ReadProhibitedIcon(readFile(ChannelProhibitedIconName));
     return homeMenuFiles;
 }
 

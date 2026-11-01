@@ -25,9 +25,10 @@ Platform::ScreenShape ShapeOf(Settings::AspectRatio aspectRatio)
 }
 
 WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
-    Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile)
+    ProgramSound& programSound, Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile)
     : window(programWindow)
     , remote(virtualRemote)
+    , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
     , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
     , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
@@ -49,6 +50,11 @@ Platform::ScreenShape WiiSettingsServices::PictureShape() const
     return ShapeOf(systemSettings.GetAspectRatio());
 }
 
+Settings::SoundMode WiiSettingsServices::SoundMode() const
+{
+    return systemSettings.GetSoundMode();
+}
+
 void WiiSettingsServices::UseDisplay(SystemMenu::Display& menuDisplay)
 {
     display = &menuDisplay;
@@ -65,6 +71,7 @@ void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
     std::vector<Input::MouseBinding> mouseMap = Settings::MouseMapOf(settings);
     remote.SetKeyMap(settings.keyMap);
     remote.SetMouseMap(mouseMap);
+    sound.ApplyPcSettings(settings);
 }
 
 void WiiSettingsServices::ApplyPictureShape(Settings::AspectRatio aspectRatio)

@@ -1,5 +1,7 @@
 #include "WeeOS/Application.h"
 
+#include "Channels/ChannelSystem.h"
+#include "Channels/NativeChannels.h"
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
@@ -7,6 +9,7 @@
 #include "SystemMenu/DataManagement/DataManagementServices.h"
 #include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
+#include "SystemMenu/MenuSound.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -28,44 +31,86 @@ constexpr std::wstring_view WindowTitle = L"WeeOS";
 
 }
 
-// The menu with everything it reads through the services of the IOS that runs, and the keys of the PC that go to those services.
+// The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
+// the keys of the PC that go to those services.
 // The window sends its events to the keys, the keys to the keyboard service, and the keyboard service to the virtual remote.
 class Application::Session
 {
 public:
-    Session(Ios::IosServices& iosServices, Platform::Window& programWindow, Graphics::GraphicsDevice& graphicsDevice,
-        Platform::HostCommandListener& commandListener, const HostEnvironment& host)
+    Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
+        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
+        const HostEnvironment& host)
         : window(programWindow)
+        , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), host.clock, host.pcSettingsFile)
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
         , wiiMenuConsole(iosServices, host.clock)
-        , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), wiiSettings.PictureShape(),
-              wiiMenuConsole, &wiiSettings.FlowServices())
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
-        , dataManagement{iosServices.GetTitles(), iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
-              SystemMenu::ReadMenuCertificates(menu.Services().program)}
     {
-        SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
-        wiiSettings.UseDisplay(menu.Services().display);
-        menu.UsePhysicalKeyboard(iosServices.GetKeyboard());
-        menu.Services().dataManagement = &dataManagement;
+        if (runningTitle == Ios::SystemMenuTitleId)
+            StartMenu(iosServices, graphicsDevice);
+        else
+            StartChannel(iosServices, graphicsDevice, runningTitle);
+
         window.SetListener(&hostKeys);
     }
 
     ~Session()
     {
+        sound.StopAllSounds();
+        sound.StopTitleArchives();
         window.SetListener(nullptr);
     }
 
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
 
-    SystemMenu::MenuSystem& Menu()
+    // Nothing while a channel runs.
+    SystemMenu::MenuSystem* Menu()
     {
-        return menu;
+        return menu.get();
+    }
+
+    // Nothing while the menu runs.
+    Channels::ChannelSystem* Channel()
+    {
+        return channel.get();
+    }
+
+    // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
+    void Update()
+    {
+        if (menu)
+        {
+            menu->Update();
+            PlaySoundsOfTheStep();
+        }
+        else
+        {
+            channel->Update();
+            PlayChannelSoundsOfTheStep();
+        }
+
+        virtualRemote.TakeSpeakerSounds();
+    }
+
+    void Draw()
+    {
+        if (menu)
+            menu->Draw();
+        else
+            channel->Draw();
+    }
+
+    std::optional<Ios::TitleId> TakeTitleToLaunch()
+    {
+        if (menu)
+            return menu->TakeTitleToLaunch();
+
+        return channel->TakeTitleToLaunch();
     }
 
     Input::VirtualRemote& VirtualRemote()
@@ -74,24 +119,92 @@ public:
     }
 
 private:
+    void StartMenu(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice)
+    {
+        menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
+            iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices());
+        SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
+        wiiSettings.UseDisplay(menu->Services().display);
+        menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
+
+        dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
+            iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
+            SystemMenu::ReadMenuCertificates(menu->Services().program)});
+        menu->Services().dataManagement = dataManagement.get();
+
+        Sound::SoundSystem* soundSystem = sound.Start(menu->Services().files.ReadFile(SystemMenu::MenuSoundArchivePath));
+        if (soundSystem != nullptr)
+            menuSound.emplace(*soundSystem);
+    }
+
+    // What the screens asked to hear in the step that has just run, in the sound mode of the console's settings, which the Sound page
+    // of Wii Settings changes at once.
+    void PlaySoundsOfTheStep()
+    {
+        sound.SetSoundMode(wiiSettings.SoundMode());
+        if (menuSound)
+            menuSound->PlayRequests(menu->Services().sounds);
+    }
+
+    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
+    {
+        channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
+            iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+
+        for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
+        {
+            Sound::SoundSystem* soundSystem = sound.StartTitleArchive(archive);
+            if (soundSystem != nullptr)
+                channelSounds.push_back(soundSystem);
+        }
+    }
+
+    // A channel asks for its sounds by name; each one plays from the first of the channel's archives that has it.
+    void PlayChannelSoundsOfTheStep()
+    {
+        sound.SetSoundMode(wiiSettings.SoundMode());
+        for (const std::string& soundName : channel->Services().sounds.RequestedInThisStep())
+            PlayChannelSound(soundName);
+    }
+
+    void PlayChannelSound(const std::string& soundName)
+    {
+        for (Sound::SoundSystem* soundSystem : channelSounds)
+        {
+            std::optional<std::size_t> soundNumber = soundSystem->Archive().FindSoundNumber(soundName);
+            if (soundNumber)
+            {
+                soundSystem->Play(*soundNumber);
+                return;
+            }
+        }
+    }
+
     Platform::Window& window;
+    ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
     WiiSettingsServices wiiSettings;
     SystemMenu::IosMenuConsole wiiMenuConsole;
-    SystemMenu::MenuSystem menu;
+
+    // Declared before the menu, which keeps a pointer to it, so that the menu goes first.
+    std::unique_ptr<SystemMenu::DataManagementServices> dataManagement;
+    std::unique_ptr<SystemMenu::MenuSystem> menu;
+    std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
-    SystemMenu::DataManagementServices dataManagement;
+    std::optional<SystemMenu::MenuSound> menuSound;
+    std::vector<Sound::SoundSystem*> channelSounds;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders, HostEnvironment hostEnvironment)
+Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)
     : folders(iosFolders)
     , host(std::move(hostEnvironment))
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
+    , sound(isSilent)
     , pacer(timer.ElapsedSeconds())
 {
     console.PowerOn();
@@ -103,7 +216,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), window, device, commandListener, host);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -111,8 +224,8 @@ void Application::StartSession()
 void Application::StopOnTheKeyOfKoreanConsoles()
 {
     Ios::Result<bool> hasKoreanKey = console.GetServices().GetTitles().CheckHasKoreanKey();
-    if (hasKoreanKey.Succeeded() && hasKoreanKey.Value())
-        session->Menu().ShowFatalError(SystemMenu::FatalError::UnauthorizedDevice);
+    if (session->Menu() != nullptr && hasKoreanKey.Succeeded() && hasKoreanKey.Value())
+        session->Menu()->ShowFatalError(SystemMenu::FatalError::UnauthorizedDevice);
 }
 
 void Application::Run()
@@ -150,7 +263,7 @@ void Application::RunOneStep()
         return;
 
     session->VirtualRemote().SetWindowSize(window.ClientSize());
-    session->Menu().Update();
+    session->Update();
     CarryOutRequestsOfTheMenu();
     ReportProblems();
 }
@@ -160,7 +273,7 @@ void Application::ShowPicture()
     if (isPoweredOff || window.IsMinimized())
         return;
 
-    session->Menu().Draw();
+    session->Draw();
     device.Present();
 }
 
@@ -183,12 +296,12 @@ void Application::RunDueSteps()
 
     int dueSteps = pacer.TakeDueSteps(timer.ElapsedSeconds());
     for (int step = 0; step < dueSteps; ++step)
-        session->Menu().Update();
+        session->Update();
 }
 
 void Application::CarryOutRequestsOfTheMenu()
 {
-    std::optional<Ios::TitleId> title = session->Menu().TakeTitleToLaunch();
+    std::optional<Ios::TitleId> title = session->TakeTitleToLaunch();
     if (title)
     {
         LaunchTitle(*title);
@@ -219,8 +332,15 @@ void Application::ResetConsole()
 }
 
 // IOS starts again with the IOS of the title, as after ES_LaunchTitle. The ticket is the first of the title, as the original takes it.
+// A channel that WeeOS has no program for is not started: the program that runs goes on.
 void Application::LaunchTitle(Ios::TitleId titleId)
 {
+    if (titleId != Ios::SystemMenuTitleId && !Channels::HasNativeProgram(titleId))
+    {
+        std::cout << std::format("WeeOS has no program for the title {} yet. The program that runs goes on.\n", titleId.ToString());
+        return;
+    }
+
     Ios::Result<std::vector<Ios::TicketView>> ticketViews = console.GetServices().GetTitles().ListTicketViews(titleId);
     if (ticketViews.Failed() || ticketViews.Value().empty())
         throw std::runtime_error(std::format("The title {} has no ticket and cannot start", titleId.ToString()));
@@ -275,7 +395,10 @@ void Application::ToggleSdCard()
 // ends with the error screen when one of its files fails.
 void Application::ReportProblems()
 {
-    SystemMenu::MenuSystem& menu = session->Menu();
+    if (session->Menu() == nullptr)
+        return;
+
+    SystemMenu::MenuSystem& menu = *session->Menu();
 
     const std::optional<std::string>& fatalErrorMessage = menu.FatalErrorMessage();
     if (fatalErrorMessage && !hasReportedFatalError)
@@ -310,7 +433,25 @@ Graphics::VulkanGraphicsDevice& Application::GetDevice()
 
 SystemMenu::MenuSystem& Application::GetMenu()
 {
-    return session->Menu();
+    if (session->Menu() == nullptr)
+        throw std::logic_error("The menu was asked for while a channel runs");
+
+    return *session->Menu();
+}
+
+Channels::ChannelSystem* Application::GetChannel()
+{
+    return session->Channel();
+}
+
+Ios::TitleId Application::RunningTitle() const
+{
+    return console.GetBootInformation().titleId;
+}
+
+ProgramSound& Application::GetSound()
+{
+    return sound;
 }
 
 Input::VirtualRemote& Application::GetVirtualRemote()

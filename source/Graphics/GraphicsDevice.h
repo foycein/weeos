@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/Matrix4.h"
 #include "Graphics/TevStage.h"
 
 #include "Formats/RgbaImage.h"
@@ -9,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -140,9 +142,18 @@ enum class BlendMode : std::uint8_t
     // result = source * sourceAlpha + destination, on the colors as they are. The source is added to what was there, as much as its
     // alpha says. The banners of some channels use it to make a logo flash.
     AddSourceAlpha,
+
+    // The colors as StandardAlpha, but the alpha becomes the coverage of both: sourceAlpha + destinationAlpha * (1 - sourceAlpha).
+    // An offscreen picture drawn this way can be laid over another picture later. The Mii icons are drawn this way.
+    Over,
+
+    // The source goes behind what is already there: color = source * (1 - destinationAlpha) + destination * destinationAlpha,
+    // alpha = sourceAlpha * (1 - destinationAlpha) + destinationAlpha. What is drawn first stays in front.
+    // The face texture of a Mii is drawn this way.
+    Behind,
 };
 
-constexpr std::size_t BlendModeCount = 3;
+constexpr std::size_t BlendModeCount = 5;
 
 // A material says how a quad gets its colors.
 struct Material
@@ -166,11 +177,80 @@ struct Material
     std::vector<TevStage> stages;
 
     BlendMode blendMode = BlendMode::StandardAlpha;
+
+    // The alpha test of the Wii's graphics chip as the Mii face library uses it: a pixel whose alpha is 0 is not drawn at all,
+    // so it changes neither the colors nor the depth.
+    bool skipsTransparentPixels = false;
+};
+
+// ---- Meshes (3D)
+
+// One corner of a triangle of a mesh.
+struct MeshVertex
+{
+    Formats::Vector3 position;
+
+    // Points out of the front side. It is only read for the light and for texture coordinates from the normal.
+    Formats::Vector3 normal;
+
+    // Every texture of the material reads these, each through its own texture matrix.
+    Formats::Vector2 textureCoordinate;
+};
+
+// The front side of a triangle is the side from which its corners go around clockwise in the picture (the rule of the
+// Wii's graphics chip).
+enum class FaceCulling : std::uint8_t
+{
+    None,
+    Back,
+    Front,
+};
+
+// Every picture has a depth buffer that starts at the far end. Quads do not use it.
+enum class DepthMode : std::uint8_t
+{
+    // A pixel is drawn only when it is not behind what was drawn there before, and its depth is kept.
+    TestAndWrite,
+
+    // A pixel is drawn only when it is not behind what was drawn there before; the depth stays as it was.
+    TestOnly,
+};
+
+// A white or colored light at a point, worked out at every corner the way the Wii does it:
+//     color = ambientColor + lightColor * max(0, normal . direction to the light), limited to 1.
+// The result is the raster color of the stages, so the material decides what it does with it.
+struct PointLight
+{
+    // In view space.
+    Formats::Vector3 position;
+    Formats::Rgba8Color color;
+    Formats::Rgba8Color ambientColor;
+};
+
+// Where a mesh lands in the picture and how it is lit.
+struct MeshPlacement
+{
+    // From the units of the mesh into view space: the eye is at the origin, x points right, y up, and the eye looks along -z.
+    Matrix4 modelView;
+
+    // From view space into the picture: after dividing by the fourth number x and y run from -1 (left, bottom) to 1 (right, top)
+    // over the whole canvas, and the depth from 0 (near) to 1 (far). MakePerspective makes one.
+    Matrix4 projection;
+
+    // Without a light the raster color is opaque white.
+    std::optional<PointLight> light;
+
+    // The texture coordinates are the x and y of the normal in view space instead of the ones of the corners, for pictures of
+    // a lit sphere that follow the surface (environment maps). The texture matrices then bring them into the picture.
+    bool textureCoordinatesFromNormal = false;
+
+    FaceCulling culling = FaceCulling::Back;
+    DepthMode depth = DepthMode::TestAndWrite;
 };
 
 // ---- The device
 
-// Draws quads. Only one thread may use a device. Every function can throw a GraphicsError.
+// Draws quads and meshes. Only one thread may use a device. Every function can throw a GraphicsError.
 class GraphicsDevice
 {
 public:
@@ -195,6 +275,9 @@ public:
     virtual void ClearScissor() = 0;
 
     virtual void DrawQuad(const Quad& quad, const Material& material) = 0;
+
+    // Draws triangles, three corners each, with the depth buffer of the picture. The device copies the corners during the call.
+    virtual void DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material) = 0;
 
     // Draws into a new picture of width * height pixels instead of the screen, until EndOffscreen.
     // The canvas covers the whole picture. The picture starts transparent black.

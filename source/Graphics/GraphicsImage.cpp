@@ -5,6 +5,19 @@
 namespace Graphics
 {
 
+namespace
+{
+
+VkImageAspectFlags AspectOf(VkFormat format)
+{
+    if (format == DepthFormat)
+        return VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    return VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
+}
+
 GraphicsImage::GraphicsImage(const VulkanContext& context, ImageMemoryPool& memoryPool, std::uint32_t imageWidth,
     std::uint32_t imageHeight, VkFormat imageFormat, VkImageUsageFlags usage)
     : device(context.Device())
@@ -38,7 +51,7 @@ GraphicsImage::GraphicsImage(const VulkanContext& context, ImageMemoryPool& memo
         .image = image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = format,
-        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        .subresourceRange = {AspectOf(format), 0, 1, 0, 1},
     };
     CheckVulkan(vkCreateImageView(device, &viewInfo, nullptr, &view), "creating the view of an image");
 }

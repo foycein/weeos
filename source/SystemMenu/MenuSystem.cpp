@@ -29,7 +29,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu}
+          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -85,6 +85,13 @@ void MenuSystem::RunStep()
         homeButton.HoldForFrontPanel();
 
     homeButton.Update();
+
+    // The HOME menu pauses the music and the sounds while it is open (the sound events 0 and 4 of 0x81347AD0).
+    if (homeButton.IsOpen() && !isHomeMenuOpen)
+        sounds.PauseAllSounds();
+    if (!homeButton.IsOpen() && isHomeMenuOpen)
+        sounds.ResumeAllSounds();
+
     cursors.Update(input);
     fader.Calculate();
 }
@@ -117,12 +124,17 @@ void MenuSystem::ShowFatalError(FatalError reason)
     if (frontPanel.IsWorking())
         return;
 
+    sounds.StopAllSounds(ErrorStopFadeSteps);
     errorScreen.Show(reason);
 }
 
 std::optional<Ios::TitleId> MenuSystem::TakeTitleToLaunch()
 {
-    return frontPanel.TakeTitleToLaunch();
+    std::optional<Ios::TitleId> titleOfFrontPanel = frontPanel.TakeTitleToLaunch();
+    if (titleOfFrontPanel)
+        return titleOfFrontPanel;
+
+    return titleLaunch.Take();
 }
 
 const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
@@ -142,7 +154,12 @@ HomeButtonConnections MenuSystem::ConnectHomeButton()
     HomeButtonConnections connections;
     connections.playSound = [this](HomeMenuSound sound) { sounds.Request(NameOfHomeMenuSound(sound)); };
     connections.textFonts = &fonts.Fonts();
-    connections.startReset = [this]() { frontPanel.PressReset(); };
+    // A reset from the HOME menu stops every sound at once (0x8136BC14).
+    connections.startReset = [this]()
+    {
+        sounds.StopAllSounds(0);
+        frontPanel.PressReset();
+    };
     return connections;
 }
 

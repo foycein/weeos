@@ -7,6 +7,7 @@
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 
 namespace SystemMenu
 {
@@ -127,7 +128,10 @@ bool HealthAndSafetyScreen::RunMain()
 {
     bool isDone = continueWatcher.HasUserConfirmed();
     if (isDone)
+    {
+        services.sounds.Request(SoundName::ButtonPushed);
         layout->StartAnimation(seenOutSlot);
+    }
 
     layout->Calculate();
     return isDone;

@@ -130,6 +130,7 @@ void Voice::Start(
     priority = voicePriority;
     settings = firstSettings;
     active = true;
+    isHeld = false;
     atTheFirstFrame = true;
     endsAfterThisFrame = false;
     position = 0.0;
@@ -179,6 +180,11 @@ void Voice::Stop()
     wave.reset();
 }
 
+void Voice::SetHeld(bool held)
+{
+    isHeld = held;
+}
+
 std::array<MixGains, Voice::MaximumChannelCount> Voice::ComputeGains(SoundMode mode) const
 {
     float loudness = settings.volume * envelope.Gain();
@@ -203,6 +209,14 @@ void Voice::BeginFrame(SoundMode mode)
     if (endsAfterThisFrame)
     {
         Stop();
+        return;
+    }
+
+    // A held voice is silent. When it goes on, its first frame rises from silence.
+    if (isHeld)
+    {
+        gainsAtFrameStart = {};
+        gainsAtFrameEnd = {};
         return;
     }
 
@@ -243,7 +257,7 @@ void AddSample(const MixBuffers& buffers, std::size_t outputNumber, float sample
 void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
     std::size_t frameLength)
 {
-    if (!active)
+    if (!active || isHeld)
         return;
 
     double step = double(wave->sampleRate) * settings.pitch / deviceSampleRate;

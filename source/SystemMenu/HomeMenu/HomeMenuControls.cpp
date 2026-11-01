@@ -18,10 +18,10 @@ namespace
 
 // The panes that the pointer can point at. The picture of the remote counts as the bar of the remote settings.
 // The numbers are the places in the enumeration Area of the menu, in its order.
-constexpr std::array<std::string_view, 11> AreaPaneNames = {
+constexpr std::array<std::string_view, 13> AreaPaneNames = {
     "B_btnL_00", "B_btn_00", "B_bar_10", "B_optnBtn_00", "B_optnBtn_01", "B_optnBtn_10", "B_optnBtn_11", "B_optnBtn_20", "B_BtnA", "B_BtnB",
-    "cntrl_00"};
-constexpr std::size_t PictureOfTheRemote = 10;
+    "B_btnL_01", "B_btnL_10", "cntrl_00"};
+constexpr std::size_t PictureOfTheRemote = 12;
 constexpr std::size_t RemoteSettingsBarPane = 2;
 
 bool WasPressed(const Input::RemoteState& state, Input::DeviceKind kind, Input::ButtonMask remoteButton, Input::ButtonMask classicButton)
@@ -102,7 +102,7 @@ bool HomeButtonMenu::IsActive(Area area) const
     switch (part)
     {
     case Part::Menu:
-        return area == Area::BigButton || area == Area::Close || area == Area::RemoteSettingsBar;
+        return OfferedBigButtonOf(area).has_value() || area == Area::Close || area == Area::RemoteSettingsBar;
 
     case Part::RemoteSettings:
         return area == Area::RemoteSettingsBar || area == Area::VolumeDown || area == Area::VolumeUp || area == Area::RumbleOn
@@ -147,12 +147,16 @@ void HomeButtonMenu::EnterArea(int player, Area area)
 
 bool HomeButtonMenu::StartFocus(Area area)
 {
+    std::optional<std::size_t> bigButton = OfferedBigButtonOf(area);
+    if (bigButton)
+    {
+        Start("_cntBtn_in", std::string(BigButtonGroups[*bigButton]) + "_inOut");
+        PlayFocusSound();
+        return true;
+    }
+
     switch (area)
     {
-    case Area::BigButton:
-        Start("_cntBtn_in", "btnL_00_inOut");
-        break;
-
     case Area::Close:
         if (!AreTopBarAnimationsIdle())
         {
@@ -197,13 +201,16 @@ void HomeButtonMenu::LeaveArea(Area area)
     if (step != Step::Ready || pointersOnArea[area] != 0)
         return;
 
+    std::optional<std::size_t> bigButton = OfferedBigButtonOf(area);
+    if (bigButton)
+    {
+        if (part != Part::Question)
+            Start("_cntBtn_out", std::string(BigButtonGroups[*bigButton]) + "_inOut");
+        return;
+    }
+
     switch (area)
     {
-    case Area::BigButton:
-        if (part != Part::Question)
-            Start("_cntBtn_out", "btnL_00_inOut");
-        break;
-
     case Area::Close:
         if (part == Part::Menu)
             RequestTopBarAnimation({"_hmMenu_bar_out", "hmMenu_bar_out"});
@@ -240,8 +247,14 @@ void HomeButtonMenu::LeaveAllAreas()
 // When another part of the menu comes up, the big button and the two bars let go of their pointers (0x813764D8).
 void HomeButtonMenu::DropMenuFocus()
 {
-    if (pointersOnArea[Area::BigButton] != 0)
-        Start("_cntBtn_out", "btnL_00_inOut");
+    for (std::size_t bigButton = 0; bigButton < files.buttonAsks.size(); ++bigButton)
+    {
+        Area area = BigButtonAreas[bigButton];
+        if (pointersOnArea[area] != 0)
+            Start("_cntBtn_out", std::string(BigButtonGroups[bigButton]) + "_inOut");
+
+        pointersOnArea[area] = 0;
+    }
 
     if (pointersOnArea[Area::Close] != 0)
         Start("_hmMenu_bar_out", "hmMenu_bar_out");
@@ -250,7 +263,6 @@ void HomeButtonMenu::DropMenuFocus()
     if (pointersOnArea[Area::RemoteSettingsBar] != 0 && !isConnectWindowOpen)
         Animation(BottomBarFocusAnimation(false)).Start();
 
-    pointersOnArea[Area::BigButton] = 0;
     pointersOnArea[Area::Close] = 0;
     pointersOnArea[Area::RemoteSettingsBar] = 0;
 }
@@ -260,11 +272,15 @@ void HomeButtonMenu::Press(Area area)
     if (step != Step::Ready)
         return;
 
+    std::optional<std::size_t> bigButton = OfferedBigButtonOf(area);
+    if (bigButton)
+    {
+        PressBigButton(*bigButton);
+        return;
+    }
+
     switch (area)
     {
-    case Area::BigButton:
-        PressBigButton();
-        break;
     case Area::Close:
         PressClose();
         break;
@@ -298,20 +314,34 @@ void HomeButtonMenu::Press(Area area)
     }
 }
 
-void HomeButtonMenu::PressBigButton()
+// The number of the big button that the area is, when the HOME menu offers it.
+std::optional<std::size_t> HomeButtonMenu::OfferedBigButtonOf(Area area) const
+{
+    for (std::size_t bigButton = 0; bigButton < files.buttonAsks.size(); ++bigButton)
+    {
+        if (BigButtonAreas[bigButton] == area)
+            return bigButton;
+    }
+    return std::nullopt;
+}
+
+void HomeButtonMenu::PressBigButton(std::size_t bigButton)
 {
     hasChosenButton = true;
+    chosenBigButton = bigButton;
     Play(HomeMenuSound::Select);
 
-    if (!files.buttonAsks.front())
+    std::string pushedGroup = std::string(BigButtonGroups[bigButton]) + "_psh";
+    if (!files.buttonAsks[bigButton])
     {
-        WaitFor("_cntBtn_psh", "btnL_00_psh", Step::AnswerShown);
+        WaitFor("_cntBtn_psh", pushedGroup, Step::AnswerShown);
         return;
     }
 
     part = Part::Question;
+    SetText("T_Dialog", files.texts.buttonQuestions.at(bigButton));
     SetVisible("T_Dialog", true);
-    WaitFor("_cntBtn_psh", "btnL_00_psh", Step::BigButtonPushed);
+    WaitFor("_cntBtn_psh", pushedGroup, Step::BigButtonPushed);
 }
 
 void HomeButtonMenu::PressClose()

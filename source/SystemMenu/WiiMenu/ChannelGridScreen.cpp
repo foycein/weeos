@@ -81,7 +81,6 @@ constexpr std::string_view SetSound = "WIPL_SE_CH_SET";
 constexpr std::string_view NotMovedSound = "WIPL_SE_CH_NOT_MOVE";
 constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 constexpr std::string_view StartSound = "WIPL_SE_WII_START";
-constexpr std::string_view MenuMusic = "WIPL_BGM_MENU";
 
 // A screen that is built is in the tree two steps after the request. A request for a screen that is not built is dropped instead,
 // and the grid goes on after this many steps.
@@ -235,7 +234,7 @@ void ChannelGridScreen::OnStart()
         return;
 
     services.sounds.Request(StartSound);
-    services.sounds.Request(MenuMusic);
+    services.sounds.StartMusic();
     services.wiiMenu.hasMusicStarted = true;
 }
 
@@ -500,6 +499,7 @@ void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
     services.sounds.Request(PressSound);
+    services.sounds.StopMusic(MusicStopStepsOfAChannel);
     services.screens.OpenChild(ScreenId::ChannelStartWindow, ScreenId::ChannelGrid, 0);
     stepsWaited = 0;
     state = GridState::WaitingForStartWindow;
@@ -508,8 +508,11 @@ void ChannelGridScreen::PressChannel(SlotPosition position)
 void ChannelGridScreen::RunWaitingForStartWindow()
 {
     ++stepsWaited;
-    if (stepsWaited >= StepsToWaitForTheStartWindow)
-        state = GridState::Idle;
+    if (stepsWaited < StepsToWaitForTheStartWindow)
+        return;
+
+    state = GridState::Idle;
+    services.sounds.StartMusic();
 }
 
 bool ChannelGridScreen::RunLeaving()

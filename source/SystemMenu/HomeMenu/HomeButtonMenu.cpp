@@ -99,6 +99,7 @@ HomeButtonMenu::HomeButtonMenu(Display& menuDisplay, const HomeMenuFiles& homeMe
         throw MenuError("The HOME menu has no big button");
 
     BindAllAnimations();
+    HideBigButtonsNotOffered();
     SetText("T_msg_00", files.texts.reconnectInstruction);
     SetText("T_msg_01", files.texts.disconnecting);
     SetText("T_Dialog", files.texts.buttonQuestions.front());
@@ -113,6 +114,7 @@ void HomeButtonMenu::Open(int speakerVolume)
     speakerVolumeStep = speakerVolume;
     isRumbleOn = remotes.IsRumbleEnabled();
     hasChosenButton = false;
+    chosenBigButton = 0;
     fadeSteps = 0;
     pointersOnArea.clear();
     pendingTopBarAnimation.reset();
@@ -204,9 +206,13 @@ int HomeButtonMenu::SpeakerVolumeStep() const
 // the big buttons, the animations with a group of their own, then the list at 0x8160F3D8.
 void HomeButtonMenu::BindAllAnimations()
 {
-    BindAnimation("_cntBtn_in", "btnL_00_inOut");
-    BindAnimation("_cntBtn_out", "btnL_00_inOut");
-    BindAnimation("_cntBtn_psh", "btnL_00_psh");
+    for (std::size_t bigButton = 0; bigButton < files.buttonAsks.size(); ++bigButton)
+    {
+        std::string group(BigButtonGroups[bigButton]);
+        BindAnimation("_cntBtn_in", group + "_inOut");
+        BindAnimation("_cntBtn_out", group + "_inOut");
+        BindAnimation("_cntBtn_psh", group + "_psh");
+    }
 
     for (const std::string& group : AnimationsOfTheirOwnGroup)
         BindAnimation("_" + group, group);
@@ -304,6 +310,22 @@ void HomeButtonMenu::StepAnimations()
 }
 
 // ---- Panes
+
+// A layout can have more big buttons than the program offers: the HOME menu of the Forecast has one for its manual.
+void HomeButtonMenu::HideBigButtonsNotOffered()
+{
+    for (std::size_t bigButton = files.buttonAsks.size(); bigButton < BigButtonGroups.size(); ++bigButton)
+    {
+        Formats::Pane* buttonPane = layout.FindPane("N_" + std::string(BigButtonGroups[bigButton]));
+        if (buttonPane != nullptr)
+            buttonPane->isVisible = false;
+    }
+}
+
+std::size_t HomeButtonMenu::ChosenBigButton() const
+{
+    return chosenBigButton;
+}
 
 Formats::Pane& HomeButtonMenu::PaneNamed(const std::string& paneName)
 {

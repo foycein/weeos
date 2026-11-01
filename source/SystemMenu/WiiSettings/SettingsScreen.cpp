@@ -155,6 +155,7 @@ bool SettingsScreen::RunMain()
         return false;
 
     std::optional<std::size_t> pointedBefore = pointedButton;
+    PageId pageBefore = flow->CurrentPageId();
     HandlePlayers();
     if (pointedButton && pointedButton != pointedBefore)
         services.sounds.Request(SoundName::ButtonTargeted);
@@ -162,6 +163,7 @@ bool SettingsScreen::RunMain()
     RepeatHeldButton();
     flow->Step();
     RequestSoundsOfThePages();
+    FadeMusicOnTheSoundPage(pageBefore);
     return flow->IsFinished();
 }
 
@@ -173,6 +175,19 @@ bool SettingsScreen::RunClosing()
 
     GoToRoot(ScreenId::WiiOptionsBackground, FirstIndexArgument);
     return true;
+}
+
+// The music falls silent while the Sound page is shown, so that the user hears the sound of each mode, and comes back when the
+// page is left (the functions 82 and 81 of its script, 0x813F20AC).
+void SettingsScreen::FadeMusicOnTheSoundPage(PageId pageBefore)
+{
+    bool wasOnSoundPage = pageBefore == PageId::SoundSet;
+    bool isOnSoundPage = flow->CurrentPageId() == PageId::SoundSet;
+    if (isOnSoundPage && !wasOnSoundPage)
+        services.sounds.ChangeMusicVolume(0.0f, MusicFadeStepsOfTheSoundPage);
+
+    if (wasOnSoundPage && !isOnSoundPage)
+        services.sounds.ChangeMusicVolume(1.0f, MusicFadeStepsOfTheSoundPage);
 }
 
 void SettingsScreen::RequestSoundsOfThePages()

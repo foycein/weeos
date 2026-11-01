@@ -43,6 +43,10 @@ public:
     // The display and the files must outlive the cursor manager.
     CursorManager(Display& display, const MenuFiles& files);
 
+    // The hands of a channel: the pointing hands "P1_Def" to "P4_Def" of the channel's own cursor archive. A channel has no grabbing
+    // hands and no scroll arrow. The display must outlive the cursor manager.
+    CursorManager(Display& display, std::unique_ptr<Layout::LayoutArchive> handArchive);
+
     // The hands and the arrow are drawn only while they are visible. The Health and Safety screen switches them off.
     void SetVisible(bool shouldBeVisible);
 

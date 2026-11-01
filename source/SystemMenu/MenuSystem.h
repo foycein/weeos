@@ -22,6 +22,7 @@
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
+#include "SystemMenu/TitleLaunchRequest.h"
 
 #include "Ios/Power/PowerService.h"
 #include "Ios/Remote/RemoteService.h"
@@ -61,7 +62,8 @@ public:
     // What went wrong, when an error ended the menu. For the log of the program.
     const std::optional<std::string>& FatalErrorMessage() const;
 
-    // The title that the console should start now. The program ends the menu and launches it. Nothing most of the time.
+    // The title that the console should start now: the menu again after RESET, or the channel that a screen asked for
+    // (MenuServices::titleLaunch). The program ends the menu and launches it. Nothing most of the time.
     std::optional<Ios::TitleId> TakeTitleToLaunch();
 
     // The keys of this USB keyboard type into the soft keyboard. The service must stay alive as long as the menu.
@@ -93,6 +95,7 @@ private:
     HomeButton homeButton;
     NandFiles& nand;
     ParentalAnswer parentalAnswer = ParentalAnswer::None;
+    TitleLaunchRequest titleLaunch;
     MenuServices services;
     std::optional<std::string> fatalErrorMessage;
 };

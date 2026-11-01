@@ -26,11 +26,14 @@ constexpr std::string_view EndChunk = "IEND";
 
 constexpr Byte EightBitsPerColor = 8;
 constexpr Byte RedGreenBlueAlphaColors = 6;
+constexpr Byte RedGreenBlueColors = 2;
 constexpr Byte DeflateCompression = 0;
 constexpr Byte AdaptiveFiltering = 0;
 constexpr Byte NotInterlaced = 0;
 
-constexpr std::size_t BytesPerPixel = 4;
+constexpr std::size_t BytesPerPixelWithAlpha = 4;
+constexpr std::size_t BytesPerPixelWithoutAlpha = 3;
+constexpr Byte OpaqueAlpha = 255;
 
 // The first byte of every row says how the row was filtered before it was compressed.
 constexpr Byte NoFilter = 0;
@@ -43,6 +46,9 @@ struct Header
 {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
+
+    // 4 with alpha, 3 for a picture without (the start page of the Internet Channel has one).
+    std::size_t bytesPerPixel = BytesPerPixelWithAlpha;
 };
 
 Header ReadHeader(ByteReader& chunkReader)
@@ -57,10 +63,14 @@ Header ReadHeader(ByteReader& chunkReader)
     Byte filtering = chunkReader.ReadByte();
     Byte interlacing = chunkReader.ReadByte();
 
-    bool isUnderstood = bitsPerColor == EightBitsPerColor && colorKind == RedGreenBlueAlphaColors && compression == DeflateCompression
+    bool hasKnownColors = colorKind == RedGreenBlueAlphaColors || colorKind == RedGreenBlueColors;
+    bool isUnderstood = bitsPerColor == EightBitsPerColor && hasKnownColors && compression == DeflateCompression
         && filtering == AdaptiveFiltering && interlacing == NotInterlaced;
     if (!isUnderstood)
-        chunkReader.Fail("only pictures with 8 bits of red, green, blue and alpha, in rows one after the other, are understood");
+        chunkReader.Fail("only pictures with 8 bits of red, green, blue and maybe alpha, in rows one after the other, are understood");
+
+    if (colorKind == RedGreenBlueColors)
+        header.bytesPerPixel = BytesPerPixelWithoutAlpha;
 
     return header;
 }
@@ -109,7 +119,8 @@ Byte UnfilterByte(Byte filter, Byte filtered, Byte left, Byte above, Byte aboveL
 // Turns the rows as they were compressed (a filter byte, then the filtered bytes of the row) into the bytes of the pixels.
 Bytes Unfilter(ByteView filteredRows, const Header& header)
 {
-    std::size_t rowSize = header.width * BytesPerPixel;
+    std::size_t bytesPerPixel = header.bytesPerPixel;
+    std::size_t rowSize = header.width * bytesPerPixel;
     std::size_t filteredRowSize = 1 + rowSize;
     if (filteredRows.size() != filteredRowSize * header.height)
         throw FormatError(std::format("{}: the picture has {} bytes instead of {}", DataDescription, filteredRows.size(), filteredRowSize * header.height));
@@ -121,9 +132,9 @@ Bytes Unfilter(ByteView filteredRows, const Header& header)
         for (std::size_t column = 0; column < rowSize; ++column)
         {
             Byte filtered = filteredRows[row * filteredRowSize + 1 + column];
-            Byte left = column >= BytesPerPixel ? pixels[row * rowSize + column - BytesPerPixel] : 0;
+            Byte left = column >= bytesPerPixel ? pixels[row * rowSize + column - bytesPerPixel] : 0;
             Byte above = row > 0 ? pixels[(row - 1) * rowSize + column] : 0;
-            Byte aboveLeft = (row > 0 && column >= BytesPerPixel) ? pixels[(row - 1) * rowSize + column - BytesPerPixel] : 0;
+            Byte aboveLeft = (row > 0 && column >= bytesPerPixel) ? pixels[(row - 1) * rowSize + column - bytesPerPixel] : 0;
             pixels[row * rowSize + column] = UnfilterByte(filter, filtered, left, above, aboveLeft);
         }
     }
@@ -137,10 +148,12 @@ RgbaImage MakeImage(const Header& header, const Bytes& pixelBytes)
     image.width = header.width;
     image.height = header.height;
 
-    for (std::size_t pixelNumber = 0; pixelNumber < pixelBytes.size() / BytesPerPixel; ++pixelNumber)
+    std::size_t bytesPerPixel = header.bytesPerPixel;
+    for (std::size_t pixelNumber = 0; pixelNumber < pixelBytes.size() / bytesPerPixel; ++pixelNumber)
     {
-        const Byte* pixelByte = &pixelBytes[pixelNumber * BytesPerPixel];
-        image.pixels.push_back({pixelByte[0], pixelByte[1], pixelByte[2], pixelByte[3]});
+        const Byte* pixelByte = &pixelBytes[pixelNumber * bytesPerPixel];
+        Byte alpha = bytesPerPixel == BytesPerPixelWithAlpha ? pixelByte[3] : OpaqueAlpha;
+        image.pixels.push_back({pixelByte[0], pixelByte[1], pixelByte[2], alpha});
     }
 
     return image;
