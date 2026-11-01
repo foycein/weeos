@@ -1,6 +1,7 @@
 #include "SystemMenu/DataManagement/DataEditorScreen.h"
 
 #include "SystemMenu/DataManagement/NandRoom.h"
+#include "SystemMenu/DataManagement/StartCleanup.h"
 #include "SystemMenu/DialogManager.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
@@ -153,6 +154,9 @@ void DataEditorScreen::Load()
 
 void DataEditorScreen::Build()
 {
+    if (services.dataManagement != nullptr)
+        CleanUpBeforeTheList(*services.dataManagement, kind);
+
     BuildList();
     BuildWindow(std::nullopt);
     ShowPlace(DataPlace::Wii);
