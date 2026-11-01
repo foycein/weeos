@@ -143,6 +143,19 @@ std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles)
     return homebrewChannelIds;
 }
 
+std::vector<ImportRule> BuildCompleteImportRules()
+{
+    return {
+        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
+        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: the owner wants no GameCube"),
+        SkipOnlyThisEntry("/ticket/00000001/00000101.tik", "ticket of MIOS"),
+        {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
+            "the network configuration: WeeOS is online through the PC, with nothing to configure"},
+        ImportEverythingInside("/", "everything else of the console, personal data included"),
+    };
+}
+
 std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homebrewChannelIds)
 {
     constexpr std::string_view homebrewReason = "installed with homebrew tools: its title metadata is signed with zeros";

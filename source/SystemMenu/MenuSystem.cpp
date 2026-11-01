@@ -1,5 +1,6 @@
 #include "SystemMenu/MenuSystem.h"
 
+#include "SystemMenu/ConsoleImport.h"
 #include "SystemMenu/FirstScreen.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuStateFile.h"
@@ -10,7 +11,7 @@ namespace SystemMenu
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles,
     Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole,
-    SettingsFlowServices* wiiSettingsServices)
+    SettingsFlowServices* wiiSettingsServices, ConsoleImport* consoleImport)
     : display(device, screenShape)
     , files(titleContents)
     , fonts(display.Device(), titleContents, files)
@@ -32,8 +33,10 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
           parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
+    services.consoleImport = consoleImport;
 
     StartFacts facts = ReadStartFacts(nand, settings);
+    facts.offersConsoleImport = consoleImport != nullptr && consoleImport->TakeOfferAtStart();
     RecordMenuStart(nand);
 
     FirstScreen firstScreen = ChooseFirstScreen(facts);
