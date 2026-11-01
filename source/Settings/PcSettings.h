@@ -52,7 +52,7 @@ struct PcSettings
     // address, with ":port" when it is not 80. Empty until the server exists; until then every online channel shows its server error.
     std::string serverAddress;
 
-    bool operator==(const PcSettings& other) const;
+    bool operator==(const PcSettings&) const = default;
 };
 
 // The settings that WeeOS starts with: the window of DECISIONS.md, the default sound device, and the keys of Input::DefaultKeyMap.
