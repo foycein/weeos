@@ -40,6 +40,7 @@ private:
     static PageId FirstPageOf(int argument);
 
     bool IsWaitingForKeyboard();
+    void RequestSoundsOfThePages();
     void HandlePlayers();
     void PressWithPlayer(int player, std::size_t button);
     void RepeatHeldButton();

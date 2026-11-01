@@ -7,6 +7,7 @@
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/SoftKeyboard.h"
+#include "SystemMenu/SoundRequests.h"
 
 namespace SystemMenu
 {
@@ -26,6 +27,35 @@ constexpr int CountryArgument = 6;
 // A button that is held down presses again after 400 milliseconds, then every 150 milliseconds. A step lasts 1001/60000 of a second.
 constexpr int StepsBeforeRepeat = 24;
 constexpr int StepsBetweenRepeats = 9;
+
+// The sounds of the pages: the numbers that their scripts give wii.se, and the names that the original plays for them (0x813F9834):
+// 1 the push of an arrow, 2 the pointer on a button, 3 decide, 4 cancel, 5 another choice, 6 an error, 10 to 12 a new sound mode.
+std::string_view SoundNameOf(PageSound sound)
+{
+    switch (sound)
+    {
+    case PageSound::Decide:
+        return "WIPL_SE_DECIDE";
+
+    case PageSound::Back:
+        return "WIPL_SE_CANCEL";
+
+    case PageSound::Choose:
+        return "WIPL_SE_CHOICE_CHG";
+
+    case PageSound::Scroll:
+        return "WIPL_SE_BT_PUSH";
+
+    case PageSound::Error:
+        return "WIPL_SE_CHAR_DELETE_ERROR";
+
+    case PageSound::Surround:
+        return "WIPL_SE_OUTPUT_MODE_SELECT";
+
+    default:
+        return {};
+    }
+}
 
 bool HasPressedA(const PlayerInput& player)
 {
@@ -111,9 +141,14 @@ bool SettingsScreen::RunMain()
     if (IsWaitingForKeyboard())
         return false;
 
+    std::optional<std::size_t> pointedBefore = pointedButton;
     HandlePlayers();
+    if (pointedButton && pointedButton != pointedBefore)
+        services.sounds.Request(SoundName::ButtonTargeted);
+
     RepeatHeldButton();
     flow->Step();
+    RequestSoundsOfThePages();
     return flow->IsFinished();
 }
 
@@ -125,6 +160,15 @@ bool SettingsScreen::RunClosing()
 
     GoToRoot(ScreenId::WiiOptionsBackground, FirstIndexArgument);
     return true;
+}
+
+void SettingsScreen::RequestSoundsOfThePages()
+{
+    for (PageSound sound : flow->TakeSounds())
+    {
+        if (sound != PageSound::None)
+            services.sounds.Request(SoundNameOf(sound));
+    }
 }
 
 // A page that asks for text or digits gets the soft keyboard. While it is open the pages wait, and its answer goes to the page.
