@@ -248,16 +248,16 @@ void SoftKeyboard::PressKey(KeyId key)
 void SoftKeyboard::HandleDirectionButtons()
 {
     if (input.HasPlayerPressed(request.playerIndex, LeftButtons))
-        MoveCursor(0, -1, false);
+        MoveCursor(CursorMove::OneCharacterLeft, false);
 
     if (input.HasPlayerPressed(request.playerIndex, RightButtons))
-        MoveCursor(0, 1, false);
+        MoveCursor(CursorMove::OneCharacterRight, false);
 
     if (input.HasPlayerPressed(request.playerIndex, UpButtons))
-        MoveCursor(-1, 0, false);
+        MoveCursor(CursorMove::OneLineUp, false);
 
     if (input.HasPlayerPressed(request.playerIndex, DownButtons))
-        MoveCursor(1, 0, false);
+        MoveCursor(CursorMove::OneLineDown, false);
 }
 
 // ---- Typing
@@ -277,16 +277,16 @@ void SoftKeyboard::ApplyTypingCommand(const TypingCommand& command)
         NoteThatTheFieldChanged();
         break;
     case TypingCommandKind::MoveLeft:
-        MoveCursor(0, -1, command.extendsSelection);
+        MoveCursor(CursorMove::OneCharacterLeft, command.extendsSelection);
         break;
     case TypingCommandKind::MoveRight:
-        MoveCursor(0, 1, command.extendsSelection);
+        MoveCursor(CursorMove::OneCharacterRight, command.extendsSelection);
         break;
     case TypingCommandKind::MoveUp:
-        MoveCursor(-1, 0, command.extendsSelection);
+        MoveCursor(CursorMove::OneLineUp, command.extendsSelection);
         break;
     case TypingCommandKind::MoveDown:
-        MoveCursor(1, 0, command.extendsSelection);
+        MoveCursor(CursorMove::OneLineDown, command.extendsSelection);
         break;
     case TypingCommandKind::MoveToStart:
         field->MoveCursorTo(0, command.extendsSelection);
@@ -327,22 +327,24 @@ void SoftKeyboard::DeleteBeforeCursor()
     NoteThatTheFieldChanged();
 }
 
-void SoftKeyboard::MoveCursor(int lineDistance, int characterDistance, bool extendsSelection)
+void SoftKeyboard::MoveCursor(CursorMove move, bool extendsSelection)
 {
     std::size_t cursorBefore = field->CursorPosition();
 
-    if (lineDistance != 0)
+    switch (move)
     {
-        std::size_t newCursor = view.CursorPositionAfterMoving(field->Text(), cursorBefore, lineDistance);
-        field->MoveCursorTo(newCursor, extendsSelection);
-    }
-    else if (characterDistance < 0)
-    {
+    case CursorMove::OneCharacterLeft:
         field->MoveCursorLeft(extendsSelection);
-    }
-    else
-    {
+        break;
+    case CursorMove::OneCharacterRight:
         field->MoveCursorRight(extendsSelection);
+        break;
+    case CursorMove::OneLineUp:
+        field->MoveCursorTo(view.CursorPositionAfterMoving(field->Text(), cursorBefore, -1), extendsSelection);
+        break;
+    case CursorMove::OneLineDown:
+        field->MoveCursorTo(view.CursorPositionAfterMoving(field->Text(), cursorBefore, 1), extendsSelection);
+        break;
     }
 
     if (field->CursorPosition() != cursorBefore)

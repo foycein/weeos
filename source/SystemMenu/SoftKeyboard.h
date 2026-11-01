@@ -21,7 +21,7 @@ namespace SystemMenu
 {
 
 // The names of the sound effects of the soft keyboard in the sound archive (docs/research/SystemMenuStructure.md 4.12).
-// The moment of each sound is ours: the original code was not read for it (docs/audit/OpenPoints/SystemMenu.md SYS-29).
+// The moment of each sound is ours: the original code was not read for it (docs/audit/OpenPoints/SystemMenu.md SYS-44).
 namespace KeyboardSoundName
 {
 
@@ -106,6 +106,14 @@ private:
         FadingOut,
     };
 
+    enum class CursorMove
+    {
+        OneCharacterLeft,
+        OneCharacterRight,
+        OneLineUp,
+        OneLineDown,
+    };
+
     void StartPhase(Phase newPhase);
     void FadeIn();
     void FadeOut();
@@ -118,7 +126,7 @@ private:
 
     void Type(char16_t character);
     void DeleteBeforeCursor();
-    void MoveCursor(int lineDistance, int characterDistance, bool extendsSelection);
+    void MoveCursor(CursorMove move, bool extendsSelection);
     void PressEnter();
     void ToggleShift();
     void ToggleCapsLock();

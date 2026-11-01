@@ -66,6 +66,11 @@ const WiiOptionsChoicesScreen::ChoiceNames& WiiOptionsChoicesScreen::NamesOf(Cho
     return names[static_cast<std::size_t>(choice)];
 }
 
+const WiiOptionsChoicesScreen::ButtonAnimations& WiiOptionsChoicesScreen::AnimationsOf(Choice choice) const
+{
+    return animations[static_cast<std::size_t>(choice)];
+}
+
 std::optional<WiiOptionsChoicesScreen::Choice> WiiOptionsChoicesScreen::OtherChoiceOfPage(Choice choice)
 {
     switch (choice)
@@ -258,16 +263,16 @@ void WiiOptionsChoicesScreen::StartFirstPage()
 
     if (argument == OptionsPageArgument)
     {
-        StartAnimation(animations[static_cast<std::size_t>(Choice::DataManagement)].appear);
-        StartAnimation(animations[static_cast<std::size_t>(Choice::WiiSettings)].appear);
+        StartAnimation(AnimationsOf(Choice::DataManagement).appear);
+        StartAnimation(AnimationsOf(Choice::WiiSettings).appear);
         MoveToState(State::OptionsAppearing);
         return;
     }
 
     // The Data Management page opens with the button of Data Management already pressed.
-    layout->ShowLastFrameOfAnimation(animations[static_cast<std::size_t>(Choice::DataManagement)].flashOfButton);
-    StartAnimation(animations[static_cast<std::size_t>(Choice::SaveData)].appear);
-    StartAnimation(animations[static_cast<std::size_t>(Choice::Channels)].appear);
+    layout->ShowLastFrameOfAnimation(AnimationsOf(Choice::DataManagement).flashOfButton);
+    StartAnimation(AnimationsOf(Choice::SaveData).appear);
+    StartAnimation(AnimationsOf(Choice::Channels).appear);
     MoveToState(State::DataManagementAppearing);
 }
 
@@ -293,7 +298,7 @@ void WiiOptionsChoicesScreen::HandleButtonEvents(const std::vector<ButtonEvent>&
         if (!choice || !IsButtonOnCurrentPage(*choice))
             continue;
 
-        const ButtonAnimations& choiceAnimations = animations[static_cast<std::size_t>(*choice)];
+        const ButtonAnimations& choiceAnimations = AnimationsOf(*choice);
         if (event.kind == ButtonEventKind::FocusGained)
         {
             services.sounds.Request(SoundName::ButtonTargeted);
@@ -356,13 +361,13 @@ void WiiOptionsChoicesScreen::PressButton(Choice choice)
         break;
     }
 
-    const ButtonAnimations& pressed = animations[static_cast<std::size_t>(choice)];
+    const ButtonAnimations& pressed = AnimationsOf(choice);
     StartAnimation(pressed.flashOfButton);
     StartAnimation(pressed.flashOfShade);
 
     std::optional<Choice> otherChoice = OtherChoiceOfPage(choice);
     if (otherChoice)
-        StartAnimation(animations[static_cast<std::size_t>(*otherChoice)].disappear);
+        StartAnimation(AnimationsOf(*otherChoice).disappear);
 
     services.sounds.Request(SoundName::Decide);
 }
@@ -456,17 +461,17 @@ void WiiOptionsChoicesScreen::ReturnToPage(Page page)
 
     if (page == Page::Options)
     {
-        StartAnimation(animations[static_cast<std::size_t>(Choice::DataManagement)].comeBack);
-        StartAnimation(animations[static_cast<std::size_t>(Choice::WiiSettings)].appear);
-        StartAnimation(animations[static_cast<std::size_t>(Choice::SaveData)].disappear);
-        StartAnimation(animations[static_cast<std::size_t>(Choice::Channels)].disappear);
+        StartAnimation(AnimationsOf(Choice::DataManagement).comeBack);
+        StartAnimation(AnimationsOf(Choice::WiiSettings).appear);
+        StartAnimation(AnimationsOf(Choice::SaveData).disappear);
+        StartAnimation(AnimationsOf(Choice::Channels).disappear);
         MoveToState(State::ReturningToOptions);
         return;
     }
 
-    StartAnimation(animations[static_cast<std::size_t>(Choice::SaveData)].comeBack);
-    StartAnimation(animations[static_cast<std::size_t>(Choice::Channels)].appear);
-    StartAnimation(animations[static_cast<std::size_t>(Choice::Wii)].disappear);
+    StartAnimation(AnimationsOf(Choice::SaveData).comeBack);
+    StartAnimation(AnimationsOf(Choice::Channels).appear);
+    StartAnimation(AnimationsOf(Choice::Wii).disappear);
     MoveToState(State::ReturningToDataManagement);
 }
 
@@ -478,12 +483,12 @@ void WiiOptionsChoicesScreen::WaitForEditorToClose()
 
     if (pressedChoice == Choice::Channels)
     {
-        StartAnimation(animations[static_cast<std::size_t>(Choice::Channels)].comeBack);
-        StartAnimation(animations[static_cast<std::size_t>(Choice::SaveData)].appear);
+        StartAnimation(AnimationsOf(Choice::Channels).comeBack);
+        StartAnimation(AnimationsOf(Choice::SaveData).appear);
     }
     else
     {
-        StartAnimation(animations[static_cast<std::size_t>(Choice::Wii)].comeBack);
+        StartAnimation(AnimationsOf(Choice::Wii).comeBack);
     }
     MoveToState(State::EditorEnded);
 }

@@ -190,48 +190,41 @@ bool KeyboardView::IsSymbolWindowOpen() const
 
 void KeyboardView::EnableButtonsThatCanBePressed()
 {
-    bool canScrollUp = firstVisibleLine > 0;
-    bool canScrollDown = firstVisibleLine + VisibleLineCount < lineCount;
-
     for (const KeyRecord& record : records)
+        record.buttons->SetEnabled(record.buttonPane, CanBePressed(record.id));
+}
+
+bool KeyboardView::CanBePressed(KeyId key) const
+{
+    if (!areButtonsEnabled)
+        return false;
+
+    switch (key.kind)
     {
-        bool canBePressed = areButtonsEnabled;
-        switch (record.id.kind)
-        {
-        case KeyKind::Character:
-            canBePressed = canBePressed && !isSymbolWindowOpen && isCharacterKeyAllowed[record.id.number];
-            break;
-        case KeyKind::Delete:
-        case KeyKind::Enter:
-        case KeyKind::Shift:
-        case KeyKind::CapsLock:
-        case KeyKind::Space:
-        case KeyKind::Symbols:
-            canBePressed = canBePressed && !isSymbolWindowOpen;
-            break;
-        case KeyKind::Cancel:
-        case KeyKind::Confirm:
-            canBePressed = canBePressed && !isSymbolWindowOpen;
-            break;
-        case KeyKind::Symbol:
-            canBePressed = canBePressed && isSymbolWindowOpen && record.id.number < symbolCountOfPage;
-            break;
-        case KeyKind::CloseSymbols:
-            canBePressed = canBePressed && isSymbolWindowOpen;
-            break;
-        case KeyKind::PreviousSymbolPage:
-        case KeyKind::NextSymbolPage:
-            canBePressed = canBePressed && isSymbolWindowOpen && symbolPageCount > 1;
-            break;
-        case KeyKind::ScrollUp:
-            canBePressed = canBePressed && canScrollUp;
-            break;
-        case KeyKind::ScrollDown:
-            canBePressed = canBePressed && canScrollDown;
-            break;
-        }
-        record.buttons->SetEnabled(record.buttonPane, canBePressed);
+    case KeyKind::Character:
+        return !isSymbolWindowOpen && isCharacterKeyAllowed[key.number];
+    case KeyKind::Delete:
+    case KeyKind::Enter:
+    case KeyKind::Shift:
+    case KeyKind::CapsLock:
+    case KeyKind::Space:
+    case KeyKind::Symbols:
+    case KeyKind::Cancel:
+    case KeyKind::Confirm:
+        return !isSymbolWindowOpen;
+    case KeyKind::Symbol:
+        return isSymbolWindowOpen && key.number < symbolCountOfPage;
+    case KeyKind::CloseSymbols:
+        return isSymbolWindowOpen;
+    case KeyKind::PreviousSymbolPage:
+    case KeyKind::NextSymbolPage:
+        return isSymbolWindowOpen && symbolPageCount > 1;
+    case KeyKind::ScrollUp:
+        return firstVisibleLine > 0;
+    case KeyKind::ScrollDown:
+        return firstVisibleLine + VisibleLineCount < lineCount;
     }
+    return false;
 }
 
 void KeyboardView::ShowCharacters(bool isShiftOn, bool isCapsLockOn)
@@ -431,9 +424,9 @@ std::vector<KeyboardView::Rectangle> KeyboardView::AreasOfCharactersInPicture(co
         if (!upperLeft || !lowerRight)
             continue;
 
-        Formats::Vector2 lowerLeftCorner = {std::min(upperLeft->x, lowerRight->x), std::min(upperLeft->y, lowerRight->y)};
-        Formats::Vector2 upperRightCorner = {std::max(upperLeft->x, lowerRight->x), std::max(upperLeft->y, lowerRight->y)};
-        areas.push_back({lowerLeftCorner, upperRightCorner});
+        Formats::Vector2 lowerLeft = {std::min(upperLeft->x, lowerRight->x), std::min(upperLeft->y, lowerRight->y)};
+        Formats::Vector2 upperRight = {std::max(upperLeft->x, lowerRight->x), std::max(upperLeft->y, lowerRight->y)};
+        areas.push_back({lowerLeft, upperRight});
     }
     return areas;
 }
@@ -448,17 +441,47 @@ void KeyboardView::DrawFieldMarks()
 
     if (caretArea && isCaretShown && selectionAreas.empty())
     {
-        Rectangle caret = {{caretArea->first.x - CaretHalfWidth, caretArea->first.y}, {caretArea->first.x + CaretHalfWidth, caretArea->second.y}};
-        DrawRectangle(caret, CaretColor);
+        Formats::Vector2 caretLowerLeft = {caretArea->lowerLeft.x - CaretHalfWidth, caretArea->lowerLeft.y};
+        Formats::Vector2 caretUpperRight = {caretArea->lowerLeft.x + CaretHalfWidth, caretArea->upperRight.y};
+        DrawRectangle({caretLowerLeft, caretUpperRight}, CaretColor);
     }
 }
 
 void KeyboardView::DrawRectangle(const Rectangle& area, Formats::Rgba8Color color)
 {
+    Formats::Vector2 upperLeft = {area.lowerLeft.x, area.upperRight.y};
+    Formats::Vector2 lowerRight = {area.upperRight.x, area.lowerLeft.y};
+
     Graphics::Quad quad = {};
-    quad.positions = {{{area.first.x, area.second.y}, {area.second.x, area.second.y}, {area.second.x, area.first.y}, {area.first.x, area.first.y}}};
+    quad.positions = {{upperLeft, area.upperRight, lowerRight, area.lowerLeft}};
     quad.colors = {{color, color, color, color}};
     display.Device().DrawQuad(quad, Graphics::Material());
+}
+
+// The place behind the last character of a line is the end of the line.
+float KeyboardView::HorizontalPlaceOfCursor(const Text::LaidOutText& text, const Text::PlacedLine& line, std::size_t cursor) const
+{
+    if (cursor >= line.endCharacter)
+        return line.left + line.width;
+
+    return text.characters[cursor].left;
+}
+
+std::size_t KeyboardView::NearestCursorPositionInLine(const Text::LaidOutText& text, const Text::PlacedLine& line, float wantedPlace) const
+{
+    std::size_t nearestPosition = line.firstCharacter;
+    float smallestDistance = std::abs(HorizontalPlaceOfCursor(text, line, nearestPosition) - wantedPlace);
+
+    for (std::size_t position = line.firstCharacter; position <= line.endCharacter; ++position)
+    {
+        float distance = std::abs(HorizontalPlaceOfCursor(text, line, position) - wantedPlace);
+        if (distance < smallestDistance)
+        {
+            smallestDistance = distance;
+            nearestPosition = position;
+        }
+    }
+    return nearestPosition;
 }
 
 // The cursor moves up or down by lines. It lands in the other line at the character that is nearest to where the cursor is now.
@@ -469,34 +492,14 @@ std::size_t KeyboardView::CursorPositionAfterMoving(const std::u16string& text, 
     if (laidOutText.lines.empty())
         return cursor;
 
-    auto penPosition = [&](std::size_t position, const Text::PlacedLine& line) {
-        if (position >= line.endCharacter)
-            return line.left + line.width;
-
-        return laidOutText.characters[position].left;
-    };
-
     int lastLine = static_cast<int>(laidOutText.lines.size()) - 1;
     int cursorLine = LineOfCharacter(laidOutText, cursor);
     int targetLine = std::clamp(cursorLine + lineDistance, 0, lastLine);
     if (targetLine == cursorLine)
         return cursor;
 
-    float wantedPen = penPosition(cursor, laidOutText.lines[cursorLine]);
-    const Text::PlacedLine& target = laidOutText.lines[targetLine];
-
-    std::size_t nearestPosition = target.firstCharacter;
-    float smallestDistance = std::abs(penPosition(nearestPosition, target) - wantedPen);
-    for (std::size_t position = target.firstCharacter; position <= target.endCharacter; ++position)
-    {
-        float distance = std::abs(penPosition(position, target) - wantedPen);
-        if (distance < smallestDistance)
-        {
-            smallestDistance = distance;
-            nearestPosition = position;
-        }
-    }
-    return nearestPosition;
+    float wantedPlace = HorizontalPlaceOfCursor(laidOutText, laidOutText.lines[cursorLine], cursor);
+    return NearestCursorPositionInLine(laidOutText, laidOutText.lines[targetLine], wantedPlace);
 }
 
 }

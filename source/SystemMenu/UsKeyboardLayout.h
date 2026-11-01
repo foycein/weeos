@@ -19,7 +19,7 @@ struct KeyCharacters
 constexpr std::size_t CharacterKeyCount = 50;
 
 // The characters of the 50 keys for the US keyboard. Letters are lowercase without Shift and uppercase with it.
-// The original does not show the characters of its keys in any file that was read, so this table is ours (docs/audit/OpenPoints/SystemMenu.md SYS-28).
+// The original does not show the characters of its keys in any file that was read, so this table is ours (docs/audit/OpenPoints/SystemMenu.md SYS-43).
 const std::array<KeyCharacters, CharacterKeyCount>& CharacterKeysOfUsKeyboard();
 
 // The character that a key of the grid types. Shift gives the sign above the key. The letters are capitals with Shift or with the caps lock

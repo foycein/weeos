@@ -135,6 +135,7 @@ std::optional<TypingCommand> PhysicalKeyboard::CommandOfKey(std::uint8_t usbKey,
     switch (usbKey)
     {
     case Ios::UsbKey::Enter:
+    case Ios::UsbKey::KeypadEnter:
         return MakeCommand(TypingCommandKind::Enter);
     case Ios::UsbKey::Escape:
         return MakeCommand(TypingCommandKind::Cancel);

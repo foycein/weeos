@@ -159,7 +159,12 @@ private:
         std::string animationPrefix;
     };
 
-    using Rectangle = std::pair<Formats::Vector2, Formats::Vector2>;
+    // A place in the picture of the keyboard, like the marks of the text field.
+    struct Rectangle
+    {
+        Formats::Vector2 lowerLeft;
+        Formats::Vector2 upperRight;
+    };
 
     void HideWhatWeeOSDoesNotNeed();
     void SetFixedTexts();
@@ -167,11 +172,14 @@ private:
     void RegisterKey(KeyId id, MenuLayout& layout, ButtonController& buttons, const std::string& buttonPane, const std::string& picturePane,
         const std::string& animationPrefix);
     void EnableButtonsThatCanBePressed();
+    bool CanBePressed(KeyId key) const;
     const KeyRecord& RecordOf(KeyId key) const;
     void StartPictureAnimation(MenuLayout& layout, const std::string& picturePane, const std::string& animationName);
     void ShowScrollArrow(const std::string& picturePane, bool shouldBeShown, bool& isShown);
 
     int LineOfCharacter(const Text::LaidOutText& text, std::size_t characterNumber) const;
+    float HorizontalPlaceOfCursor(const Text::LaidOutText& text, const Text::PlacedLine& line, std::size_t cursor) const;
+    std::size_t NearestCursorPositionInLine(const Text::LaidOutText& text, const Text::PlacedLine& line, float wantedPlace) const;
     void ScrollToShowCursor(const Text::LaidOutText& text, std::size_t cursor);
     void ShowVisibleLines(const FieldLook& look, const Text::LaidOutText& fullText);
     std::vector<Rectangle> AreasOfCharactersInPicture(const Text::LaidOutText& text, std::size_t first, std::size_t end);

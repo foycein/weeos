@@ -111,6 +111,7 @@ private:
     static const ChoiceNames& NamesOf(Choice choice);
     static std::optional<Choice> ChoiceOfPane(std::string_view buttonPane);
     static std::optional<Choice> OtherChoiceOfPage(Choice choice);
+    const ButtonAnimations& AnimationsOf(Choice choice) const;
 
     void BindAnimationsOfButton(Choice choice);
     std::size_t BindAnimation(const ChoiceNames& names, std::string_view ending, std::string_view group);
