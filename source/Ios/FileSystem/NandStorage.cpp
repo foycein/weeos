@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <limits>
 #include <optional>
 #include <sstream>
 #include <utility>
@@ -16,18 +15,13 @@ namespace Ios
 namespace
 {
 
-// A file length is stored in 32 bits.
-constexpr std::uintmax_t LargestFileLength = std::numeric_limits<std::uint32_t>::max();
-
-constexpr std::uint8_t NoFlags = 0;
-
 // The root of a new NAND: owned by the super user, who may do everything. The group and everybody else may only read.
 EntryRecord MakeRootRecord()
 {
     EntryRecord root;
     root.kind = EntryKind::Directory;
     EntryPermissions permissions = {AccessRights::None, AccessRights::Read, AccessRights::Read};
-    root.attributes = EntryAttributes{SuperUserId, SuperUserGroupId, permissions, NoFlags};
+    root.attributes = EntryAttributes{SuperUserId, SuperUserGroupId, permissions, NoEntryFlags};
     root.linkNumber = 0;
     root.length = 0;
     return root;

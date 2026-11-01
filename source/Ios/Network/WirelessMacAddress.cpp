@@ -2,19 +2,13 @@
 
 #include "Formats/ConsoleKeys.h"
 #include "Formats/FileBytes.h"
+#include "Ios/Identity/IdentityFiles.h"
 
 #include <stdexcept>
 #include <system_error>
 
 namespace Ios
 {
-
-namespace
-{
-
-constexpr std::string_view KeysFileName = "keys.txt";
-
-}
 
 Result<MacAddress> ReadWirelessMacAddress(const std::filesystem::path& identityFolder)
 {

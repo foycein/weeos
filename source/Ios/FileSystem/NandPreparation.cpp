@@ -17,8 +17,6 @@ constexpr EntryPermissions ReadableByEveryone = {ReadWrite, ReadWrite, Read};
 constexpr EntryPermissions OpenToEveryone = {ReadWrite, ReadWrite, ReadWrite};
 constexpr EntryPermissions OwnerOnly = {ReadWrite, None, None};
 
-constexpr std::uint8_t NoFlags = 0;
-
 constexpr std::string_view TemporaryDirectoryPath = "/tmp";
 constexpr std::string_view SystemMenuDirectoryPath = "/meta";
 constexpr std::string_view WfsDirectoryPath = "/wfs";
@@ -52,7 +50,7 @@ NandPath ParseConstantPath(std::string_view text)
 
 EntryAttributes SuperUserAttributes(const EntryPermissions& permissions)
 {
-    return EntryAttributes{SuperUserId, SuperUserGroupId, permissions, NoFlags};
+    return EntryAttributes{SuperUserId, SuperUserGroupId, permissions, NoEntryFlags};
 }
 
 Result<void> CreateDirectoryForSuperUser(NandStorage& storage, const NandPath& path, const EntryPermissions& permissions)
@@ -122,14 +120,14 @@ Result<void> PrepareNandFolder(NandStorage& storage, const IosProfile& profile)
         return made;
 
     Result<void> systemMenuGiven = GiveDirectoryToOwner(storage, SystemMenuDirectoryPath,
-        EntryAttributes{SystemMenuUserId, SystemMenuGroupId, OpenToEveryone, NoFlags});
+        EntryAttributes{SystemMenuUserId, SystemMenuGroupId, OpenToEveryone, NoEntryFlags});
     if (systemMenuGiven.Failed())
         return systemMenuGiven;
 
     if (!profile.esCreatesWfsFolder)
         return Result<void>();
 
-    return GiveDirectoryToOwner(storage, WfsDirectoryPath, EntryAttributes{WfsUserId, WfsGroupId, OwnerOnly, NoFlags});
+    return GiveDirectoryToOwner(storage, WfsDirectoryPath, EntryAttributes{WfsUserId, WfsGroupId, OwnerOnly, NoEntryFlags});
 }
 
 }

@@ -2,8 +2,8 @@
 
 #include "Formats/Bytes.h"
 #include "Formats/ConsoleKeys.h"
+#include "Ios/Network/MacAddress.h"
 
-#include <array>
 #include <filesystem>
 #include <optional>
 
@@ -17,8 +17,6 @@ inline constexpr const char* SerialEepromFileName = "seeprom.bin";
 
 // Only a console that WeeOS made has this file: the certificate of WeeOS's own authority that signed its device certificate.
 inline constexpr const char* AuthorityCertificateFileName = "authority.cert";
-
-using MacAddress = std::array<Formats::Byte, Formats::MacAddressSize>;
 
 // Makes the identity of a new console, as a factory gives every Wii its own: a new console id, a new key pair and a certificate chain
 // of WeeOS's own. The chain is an authority certificate ("WeeOS", issued by "Root") and the device certificate it signs; the private

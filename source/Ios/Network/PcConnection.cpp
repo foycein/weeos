@@ -30,8 +30,6 @@ bool IsWindowsConnected()
 namespace
 {
 
-constexpr Ipv4Address NoAddress = 0;
-
 // Windows says how many bytes the list needs when the first try is too small. Three tries are enough even when an adapter comes
 // between them.
 constexpr int TriesToReadTheAdapters = 3;
@@ -78,14 +76,14 @@ Ipv4Address FindPcAddress()
 {
     std::vector<unsigned char> list = ReadAdapterList();
     if (list.empty())
-        return NoAddress;
+        return NoIpv4Address;
 
     for (auto* adapter = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(list.data()); adapter != nullptr; adapter = adapter->Next)
     {
         if (IsAdapterOfTheNetwork(*adapter))
             return AddressOf(adapter->FirstUnicastAddress->Address);
     }
-    return NoAddress;
+    return NoIpv4Address;
 }
 
 }

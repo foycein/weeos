@@ -14,13 +14,22 @@ namespace
 {
 
 // A TLS record holds at most 16 KiB of data, with its header and its trailer around it.
-constexpr std::size_t ReceiveChunkSize = 16 * 1024 + 512;
+constexpr std::size_t LargestRecordData = 16 * 1024;
+constexpr std::size_t RoomForHeaderAndTrailer = 512;
+constexpr std::size_t ReceiveChunkSize = LargestRecordData + RoomForHeaderAndTrailer;
 
 constexpr DWORD HandshakeRequests = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY |
     ISC_REQ_STREAM | ISC_REQ_MANUAL_CRED_VALIDATION;
 
 // DecryptMessage and EncryptMessage take four buffers: the record, and room for what they give back.
 constexpr unsigned long MessageBufferCount = 4;
+constexpr std::size_t HeaderBufferIndex = 0;
+constexpr std::size_t DataBufferIndex = 1;
+constexpr std::size_t TrailerBufferIndex = 2;
+
+// A handshake step takes what the server sent, and Windows says in the second buffer which of those bytes it did not use.
+constexpr unsigned long HandshakeInputBufferCount = 2;
+constexpr std::size_t UnusedBytesBufferIndex = 1;
 
 enum class DecryptResult
 {
@@ -102,12 +111,14 @@ public:
         std::vector<Formats::Bytes> certificates = {Formats::Bytes(serverBytes.begin(), serverBytes.end())};
 
         // The other certificates that the server sent are in the store of its certificate.
-        const CERT_CONTEXT* other = nullptr;
-        while ((other = CertEnumCertificatesInStore(serverCertificate->hCertStore, other)) != nullptr)
+        const CERT_CONTEXT* other = CertEnumCertificatesInStore(serverCertificate->hCertStore, nullptr);
+        while (other != nullptr)
         {
             Formats::ByteView otherBytes(other->pbCertEncoded, other->cbCertEncoded);
             if (!std::ranges::equal(otherBytes, serverBytes))
                 certificates.emplace_back(otherBytes.begin(), otherBytes.end());
+
+            other = CertEnumCertificatesInStore(serverCertificate->hCertStore, other);
         }
 
         CertFreeCertificateContext(serverCertificate);
@@ -164,7 +175,10 @@ public:
             if (EncryptMessage(&context, 0, &message, 0) != SEC_E_OK)
                 return false;
 
-            std::size_t recordLength = buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer;
+            std::size_t headerLength = buffers[HeaderBufferIndex].cbBuffer;
+            std::size_t dataLength = buffers[DataBufferIndex].cbBuffer;
+            std::size_t trailerLength = buffers[TrailerBufferIndex].cbBuffer;
+            std::size_t recordLength = headerLength + dataLength + trailerLength;
             if (!SendAll(Formats::ByteView(record).first(recordLength)))
                 return false;
 
@@ -209,11 +223,11 @@ private:
     // and nothing of the server. The bytes of the server that the step did not use stay for the next one.
     SECURITY_STATUS TakeHandshakeStep(CtxtHandle* existingContext)
     {
-        SecBuffer inputBuffers[2] = {
+        SecBuffer inputBuffers[HandshakeInputBufferCount] = {
             {static_cast<unsigned long>(received.size()), SECBUFFER_TOKEN, received.data()},
             {0, SECBUFFER_EMPTY, nullptr},
         };
-        SecBufferDesc input = {SECBUFFER_VERSION, 2, inputBuffers};
+        SecBufferDesc input = {SECBUFFER_VERSION, HandshakeInputBufferCount, inputBuffers};
         SecBufferDesc* serverBytes = existingContext == nullptr ? nullptr : &input;
 
         SecBuffer token = {0, SECBUFFER_TOKEN, nullptr};
@@ -233,7 +247,7 @@ private:
             return SEC_E_INTERNAL_ERROR;
 
         if (existingContext != nullptr)
-            KeepUnusedBytes(inputBuffers[1]);
+            KeepUnusedBytes(inputBuffers[UnusedBytesBufferIndex]);
 
         return status;
     }

@@ -10,13 +10,6 @@
 namespace Ios
 {
 
-namespace
-{
-
-constexpr std::string_view ContentFileExtension = ".app";
-
-}
-
 Result<void> TitleService::RemoveFolderIfEmpty(const NandPath& folder)
 {
     Result<std::vector<std::string>> names = files.ListNames(folder);

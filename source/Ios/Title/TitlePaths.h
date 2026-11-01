@@ -52,6 +52,9 @@ NandPath TemporaryMetadataPath();
 NandPath TemporaryContentPath(std::uint32_t contentId);
 NandPath TemporarySharedContentPath(std::string_view name);
 
+// The ending of the file of a content: "00000011.app".
+constexpr std::string_view ContentFileExtension = ".app";
+
 // A folder or file name that is a number of eight hexadecimal digits: "00010002", "48414341".
 std::string FormatNameNumber(std::uint32_t number);
 

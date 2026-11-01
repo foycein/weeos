@@ -12,6 +12,9 @@ namespace Ios
 namespace
 {
 
+// The number of the lock while no program has the radio.
+constexpr std::uint32_t NoLock = 0;
+
 // The folders in front of the file, from the outside to the inside. The module makes the ones that are missing.
 constexpr std::string_view FolderPaths[] = {"/shared2/sys", "/shared2/sys/net", "/shared2/sys/net/02"};
 constexpr std::string_view NewFilePath = "/shared2/sys/net/02/config.dat";
@@ -197,7 +200,7 @@ MacAddress NetworkConfigService::GetWirelessMacAddress() const
 Result<std::uint32_t> NetworkConfigService::LockWirelessDriver()
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (lockNumber != 0)
+    if (lockNumber != NoLock)
         return IosError::AlreadyExists;
 
     ++lastLockNumber;
@@ -208,10 +211,10 @@ Result<std::uint32_t> NetworkConfigService::LockWirelessDriver()
 Result<void> NetworkConfigService::UnlockWirelessDriver(std::uint32_t numberOfTheProgram)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (lockNumber == 0 || numberOfTheProgram != lockNumber)
+    if (lockNumber == NoLock || numberOfTheProgram != lockNumber)
         return IosError::InvalidArgument;
 
-    lockNumber = 0;
+    lockNumber = NoLock;
     return Result<void>();
 }
 

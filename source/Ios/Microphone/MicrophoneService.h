@@ -20,10 +20,11 @@ constexpr std::uint32_t MicrophoneSampleRate = 16000;
 constexpr int LowestMicrophoneSensitivity = 1;
 constexpr int HighestMicrophoneSensitivity = 5;
 constexpr int DefaultMicrophoneSensitivity = 3;
+constexpr int MicrophoneSensitivityStepCount = HighestMicrophoneSensitivity - LowestMicrophoneSensitivity + 1;
 
 // The gain of each sensitivity step, in decibels. The original gives the step to the signal processor inside the accessory, whose
 // gains are not known (docs/audit/OpenPoints/Channels.md CHN-10, Assumed): 6 decibels a step around the middle.
-constexpr std::array<float, 5> SensitivityGainsInDecibels = {-12.0f, -6.0f, 0.0f, 6.0f, 12.0f};
+constexpr std::array<float, MicrophoneSensitivityStepCount> SensitivityGainsInDecibels = {-12.0f, -6.0f, 0.0f, 6.0f, 12.0f};
 
 // The service keeps at most this much of what was heard and not taken yet; older samples are dropped, as a full buffer of the
 // USB host drops them.

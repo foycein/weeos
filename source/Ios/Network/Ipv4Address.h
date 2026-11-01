@@ -13,6 +13,9 @@ using Ipv4Address = std::uint32_t;
 
 constexpr int BitsPerIpv4Part = 8;
 
+// 0.0.0.0: no address.
+constexpr Ipv4Address NoIpv4Address = 0;
+
 constexpr Ipv4Address MakeIpv4Address(std::uint8_t first, std::uint8_t second, std::uint8_t third, std::uint8_t fourth)
 {
     Ipv4Address address = first;

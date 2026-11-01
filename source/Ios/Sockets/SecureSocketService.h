@@ -45,7 +45,7 @@ constexpr std::uint32_t VerifyDate = 0x08;
 // the checks of the server's certificate are the console's, with its error numbers (docs/audit/Ios.md).
 //
 // The root certificates built into the module are Nintendo's; WeeOS reaches no Nintendo server, so it does not carry them, and a
-// context that trusts only a built-in root trusts no server. A client certificate is kept but not shown to a server.
+// context that trusts only a built-in root trusts no server. A client certificate is accepted but not kept or shown to a server.
 //
 // The calls that no program of the System Menu or the channels makes are not rebuilt: the default and removal of certificates,
 // the handshake with a certificate in the answer, switching the verification off, and the debug calls.
@@ -113,8 +113,11 @@ private:
         std::unique_ptr<TlsConnection> connection;
     };
 
-    // The context with the number, or nothing when the number is not an open context.
+    // The context with the number, or nothing when the number is not an open context. The caller holds the lock.
     Context* FindOpenContext(SecureContextId context);
+
+    // The same, for a call that takes the lock only for the search.
+    Context* LockAndFindOpenContext(SecureContextId context);
 
     // A handshake, a read and a write all start by setting the connection up.
     Result<void> SetTheConnectionUp(Context& context);

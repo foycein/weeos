@@ -200,7 +200,8 @@ std::optional<ParsedLine> ParseLine(std::string_view line)
     std::optional<EntryPermissions> permissions = ParsePermissions(columns[PermissionsColumn]);
     std::optional<std::uint8_t> flags = ParseNumber<std::uint8_t>(columns[FlagsColumn]);
     std::optional<std::uint64_t> linkNumber = ParseNumber<std::uint64_t>(columns[LinkNumberColumn]);
-    if (path.Failed() || !kind || !ownerId || !groupId || !permissions || !flags || !linkNumber)
+    bool hasInvalidColumn = path.Failed() || !kind || !ownerId || !groupId || !permissions || !flags || !linkNumber;
+    if (hasInvalidColumn)
         return std::nullopt;
 
     ParsedLine parsed;

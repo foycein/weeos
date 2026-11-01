@@ -16,8 +16,6 @@ namespace Ios
 namespace
 {
 
-constexpr Ipv4Address NoAddress = 0;
-
 // The address of the adapter of a wired connection is not known here (docs/audit/OpenPoints/Ios.md, SO2), so it is all zero.
 constexpr MacAddress UnknownAdapterAddress = {};
 
@@ -228,7 +226,7 @@ bool SocketService::IsStackSetUp() const
 Ipv4Address SocketService::GetHostId() const
 {
     if (!IsStackSetUp())
-        return NoAddress;
+        return NoIpv4Address;
 
     return FindPcAddress();
 }
