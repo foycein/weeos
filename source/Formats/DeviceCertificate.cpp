@@ -1,6 +1,7 @@
 #include "Formats/DeviceCertificate.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/ByteWriter.h"
 #include "Formats/Certificate.h"
 #include "Formats/FormatError.h"
 #include "Formats/HexText.h"
@@ -46,6 +47,49 @@ std::uint32_t ReadConsoleIdFromName(const std::string& name)
     return consoleId;
 }
 
+constexpr std::size_t NameFieldSize = 64;
+constexpr std::size_t EllipticCurveSignaturePaddingSize = 64;
+constexpr std::size_t EllipticCurveKeySize = 60;
+constexpr std::size_t EllipticCurveKeyPaddingSize = 60;
+
+void WriteNameField(ByteWriter& writer, const std::string& name)
+{
+    if (name.size() >= NameFieldSize)
+        throw FormatError(std::format("Certificate: the name \"{}\" does not fit in {} bytes", name, NameFieldSize));
+
+    writer.WriteBytes(ByteView(reinterpret_cast<const Byte*>(name.data()), name.size()));
+    writer.WriteZeros(NameFieldSize - name.size());
+}
+
+void RequireSize(const Bytes& bytes, std::size_t size, std::string_view what)
+{
+    if (bytes.size() != size)
+        throw FormatError(std::format("Certificate: the {} has {} bytes instead of {}", what, bytes.size(), size));
+}
+
+}
+
+std::string DeviceCertificateName(std::uint32_t consoleId)
+{
+    return std::format("{}{:08x}", NamePrefix, consoleId);
+}
+
+Bytes WriteEllipticCurveCertificate(const EllipticCurveCertificateFields& fields)
+{
+    RequireSize(fields.signature, EllipticCurveKeySize, "signature");
+    RequireSize(fields.publicKey, EllipticCurveKeySize, "public key");
+
+    ByteWriter writer;
+    writer.WriteUint32(static_cast<std::uint32_t>(SignatureType::EllipticCurve));
+    writer.WriteBytes(fields.signature);
+    writer.WriteZeros(EllipticCurveSignaturePaddingSize);
+    WriteNameField(writer, fields.issuer);
+    writer.WriteUint32(static_cast<std::uint32_t>(PublicKeyType::EllipticCurve));
+    WriteNameField(writer, fields.name);
+    writer.WriteUint32(fields.keyId);
+    writer.WriteBytes(fields.publicKey);
+    writer.WriteZeros(EllipticCurveKeyPaddingSize);
+    return writer.GetBytes();
 }
 
 DeviceCertificate ReadDeviceCertificate(ByteView bytes)

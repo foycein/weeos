@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SystemMenu/ConsoleImport.h"
 #include "SystemMenu/WiiSettings/PageContent.h"
 #include "SystemMenu/WiiSettings/InternetPages.h"
 #include "SystemMenu/WiiSettings/PageGroup.h"
@@ -35,6 +36,9 @@ struct SettingsFlowServices
     // The settings of WeeOS on the PC (window, sound, keys), and the program that makes them come true at once.
     Settings::PcSettingsStore& pcSettings;
     Settings::PcSettingsTarget& pcTarget;
+
+    // The import of a person's own Wii for the page of PC Settings. Nothing when the program offers none.
+    ConsoleImport* consoleImport = nullptr;
 };
 
 // The search of the radio of the console: every channel, any access point.

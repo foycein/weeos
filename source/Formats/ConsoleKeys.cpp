@@ -1,6 +1,7 @@
 #include "Formats/ConsoleKeys.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
 #include "Formats/HexText.h"
 
@@ -110,6 +111,49 @@ private:
     std::map<std::string, Bytes> fields;
 };
 
+}
+
+namespace
+{
+
+void AddLine(std::string& text, std::string_view name, ByteView value)
+{
+    text += std::format("{:<16}= ", name);
+    for (Byte byte : value)
+        text += std::format("{:02X}", byte);
+
+    text += '\n';
+}
+
+std::array<Byte, sizeof(std::uint32_t)> NumberBytes(std::uint32_t number)
+{
+    ByteWriter writer;
+    writer.WriteUint32(number);
+
+    std::array<Byte, sizeof(std::uint32_t)> bytes;
+    std::copy(writer.GetBytes().begin(), writer.GetBytes().end(), bytes.begin());
+    return bytes;
+}
+
+}
+
+Bytes WriteConsoleKeys(const ConsoleKeys& keys)
+{
+    std::string text;
+    AddLine(text, "boot1_hash", keys.boot1Hash);
+    AddLine(text, "wii_common_key", keys.commonKey);
+    AddLine(text, "console_id", NumberBytes(keys.consoleId));
+    AddLine(text, "ecc_private_key", keys.ellipticCurvePrivateKey);
+    AddLine(text, "nand_hmac", keys.nandHmacKey);
+    AddLine(text, "nand_aes_key", keys.nandAesKey);
+    AddLine(text, "prng_key", keys.randomNumberKey);
+    AddLine(text, "ng_key_id", NumberBytes(keys.ngKeyId));
+    AddLine(text, "ng_signature", keys.ngSignature);
+    AddLine(text, "sd_key", keys.sdKey);
+    AddLine(text, "sd_iv", keys.sdInitializationVector);
+    AddLine(text, "md5_blanker", keys.md5Blanker);
+    AddLine(text, "mac_address", keys.macAddress);
+    return Bytes(text.begin(), text.end());
 }
 
 ConsoleKeys ReadConsoleKeys(ByteView keysTextBytes)

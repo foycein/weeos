@@ -151,6 +151,9 @@ public:
     //  - ContentHashMismatch: the content is not the one of the title metadata.
     Result<void> AddContent(std::uint32_t contentId, Formats::ByteView encryptedContent);
 
+    // The same for a content that was decrypted before, as WeeOS's prepared Wii files keep it. The hash is checked the same way.
+    Result<void> AddDecryptedContent(std::uint32_t contentId, Formats::ByteView content);
+
     // Makes the title available. The system titles must have all their contents that are not optional (TitleInvalidArgument).
     // Installing over an older version replaces the contents and keeps the data folder of the title.
     Result<void> FinishInstallation();
