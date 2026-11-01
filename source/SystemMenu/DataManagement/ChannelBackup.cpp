@@ -24,8 +24,10 @@ constexpr std::string_view ChannelBackupFileName = "content.bin";
 constexpr std::string_view IconFileName = "meta/icon.bin";
 constexpr std::uint16_t BannerContentIndex = 0;
 
-// The size of the banner header stands behind its tag, which is 0x40 bytes into the header.
-constexpr std::size_t BannerHeaderSizeOffset = Formats::BannerHeaderOffsetInContent + 0x44;
+// The size of the banner header stands behind its four-byte tag, which is 0x40 bytes into the header.
+constexpr std::size_t BannerTagOffsetInHeader = 0x40;
+constexpr std::size_t BannerTagSize = 4;
+constexpr std::size_t BannerHeaderSizeOffset = Formats::BannerHeaderOffsetInContent + BannerTagOffsetInHeader + BannerTagSize;
 
 // The last bytes of the banner header are its MD5 digest. content.bin keeps the header with them and its first 0x40 bytes empty.
 constexpr std::size_t BannerHeaderEmptyStart = 0x40;
@@ -58,7 +60,9 @@ Formats::Bytes CopyBannerHeader(Formats::ByteView content)
     Formats::ByteReader reader(content, "Banner content");
     reader.MoveTo(BannerHeaderSizeOffset);
     std::uint32_t headerSize = reader.ReadUint32();
-    if (headerSize > Formats::BiggestBannerHeaderSize || headerSize < BannerHeaderEmptyStart + Formats::Md5DigestSize)
+    bool isTooBig = headerSize > Formats::BiggestBannerHeaderSize;
+    bool isTooSmall = headerSize < BannerHeaderEmptyStart + Formats::Md5DigestSize;
+    if (isTooBig || isTooSmall)
         reader.Fail(std::format("a banner header of {:#x} bytes does not fit into content.bin", headerSize));
 
     reader.MoveTo(Formats::BannerHeaderOffsetInContent);
@@ -117,7 +121,8 @@ DataResult CopyToCard(DataManagementServices& services, Ios::TitleId titleId)
     Formats::Bytes iconBlock = IconBlockOf(banner.icon);
 
     std::uint64_t freeBytes = RequireOnCard(services.sdCard.GetFreeBytes(), "measure the room on the SD card");
-    if (freeBytes < Formats::ChannelBackupHeaderSize + iconBlock.size() + archive.size())
+    std::uint64_t neededBytes = Formats::ChannelBackupHeaderSize + iconBlock.size() + archive.size();
+    if (freeBytes < neededBytes)
         throw DataError(DataResult::NotEnoughRoom, "the SD card is full");
 
     Formats::ChannelBackupHeader header;
@@ -166,7 +171,9 @@ ChannelOnCard ReadHeaderAndIcon(const DataManagementServices& services, Formats:
     if (fileSize <= archiveOffset || backupStart.size() < archiveOffset)
         throw DataError(DataResult::DamagedBackup, "content.bin ends before its archive");
 
-    Formats::Bytes iconBlock = DecryptFromCard(services.identity, backupStart.subspan(Formats::ChannelBackupHeaderSize, archiveOffset - Formats::ChannelBackupHeaderSize));
+    std::size_t iconBlockSize = archiveOffset - Formats::ChannelBackupHeaderSize;
+    Formats::ByteView encryptedIconBlock = backupStart.subspan(Formats::ChannelBackupHeaderSize, iconBlockSize);
+    Formats::Bytes iconBlock = DecryptFromCard(services.identity, encryptedIconBlock);
     if (Formats::ComputeMd5(iconBlock) != channel.header.iconDigest)
         throw DataError(DataResult::DamagedBackup, "the icon of content.bin is damaged");
 
