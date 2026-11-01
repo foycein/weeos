@@ -50,9 +50,9 @@ public:
     static CalendarTime ToCalendarTime(std::chrono::local_seconds time);
     static std::chrono::local_seconds ToLocalSeconds(const CalendarTime& time);
 
-private:
     static std::chrono::local_seconds ReadWindowsClock();
 
+private:
     ClockBiasSource clockBias;
     PcClock pcClock;
 };

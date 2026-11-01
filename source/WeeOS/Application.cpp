@@ -21,6 +21,7 @@
 #include <format>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace WeeOS
@@ -40,13 +41,14 @@ class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
-        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound)
+        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
+        const HostEnvironment& host)
         : window(programWindow)
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound)
-        , wiiMenuConsole(iosServices)
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock)
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -75,6 +77,11 @@ public:
         return menu.get();
     }
 
+    // Nothing while the menu runs.
+    Channels::ChannelSystem* Channel()
+    {
+        return channel.get();
+    }
 
     // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
     void Update()
@@ -205,8 +212,9 @@ private:
     std::vector<Sound::SoundSystem*> channelSounds;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)
+Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)
     : folders(iosFolders)
+    , host(std::move(hostEnvironment))
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
@@ -222,7 +230,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -257,8 +265,26 @@ void Application::ShowNextPicture()
     RunDueSteps();
     CarryOutRequestsOfTheMenu();
     ReportProblems();
+    ShowPicture();
+}
+
+void Application::RunOneStep()
+{
+    Platform::ProcessPendingMessages();
+    ReportCloseOfTheWindowAsPowerButton();
 
     if (isPoweredOff)
+        return;
+
+    session->VirtualRemote().SetWindowSize(window.ClientSize());
+    session->Update();
+    CarryOutRequestsOfTheMenu();
+    ReportProblems();
+}
+
+void Application::ShowPicture()
+{
+    if (isPoweredOff || window.IsMinimized())
         return;
 
     session->Draw();
@@ -439,6 +465,11 @@ SystemMenu::MenuSystem& Application::GetMenu()
         throw std::logic_error("The menu was asked for while a channel runs");
 
     return *session->Menu();
+}
+
+Channels::ChannelSystem* Application::GetChannel()
+{
+    return session->Channel();
 }
 
 Ios::TitleId Application::RunningTitle() const
