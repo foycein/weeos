@@ -60,6 +60,9 @@ public:
     void SetText(std::string_view paneName, std::u16string_view text);
     void SetVisible(std::string_view paneName, bool isVisible);
 
+    // Where the middle of a pane is in the picture, in layout units. Nothing when the layout has no such pane or does not show it.
+    std::optional<Formats::Vector2> PlaceOfPane(std::string_view paneName);
+
     // Shows a texture that the channel made (the face of a Mii, a photo) on a picture pane in place of its first texture. The texture
     // is known to the layout by its name and must outlive the layout.
     void ShowMadeTexture(std::string_view paneName, const std::string& textureName, Layout::LoadedTexture texture);

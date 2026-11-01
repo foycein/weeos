@@ -7,6 +7,7 @@
 #include "Channels/WiiSpeak/WiiSpeakFiles.h"
 #include "Channels/WiiSpeak/WiiSpeakFriends.h"
 #include "Channels/WiiSpeak/WiiSpeakMessages.h"
+#include "Channels/WiiSpeak/WiiSpeakRipples.h"
 #include "Channels/WiiSpeak/WiiSpeakSaveData.h"
 
 #include "SystemMenu/OwnServer.h"
@@ -59,6 +60,9 @@ struct WiiSpeakSession
     // The Miis of the console, read from RFL_DB.dat at the start, in the order of their slots, and their faces.
     std::vector<Mii::MiiRecord> consoleMiis;
     MiiFaces miiFaces;
+
+    // The ripples on the water, moved by the channel in every step and drawn by the screens over their water.
+    WiiSpeakRipples ripples;
 
     // The headphone mode of the channel. It is not saved ("Headphone settings will not be saved.", 4915230).
     bool usesHeadphones = false;

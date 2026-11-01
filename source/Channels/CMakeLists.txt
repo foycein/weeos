@@ -76,6 +76,7 @@ add_library(Channels STATIC
     WiiSpeak/WiiSpeakFiles.cpp
     WiiSpeak/WiiSpeakFriends.cpp
     WiiSpeak/WiiSpeakMessages.cpp
+    WiiSpeak/WiiSpeakRipples.cpp
     WiiSpeak/WiiSpeakSaveData.cpp
     WiiSpeak/WiiSpeakSession.cpp
 )

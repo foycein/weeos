@@ -15,6 +15,8 @@ namespace
 
 constexpr std::uint16_t ResourceContentIndex = 2;
 constexpr std::string_view SystemArchivePath = "./system.szs";
+constexpr std::string_view RippleEffectsPath = "ef/ripple_effect.breff";
+constexpr std::string_view RipplePicturesPath = "ef/ripple_effect.breft";
 constexpr std::string_view SceneFolder = "./scene/";
 constexpr std::string_view SceneExtension = ".szs";
 constexpr std::string_view EnglishMessagesPath = "message/WiiMic_us_en.bmg";
@@ -60,6 +62,16 @@ std::unique_ptr<Layout::LayoutArchive> WiiSpeakFiles::SceneLayouts(std::string_v
     std::string scenePath = std::string(SceneFolder) + std::string(sceneName) + std::string(SceneExtension);
     Formats::U8Archive scene = ReadPackedArchive(resources, scenePath);
     return ReadBundle(scene, bundleName);
+}
+
+Formats::ByteView WiiSpeakFiles::RippleEffects() const
+{
+    return FindFileOrFail(systemArchive, RippleEffectsPath);
+}
+
+Formats::ByteView WiiSpeakFiles::RipplePictures() const
+{
+    return FindFileOrFail(systemArchive, RipplePicturesPath);
 }
 
 Formats::MessageFile WiiSpeakFiles::EnglishMessages() const
