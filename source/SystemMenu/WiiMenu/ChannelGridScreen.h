@@ -110,6 +110,7 @@ private:
     BottomBarScreen* Bar();
     ChannelTile& Tile(SlotPosition position);
     void DrawTiles(const PlacedPanes& placedPanes);
+    Graphics::ScissorRectangle AreaOfTheTelevisionAt(Formats::Vector2 place) const;
 
     MenuServices& services;
     int argument;

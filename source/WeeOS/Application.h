@@ -40,9 +40,9 @@ public:
     Platform::Window& GetWindow();
     Graphics::VulkanGraphicsDevice& GetDevice();
     SystemMenu::MenuSystem& GetMenu();
+    Input::VirtualRemote& GetVirtualRemote();
 
 private:
-    Input::VirtualRemote& GetVirtualRemote();
     void RunDueSteps();
     void ReportUnbuiltScreen();
 

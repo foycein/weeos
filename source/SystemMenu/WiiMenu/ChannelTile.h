@@ -2,6 +2,7 @@
 
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/WiiMenu/Balloon.h"
+#include "SystemMenu/WiiMenu/ChannelManager.h"
 #include "SystemMenu/WiiMenu/FramePlayer.h"
 
 #include "Formats/Vectors.h"
@@ -47,9 +48,9 @@ struct TileArchives
 class ChannelTile
 {
 public:
-    // The picture of a channel, from the layout archive of its icon. The archive must outlive the tile.
-    static std::unique_ptr<ChannelTile> MakeChannel(Display& display, const TileArchives& archives,
-        const Layout::LayoutArchive& icon, const std::optional<std::string>& iconAnimation, const std::u16string& name);
+    // The picture of a channel, from the layout archive of its icon. The channel must have an icon and outlive the tile.
+    static std::unique_ptr<ChannelTile> MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
+        const std::u16string& name);
 
     static std::unique_ptr<ChannelTile> MakeDamagedChannel(Display& display, const TileArchives& archives);
     static std::unique_ptr<ChannelTile> MakeDiscChannel(Display& display, const TileArchives& archives, const std::u16string& name);
@@ -65,8 +66,7 @@ public:
 
     void Calculate();
 
-    // Draws the picture and the frame with their middle at a place of the picture. The picture is not stretched on a wide screen:
-    // the icons of the channels are made wider than a 4:3 place, and the mask of the grid shows as much of them as the screen has room for.
+    // Draws the picture and the frame with their middle at a place of the picture.
     void DrawAt(Formats::Vector2 place);
 
     // Draws the balloon below the place.
@@ -76,6 +76,8 @@ private:
     ChannelTile(Display& display, TileKind kind, std::unique_ptr<MenuLayout> picture, const TileArchives& archives);
 
     void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
+    void PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
+    void ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive);
     void AddBalloon(const TileArchives& archives, const std::u16string& name);
 
     Display& display;

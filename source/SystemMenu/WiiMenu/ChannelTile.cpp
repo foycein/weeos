@@ -2,6 +2,9 @@
 
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 
+#include <algorithm>
+#include <array>
+
 namespace SystemMenu
 {
 
@@ -20,10 +23,13 @@ constexpr std::string_view FocusOnAnimation = "my_IplTop_d_FocusOn";
 constexpr std::string_view FocusOffAnimation = "my_IplTop_d_FocusOff";
 constexpr std::string_view RootPaneName = "RootPane";
 
+// The groups of an icon that hold the words of one language each, and the group of the first animation of its script.
+constexpr std::string_view EnglishGroup = "ENG";
+constexpr std::array<std::string_view, 8> OtherLanguageGroups = {"JPN", "GER", "FRA", "SPA", "ITA", "NED", "KOR", "CHN"};
+constexpr std::string_view ScriptGroup = "Rso0";
+
 // The balloon hangs below the television of the place, which is 96 units high.
 constexpr float HalfHeightOfAPlace = 48;
-
-constexpr Formats::Vector2 UnstretchedScale = {1, 1};
 
 }
 
@@ -39,13 +45,22 @@ ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_pt
     lastFrameOfFocusOff = focusOff->LastFrameOfTheFile();
 }
 
-std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const Layout::LayoutArchive& icon,
-    const std::optional<std::string>& iconAnimation, const std::u16string& name)
+// The icons that a script drives get from the menu what the script shows while the channel has no data of its own:
+// the panes of the language of the console and the first animation of the script (docs/research/Channels.md 1.6, CHN-03).
+std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
+    const std::u16string& name)
 {
+    const Layout::LayoutArchive& icon = *channel.icon;
     auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
-    if (iconAnimation)
-        tile->PlayAnimation(icon, *iconAnimation);
+    if (channel.iconAnimation)
+        tile->PlayAnimation(icon, *channel.iconAnimation);
+
+    if (channel.isIconDrivenByCode)
+        tile->ShowOnlyTheEnglishPanes(icon);
+
+    if (channel.scriptAnimation)
+        tile->PlayScriptAnimation(icon, *channel.scriptAnimation);
 
     tile->AddBalloon(archives, name);
     return tile;
@@ -122,7 +137,6 @@ void ChannelTile::Calculate()
 void ChannelTile::DrawAt(Formats::Vector2 place)
 {
     MoveLayoutTo(*picture, place);
-    picture->PaneNamed(RootPaneName).scale = UnstretchedScale;
     picture->Draw();
 
     MoveLayoutTo(*focusFrame, place);
@@ -145,6 +159,44 @@ void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std:
     Layout::PlaybackMode mode = ModeOfAnimationFile(archive, animationName);
     std::size_t slot = picture->BindAnimationToPane(animationName, RootPaneName, mode);
     picture->StartAnimation(slot);
+}
+
+// The script plays its first animation on the group of the same name, Rso0.
+void ChannelTile::PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName)
+{
+    Layout::PlaybackMode mode = ModeOfAnimationFile(archive, animationName);
+    std::size_t slot = picture->BindAnimation(animationName, ScriptGroup, mode);
+    picture->StartAnimation(slot);
+}
+
+// An icon holds its words in every language, each language in a group named after it. The panes of the other languages are hidden,
+// except those that English uses as well.
+void ChannelTile::ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive)
+{
+    Formats::Layout file = archive.ReadLayout(std::string(IconLayout));
+    if (!file.rootGroup)
+        return;
+
+    std::vector<std::string> englishPanes;
+    for (const Formats::Group& group : file.rootGroup->children)
+    {
+        if (group.name == EnglishGroup)
+            englishPanes = group.paneNames;
+    }
+
+    for (const Formats::Group& group : file.rootGroup->children)
+    {
+        bool isOtherLanguage = std::find(OtherLanguageGroups.begin(), OtherLanguageGroups.end(), group.name) != OtherLanguageGroups.end();
+        if (!isOtherLanguage)
+            continue;
+
+        for (const std::string& paneName : group.paneNames)
+        {
+            bool isEnglishToo = std::find(englishPanes.begin(), englishPanes.end(), paneName) != englishPanes.end();
+            if (!isEnglishToo)
+                picture->PaneNamed(paneName).isVisible = false;
+        }
+    }
 }
 
 void ChannelTile::AddBalloon(const TileArchives& archives, const std::u16string& name)

@@ -22,6 +22,9 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
     if (screen == ScreenId::BottomBar)
         return std::make_unique<BottomBarScreen>(services);
 
+    if (screen == ScreenId::BarOverlay)
+        return std::make_unique<BarOverlayScreen>(services);
+
     if (screen == ScreenId::ChannelGrid)
         return std::make_unique<ChannelGridScreen>(services, argument);
 

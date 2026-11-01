@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <vector>
 
 namespace SystemMenu
@@ -39,23 +40,48 @@ public:
     void Build() override;
     void Draw(DrawPass pass) override;
 
-    // The arrows show only where there is a page to go to.
+    // The arrows show only where there is a page to go to. An arrow that is not needed slides out of the picture.
     void ShowPageArrows(bool hasPreviousPage, bool hasNextPage);
-    bool IsPreviousPageArrowShown();
-    bool IsNextPageArrowShown();
+    bool IsPreviousPageArrowShown() const;
+    bool IsNextPageArrowShown() const;
+
+    // The bar overlay draws the arrows over the channel grid.
+    void DrawPageArrows();
 
     // The button under a place of the picture, in layout units. An arrow that is hidden is no button.
     std::optional<BarButton> ButtonAt(Formats::Vector2 place);
+
+    // The middle of the area of a button in the picture, in layout units.
+    Formats::Vector2 PlaceOfButton(BarButton button);
 
 protected:
     bool RunMain() override;
 
 private:
+    void DrawArrow(std::string_view arrowName);
+    void SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown);
+
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
     std::unique_ptr<MenuLayout> layout;
     std::vector<std::unique_ptr<FramePlayer>> stillGroups;
     std::unique_ptr<FramePlayer> arrowLoop;
+    std::unique_ptr<FramePlayer> previousPageArrow;
+    std::unique_ptr<FramePlayer> nextPageArrow;
+    bool isPreviousPageArrowShown = false;
+    bool isNextPageArrowShown = false;
+};
+
+// Draws the page arrows of the bar over the channel grid (screen 0x06). It opens last, so it is drawn after the grid.
+class BarOverlayScreen : public Screen
+{
+public:
+    explicit BarOverlayScreen(MenuServices& menuServices);
+
+    void Draw(DrawPass pass) override;
+
+private:
+    MenuServices& services;
 };
 
 }

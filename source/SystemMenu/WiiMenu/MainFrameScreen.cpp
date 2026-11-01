@@ -81,7 +81,7 @@ bool MainFrameScreen::RunMain()
 
     background->Calculate();
 
-    if (!hasFadedIn && IsTheGridBuilt())
+    if (!hasFadedIn && AreTheChildrenBuilt())
         hasFadedIn = services.fader.StartFadeIn();
 
     return false;
@@ -99,9 +99,10 @@ void MainFrameScreen::WriteTheDates(const LocalTime& today)
     dayOfTheDates = today.day;
 }
 
-bool MainFrameScreen::IsTheGridBuilt()
+// The original fades in when the bar overlay, the last of the three, is there.
+bool MainFrameScreen::AreTheChildrenBuilt()
 {
-    return services.screens.FindScreen(ScreenId::ChannelGrid) != nullptr;
+    return services.screens.FindScreen(ScreenId::BarOverlay) != nullptr;
 }
 
 }

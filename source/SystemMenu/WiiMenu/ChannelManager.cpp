@@ -20,6 +20,7 @@ constexpr std::string_view AnimationExtension = ".brlan";
 constexpr std::string_view StartAnimation = "icon_Start";
 constexpr std::string_view LoopAnimation = "icon";
 constexpr std::string_view WholeAnimation = "icon_Whole";
+constexpr std::string_view FirstScriptAnimation = "icon_Rso0";
 
 bool HasAnimation(const Formats::U8Archive& iconFiles, std::string_view animationName)
 {
@@ -60,6 +61,14 @@ std::optional<std::string> ChooseIconAnimation(const Formats::U8Archive& iconFil
 
     if (HasAnimation(iconFiles, WholeAnimation))
         return std::string(WholeAnimation);
+
+    return std::nullopt;
+}
+
+std::optional<std::string> ChooseScriptAnimation(const Formats::U8Archive& iconFiles, bool isIconDrivenByCode)
+{
+    if (isIconDrivenByCode && HasAnimation(iconFiles, FirstScriptAnimation))
+        return std::string(FirstScriptAnimation);
 
     return std::nullopt;
 }
@@ -181,6 +190,8 @@ std::unique_ptr<LoadedChannel> ChannelManager::ReadChannel(Ios::TitleId titleId)
         {
             Formats::U8Archive iconFiles = Formats::ReadLayoutFile(*iconFile);
             channel->iconAnimation = ChooseIconAnimation(iconFiles, banner.isIconDrivenByCode);
+            channel->scriptAnimation = ChooseScriptAnimation(iconFiles, banner.isIconDrivenByCode);
+            channel->isIconDrivenByCode = banner.isIconDrivenByCode;
             channel->icon = std::make_unique<Layout::LayoutArchive>(std::move(iconFiles));
         }
     }

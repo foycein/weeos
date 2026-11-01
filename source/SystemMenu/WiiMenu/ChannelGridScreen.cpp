@@ -52,6 +52,10 @@ constexpr std::string_view WideEdgePicture = "Picture_16";
 constexpr std::array<std::string_view, 5> MaskPictures = {"Picture_00", "Picture_01", "Picture_02", "Picture_03", "Picture_04"};
 constexpr std::array<std::string_view, 5> EdgePictures = {"Edge0", "Edge1", "Edge2", "Edge3", "Edge4"};
 
+// A television of the grid is 128 by 96 units, the size of the panes of its places.
+constexpr float TelevisionWidth = 128;
+constexpr float TelevisionHeight = 96;
+
 // The clock stands below the page that shows and below its neighbors, so that it slides with the strip.
 constexpr std::array<std::string_view, 3> ClockPanes = {"N_Clock0", "N_Clock1", "N_Clock2"};
 
@@ -180,7 +184,7 @@ std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
         return ChannelTile::MakeDamagedChannel(services.display, archives);
 
     const std::u16string& name = channel.names[Formats::EnglishLanguageNumber].firstLine;
-    return ChannelTile::MakeChannel(services.display, archives, *channel.icon, channel.iconAnimation, name);
+    return ChannelTile::MakeChannel(services.display, archives, channel, name);
 }
 
 GridState ChannelGridScreen::State() const
@@ -564,11 +568,28 @@ void ChannelGridScreen::DrawTiles(const PlacedPanes& placedPanes)
 
         SlotPosition position = {page, slot.slotIndex};
         bool isTheHeldChannel = isHolding && position == heldChannel;
+        services.display.Device().SetScissor(AreaOfTheTelevisionAt(*place));
         if (isTheHeldChannel)
             emptyPlace->DrawAt(*place);
         else
             Tile(position).DrawAt(*place);
     }
+    services.display.Device().ClearScissor();
+}
+
+// A tile draws only inside its television. Some icons have parts beside the picture, which their own script moves into view.
+Graphics::ScissorRectangle ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
+{
+    Formats::Vector2 stretch = services.display.LayoutStretch();
+    float halfWidth = TelevisionWidth / 2 * stretch.x;
+    float halfHeight = TelevisionHeight / 2 * stretch.y;
+
+    Graphics::ScissorRectangle area;
+    area.left = place.x - halfWidth;
+    area.right = place.x + halfWidth;
+    area.bottom = place.y - halfHeight;
+    area.top = place.y + halfHeight;
+    return area;
 }
 
 }
