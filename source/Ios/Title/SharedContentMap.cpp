@@ -53,7 +53,8 @@ const std::vector<SharedContentEntry>& SharedContentMap::Entries() const
 
 std::optional<std::string> SharedContentMap::FindName(const Formats::Sha1Digest& hash) const
 {
-    auto found = std::find_if(entries.begin(), entries.end(), [&hash](const SharedContentEntry& entry) { return entry.hash == hash; });
+    auto found = std::find_if(entries.begin(), entries.end(),
+        [&hash](const SharedContentEntry& entry) { return entry.hash == hash; });
     if (found == entries.end())
         return std::nullopt;
 

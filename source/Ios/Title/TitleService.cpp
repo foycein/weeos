@@ -21,6 +21,9 @@ namespace
 constexpr std::string_view TicketFileExtension = ".tik";
 constexpr std::string_view VersionOneTicketFileExtension = ".tv1";
 
+// The view of a title with the low half 0 stands for every title of the family.
+constexpr std::uint32_t WholeFamilyLowPart = 0;
+
 // The number in the name of a ticket file such as "48414341.tik".
 std::optional<std::uint32_t> ParseTicketFileName(std::string_view name, bool countsVersionOneTickets)
 {
@@ -34,13 +37,12 @@ std::optional<std::uint32_t> ParseTicketFileName(std::string_view name, bool cou
     return ParseNameNumber(name);
 }
 
-// The view of a title with the low half 0 stands for every title of the family.
 bool TicketViewIsForTitle(const TicketView& view, TitleId titleId)
 {
     if (view.titleId == titleId)
         return true;
 
-    return view.titleId.highPart == titleId.highPart && view.titleId.lowPart == 0;
+    return view.titleId.highPart == titleId.highPart && view.titleId.lowPart == WholeFamilyLowPart;
 }
 
 const Formats::ContentRecord* FindContentByIndex(const Formats::TitleMetadata& metadata, std::uint16_t contentIndex)
@@ -156,8 +158,12 @@ Result<std::vector<std::uint32_t>> TitleService::FindPresentContentIds(const For
     std::vector<std::uint32_t> contentIds;
     for (const Formats::ContentRecord& record : metadata.contents)
     {
-        bool isPresent = IsSharedContent(record) ? sharedContents.Value().FindName(record.hash).has_value()
-                                                 : files.Exists(PrivateContentPath(titleId, record.id));
+        bool isPresent = false;
+        if (IsSharedContent(record))
+            isPresent = sharedContents.Value().FindName(record.hash).has_value();
+        else
+            isPresent = files.Exists(PrivateContentPath(titleId, record.id));
+
         if (isPresent)
             contentIds.push_back(record.id);
     }
@@ -229,11 +235,9 @@ Result<std::vector<Formats::Ticket>> TitleService::ReadTickets(TitleId titleId) 
     if (bytes.Failed())
         return bytes.Error();
 
-    std::size_t ticketCount = bytes.Value().size() / StoredTicketSize;
-    for (std::size_t ticketNumber = 0; ticketNumber < ticketCount; ++ticketNumber)
+    for (const Formats::Bytes& storedTicket : SplitStoredTickets(bytes.Value()))
     {
-        Formats::ByteView ticketBytes(bytes.Value().data() + ticketNumber * StoredTicketSize, StoredTicketSize);
-        Result<Formats::Ticket> ticket = ParseTicket(ticketBytes, IosError::TicketInvalid);
+        Result<Formats::Ticket> ticket = ParseTicket(storedTicket, IosError::TicketInvalid);
         if (ticket.Failed())
             return ticket.Error();
 
@@ -325,8 +329,11 @@ Result<ContentStream> TitleService::OpenContentRecord(const Formats::TitleMetada
     if (contentBytes.Failed())
         return contentBytes.Error();
 
-    bool isWhatTheMetadataDescribes = contentBytes.Value().size() == record->size && Formats::ComputeSha1(contentBytes.Value()) == record->hash;
-    if (!isWhatTheMetadataDescribes)
+    if (contentBytes.Value().size() != record->size)
+        return IosError::ContentHashMismatch;
+
+    Formats::Sha1Digest contentHash = Formats::ComputeSha1(contentBytes.Value());
+    if (contentHash != record->hash)
         return IosError::ContentHashMismatch;
 
     return ContentStream(std::move(contentBytes.Value()));

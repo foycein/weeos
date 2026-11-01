@@ -271,6 +271,13 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
     if (replacedEntry != nullptr)
         EraseSubtree(to);
 
+    RenameSubtree(from, to, newHostName);
+    return SaveIndex();
+}
+
+// The entry that moves gets its new host name and a new link number. The entries inside it keep theirs.
+void NandStorage::RenameSubtree(const NandPath& from, const NandPath& to, const std::string& newHostName)
+{
     std::vector<std::pair<NandPath, EntryRecord>> movedEntries = EraseSubtree(from);
     for (auto& [oldPath, record] : movedEntries)
     {
@@ -283,8 +290,6 @@ Result<void> NandStorage::Move(const NandPath& from, const NandPath& to)
 
         entries.emplace(oldPath.AfterMove(from, to), record);
     }
-
-    return SaveIndex();
 }
 
 Result<void> NandStorage::SetAttributes(const NandPath& path, const EntryAttributes& attributes)

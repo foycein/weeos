@@ -19,12 +19,17 @@ bool IsPrintable(char character)
     return character >= FirstPrintableCharacter && character <= LastPrintableCharacter;
 }
 
+bool IsNameCharacter(char character)
+{
+    return character != PathSeparator && IsPrintable(character);
+}
+
 bool IsValidName(std::string_view name)
 {
     if (name.empty())
         return false;
 
-    return std::all_of(name.begin(), name.end(), [](char character) { return character != PathSeparator && IsPrintable(character); });
+    return std::all_of(name.begin(), name.end(), IsNameCharacter);
 }
 
 }

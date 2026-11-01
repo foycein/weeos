@@ -1,5 +1,7 @@
 #include "Ios/Profile/ProfileChoice.h"
 
+#include "Ios/Title/TitleId.h"
+
 #include <cstdint>
 #include <format>
 
@@ -11,8 +13,6 @@ namespace
 
 constexpr IosNumber SystemMenuIosNumber = 80;
 
-constexpr int BitsPerTitleIdPart = 32;
-constexpr std::uint32_t SystemTitleHighPart = 0x00000001;
 constexpr std::uint64_t NoRequiredSystemVersion = 0;
 
 // The IOS that a title runs on: the one its metadata requires, or the title itself when it is an IOS.
@@ -22,15 +22,15 @@ IosNumber IosNumberNamedBy(const Formats::TitleMetadata& metadata)
     if (iosTitleId == NoRequiredSystemVersion)
         iosTitleId = metadata.titleId;
 
-    std::uint32_t highPart = static_cast<std::uint32_t>(iosTitleId >> BitsPerTitleIdPart);
-    if (highPart != SystemTitleHighPart)
+    TitleId iosTitle = TitleId::FromValue(iosTitleId);
+    if (iosTitle.highPart != SystemTitleHighPart)
     {
         std::string message = std::format("The title {:016x} names no IOS: its required system version is {:016x}",
             metadata.titleId, metadata.requiredSystemVersion);
         throw ProfileError(ProfileProblem::NamesNoIos, message);
     }
 
-    return static_cast<IosNumber>(iosTitleId);
+    return static_cast<IosNumber>(iosTitle.lowPart);
 }
 
 }

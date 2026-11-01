@@ -5,13 +5,21 @@
 namespace Ios
 {
 
+namespace
+{
+
+// The contexts are numbered from 1. The number 0 is no context.
+constexpr SecureContextId FirstContextId = 1;
+
+}
+
 SecureSocketService::ContextState* SecureSocketService::FindOpenContext(SecureContextId context)
 {
-    bool isNumberOfAContext = context >= 1 && context <= static_cast<SecureContextId>(SecureContextCount);
+    bool isNumberOfAContext = context >= FirstContextId && context <= static_cast<SecureContextId>(SecureContextCount);
     if (!isNumberOfAContext)
         return nullptr;
 
-    ContextState& state = states[context - 1];
+    ContextState& state = states[context - FirstContextId];
     if (state == ContextState::Free)
         return nullptr;
 
@@ -29,7 +37,7 @@ Result<SecureContextId> SecureSocketService::NewContext(std::uint32_t, std::stri
         return IosError::SecureLibraryFailure;
 
     *freeContext = ContextState::New;
-    return static_cast<SecureContextId>(freeContext - states.begin()) + 1;
+    return static_cast<SecureContextId>(freeContext - states.begin()) + FirstContextId;
 }
 
 Result<void> SecureSocketService::Connect(SecureContextId context, SocketId)
