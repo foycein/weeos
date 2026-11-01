@@ -12,6 +12,7 @@
 #include "Ios/Power/PowerService.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Ios/Title/TitleId.h"
+#include "Ios/Title/TitleService.h"
 
 #include <cstddef>
 #include <memory>
@@ -33,9 +34,10 @@ class ChannelSystem
 public:
     // Throws a ChannelError when WeeOS has no program for the title. The device, both contents and the services must outlive the
     // channel system. The contents of the System Menu are read only when the question "Turn off WeeOS?" first comes.
+    // A channel that brings no fonts of its own draws its texts with the console's fonts, when they are given (ReadConsoleFontArchive).
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, SystemMenu::TitleContents& systemMenuContents,
         Ios::RemoteService& remoteService, Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService,
-        Ios::TitleId titleId);
+        Ios::TitleId titleId, std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
     ~ChannelSystem();
 
     // One step of the console's picture, 1001/60000 of a second.
@@ -65,7 +67,7 @@ private:
     // The dialog windows and the fonts of the System Menu, with a display of their own, for the question "Turn off WeeOS?".
     class TurnOffParts;
 
-    void LoadSystemFonts(SystemMenu::TitleContents& contents);
+    void LoadSystemFonts(SystemMenu::TitleContents& contents, std::optional<Formats::Bytes> consoleFontArchive);
     SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
     SystemMenu::HomeButtonConnections ConnectHomeButton();
     void LeaveThroughHomeMenu(std::size_t bigButton);
@@ -94,5 +96,8 @@ private:
     SystemMenu::TitleLaunchRequest titleLaunch;
     bool hasAskedForMenu = false;
 };
+
+// The archive of the console's two bitmap fonts: content 5 of the System Menu, which titles share (CHN-77). Nothing when it is not there.
+std::optional<Formats::Bytes> ReadConsoleFontArchive(const Ios::TitleService& titles);
 
 }

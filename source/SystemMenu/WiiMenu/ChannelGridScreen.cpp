@@ -30,8 +30,9 @@ constexpr std::string_view StripLayout = "my_IplTop_a";
 constexpr std::string_view StripAnimation = "my_IplTop_a";
 
 // The strip slides one page to the left in frames 0 to 20 of its animation and one page to the right in frames 40 to 60.
-// Frame 0 is the strip at rest.
+// Frame 0 is the strip at rest. While the grid zooms into a television, ChMask darkens the whole grid in frames 200 to 228.
 constexpr float FrameAtRest = 0;
+constexpr float FirstFrameOfTheDarkening = 200;
 constexpr float FirstFrameToPreviousPage = 0;
 constexpr float LastFrameToPreviousPage = 20;
 constexpr float FirstFrameToNextPage = 40;
@@ -53,9 +54,10 @@ constexpr std::string_view WideEdgePicture = "Picture_16";
 constexpr std::array<std::string_view, 5> MaskPictures = {"Picture_00", "Picture_01", "Picture_02", "Picture_03", "Picture_04"};
 constexpr std::array<std::string_view, 5> EdgePictures = {"Edge0", "Edge1", "Edge2", "Edge3", "Edge4"};
 
-// A television of the grid is 128 by 96 units, the size of the panes of its places.
-constexpr float TelevisionWidth = 128;
-constexpr float TelevisionHeight = 96;
+// Half the size of a television of the grid, in the units of the picture (the constructor 0x813AA4CC takes them from a table by the
+// shape of the screen): 170 by 96 units on the 16:9 screen (128 by 96 on a 4:3 screen, which WeeOS does not show).
+constexpr float HalfWidthOfAWideTelevision = 85;
+constexpr float HalfHeightOfATelevision = 48;
 
 // The clock stands below the page that shows and below its neighbors, so that it slides with the strip.
 constexpr std::array<std::string_view, 3> ClockPanes = {"N_Clock0", "N_Clock1", "N_Clock2"};
@@ -85,7 +87,6 @@ constexpr std::string_view StartSound = "WIPL_SE_WII_START";
 
 // While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
-constexpr std::uint8_t FullyShown = 255;
 
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
 {
@@ -526,19 +527,36 @@ void ChannelGridScreen::PressChannel(SlotPosition position)
 
 void ChannelGridScreen::ZoomIntoPressedChannel()
 {
-    int slotIndex = services.wiiMenu.pressedChannel.value_or(SlotPosition{}).index;
-    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), AreaOfTheTelevisionAt(PlaceOfSlot(slotIndex)));
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), TelevisionOfThePressedChannel());
     zoom->StartZoomingIn();
+    ShowTheZoom();
     services.sounds.Request(ZoomSound);
 }
 
+// The window may have changed to a channel of another page meanwhile: the grid shows that page and zooms out of its television
+// (0x813ADC8C, 0x813ADCE8).
 void ChannelGridScreen::ZoomOutOfPressedChannel()
 {
-    if (!zoom)
-        return;
+    SlotPosition channel = services.wiiMenu.pressedChannel.value_or(SlotPosition{});
+    services.wiiMenu.channels.ShowPage(channel.page);
 
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), TelevisionOfThePressedChannel());
     zoom->StartZoomingOut();
+    ShowTheZoom();
     state = GridState::ZoomingOutOfChannel;
+}
+
+PictureArea ChannelGridScreen::TelevisionOfThePressedChannel()
+{
+    int slotIndex = services.wiiMenu.pressedChannel.value_or(SlotPosition{}).index;
+    return AreaOfTheTelevisionAt(PlaceOfSlot(slotIndex));
+}
+
+// The screens of the Wii Menu look through the camera of the zoom, and the grid darkens as much as the zoom has come.
+void ChannelGridScreen::ShowTheZoom()
+{
+    services.display.SetCamera(zoom->VisibleArea());
+    stripSlide->Show(FirstFrameOfTheDarkening + static_cast<float>(zoom->StepsTowardsTheTelevision()));
 }
 
 const TelevisionZoom* ChannelGridScreen::Zoom() const
@@ -556,13 +574,15 @@ bool ChannelGridScreen::DrawsWithChildren() const
     return true;
 }
 
-// When the grid has zoomed out again, it is as it was before the press, and the music of the menu starts again (0x813AC7D8).
+// When the grid has zoomed out again and the window is gone, the grid is as it was before the press, and the music of the menu
+// starts again (0x813AC7D8).
 void ChannelGridScreen::RunZoom()
 {
     if (!zoom)
         return;
 
     zoom->Step();
+    ShowTheZoom();
     if (zoom->IsMoving())
         return;
 
@@ -572,11 +592,22 @@ void ChannelGridScreen::RunZoom()
         return;
     }
 
+    if (HasChildren())
+        return;
+
     zoom.reset();
+    services.display.ResetCamera();
+    stripSlide->Show(FrameAtRest);
     state = GridState::Idle;
     SetBarButtonsEnabled(true);
     ShowTheArrowsOfThePage();
     services.sounds.StartMusic();
+}
+
+// The camera belongs to the grid: whatever comes after it sees the whole picture again.
+void ChannelGridScreen::OnClose()
+{
+    services.display.ResetCamera();
 }
 
 // The bar stops answering, the menu says yes, and the picture fades out before the new screen comes (0x813B0444, 0x813B0728).
@@ -659,9 +690,7 @@ void ChannelGridScreen::Draw(DrawPass pass)
         return;
     }
 
-    if (zoom)
-        services.display.MoveArea(zoom->VisibleArea(), services.display.WholePicture(), FullyShown);
-
+    services.display.LookThroughCamera();
     DrawTheGrid();
     services.display.StopMovingAreas();
 }
@@ -722,18 +751,15 @@ void ChannelGridScreen::DrawTiles(const PlacedPanes& placedPanes)
     services.display.Device().ClearScissor();
 }
 
-// A tile draws only inside its television. Some icons have parts beside the picture, which their own script moves into view.
-Graphics::ScissorRectangle ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
+// A tile draws only inside its television (0x813ADFDC), also while the grid zooms. Some icons have parts beside the picture, which
+// their own script moves into view.
+PictureArea ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
 {
-    Formats::Vector2 stretch = services.display.LayoutStretch();
-    float halfWidth = TelevisionWidth / 2 * stretch.x;
-    float halfHeight = TelevisionHeight / 2 * stretch.y;
-
-    Graphics::ScissorRectangle area;
-    area.left = place.x - halfWidth;
-    area.right = place.x + halfWidth;
-    area.bottom = place.y - halfHeight;
-    area.top = place.y + halfHeight;
+    PictureArea area;
+    area.left = place.x - HalfWidthOfAWideTelevision;
+    area.right = place.x + HalfWidthOfAWideTelevision;
+    area.bottom = place.y - HalfHeightOfATelevision;
+    area.top = place.y + HalfHeightOfATelevision;
     return area;
 }
 

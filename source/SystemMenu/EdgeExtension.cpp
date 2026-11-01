@@ -266,6 +266,21 @@ void EdgeExtendingDevice::DrawMesh(std::span<const Graphics::MeshVertex> triangl
     target.DrawMesh(triangleCorners, placement, material);
 }
 
+Graphics::MeshHandle EdgeExtendingDevice::CreateMesh(std::span<const Graphics::MeshVertex> triangleCorners)
+{
+    return target.CreateMesh(triangleCorners);
+}
+
+void EdgeExtendingDevice::DestroyMesh(Graphics::MeshHandle mesh)
+{
+    target.DestroyMesh(mesh);
+}
+
+void EdgeExtendingDevice::DrawMesh(Graphics::MeshHandle mesh, const Graphics::MeshPlacement& placement, const Graphics::Material& material)
+{
+    target.DrawMesh(mesh, placement, material);
+}
+
 Graphics::TextureHandle EdgeExtendingDevice::BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height)
 {
     screenCanvasArea = canvasArea;

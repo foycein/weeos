@@ -103,6 +103,21 @@ void ZoomedDevice::DrawMesh(std::span<const Graphics::MeshVertex> triangleCorner
     target.DrawMesh(triangleCorners, placement, material);
 }
 
+Graphics::MeshHandle ZoomedDevice::CreateMesh(std::span<const Graphics::MeshVertex> triangleCorners)
+{
+    return target.CreateMesh(triangleCorners);
+}
+
+void ZoomedDevice::DestroyMesh(Graphics::MeshHandle mesh)
+{
+    target.DestroyMesh(mesh);
+}
+
+void ZoomedDevice::DrawMesh(Graphics::MeshHandle mesh, const Graphics::MeshPlacement& placement, const Graphics::Material& material)
+{
+    target.DrawMesh(mesh, placement, material);
+}
+
 Graphics::TextureHandle ZoomedDevice::BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height)
 {
     return target.BeginOffscreen(canvas, width, height);

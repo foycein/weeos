@@ -6,6 +6,7 @@
 #include "Graphics/DrawPipelines.h"
 #include "Graphics/FrameResources.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Graphics/StoredMeshes.h"
 #include "Graphics/Swapchain.h"
 #include "Graphics/TextureStore.h"
 #include "Graphics/VulkanContext.h"
@@ -46,6 +47,9 @@ public:
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
     void DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material) override;
+    MeshHandle CreateMesh(std::span<const MeshVertex> triangleCorners) override;
+    void DestroyMesh(MeshHandle mesh) override;
+    void DrawMesh(MeshHandle mesh, const MeshPlacement& placement, const Material& material) override;
     TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;
@@ -84,6 +88,7 @@ private:
         std::uint32_t stageCount = 0;
         std::uint32_t meshCount = 0;
         std::uint32_t meshCornerCount = 0;
+        std::uint32_t boneCount = 0;
         VkPipeline boundPipeline = VK_NULL_HANDLE;
     };
 
@@ -96,6 +101,13 @@ private:
         VkImageView imageView;
         VkExtent2D size;
         const GraphicsImage* depthBuffer;
+    };
+
+    // An offscreen picture that is being drawn, and the texture that holds it when it is finished.
+    struct OffscreenPicture
+    {
+        Target target;
+        TextureHandle texture;
     };
 
     // The picture that the frame buffer of the console is drawn into. It is copied to the screen when the picture is finished.
@@ -130,8 +142,10 @@ private:
     void BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor);
     void EndPass();
     void ApplyTargetState(const Target& target);
-    void PauseScreenPass();
-    void ResumeScreenPass();
+
+    // The picture that is drawn into waits while another picture is drawn, and goes on with what it holds.
+    void PausePass(const Target& target);
+    void ResumePass(const Target& target);
     void FinishStandaloneRecording();
     void FinishScreenPicture();
     void ShowOnTheDisplay(FrameResources& resources);
@@ -146,6 +160,11 @@ private:
 
     // Puts the record and the corners of a mesh into the buffers of the picture. Gives the number of the mesh.
     std::uint32_t WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement);
+    std::uint32_t WriteMeshRecord(Recording& recording, const MeshPlacement& placement);
+
+    // Draws corners of the buffer of the picture or of the stored meshes, as the record of the mesh says.
+    void RecordMeshDraw(Recording& recording, std::uint32_t meshNumber, std::uint32_t firstCorner, std::uint32_t cornerCount,
+        const MeshPlacement& placement, const Material& material);
     void ApplyMeshState(const MeshPlacement& placement);
 
     void BindPipeline(Recording& recording, VkPipeline drawPipeline);
@@ -160,6 +179,7 @@ private:
     DrawPipelines pipeline;
     TextureStore textures;
     DepthBuffers depthBuffers;
+    StoredMeshes storedMeshes;
 
     // The pictures of the screen take turns using these. The resources for offscreen pictures that are drawn between
     // two screen pictures are separate, because the card finishes them before the call returns.
@@ -177,8 +197,9 @@ private:
     std::optional<Recording> frameRecording;
     std::optional<Recording> standaloneRecording;
     std::optional<Target> screenTarget;
-    std::optional<Target> offscreenTarget;
-    TextureHandle offscreenTexture;
+
+    // The offscreen pictures that are being drawn, the innermost last.
+    std::vector<OffscreenPicture> offscreenPictures;
     std::optional<ConsoleFrame> consoleFrame;
 
     TextureHandle hiddenScreen;

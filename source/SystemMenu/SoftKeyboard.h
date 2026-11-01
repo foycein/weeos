@@ -80,6 +80,10 @@ public:
     SoftKeyboard(Display& display, const MenuFiles& files, const Text::MessageCatalog& messages, const MenuClock& clock, InputManager& input,
         SoundRequests& sounds);
 
+    // The keyboard of a channel, with the layouts of its own archive and its words (KeyboardView).
+    SoftKeyboard(Display& display, std::unique_ptr<Layout::LayoutArchive> keyboardArchive, const KeyboardButtonTexts& texts,
+        const MenuClock& clock, InputManager& input, SoundRequests& sounds);
+
     // The keys of this USB keyboard type into the field while the keyboard is open. The service must stay alive as long as the keyboard.
     void UsePhysicalKeyboard(Ios::KeyboardService& service);
 

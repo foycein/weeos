@@ -31,7 +31,8 @@ Graphics::TextureHandle MakeStandingMiiPicture(Graphics::GraphicsDevice& device,
     const MiiRecord& record, std::uint32_t consoleSystemId, std::uint32_t width, std::uint32_t height, MiiExpression expression)
 {
     MiiHead head(device, resources, record, expression, FaceTextureSize);
-    MiiBody body(device, bodies, record, consoleSystemId);
+    MiiBodyModels bodyModels(device, bodies);
+    BodyPose pose = PoseBody(bodyModels.FileFor(record.gender), record, BodyStance());
 
     auto canvasWidth = static_cast<float>(width);
     auto canvasHeight = static_cast<float>(height);
@@ -44,11 +45,11 @@ Graphics::TextureHandle MakeStandingMiiPicture(Graphics::GraphicsDevice& device,
 
     // The head stands on the head bone, upright and in its own size, lit as in the icons.
     Graphics::MeshPlacement headPlacement = bodyPlacement;
-    headPlacement.modelView = view * Graphics::MakeTranslation(body.HeadPosition());
+    headPlacement.modelView = view * Graphics::MakeTranslation(pose.headPosition);
     headPlacement.light = MakeHeadLight(headPlacement.modelView);
 
     Graphics::TextureHandle picture = device.BeginOffscreen({canvasWidth, canvasHeight}, width, height);
-    body.Draw(bodyPlacement);
+    bodyModels.Draw(record, consoleSystemId, pose, bodyPlacement);
     head.Draw(headPlacement);
     device.EndOffscreen();
     return picture;

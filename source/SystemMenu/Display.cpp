@@ -7,6 +7,7 @@ namespace
 {
 
 constexpr float Half = 0.5f;
+constexpr std::uint8_t FullyShown = 255;
 
 }
 
@@ -29,6 +30,22 @@ void Display::MoveArea(const PictureArea& seenArea, const PictureArea& shownArea
 void Display::StopMovingAreas()
 {
     zoomedDevice.StopMoving();
+}
+
+void Display::SetCamera(const PictureArea& visibleArea)
+{
+    camera = visibleArea;
+}
+
+void Display::ResetCamera()
+{
+    camera.reset();
+}
+
+void Display::LookThroughCamera()
+{
+    if (camera)
+        MoveArea(*camera, WholePicture(), FullyShown);
 }
 
 void Display::SetTextFonts(const Layout::TextFonts& fonts)

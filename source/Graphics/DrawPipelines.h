@@ -13,7 +13,7 @@ constexpr std::uint32_t DrawDataSetNumber = 0;
 constexpr std::uint32_t FirstTextureSetNumber = 1;
 
 // The bindings of set 0: draw records, stages, meshes and the corners of the meshes.
-constexpr std::uint32_t DrawDataBindingCount = 4;
+constexpr std::uint32_t DrawDataBindingCount = 6;
 
 // Pushed to the vertex shaders before the draws. The picture is the whole target, which can be larger than the canvas in its middle:
 // half its width and height in canvas units, and the share of the picture's width and height that the canvas covers.

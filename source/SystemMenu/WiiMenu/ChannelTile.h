@@ -104,6 +104,6 @@ private:
 
 // A layout of a channel (its icon or its banner) holds its words in every language, each language in a group named after it.
 // Hides the panes of the other languages and of every other group that no script animates; the English panes show.
-void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName);
+void ShowOnlyTheEnglishPanes(Layout::LiveLayout& layout, const Formats::Layout& file);
 
 }

@@ -9,6 +9,7 @@
 #include "Layout/PanePlacement.h"
 #include "Layout/TextFonts.h"
 
+#include <optional>
 #include <vector>
 
 namespace SystemMenu
@@ -40,6 +41,14 @@ public:
     // Everything that is drawn from now on into seenArea lands in shownArea, with its alpha scaled by alpha / 255, until StopMovingAreas.
     void MoveArea(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha);
     void StopMovingAreas();
+
+    // The camera of the layouts (0x81089830 of the original): the area of the layouts that fills the picture. The channel grid moves it
+    // into a television while it zooms. The screens of the Wii Menu look through it; the hands, the dialogs and the windows do not.
+    void SetCamera(const PictureArea& visibleArea);
+    void ResetCamera();
+
+    // What is drawn from now on is seen through the camera, until StopMovingAreas.
+    void LookThroughCamera();
 
     // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
     // The fonts must stay alive as long as the display draws.
@@ -79,6 +88,7 @@ public:
 private:
     EdgeExtendingDevice edgeDevice;
     ZoomedDevice zoomedDevice;
+    std::optional<PictureArea> camera;
     const Layout::TextFonts* textFonts = nullptr;
     std::vector<DrawnLayout> drawnLayouts;
 };

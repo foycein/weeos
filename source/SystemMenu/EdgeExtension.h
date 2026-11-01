@@ -44,6 +44,9 @@ public:
     void DrawQuad(const Graphics::Quad& quad, const Graphics::Material& material) override;
     void DrawMesh(std::span<const Graphics::MeshVertex> triangleCorners, const Graphics::MeshPlacement& placement,
         const Graphics::Material& material) override;
+    Graphics::MeshHandle CreateMesh(std::span<const Graphics::MeshVertex> triangleCorners) override;
+    void DestroyMesh(Graphics::MeshHandle mesh) override;
+    void DrawMesh(Graphics::MeshHandle mesh, const Graphics::MeshPlacement& placement, const Graphics::Material& material) override;
     Graphics::TextureHandle BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;
