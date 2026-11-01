@@ -38,9 +38,10 @@ std::u16string OffsetText(int offset)
 
 }
 
-DisplayPages::DisplayPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings)
+DisplayPages::DisplayPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings, Settings::PcSettingsTarget& pcSettingsTarget)
     : navigator(pageNavigator)
     , settings(systemSettings)
+    , pcTarget(pcSettingsTarget)
 {
 }
 
@@ -217,6 +218,7 @@ void DisplayPages::MovePicture(int change)
 void DisplayPages::ChooseAspectRatio(Settings::AspectRatio aspectRatio)
 {
     settings.SetAspectRatio(aspectRatio);
+    pcTarget.ApplyPictureShape(aspectRatio);
     navigator.Refresh();
 }
 
@@ -229,6 +231,7 @@ void DisplayPages::LeaveScreenPositionWithoutConfirming()
 void DisplayPages::LeaveWidescreenWithoutConfirming()
 {
     settings.SetAspectRatio(aspectRatioAtEntry);
+    pcTarget.ApplyPictureShape(aspectRatioAtEntry);
     navigator.GoTo(PageId::DisplayIndex);
 }
 

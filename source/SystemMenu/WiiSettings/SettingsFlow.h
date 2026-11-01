@@ -1,13 +1,20 @@
 #pragma once
 
 #include "SystemMenu/WiiSettings/PageContent.h"
+#include "SystemMenu/WiiSettings/InternetPages.h"
 #include "SystemMenu/WiiSettings/PageGroup.h"
 #include "SystemMenu/WiiSettings/PageId.h"
 #include "SystemMenu/WiiSettings/PageNavigator.h"
 
+#include "Ios/Network/NetworkConfigService.h"
+#include "Ios/Network/WirelessService.h"
 #include "Settings/ConsoleClock.h"
+#include "Settings/PcSettings.h"
+#include "Settings/SystemMemoryFormatter.h"
 #include "Settings/SystemSettings.h"
+#include "Text/MessageCatalog.h"
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -21,15 +28,25 @@ struct SettingsFlowServices
 {
     Settings::SystemSettings& settings;
     const Settings::ConsoleClock& clock;
+    Ios::NetworkConfigService& networkConfig;
+    AccessPointSearch searchForAccessPoints;
+    Settings::SystemMemoryFormatter& formatter;
+
+    // The settings of WeeOS on the PC (window, sound, keys), and the program that makes them come true at once.
+    Settings::PcSettingsStore& pcSettings;
+    Settings::PcSettingsTarget& pcTarget;
 };
+
+// The search of the radio of the console: every channel, any access point.
+AccessPointSearch SearchWithRadio(const Ios::WirelessService& wireless);
 
 // The pages of Wii Settings and the way from one to the next. It knows nothing about pictures: it says which page is shown and what is on it,
 // and it does what a button does when the screen tells it that the button was pressed.
 class SettingsFlow : public PageNavigator
 {
 public:
-    // Starts on the page. The services must outlive the flow.
-    SettingsFlow(const SettingsFlowServices& services, PageId firstPage);
+    // Starts on the page. The services and the messages of the menu must outlive the flow.
+    SettingsFlow(const SettingsFlowServices& services, const Text::MessageCatalog& messages, PageId firstPage);
     ~SettingsFlow() override;
 
     SettingsFlow(const SettingsFlow&) = delete;
@@ -65,7 +82,7 @@ public:
 
 private:
     PageGroup& GroupOf(PageId page);
-    void MakeGroups(const SettingsFlowServices& services);
+    void MakeGroups(const SettingsFlowServices& services, const Text::MessageCatalog& messages);
 
     std::vector<std::unique_ptr<PageGroup>> groups;
     PageId currentPageId;

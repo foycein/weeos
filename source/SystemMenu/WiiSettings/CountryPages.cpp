@@ -42,11 +42,6 @@ int PageCount()
     return 1 + otherPagesCount;
 }
 
-std::string NameOfCountry(const Settings::Country& country)
-{
-    return std::string(country.name.begin(), country.name.end());
-}
-
 }
 
 CountryPages::CountryPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings)
@@ -92,7 +87,7 @@ void CountryPages::BuildPage(PageId page, Page& content)
         PageRectangle bounds = {ListLeft, itemTop, ItemWidth, ItemHeight};
         itemTop += ItemHeight;
 
-        PageButton& item = builder.AddPictureButton(ButtonLook::CountryItem, bounds, NameOfCountry(country),
+        PageButton& item = builder.AddPictureButton(ButtonLook::CountryItem, bounds, NameOfText(country.name),
             [this, code = country.code]
             {
                 chosenCountryCode = code;

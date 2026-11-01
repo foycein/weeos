@@ -14,6 +14,9 @@
 namespace SystemMenu
 {
 
+// The search for access points: the access points that the radio finds.
+using AccessPointSearch = std::function<std::vector<Ios::AccessPointInformation>()>;
+
 // "Internet": the three connections of the console, how to set one up, and what the console knows about itself.
 //
 // The console has no network: the module of the network configuration answers like an unplugged cable and the search for access
@@ -24,11 +27,9 @@ namespace SystemMenu
 class InternetPages : public PageGroup
 {
 public:
-    // The search for access points gives the access points that the radio found. The things that are given must outlive the pages.
-    using AccessPointSearch = std::function<std::vector<Ios::AccessPointInformation>()>;
-
+    // The navigator, the network configuration and the connection test must outlive the pages.
     InternetPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService, ConnectionTestPages& connectionTestPages,
-        AccessPointSearch accessPointSearch, std::function<Ios::MacAddress()> wirelessMacAddress);
+        AccessPointSearch accessPointSearch);
 
     bool Owns(PageId page) const override;
     void EnterPage(PageId page) override;
@@ -72,7 +73,6 @@ private:
     Ios::NetworkConfigService& networkConfig;
     ConnectionTestPages& connectionTest;
     AccessPointSearch searchForAccessPoints;
-    std::function<Ios::MacAddress()> readWirelessMacAddress;
 
     // The connection the user works on, counted from 0.
     int profileNumber = 0;

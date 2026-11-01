@@ -63,7 +63,7 @@ void SettingsScreen::Build()
     images = std::make_unique<PageImages>(services.display.Device(), services.files);
     font = std::make_unique<PageFont>(services.display.Device(), services.files);
     painter = std::make_unique<PagePainter>(services.display.Device(), *images, *font);
-    flow = std::make_unique<SettingsFlow>(*services.wiiSettings, FirstPageOf(argument));
+    flow = std::make_unique<SettingsFlow>(*services.wiiSettings, services.messages, FirstPageOf(argument));
 
     services.cursors.SetVisible(true);
     services.fader.StartFadeIn();

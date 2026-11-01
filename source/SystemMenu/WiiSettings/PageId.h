@@ -75,6 +75,44 @@ enum class PageId
     ConnectionInUse,
     ConnectionTestStart,
     ConsoleInformation,
+
+    // Parental Controls: the setup, one step after the other.
+    ParentalUseQuestion,
+    ParentalDescription,
+    ParentalGuardianNote,
+    ParentalPinChoice,
+    ParentalPinRepeat,
+    ParentalPinMismatch,
+    ParentalQuestionChoice,
+    ParentalAnswerChoice,
+
+    // Parental Controls: what can be changed, once the PIN is set.
+    ParentalSettingsMenu,
+    ParentalSettingsOverview,
+    ParentalRatingChoice,
+    ParentalRestriction,
+    ParentalClearQuestion,
+    ParentalCleared,
+
+    // Parental Controls that are on: the PIN, the answer or the master key before anything can be changed.
+    ParentalChangeQuestion,
+    ParentalPinCheck,
+    ParentalPinWrong,
+    ParentalAnswerCheck,
+    ParentalAnswerWrong,
+    ParentalMasterKeyInformation,
+    ParentalMasterKeyEntry,
+    ParentalMasterKeyWrong,
+    ParentalDisabled,
+
+    // PC Settings: the window, the sound and the keys of WeeOS on the PC.
+    PcIndex,
+    PcScreen,
+    PcWindowSize,
+    PcSound,
+    PcSoundDevice,
+    PcKeys,
+    PcMouse,
 };
 
 }

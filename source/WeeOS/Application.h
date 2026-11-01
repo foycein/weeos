@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WeeOS/Console.h"
+#include "WeeOS/WiiSettingsServices.h"
 
 #include "Graphics/FramePacer.h"
 #include "Graphics/VulkanGraphicsDevice.h"
@@ -50,6 +51,7 @@ private:
     Ios::PcKeyboard keyboard;
     Graphics::VulkanGraphicsDevice device;
     SystemMenu::OwnTitleContents titleContents;
+    WiiSettingsServices wiiSettings;
     SystemMenu::MenuSystem menu;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;

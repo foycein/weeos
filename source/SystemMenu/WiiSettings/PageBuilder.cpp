@@ -41,16 +41,18 @@ constexpr PageRectangle MessageBounds = {24, 80, 560, 270};
 
 constexpr int StepArrowSize = 72;
 
-// The name of a button is its text, as plain characters. The names are for the tests and are never shown.
-std::string NameOfText(const std::u16string& text)
+// The names keep the characters of plain ASCII and show every other one as a question mark.
+constexpr char16_t FirstCharacterBeyondAscii = 0x80;
+
+}
+
+std::string NameOfText(std::u16string_view text)
 {
     std::string name;
     for (char16_t character : text)
-        name.push_back(character < 0x80 ? static_cast<char>(character) : '?');
+        name.push_back(character < FirstCharacterBeyondAscii ? static_cast<char>(character) : '?');
 
     return name;
-}
-
 }
 
 PageBuilder::PageBuilder(Page& pageToFill)

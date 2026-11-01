@@ -133,12 +133,11 @@ std::u16string TextOfName(const std::string& name)
 }
 
 InternetPages::InternetPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService,
-    ConnectionTestPages& connectionTestPages, AccessPointSearch accessPointSearch, std::function<Ios::MacAddress()> wirelessMacAddress)
+    ConnectionTestPages& connectionTestPages, AccessPointSearch accessPointSearch)
     : navigator(pageNavigator)
     , networkConfig(networkConfigService)
     , connectionTest(connectionTestPages)
     , searchForAccessPoints(std::move(accessPointSearch))
-    , readWirelessMacAddress(std::move(wirelessMacAddress))
 {
 }
 
@@ -504,7 +503,7 @@ void InternetPages::BuildConsoleInformation(Page& content)
     builder.SetTitle(2, std::u16string(ConsoleInformationTitle));
 
     builder.AddText(MacAddressLabelBounds, TextRole::Message, {u"MAC Address"});
-    builder.AddText(MacAddressBounds, TextRole::Message, {MacAddressText(readWirelessMacAddress())});
+    builder.AddText(MacAddressBounds, TextRole::Message, {MacAddressText(networkConfig.GetWirelessMacAddress())});
 
     // The console has no LAN adapter, so the line is dim, as it is on a console without one.
     builder.AddText(AdapterLabelBounds, TextRole::Label, {u"LAN Adapter MAC Address"});
@@ -631,7 +630,7 @@ void InternetPages::AskForSecurityKey()
         [this](std::optional<std::u16string> answer)
         {
             if (answer)
-                typedKey = std::string(answer->begin(), answer->end());
+                typedKey = NameOfText(*answer);
 
             navigator.Refresh();
         });

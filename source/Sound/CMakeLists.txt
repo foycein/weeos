@@ -5,6 +5,7 @@ add_library(Sound STATIC
     LoadedFiles.cpp
     Mixer.cpp
     NoteParameters.cpp
+    PlaybackDevices.cpp
     Reference.cpp
     Resampler.cpp
     SequenceFile.cpp

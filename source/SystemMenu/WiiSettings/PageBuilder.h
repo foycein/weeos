@@ -4,10 +4,14 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace SystemMenu
 {
+
+// The name of a button is its text, as plain characters. The names are for the tests and are never shown.
+std::string NameOfText(std::u16string_view text);
 
 // Puts the buttons, texts and pictures of a page in their places. The places are those of the pages of the original, so a page
 // that is a list of choices has the same look as every other one.
