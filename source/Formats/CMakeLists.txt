@@ -26,6 +26,7 @@ add_library(Formats STATIC
     NandImage.cpp
     NandTitles.cpp
     OneTimeProgrammable.cpp
+    PlayRecordFile.cpp
     RgbaImage.cpp
     RsaSignature.cpp
     SectionedFile.cpp
@@ -41,6 +42,7 @@ add_library(Formats STATIC
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    TitleMetadataBackupFile.cpp
     TplTexture.cpp
     U8Archive.cpp
     Vectors.cpp
