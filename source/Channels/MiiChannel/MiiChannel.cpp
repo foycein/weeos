@@ -58,11 +58,13 @@ MiiChannel::MiiChannel(ChannelServices& channelServices)
     , data(channelServices.storage.fileSystem, channelServices.storage.fileSystemCaller, SystemIdOf(channelServices.network))
     , figures(channelServices.display.Device(), files.bodies, data.ConsoleSystemId())
     , ground(channelServices.display.Device(), files.ground)
+    , road(channelServices.display.Device(), files.road)
     , message(channelServices, *files.layouts, files.messages)
     , profile(channelServices, *files.layouts, files.messages)
     , keyboard(channelServices.display, ArchiveOf(files.keyboardArchive), KeyboardTextsOf(files.messages), channelServices.clock,
           channelServices.input, keyboardSounds)
     , plaza(channelServices, *files.layouts, files.messages, figures, ground, *files.faceParts, message, data, SeedFromClock(channelServices))
+    , parade(channelServices, *files.layouts, files.messages, figures, road, *files.faceParts, message, data, SeedFromClock(channelServices))
     , lookAlike(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, SeedFromClock(channelServices))
     , editor(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, profile, keyboard, data)
     , hands(std::make_unique<SystemMenu::CursorManager>(channelServices.display, ArchiveOf(files.handArchive)))
@@ -121,6 +123,9 @@ void MiiChannel::Draw()
     case Scene::Editor:
         editor.Draw();
         break;
+    case Scene::Parade:
+        parade.Draw();
+        break;
     }
 
     profile.Draw();
@@ -140,6 +145,11 @@ MiiChannel::Scene MiiChannel::CurrentScene() const
 PlazaScreen& MiiChannel::Plaza()
 {
     return plaza;
+}
+
+ParadeScreen& MiiChannel::Parade()
+{
+    return parade;
 }
 
 EditorScreen& MiiChannel::Editor()
@@ -214,6 +224,10 @@ void MiiChannel::UpdateScene(bool acceptsInput)
         editor.Update(acceptsInput);
         FollowEditor();
         return;
+    case Scene::Parade:
+        parade.Update(acceptsInput);
+        FollowParade();
+        return;
     }
 }
 
@@ -278,6 +292,13 @@ void MiiChannel::FollowPlaza()
         return;
     }
 
+    if (*request == PlazaRequest::ShowParade)
+    {
+        parade.Start();
+        scene = Scene::Parade;
+        return;
+    }
+
     std::optional<std::size_t> slot = plaza.MiiToEdit();
     std::optional<Mii::MiiRecord> record = slot ? data.FindMii(*slot) : std::nullopt;
     if (!record)
@@ -285,6 +306,16 @@ void MiiChannel::FollowPlaza()
 
     editor.Open(*record, slot);
     scene = Scene::Editor;
+}
+
+// "Mii Plaza" takes the user back; the Miis brought back from the parade are on the plaza then.
+void MiiChannel::FollowParade()
+{
+    if (!parade.TakeWayBackToThePlaza())
+        return;
+
+    plaza.Start();
+    scene = Scene::Plaza;
 }
 
 // Gender first, then the way to start; Cancel leaves the questions, Back goes back to the gender.

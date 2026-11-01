@@ -95,6 +95,7 @@ constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";
 constexpr std::string_view NewMiiSound = "SEQ_HIROBA_NEW";
 constexpr std::string_view EditDropSound = "SEQ_HIROBA_EDIT";
 constexpr std::string_view EraseSound = "SEQ_HIROBA_TRUSH";
+constexpr std::string_view SendToParadeSound = "SEQ_HIROBA_EDIT";
 constexpr std::string_view GrabSound = "SEQ_DOOL_GLIP_ON";
 constexpr std::string_view LetGoSound = "SEQ_DOOL_GLIP_OFF";
 constexpr std::string_view GroundSound = "SEQ_DOOL_GND";
@@ -198,7 +199,7 @@ void PlazaScreen::Update(bool acceptsInput)
     if (plaza.SlipsInLastStep() > 0)
         services.sounds.Request(SlipSound);
 
-    heads.Prepare(HeadsOfThePlaza());
+    heads.Prepare(HeadsOfMiis(plaza));
 
     std::string count = std::format("{:03}", plaza.Miis().size());
     layout->SetText(CountText, std::u16string(count.begin(), count.end()));
@@ -216,25 +217,6 @@ void PlazaScreen::Update(bool acceptsInput)
 
     HandleCamera();
     HandleButtons();
-}
-
-// Every Mii keeps its normal face, and while it talks or sleeps the face of that too, so that its mouth and eyes change without waiting.
-std::vector<ShownHead> PlazaScreen::HeadsOfThePlaza() const
-{
-    std::vector<ShownHead> shownHeads;
-    for (const PlazaMii& plazaMii : plaza.Miis())
-    {
-        std::size_t slot = plazaMii.mii.slot;
-        shownHeads.push_back({PlazaHeadKey(slot, Mii::MiiExpression::Normal), plazaMii.mii.record, Mii::MiiExpression::Normal});
-
-        bool talks = plazaMii.activity == PlazaActivity::Talking || plazaMii.activity == PlazaActivity::Answering;
-        Mii::MiiExpression face = ExpressionOf(plazaMii);
-        if (talks)
-            face = Mii::MiiExpression::OpenMouth;
-        if (face != Mii::MiiExpression::Normal)
-            shownHeads.push_back({PlazaHeadKey(slot, face), plazaMii.mii.record, face});
-    }
-    return shownHeads;
 }
 
 // Beyond the ground the plaza is white, the color its edges fade into (Assumed, CHN-71).
@@ -298,7 +280,7 @@ void PlazaScreen::HandleButtons()
         services.sounds.Request(ButtonPushSound);
         if (hasSeenParade)
         {
-            message.ShowNotice(MiiMessage::NobodyIsHere);
+            request = PlazaRequest::ShowParade;
             return;
         }
         hasSeenParade = true;
@@ -484,7 +466,16 @@ void PlazaScreen::HandleMessageAnswer()
         message.ShowNotice(MiiMessage::ParadeExplained);
         return;
     case Pending::ParadeExplained:
-        message.ShowNotice(MiiMessage::NobodyIsHere);
+        request = PlazaRequest::ShowParade;
+        return;
+    case Pending::SendToParade:
+        if (*answer == MessageAnswer::Yes && miiToSend)
+        {
+            services.sounds.Request(SendToParadeSound);
+            data.SendToParade(*miiToSend);
+            plaza.RemoveMii(*miiToSend);
+        }
+        miiToSend.reset();
         return;
     case Pending::Nothing:
         return;
@@ -518,6 +509,20 @@ void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)
         miiToErase = *held;
         pending = Pending::Erase;
         message.AskQuestion(MiiMessage::EraseThisMii, EraseWord, DoNotEraseWord);
+        return;
+    }
+
+    // "Send to Mii Parade": the parade keeps Miis that the plaza has no room for, without their birthday and creator.
+    if (layout->IsPointInPane(ParadeButton, pointer) && record)
+    {
+        if (Mii::IsSpecialMii(*record))
+        {
+            message.ShowNotice(MiiMessage::SpecialMiisCannotJoinParade);
+            return;
+        }
+        miiToSend = *held;
+        pending = Pending::SendToParade;
+        message.AskQuestion(MiiMessage::SendToParadeQuestion);
         return;
     }
 

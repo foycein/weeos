@@ -12,6 +12,7 @@ add_library(Channels STATIC
     MiiChannel/MiiEditor.cpp
     MiiChannel/MiiFigures.cpp
     MiiChannel/MiiPlaza.cpp
+    MiiChannel/ParadeScreen.cpp
     MiiChannel/PlazaGround.cpp
     MiiChannel/PlazaScreen.cpp
     MiiChannel/ProfileDialog.cpp

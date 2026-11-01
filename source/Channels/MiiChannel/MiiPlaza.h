@@ -46,6 +46,14 @@ enum class PlazaActivity
     GettingUp,
 };
 
+// The ground the Miis walk on: the plaza, where they wander, or the road of the Mii Parade, where they walk from the far end toward the
+// camera and start again at the far end.
+enum class PlazaKind
+{
+    Plaza,
+    Parade,
+};
+
 // The ways the whistle lines the Miis up (squText_10 to _15 of squareNigaoe_00).
 enum class PlazaArrangement
 {
@@ -103,7 +111,11 @@ public:
     static constexpr int FarthestZoomLevel = 3;
 
     // The plaza of a 4:3 or a 16:9 picture: the wide picture shows more of the ground, and the Miis may walk farther to the sides.
-    MiiPlaza(bool isWidePicture, std::uint32_t randomSeed);
+    MiiPlaza(bool isWidePicture, std::uint32_t randomSeed, PlazaKind plazaKind = PlazaKind::Plaza);
+
+    // The parade's fast forward: its Miis run instead of walking.
+    void SetParadeRunning(bool isRunning);
+    bool IsParadeRunning() const;
 
     // The Miis come onto the plaza at random places, each standing for a while before it walks.
     void SetMiis(const std::vector<StoredMii>& miis);
@@ -178,10 +190,14 @@ private:
     void WakeWhenBumped(PlazaMii& plazaMii);
     void KeepInside(PlazaMii& plazaMii);
     Formats::Vector2 RandomPlace();
+    void WalkAlongTheParade(PlazaMii& plazaMii);
+    void ReturnToTheFarEnd(PlazaMii& plazaMii);
     int RandomWait();
     void LimitCameraDestination();
 
     bool isWide;
+    PlazaKind kind;
+    bool isParadeRunning = false;
     std::mt19937 random;
     std::vector<PlazaMii> miis;
     std::optional<std::size_t> heldSlot;

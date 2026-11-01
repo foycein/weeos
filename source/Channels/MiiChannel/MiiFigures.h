@@ -37,6 +37,9 @@ struct ShownHead
 // The key of the head of a plaza Mii with a face: one key for every slot and face.
 std::size_t PlazaHeadKey(std::size_t slot, Mii::MiiExpression expression);
 
+// The heads that the Miis of a plaza or a parade need now.
+std::vector<ShownHead> HeadsOfMiis(const MiiPlaza& plaza);
+
 // The heads of the Miis, made once for every Mii and made again when the Mii changes. Making a head draws its face texture, so the heads
 // are made in a step and never while a picture is drawn.
 class MiiHeads

@@ -8,6 +8,7 @@
 #include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/MiiChannel/MiiChannelFiles.h"
 #include "Channels/MiiChannel/MiiFigures.h"
+#include "Channels/MiiChannel/ParadeScreen.h"
 #include "Channels/MiiChannel/PlazaGround.h"
 #include "Channels/MiiChannel/PlazaScreen.h"
 #include "Channels/MiiChannel/ProfileDialog.h"
@@ -37,6 +38,7 @@ public:
         NewMiiQuestions,
         LookAlike,
         Editor,
+        Parade,
     };
 
     // The services must outlive the channel. Throws when a file of the title is missing or the NAND cannot be read.
@@ -50,6 +52,7 @@ public:
 
     // The parts, for the tests.
     PlazaScreen& Plaza();
+    ParadeScreen& Parade();
     EditorScreen& Editor();
     LookAlikeScreen& LookAlike();
     MessageWindow& Message();
@@ -74,6 +77,7 @@ private:
     void FollowNewMiiQuestions();
     void FollowLookAlike();
     void FollowEditor();
+    void FollowParade();
     void AskNewMiiQuestion(ProfileQuestion question);
     Mii::MiiRecord AsNewMiiOfThisConsole(Mii::MiiRecord record) const;
     void ShowPlaza();
@@ -85,11 +89,13 @@ private:
     MiiChannelData data;
     MiiFigures figures;
     PlazaGround ground;
+    PlazaGround road;
     MessageWindow message;
     ProfileDialog profile;
     SystemMenu::SoundRequests keyboardSounds;
     SystemMenu::SoftKeyboard keyboard;
     PlazaScreen plaza;
+    ParadeScreen parade;
     LookAlikeScreen lookAlike;
     EditorScreen editor;
     std::unique_ptr<SystemMenu::CursorManager> hands;

@@ -19,6 +19,11 @@ constexpr float WideHalfWidth = 3050.0f;
 constexpr float FrontLimit = 2050.0f;
 constexpr float BackLimit = -1850.0f;
 
+// The Mii Parade: its Miis walk on the road within 1200 units to each side of its middle and stand for up to a second at the far end
+// before they set out again (Assumed, CHN-84).
+constexpr float ParadeHalfWidth = 1200.0f;
+constexpr int LongestParadeWaitSteps = 60;
+
 // Two Miis closer than this push each other apart (the 120 x 120 of 803BE5DC).
 constexpr float PersonalDistance = 120.0f;
 
@@ -177,8 +182,9 @@ float WalkAnimationRate(float speed, const Mii::MiiRecord& record)
     return speed * WalkFramesPerUnit / Mii::SizeOf(record).length;
 }
 
-MiiPlaza::MiiPlaza(bool isWidePicture, std::uint32_t randomSeed)
+MiiPlaza::MiiPlaza(bool isWidePicture, std::uint32_t randomSeed, PlazaKind plazaKind)
     : isWide(isWidePicture)
+    , kind(plazaKind)
     , random(randomSeed)
 {
     camera.eye = StartingEye;
@@ -371,6 +377,23 @@ std::optional<std::size_t> MiiPlaza::HeldMii() const
     return heldSlot;
 }
 
+void MiiPlaza::SetParadeRunning(bool isRunning)
+{
+    isParadeRunning = isRunning;
+    for (PlazaMii& plazaMii : miis)
+    {
+        if (isRunning && plazaMii.activity == PlazaActivity::Walking)
+            plazaMii.activity = PlazaActivity::Running;
+        else if (!isRunning && plazaMii.activity == PlazaActivity::Running)
+            plazaMii.activity = PlazaActivity::Walking;
+    }
+}
+
+bool MiiPlaza::IsParadeRunning() const
+{
+    return isParadeRunning;
+}
+
 int MiiPlaza::SlipsInLastStep() const
 {
     return slipsInLastStep;
@@ -493,6 +516,9 @@ std::optional<std::size_t> MiiPlaza::MiiAt(Formats::Vector2 picturePlace, float 
 
 float MiiPlaza::HalfWidth() const
 {
+    if (kind == PlazaKind::Parade)
+        return ParadeHalfWidth;
+
     return isWide ? WideHalfWidth : StandardHalfWidth;
 }
 
@@ -517,7 +543,9 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
     case PlazaActivity::Waiting:
         plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, WaitAnimationFrames);
         --plazaMii.stepsToWait;
-        if (!plazaMii.staysAtTarget && plazaMii.stepsToWait <= 0)
+        if (kind == PlazaKind::Parade && plazaMii.stepsToWait <= 0)
+            WalkAlongTheParade(plazaMii);
+        else if (!plazaMii.staysAtTarget && plazaMii.stepsToWait <= 0)
             StartWalking(plazaMii, RandomPlace());
         else
             ChooseIdleMoment(plazaMii);
@@ -601,6 +629,11 @@ void MiiPlaza::StartActivity(PlazaMii& plazaMii, PlazaActivity activity)
 void MiiPlaza::Walk(PlazaMii& plazaMii)
 {
     float remaining = Distance(plazaMii.position, plazaMii.target);
+    if (remaining < ArrivalDistance && kind == PlazaKind::Parade)
+    {
+        ReturnToTheFarEnd(plazaMii);
+        return;
+    }
     if (remaining < ArrivalDistance)
     {
         StartWaiting(plazaMii);
@@ -617,6 +650,11 @@ void MiiPlaza::Walk(PlazaMii& plazaMii)
 void MiiPlaza::Run(PlazaMii& plazaMii)
 {
     float remaining = Distance(plazaMii.position, plazaMii.target);
+    if (remaining < RunArrivalDistance && kind == PlazaKind::Parade)
+    {
+        ReturnToTheFarEnd(plazaMii);
+        return;
+    }
     if (remaining < RunArrivalDistance)
     {
         StartWaiting(plazaMii);
@@ -807,6 +845,24 @@ void MiiPlaza::KeepInside(PlazaMii& plazaMii)
     plazaMii.position.y = std::clamp(plazaMii.position.y, BackLimit, FrontLimit);
 }
 
+// A Mii of the parade walks (or runs, in fast forward) straight toward the camera, to the near end of the road.
+void MiiPlaza::WalkAlongTheParade(PlazaMii& plazaMii)
+{
+    Formats::Vector2 nearEnd = {plazaMii.position.x, FrontLimit};
+    if (isParadeRunning)
+        StartRunning(plazaMii, nearEnd);
+    else
+        StartWalking(plazaMii, nearEnd);
+}
+
+// At the near end a Mii of the parade leaves the picture and comes again from the far end.
+void MiiPlaza::ReturnToTheFarEnd(PlazaMii& plazaMii)
+{
+    plazaMii.position = {plazaMii.position.x, BackLimit};
+    plazaMii.facingDegrees = 0;
+    StartWaiting(plazaMii);
+}
+
 Formats::Vector2 MiiPlaza::RandomPlace()
 {
     std::uniform_real_distribution<float> across(-HalfWidth(), HalfWidth());
@@ -816,6 +872,9 @@ Formats::Vector2 MiiPlaza::RandomPlace()
 
 int MiiPlaza::RandomWait()
 {
+    if (kind == PlazaKind::Parade)
+        return std::uniform_int_distribution<int>(0, LongestParadeWaitSteps)(random);
+
     return std::uniform_int_distribution<int>(ShortestWaitSteps, LongestWaitSteps)(random);
 }
 

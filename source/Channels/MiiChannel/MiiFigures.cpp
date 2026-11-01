@@ -67,6 +67,25 @@ std::size_t PlazaHeadKey(std::size_t slot, Mii::MiiExpression expression)
     return slot * ExpressionCount + static_cast<std::size_t>(expression);
 }
 
+// Every Mii keeps its normal face, and while it talks or sleeps the face of that too, so that its mouth and eyes change without waiting.
+std::vector<ShownHead> HeadsOfMiis(const MiiPlaza& plaza)
+{
+    std::vector<ShownHead> shownHeads;
+    for (const PlazaMii& plazaMii : plaza.Miis())
+    {
+        std::size_t slot = plazaMii.mii.slot;
+        shownHeads.push_back({PlazaHeadKey(slot, Mii::MiiExpression::Normal), plazaMii.mii.record, Mii::MiiExpression::Normal});
+
+        bool talks = plazaMii.activity == PlazaActivity::Talking || plazaMii.activity == PlazaActivity::Answering;
+        Mii::MiiExpression face = ExpressionOf(plazaMii);
+        if (talks)
+            face = Mii::MiiExpression::OpenMouth;
+        if (face != Mii::MiiExpression::Normal)
+            shownHeads.push_back({PlazaHeadKey(slot, face), plazaMii.mii.record, face});
+    }
+    return shownHeads;
+}
+
 Graphics::Matrix4 ProjectIntoRectangle(const Graphics::Matrix4& projection, const PictureRectangle& rectangle, Graphics::Canvas canvas)
 {
     float halfWidth = canvas.width / 2;

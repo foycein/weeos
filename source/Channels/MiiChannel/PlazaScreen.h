@@ -25,6 +25,9 @@ enum class PlazaRequest
 
     // A Mii was dropped on "Edit Mii".
     EditMii,
+
+    // "Mii Parade": the parade scene.
+    ShowParade,
 };
 
 // The Mii Plaza (squareNigaoe_00 over the 3D plaza, 80041024 and the plaza scene): the buttons on both sides and at the bottom, the Miis
@@ -83,6 +86,7 @@ private:
         BeginDs,
         ParadeWelcome,
         ParadeExplained,
+        SendToParade,
     };
 
     void HandleButtons();
@@ -92,7 +96,6 @@ private:
     void DropHeldMii(Formats::Vector2 pointer);
     void ShowNameBalloon(std::size_t slot);
     void UpdateWaits();
-    std::vector<ShownHead> HeadsOfThePlaza() const;
     void ShowLoadWindow(std::uint32_t messageNumber);
     void HideLoadWindow();
     bool IsPressed(std::string_view buttonPane) const;
@@ -112,6 +115,7 @@ private:
     std::optional<PlazaRequest> request;
     std::optional<std::size_t> miiToEdit;
     std::optional<std::size_t> miiToErase;
+    std::optional<std::size_t> miiToSend;
     Pending pending = Pending::Nothing;
     bool areSortButtonsShown = false;
     bool isArranged = false;
