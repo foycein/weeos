@@ -25,6 +25,10 @@ enum class ScreenId : int
     WiiOptionsBar = 0x16,
 
     HealthAndSafety = 0x1a,
+    ParentalDialog = 0x1b,
+    BackToWiiMenu = 0x1e,
+    LimitOver = 0x1f,
+    StartupRouter = 0x20,
 };
 
 }

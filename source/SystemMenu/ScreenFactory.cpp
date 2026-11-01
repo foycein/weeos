@@ -1,6 +1,10 @@
 #include "SystemMenu/ScreenFactory.h"
 
+#include "SystemMenu/BackToWiiMenuScreen.h"
 #include "SystemMenu/HealthAndSafetyScreen.h"
+#include "SystemMenu/LimitOverScreen.h"
+#include "SystemMenu/ParentalDialogScreen.h"
+#include "SystemMenu/StartupRouterScreen.h"
 #include "SystemMenu/WiiOptionsBackgroundScreen.h"
 #include "SystemMenu/WiiOptionsBarScreen.h"
 #include "SystemMenu/WiiOptionsChoicesScreen.h"
@@ -10,19 +14,35 @@ namespace SystemMenu
 
 std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& services)
 {
-    if (screen == ScreenId::HealthAndSafety)
+    switch (screen)
+    {
+    case ScreenId::HealthAndSafety:
         return std::make_unique<HealthAndSafetyScreen>(services);
 
-    if (screen == ScreenId::WiiOptionsBackground)
+    case ScreenId::BackToWiiMenu:
+        return std::make_unique<BackToWiiMenuScreen>(services);
+
+    case ScreenId::LimitOver:
+        return std::make_unique<LimitOverScreen>(services);
+
+    case ScreenId::ParentalDialog:
+        return std::make_unique<ParentalDialogScreen>(services, argument);
+
+    case ScreenId::StartupRouter:
+        return std::make_unique<StartupRouterScreen>(services, argument);
+
+    case ScreenId::WiiOptionsBackground:
         return std::make_unique<WiiOptionsBackgroundScreen>(services, argument);
 
-    if (screen == ScreenId::WiiOptionsBar)
+    case ScreenId::WiiOptionsBar:
         return std::make_unique<WiiOptionsBarScreen>(services);
 
-    if (screen == ScreenId::WiiOptionsChoices)
+    case ScreenId::WiiOptionsChoices:
         return std::make_unique<WiiOptionsChoicesScreen>(services, argument);
 
-    return nullptr;
+    default:
+        return nullptr;
+    }
 }
 
 }
