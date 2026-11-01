@@ -22,16 +22,40 @@ namespace
 
 // The waiting marks under "One moment, please...": the Forecast's six suns (picture 15 of TPLWeather for the USA and Europe, 0x80179358)
 // at 0.6 of their size 40 pixels apart, 0x8000B6B0; the News' six newspapers (picture 77 of TPLNews) at 0.75, 35 apart, 0x80009710.
-constexpr WaitingMarkLook ForecastWaitingMark = {"./TPLWeather.tpl.LZ", 15, 40, 280, 0.6f, 72, false, false};
-constexpr WaitingMarkLook NewsWaitingMark = {"./TPLNews.tpl.LZ", 77, 35, 280, 0.75f, 71, true, true};
+constexpr WaitingMarkLook ForecastWaitingMark = {.texturePath = "./TPLWeather.tpl.LZ",
+    .textureIndex = 15,
+    .distance = 40,
+    .middleY = 280,
+    .scale = 0.6f,
+    .lastStep = 72,
+    .fadesAlongSine = false,
+    .growsWhenLit = false};
+constexpr WaitingMarkLook NewsWaitingMark = {.texturePath = "./TPLNews.tpl.LZ",
+    .textureIndex = 77,
+    .distance = 35,
+    .middleY = 280,
+    .scale = 0.75f,
+    .lastStep = 71,
+    .fadesAlongSine = true,
+    .growsWhenLit = true};
 
 // The Forecast Channel 7 (HAFE): content 9 holds the layouts, content 6 is the shared HOME Button Menu.
-constexpr WiiConnect24ChannelFiles ForecastFiles = {
-    9, "./weather_layout.arc.LZ", "arc/font/font_weather.brfnt", "font_weather.brfnt", 8, 6, ForecastWaitingMark};
+constexpr WiiConnect24ChannelFiles ForecastFiles = {.resourceContentIndex = 9,
+    .layoutArchivePath = "./weather_layout.arc.LZ",
+    .fontPath = "arc/font/font_weather.brfnt",
+    .fontName = "font_weather.brfnt",
+    .errorMessageCount = 8,
+    .homeMenuContentIndex = 6,
+    .waitingMark = ForecastWaitingMark};
 
 // The News Channel 7 (HAGE): the same places, its own layouts and font, and one more message, the update the News Channel needs.
-constexpr WiiConnect24ChannelFiles NewsFiles = {
-    9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6, NewsWaitingMark};
+constexpr WiiConnect24ChannelFiles NewsFiles = {.resourceContentIndex = 9,
+    .layoutArchivePath = "./news_layout.arc.LZ",
+    .fontPath = "arc/font/font_news.brfnt",
+    .fontName = "font_news.brfnt",
+    .errorMessageCount = 9,
+    .homeMenuContentIndex = 6,
+    .waitingMark = NewsWaitingMark};
 
 // The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
 // the Shop HomeButton2 (0x802F75B8).
@@ -44,21 +68,46 @@ constexpr std::size_t WiiMenuResetAndManual = 3;
 constexpr ManualSounds ManualSoundNames = {"WTR_SE_COM_RECEIVE", "WTR_SE_COM_SUCCESS", "WTR_SE_B_SCROLL", "WTR_SE_COM_BUTTON_B"};
 constexpr ManualLocation WiiConnect24ChannelManual = {10, "html-us.arc", "html/startup.html", ManualSoundNames};
 
-constexpr ChannelSharedFiles ForecastSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuResetAndManual, WiiConnect24ChannelManual};
-constexpr ChannelSharedFiles NewsSharedFiles = {std::uint16_t{7}, 6, "./HomeButton3", true, WiiMenuResetAndManual, WiiConnect24ChannelManual};
-constexpr ChannelSharedFiles ShopSharedFiles = {std::uint16_t{9}, 7, "./HomeButton2", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles ForecastSharedFiles = {.fontContentIndex = 7,
+    .homeMenuContentIndex = 6,
+    .homeMenuFolder = "./HomeButton3",
+    .isHomeMenuPacked = true,
+    .offeredHomeMenuButtons = WiiMenuResetAndManual,
+    .manual = WiiConnect24ChannelManual};
+constexpr ChannelSharedFiles NewsSharedFiles = ForecastSharedFiles;
+constexpr ChannelSharedFiles ShopSharedFiles = {.fontContentIndex = 9,
+    .homeMenuContentIndex = 7,
+    .homeMenuFolder = "./HomeButton2",
+    .isHomeMenuPacked = true,
+    .offeredHomeMenuButtons = WiiMenuAndReset};
 
 // The Mii Channel 6 has no content of the system fonts; its content 4 is the shared HomeButton2 (the strings of 8001C330 of its program).
-constexpr ChannelSharedFiles MiiSharedFiles = {std::nullopt, 4, "./HomeButton2", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles MiiSharedFiles = {.fontContentIndex = std::nullopt,
+    .homeMenuContentIndex = 4,
+    .homeMenuFolder = "./HomeButton2",
+    .isHomeMenuPacked = true,
+    .offeredHomeMenuButtons = WiiMenuAndReset};
 
 // The Photo Channel 1.1 has no content of the system fonts; its content 3 is the shared HomeButton2 (0x80011824 of its program).
-constexpr ChannelSharedFiles PhotoSharedFiles = {std::nullopt, 3, "./HomeButton2", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles PhotoSharedFiles = {.fontContentIndex = std::nullopt,
+    .homeMenuContentIndex = 3,
+    .homeMenuFolder = "./HomeButton2",
+    .isHomeMenuPacked = true,
+    .offeredHomeMenuButtons = WiiMenuAndReset};
 
 // The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
-constexpr ChannelSharedFiles InternetSharedFiles = {std::uint16_t{8}, 5, "homebutton", false, WiiMenuAndReset};
+constexpr ChannelSharedFiles InternetSharedFiles = {.fontContentIndex = 8,
+    .homeMenuContentIndex = 5,
+    .homeMenuFolder = "homebutton",
+    .isHomeMenuPacked = false,
+    .offeredHomeMenuButtons = WiiMenuAndReset};
 
 // Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts (CHN-33).
-constexpr ChannelSharedFiles WiiSpeakSharedFiles = {std::nullopt, 3, "./HomeButton3", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles WiiSpeakSharedFiles = {.fontContentIndex = std::nullopt,
+    .homeMenuContentIndex = 3,
+    .homeMenuFolder = "./HomeButton3",
+    .isHomeMenuPacked = true,
+    .offeredHomeMenuButtons = WiiMenuAndReset};
 
 // A sound archive of a channel: the content that holds it, its path there, and whether it is packed with Huffman.
 struct ChannelSoundArchive
@@ -112,11 +161,6 @@ std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 
     return {};
 }
-
-}
-
-namespace
-{
 
 // A file of a U8 archive may have padding behind it (the Internet Channel's operaSound.brsar has 2 bytes); the sound archive is the
 // part that its header counts: the size of the file is the big-endian word after the tag, the byte order mark and the version.

@@ -8,6 +8,7 @@ namespace
 
 // The bits that a byte of UTF-8 adds to its character.
 constexpr unsigned char ContinuationBits = 0x3F;
+constexpr int ContinuationBitCount = 6;
 constexpr unsigned char TwoByteStartBits = 0x1F;
 constexpr unsigned char ThreeByteStartBits = 0x0F;
 constexpr unsigned char FourByteStartBits = 0x07;
@@ -67,7 +68,7 @@ std::u16string Utf8ToText(std::string_view utf8)
         std::size_t length = LengthOfCharacterAt(firstByte);
         char32_t character = StartBitsOf(firstByte, length);
         for (std::size_t next = 1; next < length && index + next < utf8.size(); ++next)
-            character = (character << 6) | (static_cast<unsigned char>(utf8[index + next]) & ContinuationBits);
+            character = (character << ContinuationBitCount) | (static_cast<unsigned char>(utf8[index + next]) & ContinuationBits);
 
         AppendCharacter(text, character);
         index += length;
