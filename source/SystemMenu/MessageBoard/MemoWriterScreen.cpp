@@ -3,12 +3,12 @@
 #include "SystemMenu/DialogManager.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MessageBoard/BoardInput.h"
-#include "SystemMenu/WiiMenu/WiiMenuData.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoftKeyboard.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
+#include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Text/MessageCatalog.h"
 
@@ -286,11 +286,6 @@ void MemoWriterScreen::Cancel()
     leaveAnimation = cancelAnimation;
     paper->PaperLayout().StartAnimation(leaveAnimation);
     state = WriterState::Leaving;
-}
-
-bool MemoWriterScreen::RunClosing()
-{
-    return true;
 }
 
 void MemoWriterScreen::Draw(DrawPass pass)

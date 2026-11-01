@@ -1,12 +1,12 @@
 #pragma once
 
-#include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/InputManager.h"
+#include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
-#include "SystemMenu/ScreenId.h"
 #include "SystemMenu/MessageBoard/LetterView.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/MessageBoard/SmallLetter.h"
+#include "SystemMenu/ScreenId.h"
 #include "SystemMenu/WiiMenu/FramePlayer.h"
 
 #include "Layout/LayoutArchive.h"
@@ -75,7 +75,7 @@ private:
     void RunIdle();
     void FocusTheLettersUnderThePointers();
     bool HandleDayButtons();
-    bool HandleBarPress(int playerIndex, Formats::Vector2 place);
+    bool HandleBarPress(Formats::Vector2 place);
     bool HandleLetterPress(int playerIndex, Formats::Vector2 place);
     void TurnDay(int direction);
     void RunTurning();

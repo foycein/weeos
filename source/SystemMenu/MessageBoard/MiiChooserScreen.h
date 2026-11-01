@@ -1,11 +1,11 @@
 #pragma once
 
-#include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/InputManager.h"
+#include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
-#include "SystemMenu/ScreenId.h"
 #include "SystemMenu/MessageBoard/BoardPosting.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/ScreenId.h"
 
 #include "Layout/LayoutArchive.h"
 

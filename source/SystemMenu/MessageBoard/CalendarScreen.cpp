@@ -2,12 +2,12 @@
 
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MessageBoard/BoardInput.h"
-#include "SystemMenu/WiiMenu/WiiMenuData.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/LayoutParts.h"
+#include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Layout/LiveLayout.h"
 #include "Text/MessageCatalog.h"

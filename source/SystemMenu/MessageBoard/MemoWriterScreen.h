@@ -46,7 +46,6 @@ public:
 
 protected:
     bool RunMain() override;
-    bool RunClosing() override;
 
 private:
     enum class WriterState

@@ -2,12 +2,12 @@
 
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/MessageBoard/BoardInput.h"
-#include "SystemMenu/WiiMenu/WiiMenuData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/ClockFace.h"
 #include "SystemMenu/WiiMenu/LayoutParts.h"
+#include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Text/MessageCatalog.h"
 
@@ -56,9 +56,18 @@ constexpr std::string_view DaySound = "WSD_SELECT";
 // The board comes back to the channels with the grid in front of the bar overlay, as the original inserts it (0x8136276C).
 constexpr int GridComesFromTheBoard = 1;
 
+// The date of a picture is written for the middle of its day.
+constexpr int NoonHour = 12;
+constexpr int OffsetOfTheFirstPicture = -1;
+
 LocalTime NoonOf(BoardDay day)
 {
-    return LocalTime{day.year, day.month, day.day, 12, 0, 0};
+    return LocalTime{day.year, day.month, day.day, NoonHour, 0, 0};
+}
+
+std::size_t PageCountOf(std::size_t messageCount)
+{
+    return (messageCount + LettersPerPage - 1) / LettersPerPage;
 }
 
 }
@@ -126,7 +135,7 @@ BottomBarScreen* BoardView::Bar()
 // The dates of the three pictures and the letters of the first page of the day.
 void BoardView::ShowTheDay()
 {
-    int dayOffset = -1;
+    int dayOffset = OffsetOfTheFirstPicture;
     for (std::string_view datePane : DatePanes)
     {
         background.SetText(datePane, MakeDateText(NoonOf(ShiftDays(data.shownDay, dayOffset)), services.messages));
@@ -244,7 +253,7 @@ void BoardView::RunIdle()
         if (!player || !place || !HasGoneDown(*player, BoardPressButtons))
             continue;
 
-        if (HandleBarPress(playerIndex, *place) || HandleLetterPress(playerIndex, *place))
+        if (HandleBarPress(*place) || HandleLetterPress(playerIndex, *place))
             return;
     }
 }
@@ -296,9 +305,8 @@ bool BoardView::HandleDayButtons()
     return false;
 }
 
-bool BoardView::HandleBarPress(int playerIndex, Formats::Vector2 place)
+bool BoardView::HandleBarPress(Formats::Vector2 place)
 {
-    static_cast<void>(playerIndex);
     BottomBarScreen* bar = Bar();
     std::optional<BarButton> button = bar ? bar->ButtonAt(place) : std::nullopt;
     if (!button)
@@ -442,8 +450,9 @@ void BoardView::RunReading()
 
     std::size_t pageBefore = static_cast<std::size_t>(page);
     messagesOfTheDay = data.store.MessagesOfDay(data.shownDay);
-    std::size_t pageCount = (messagesOfTheDay.size() + LettersPerPage - 1) / LettersPerPage;
-    page = static_cast<int>(std::min(pageBefore, pageCount == 0 ? 0 : pageCount - 1));
+    std::size_t pageCount = PageCountOf(messagesOfTheDay.size());
+    std::size_t lastPage = pageCount == 0 ? 0 : pageCount - 1;
+    page = static_cast<int>(std::min(pageBefore, lastPage));
     LoadTheLettersOfTheDay();
     ShowTheArrows();
     state = BoardState::Idle;
@@ -452,7 +461,7 @@ void BoardView::RunReading()
 // The arrows turn the pages of a day with more than ten letters first, then the days (0x81393970, 0x81392F2C, 0x81392F94).
 void BoardView::TurnDay(int direction)
 {
-    std::size_t pageCount = (messagesOfTheDay.size() + LettersPerPage - 1) / LettersPerPage;
+    std::size_t pageCount = PageCountOf(messagesOfTheDay.size());
     bool hasNextPage = static_cast<std::size_t>(page) + 1 < pageCount;
     if (direction > 0 && hasNextPage)
     {
@@ -529,10 +538,12 @@ void BoardView::RunWaitingForScreen()
 
 void BoardView::LeaveForTheChannels()
 {
-    BottomBarScreen* bar = Bar();
     services.sounds.Request(SoundName::Decide);
-    bar->SetMode(BarMode::WiiMenu);
-    bar->Change(BarChange::ToTheChannels);
+    if (BottomBarScreen* bar = Bar())
+    {
+        bar->SetMode(BarMode::WiiMenu);
+        bar->Change(BarChange::ToTheChannels);
+    }
     services.screens.OpenChildBefore(ScreenId::ChannelGrid, ScreenId::MainFrame, ScreenId::BarOverlay, GridComesFromTheBoard);
     state = BoardState::LeavingForTheChannels;
 }
