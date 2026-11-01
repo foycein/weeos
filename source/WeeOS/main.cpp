@@ -45,8 +45,13 @@ Ios::IosFolders ChooseFolders(const std::vector<std::string_view>& folderArgumen
     std::filesystem::path programFolder = Platform::ExecutableFolder();
 
     Ios::IosFolders folders;
-    folders.nandFolder = folderArguments.size() > 0 ? std::filesystem::path(folderArguments[0]) : programFolder / NandFolderName;
-    folders.identityFolder = folderArguments.size() > 1 ? std::filesystem::path(folderArguments[1]) : programFolder / IdentityFolderName;
+    folders.nandFolder = programFolder / NandFolderName;
+    folders.identityFolder = programFolder / IdentityFolderName;
+    if (folderArguments.size() > 0)
+        folders.nandFolder = folderArguments[0];
+    if (folderArguments.size() > 1)
+        folders.identityFolder = folderArguments[1];
+
     folders.sdCardFolder = folders.nandFolder.parent_path() / SdCardFolderName;
     return folders;
 }

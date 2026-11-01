@@ -54,11 +54,6 @@ SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regional
 // The browser engine of the Internet Channel keeps its cache and its cookies in this folder beside the NAND folder.
 constexpr std::string_view BrowserFolderName = "Browser";
 
-}
-
-namespace
-{
-
 // A channel starts when WeeOS has a program for it and its IOS is installed. A new console without the IOS of a channel
 // (docs/audit/Portable.md) shows the menu's message that the channel cannot be used, as for a channel without a program.
 bool CanStart(const Ios::TitleService& titles, Ios::TitleId titleId)
@@ -189,9 +184,9 @@ private:
         Ios::TitleService& titles = iosServices.GetTitles();
         menu->Services().titleLaunch.SetProgramCheck([&titles](Ios::TitleId titleId) { return CanStart(titles, titleId); });
 
-        dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
-            iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
-            SystemMenu::ReadMenuCertificates(menu->Services().program)});
+        SystemMenu::DataManagementServices dataManagementServices{iosServices.GetTitles(), iosServices.GetFileSystem(),
+            iosServices.GetSdCard(), iosServices.GetConsoleIdentity(), SystemMenu::ReadMenuCertificates(menu->Services().program)};
+        dataManagement = std::make_unique<SystemMenu::DataManagementServices>(std::move(dataManagementServices));
         menu->Services().dataManagement = dataManagement.get();
 
         Ios::MacAddress wirelessAddress = iosServices.GetNetworkConfig().GetWirelessMacAddress();
@@ -358,8 +353,11 @@ const PcMicrophone& Application::GetPcMicrophone() const
 // The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.
 void Application::StopOnTheKeyOfKoreanConsoles()
 {
+    if (session->Menu() == nullptr)
+        return;
+
     Ios::Result<bool> hasKoreanKey = console.GetServices().GetTitles().CheckHasKoreanKey();
-    if (session->Menu() != nullptr && hasKoreanKey.Succeeded() && hasKoreanKey.Value())
+    if (hasKoreanKey.Succeeded() && hasKoreanKey.Value())
         session->Menu()->ShowFatalError(SystemMenu::FatalError::UnauthorizedDevice);
 }
 
@@ -526,7 +524,8 @@ void Application::StartImportedConsole()
 // A channel that WeeOS has no program for is not started: the program that runs goes on.
 void Application::LaunchTitle(Ios::TitleId titleId)
 {
-    if (titleId != Ios::SystemMenuTitleId && !Channels::HasNativeProgram(titleId))
+    bool hasProgram = titleId == Ios::SystemMenuTitleId || Channels::HasNativeProgram(titleId);
+    if (!hasProgram)
     {
         std::cout << std::format("WeeOS has no program for the title {} yet. The program that runs goes on.\n", titleId.ToString());
         return;

@@ -18,7 +18,8 @@ std::uint64_t CountSoundingSamples(std::span<const float> samples)
 
 float GainOfVolume(int volumePercent)
 {
-    float fraction = float(std::clamp(volumePercent, Settings::LowestVolume, Settings::HighestVolume)) / float(Settings::HighestVolume);
+    int usedVolume = std::clamp(volumePercent, Settings::LowestVolume, Settings::HighestVolume);
+    float fraction = static_cast<float>(usedVolume) / static_cast<float>(Settings::HighestVolume);
     return fraction * fraction;
 }
 
@@ -129,12 +130,13 @@ void ProgramSound::StopTitleArchives()
 
 void ProgramSound::SetSoundMode(Settings::SoundMode mode)
 {
+    Sound::SoundMode soundMode = Sound::SoundModeFromSetting(static_cast<std::uint64_t>(mode));
     if (sounds)
-        sounds->SetSoundMode(Sound::SoundModeFromSetting(static_cast<std::uint64_t>(mode)));
+        sounds->SetSoundMode(soundMode);
 
     std::lock_guard<std::mutex> lock(titleSoundsMutex);
     for (const std::unique_ptr<Sound::SoundSystem>& titleSound : titleSounds)
-        titleSound->SetSoundMode(Sound::SoundModeFromSetting(static_cast<std::uint64_t>(mode)));
+        titleSound->SetSoundMode(soundMode);
 }
 
 void ProgramSound::StopAllSounds()
