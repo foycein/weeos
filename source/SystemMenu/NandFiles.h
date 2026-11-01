@@ -24,7 +24,7 @@ public:
     virtual void DeleteFile(std::string_view path) = 0;
 
     // Makes the file anew with these bytes, readable and writable by everybody, as the menu makes its files. Throws a MenuError when
-    // the NAND does not take it.
+    // the NAND does not take it. The old file stays as it was until the new one is complete (the safe save of the NAND library).
     virtual void WriteFile(std::string_view path, Formats::ByteView bytes) = 0;
 };
 
