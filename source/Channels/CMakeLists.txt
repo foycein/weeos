@@ -55,6 +55,7 @@ add_library(Channels STATIC
     Photo/ThumbnailScreen.cpp
     Photo/TitleScreens.cpp
     Photo/ViewScreen.cpp
+    ShopAccessMark.cpp
     ShopChannel.cpp
     WaitingMark.cpp
     WiiConnect24Channel.cpp
