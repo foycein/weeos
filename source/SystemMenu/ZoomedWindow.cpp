@@ -24,13 +24,15 @@ void DrawBlackAround(Display& display, const PictureArea& television, std::uint8
 
 // The original draws the window into a texture and shows the texture (pass 0 and 1). WeeOS draws the window straight into the
 // television, every quad as transparent as the zoom says, so parts of the window that lie on each other show through a little more
-// while it fades in.
+// while it fades in. Like the texture, the window ends at the edges of the television: a banner reaching past them is cut off.
 void DrawWindowInsideTheTelevision(Display& display, const TelevisionZoom& zoom, const std::function<void()>& drawWindow)
 {
     PictureArea television = zoom.TelevisionInPicture();
+    display.Device().SetScissor(television);
     display.MoveArea(display.WholePicture(), television, zoom.WindowAlpha());
     drawWindow();
     display.StopMovingAreas();
+    display.Device().ClearScissor();
     DrawBlackAround(display, television, zoom.WindowAlpha());
 }
 

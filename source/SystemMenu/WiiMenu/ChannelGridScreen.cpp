@@ -178,7 +178,7 @@ void ChannelGridScreen::MakeTheTiles()
     }
 
     TileArchives archives = {*selectionArchive, *discArchive, *damagedIconArchive};
-    emptyPlace = ChannelTile::MakeEmptySlot(services.display, archives);
+    emptyPlace = ChannelTile::MakeEmptySlot(services.display, archives, services.wiiMenu.random.Next());
 }
 
 std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
@@ -190,14 +190,14 @@ std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
         return ChannelTile::MakeDiscChannel(services.display, archives, services.messages.Find(DiscChannelMessage));
 
     if (slot.kind != SavedSlotKind::Title)
-        return ChannelTile::MakeEmptySlot(services.display, archives);
+        return ChannelTile::MakeEmptySlot(services.display, archives, services.wiiMenu.random.Next());
 
     const LoadedChannel& channel = services.wiiMenu.channels.LoadChannel(position);
     if (!channel.icon)
         return ChannelTile::MakeDamagedChannel(services.display, archives);
 
     const std::u16string& name = channel.names[Formats::EnglishLanguageNumber].firstLine;
-    return ChannelTile::MakeChannel(services.display, archives, channel, name);
+    return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
 }
 
 GridState ChannelGridScreen::State() const
@@ -264,7 +264,7 @@ bool ChannelGridScreen::RunMain()
     case GridState::ShowingChannel:
         break;
 
-    case GridState::LeavingForWiiOptions:
+    case GridState::LeavingTheWiiMenu:
         if (RunLeaving())
             return true;
         break;
@@ -396,18 +396,27 @@ void ChannelGridScreen::HandleBarButton(BarButton button)
     {
     case BarButton::PreviousPage:
         if (page > 0)
+        {
+            Bar()->FlashPageArrow(button);
             TurnToPreviousPage();
+        }
         break;
 
     case BarButton::NextPage:
         if (page < PageCount - 1)
+        {
+            Bar()->FlashPageArrow(button);
             TurnToNextPage();
+        }
         break;
 
     case BarButton::WiiButton:
-        services.sounds.Request(DecideSound);
-        services.fader.StartFadeOut();
-        state = GridState::LeavingForWiiOptions;
+        LeaveFor(ScreenId::WiiOptionsBackground);
+        break;
+
+    case BarButton::SdCardButton:
+        Bar()->PressSdCardButton();
+        LeaveFor(ScreenId::SdCardMenuBar);
         break;
 
     case BarButton::MessageBoardButton:
@@ -503,6 +512,8 @@ void ChannelGridScreen::DropChannel()
 void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
+    Tile(position).ShowPressed();
+    SetBarButtonsEnabled(false);
     services.sounds.Request(PressSound);
     services.sounds.StopMusic(MusicStopStepsOfAChannel);
     Tile(position).SetFocused(false);
@@ -564,8 +575,19 @@ void ChannelGridScreen::RunZoom()
 
     zoom.reset();
     state = GridState::Idle;
+    SetBarButtonsEnabled(true);
     ShowTheArrowsOfThePage();
     services.sounds.StartMusic();
+}
+
+// The bar stops answering, the menu says yes, and the picture fades out before the new screen comes (0x813B0444, 0x813B0728).
+void ChannelGridScreen::LeaveFor(ScreenId nextScreen)
+{
+    Bar()->SetButtonsEnabled(false);
+    services.sounds.Request(DecideSound);
+    services.fader.StartFadeOut();
+    screenAfterLeaving = nextScreen;
+    state = GridState::LeavingTheWiiMenu;
 }
 
 bool ChannelGridScreen::RunLeaving()
@@ -573,7 +595,7 @@ bool ChannelGridScreen::RunLeaving()
     if (services.fader.GetStatus() != FaderStatus::Covered)
         return false;
 
-    GoToRoot(ScreenId::WiiOptionsBackground, 0);
+    GoToRoot(screenAfterLeaving, 0);
     return true;
 }
 
@@ -618,6 +640,13 @@ std::optional<Formats::Vector2> ChannelGridScreen::PointerPlaceOf(int playerInde
 BottomBarScreen* ChannelGridScreen::Bar()
 {
     return dynamic_cast<BottomBarScreen*>(services.screens.FindScreen(ScreenId::BottomBar));
+}
+
+void ChannelGridScreen::SetBarButtonsEnabled(bool shouldBeEnabled)
+{
+    BottomBarScreen* bar = Bar();
+    if (bar != nullptr)
+        bar->SetButtonsEnabled(shouldBeEnabled);
 }
 
 void ChannelGridScreen::Draw(DrawPass pass)

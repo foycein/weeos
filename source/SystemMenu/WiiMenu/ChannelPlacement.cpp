@@ -32,11 +32,6 @@ bool IsEmpty(Ios::TitleId titleId)
     return titleId.ToValue() == 0;
 }
 
-bool IsInFamily(Ios::TitleId titleId, std::uint32_t kind, std::uint32_t family)
-{
-    return titleId.highPart == kind && (titleId.lowPart & FamilyMask) == family;
-}
-
 bool IsFirstPhotoChannel(Ios::TitleId titleId)
 {
     return IsInFamily(titleId, SystemChannelKind, FirstPhotoChannelFamily);
