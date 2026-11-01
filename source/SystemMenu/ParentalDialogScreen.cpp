@@ -28,6 +28,7 @@ constexpr std::uint16_t InputPinMessage = 328;
 constexpr std::uint16_t RestrictionsRemovedUntilMenuMessage = 329;
 constexpr std::uint16_t RestrictionsRemovedUntilFinishedMessage = 330;
 constexpr std::uint16_t WrongPinMessage = 331;
+constexpr std::uint16_t KeyboardTitleMessage = 345;
 
 // The slots of the animations, in the order that Build binds them.
 constexpr std::size_t DialogInSlot = 0;
@@ -240,11 +241,11 @@ bool ParentalDialogScreen::IsPinRight() const
     return parentalControl && parentalControl->pin.size() == PinLength && parentalControl->pin == pin;
 }
 
-// The soft keyboard takes digits only, at most four of them.
+// The soft keyboard takes digits only, at most four of them (0x813DA150).
 void ParentalDialogScreen::OpenKeyboard(int playerIndex)
 {
     KeyboardRequest request;
-    request.title = services.messages.Find(InputPinMessage);
+    request.title = services.messages.Find(KeyboardTitleMessage);
     request.rules.maximumLength = PinLength;
     request.rules.allowedCharacters = IsDigit;
     request.playerIndex = playerIndex;
