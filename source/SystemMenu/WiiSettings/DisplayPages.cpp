@@ -117,13 +117,14 @@ void DisplayPages::BuildScreenPosition(Page& content)
     PageBuilder builder(content);
     builder.SetTitle(2, u"Screen Position");
 
+    // A button is given its sound before the next one is added: adding a button may move the buttons before it.
+    int offset = settings.GetDisplayOffset();
     PageButton& left = builder.AddStepArrow(ButtonLook::ArrowLeft, OffsetArrowLeftBounds.left, OffsetArrowLeftBounds.top, "MoveLeft",
         [this] { MovePicture(-DisplayOffsetStep); });
+    left.sound = offset <= -LargestOffsetOfThePage ? PageSound::Error : PageSound::Choose;
+
     PageButton& right = builder.AddStepArrow(ButtonLook::ArrowRight, OffsetArrowRightBounds.left, OffsetArrowRightBounds.top, "MoveRight",
         [this] { MovePicture(DisplayOffsetStep); });
-
-    int offset = settings.GetDisplayOffset();
-    left.sound = offset <= -LargestOffsetOfThePage ? PageSound::Error : PageSound::Choose;
     right.sound = offset >= LargestOffsetOfThePage ? PageSound::Error : PageSound::Choose;
 
     builder.AddText(OffsetNumberBounds, TextRole::BigNumber, {OffsetText(offset)});

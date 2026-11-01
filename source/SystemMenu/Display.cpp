@@ -102,4 +102,19 @@ Formats::Vector2 Display::CanvasToRootPaneSpace(Formats::Vector2 canvasPoint) co
     return {canvasPoint.x / stretch.x, canvasPoint.y / stretch.y};
 }
 
+void Display::NoteDrawnLayout(const Layout::LiveLayout& layout, const Layout::PlacementSettings& placement)
+{
+    drawnLayouts.push_back({&layout, placement});
+}
+
+void Display::ForgetDrawnLayouts()
+{
+    drawnLayouts.clear();
+}
+
+const std::vector<DrawnLayout>& Display::DrawnLayouts() const
+{
+    return drawnLayouts;
+}
+
 }
