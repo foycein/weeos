@@ -1,5 +1,4 @@
 add_library(NandImporter STATIC
-    ChannelInstaller.cpp
     DumpVerification.cpp
     FolderFiles.cpp
     IdentityImporter.cpp
