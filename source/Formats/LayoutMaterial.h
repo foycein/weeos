@@ -88,6 +88,8 @@ struct BlendMode
     std::uint8_t logicOperation;
 };
 
+constexpr std::size_t MaterialConstantColorCount = 4;
+
 // A material tells how a picture or a window frame is drawn. The parts after the colors are
 // optional: the material says in a field of flags which of them it has.
 struct Material
@@ -97,7 +99,7 @@ struct Material
     SignedColor foreColor;
     SignedColor backColor;
     SignedColor colorRegister3;
-    std::array<Rgba8Color, 4> constantColors;
+    std::array<Rgba8Color, MaterialConstantColorCount> constantColors;
 
     std::vector<MaterialTexture> textures;
     std::vector<TextureTransform> textureTransforms;

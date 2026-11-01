@@ -31,7 +31,7 @@ constexpr double StepFraction = 256.0;
 constexpr double FullSustainParameter = 127.0;
 constexpr double SustainTenthsPerFactorOfTen = 400.0;
 
-// Sustain levels below this number of tenths of a decibel are not told apart.
+// The sustain parameters below this one do not follow the formula: they lie just above silence, a tenth of a decibel apart.
 constexpr int LowestSustainParameterWithFormula = 3;
 constexpr double SilentSustainLevel = -723.0;
 

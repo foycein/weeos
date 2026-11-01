@@ -36,7 +36,8 @@ bool IsReservedDeviceName(std::string_view name)
         stem.remove_suffix(1);
 
     std::string lowerCaseStem = LowerCaseName(stem);
-    return std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), lowerCaseStem) != std::end(ReservedDeviceNames);
+    auto found = std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), lowerCaseStem);
+    return found != std::end(ReservedDeviceNames);
 }
 
 }

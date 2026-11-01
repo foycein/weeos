@@ -30,8 +30,18 @@ public:
     // The pictures come from another source, for example one that holds pictures of WeeOS's own.
     MenuLayout(Display& display, const Layout::LayoutArchive& archive, const std::string& layoutName, const Layout::PictureSource& pictures);
 
+    // The layout itself and how it is placed, for a screen that draws it in parts.
+    Layout::LiveLayout& Live();
+    const Layout::PlacementSettings& Placement() const;
+
     // The first pane with this name, anywhere in the tree. Throws a MenuError when the layout has none.
     Formats::Pane& PaneNamed(std::string_view paneName);
+
+    // The same, or nothing when the layout has no such pane.
+    Formats::Pane* FindPane(std::string_view paneName);
+
+    // True when the pane is shown and the point of the picture, in layout units, lies inside its rectangle.
+    bool IsPointInPane(std::string_view paneName, Formats::Vector2 point);
 
     // The material of a picture pane. Throws a MenuError when the pane is not a picture.
     Layout::LiveMaterial& MaterialOf(const Formats::Pane& pane);

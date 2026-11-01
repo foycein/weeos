@@ -132,7 +132,11 @@ std::optional<Ipv4Address> AssembleAddress(std::span<const std::uint32_t> number
         return (numbers[0] << FirstPartShift) | (numbers[1] << SecondPartShift) | last;
     }
 
-    return (numbers[0] << FirstPartShift) | (numbers[1] << SecondPartShift) | (numbers[2] << ThirdPartShift) | (last & LowestByteMask);
+    Ipv4Address address = numbers[0] << FirstPartShift;
+    address |= numbers[1] << SecondPartShift;
+    address |= numbers[2] << ThirdPartShift;
+    address |= last & LowestByteMask;
+    return address;
 }
 
 }

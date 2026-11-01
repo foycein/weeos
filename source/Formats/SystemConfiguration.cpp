@@ -194,10 +194,17 @@ void RequireStorableName(const Setting& setting)
     }
 }
 
+bool FitsInBytes(std::uint64_t number, std::size_t byteCount)
+{
+    if (byteCount >= sizeof(number))
+        return true;
+
+    return (number >> (byteCount * BitsPerByte)) == 0;
+}
+
 Bytes EncodeNumber(const Setting& setting, std::size_t byteCount)
 {
-    bool fits = byteCount >= sizeof(setting.number) || (setting.number >> (byteCount * BitsPerByte)) == 0;
-    if (!fits)
+    if (!FitsInBytes(setting.number, byteCount))
         FailToStore(setting, std::format("the number {} does not fit in {} bytes", setting.number, byteCount));
 
     Bytes bytes;
@@ -272,12 +279,19 @@ std::size_t OffsetPositionOf(const SystemConfiguration& configuration, std::stri
     return 0;
 }
 
+// The settings come after their offsets and one more offset that marks the end of the last setting.
+std::size_t FirstSettingOffset(const SystemConfiguration& configuration)
+{
+    std::size_t offsetCount = configuration.settings.size() + 1;
+    return FirstOffsetPosition + OffsetSize * offsetCount;
+}
+
 }
 
 Bytes WriteSystemConfiguration(const SystemConfiguration& configuration)
 {
     std::vector<Bytes> encodedSettings;
-    std::size_t endOffset = FirstOffsetPosition + OffsetSize * (configuration.settings.size() + 1);
+    std::size_t endOffset = FirstSettingOffset(configuration);
     for (const Setting& setting : configuration.settings)
     {
         encodedSettings.push_back(EncodeSetting(setting));
@@ -293,7 +307,7 @@ Bytes WriteSystemConfiguration(const SystemConfiguration& configuration)
     Bytes file(HeaderTag.begin(), HeaderTag.end());
     AppendNumber(file, configuration.settings.size(), sizeof(std::uint16_t));
 
-    std::size_t offset = FirstOffsetPosition + OffsetSize * (configuration.settings.size() + 1);
+    std::size_t offset = FirstSettingOffset(configuration);
     for (const Bytes& encodedSetting : encodedSettings)
     {
         AppendNumber(file, offset, OffsetSize);

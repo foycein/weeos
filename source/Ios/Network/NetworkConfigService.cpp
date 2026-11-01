@@ -76,11 +76,6 @@ Result<Formats::Bytes> ReadWholeFile(FileSystemService& fileSystem, const NandPa
     return opened.Value().Read(NetworkConfigurationFileSize + 1);
 }
 
-bool IsUsableConnection(const ConnectionProfile& profile, bool wired)
-{
-    return profile.isEnabled && profile.isWired == wired;
-}
-
 std::span<const std::string_view> FolderPathsOf(NetworkConfigurationKind kind)
 {
     if (kind == NetworkConfigurationKind::Original)
@@ -179,10 +174,8 @@ NetworkInterface NetworkConfigService::ChooseInterface() const
         return NetworkInterface::None;
 
     const auto& profiles = currentConfiguration.profiles;
-    bool hasWiredConnection = std::any_of(profiles.begin(), profiles.end(),
-        [](const ConnectionProfile& profile) { return IsUsableConnection(profile, true); });
-    bool hasWirelessConnection = std::any_of(profiles.begin(), profiles.end(),
-        [](const ConnectionProfile& profile) { return IsUsableConnection(profile, false); });
+    bool hasWiredConnection = std::any_of(profiles.begin(), profiles.end(), IsUsableWiredConnection);
+    bool hasWirelessConnection = std::any_of(profiles.begin(), profiles.end(), IsUsableWirelessConnection);
 
     if (currentConfiguration.selectedMedia == SelectedMedia::Wired && hasWiredConnection)
         return NetworkInterface::Wired;

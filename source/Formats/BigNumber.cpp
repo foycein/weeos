@@ -1,5 +1,6 @@
 #include "Formats/BigNumber.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/FormatError.h"
 
 #include <algorithm>
@@ -14,8 +15,8 @@ namespace
 constexpr int BitsPerWord = 32;
 constexpr std::size_t BytesPerWord = 4;
 
-// The number 2 less than the prime is the exponent that makes the inverse (Fermat's little theorem).
-constexpr std::uint32_t Two = 2;
+// The prime minus this is the exponent that makes the inverse (Fermat's little theorem).
+constexpr std::uint32_t InverseExponentBelowPrime = 2;
 
 }
 
@@ -28,7 +29,7 @@ BigNumber::BigNumber(std::uint32_t value)
 BigNumber BigNumber::FromBigEndianBytes(ByteView bytes)
 {
     BigNumber number;
-    number.words.assign((bytes.size() + BytesPerWord - 1) / BytesPerWord, 0);
+    number.words.assign(DivideRoundingUp(bytes.size(), BytesPerWord), 0);
 
     for (std::size_t byteNumber = 0; byteNumber < bytes.size(); ++byteNumber)
     {
@@ -44,7 +45,7 @@ BigNumber BigNumber::FromBigEndianBytes(ByteView bytes)
 
 Bytes BigNumber::ToBigEndianBytes(std::size_t byteCount) const
 {
-    std::size_t neededByteCount = (BitCount() + BitsPerByte - 1) / BitsPerByte;
+    std::size_t neededByteCount = DivideRoundingUp(BitCount(), BitsPerByte);
     if (neededByteCount > byteCount)
         throw FormatError(std::format("A number of {} bytes does not fit in {} bytes", neededByteCount, byteCount));
 
@@ -161,16 +162,18 @@ BigNumber BigNumber::Multiply(const BigNumber& other) const
     BigNumber product;
     product.words.assign(words.size() + other.words.size(), 0);
 
-    for (std::size_t first = 0; first < words.size(); ++first)
+    for (std::size_t firstIndex = 0; firstIndex < words.size(); ++firstIndex)
     {
         std::uint64_t carry = 0;
-        for (std::size_t second = 0; second < other.words.size(); ++second)
+        for (std::size_t secondIndex = 0; secondIndex < other.words.size(); ++secondIndex)
         {
-            std::uint64_t partial = static_cast<std::uint64_t>(words[first]) * other.words[second] + product.words[first + second] + carry;
-            product.words[first + second] = static_cast<std::uint32_t>(partial);
+            std::size_t productIndex = firstIndex + secondIndex;
+            std::uint64_t wordProduct = static_cast<std::uint64_t>(words[firstIndex]) * other.words[secondIndex];
+            std::uint64_t partial = wordProduct + product.words[productIndex] + carry;
+            product.words[productIndex] = static_cast<std::uint32_t>(partial);
             carry = partial >> BitsPerWord;
         }
-        product.words[first + other.words.size()] = static_cast<std::uint32_t>(carry);
+        product.words[firstIndex + other.words.size()] = static_cast<std::uint32_t>(carry);
     }
 
     product.RemoveLeadingZeros();
@@ -223,7 +226,7 @@ BigNumber BigNumber::InverseModuloPrime(const BigNumber& prime) const
     if (Remainder(prime).IsZero())
         throw FormatError("Zero has no inverse");
 
-    return PowerModulo(prime.Subtract(BigNumber(Two)), prime);
+    return PowerModulo(prime.Subtract(BigNumber(InverseExponentBelowPrime)), prime);
 }
 
 void BigNumber::ShiftLeftByOneBit(bool newLowestBit)
@@ -245,9 +248,13 @@ void BigNumber::SubtractInPlace(const BigNumber& other)
     std::uint32_t borrow = 0;
     for (std::size_t index = 0; index < words.size(); ++index)
     {
-        std::uint64_t second = static_cast<std::uint64_t>(index < other.words.size() ? other.words[index] : 0) + borrow;
-        borrow = words[index] < second ? 1 : 0;
-        words[index] = static_cast<std::uint32_t>(words[index] - second);
+        std::uint64_t otherWord = 0;
+        if (index < other.words.size())
+            otherWord = other.words[index];
+
+        std::uint64_t amountToSubtract = otherWord + borrow;
+        borrow = words[index] < amountToSubtract ? 1 : 0;
+        words[index] = static_cast<std::uint32_t>(words[index] - amountToSubtract);
     }
 
     RemoveLeadingZeros();

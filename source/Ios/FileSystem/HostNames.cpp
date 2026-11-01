@@ -73,7 +73,7 @@ std::string EscapeHostName(std::string_view nandName)
             escaped += character;
     }
 
-    if (escaped.back() == '.' || escaped.back() == ' ')
+    if (EndsWithDotOrSpace(escaped))
     {
         char lastCharacter = escaped.back();
         escaped.pop_back();
@@ -88,6 +88,11 @@ std::string EscapeHostName(std::string_view nandName)
 
 }
 
+bool EndsWithDotOrSpace(std::string_view name)
+{
+    return name.back() == '.' || name.back() == ' ';
+}
+
 // Windows treats "con" and "con.txt" alike, so only the part before the first dot counts.
 bool IsReservedDeviceName(std::string_view name)
 {
@@ -99,7 +104,8 @@ bool IsReservedDeviceName(std::string_view name)
     for (char character : stem)
         upperCaseStem += ToUpperCase(character);
 
-    return std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), upperCaseStem) != std::end(ReservedDeviceNames);
+    auto found = std::find(std::begin(ReservedDeviceNames), std::end(ReservedDeviceNames), upperCaseStem);
+    return found != std::end(ReservedDeviceNames);
 }
 
 bool IsValidHostName(std::string_view name)
@@ -110,7 +116,7 @@ bool IsValidHostName(std::string_view name)
     if (std::any_of(name.begin(), name.end(), IsRejectedCharacter))
         return false;
 
-    if (name.back() == '.' || name.back() == ' ')
+    if (EndsWithDotOrSpace(name))
         return false;
 
     return !IsReservedDeviceName(name);

@@ -53,7 +53,8 @@ void Modulation::Advance(const ModulationSettings& settings, int milliseconds)
     }
 
     cyclePosition += settings.speed * float(milliseconds) / MillisecondsPerSecond;
-    cyclePosition -= float(static_cast<int>(cyclePosition));
+    float wholeCycles = std::trunc(cyclePosition);
+    cyclePosition -= wholeCycles;
 }
 
 }

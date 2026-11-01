@@ -19,6 +19,9 @@ constexpr std::uint16_t BitsPerSample = 32;
 constexpr std::uint32_t ChunkHeaderSize = 8;
 constexpr std::uint32_t WaveTagSize = 4;
 
+// The format chunk of a float format has no extra fields.
+constexpr std::uint16_t FormatExtensionSize = 0;
+
 // WAV files store numbers with the least significant byte first.
 void AppendNumber(Formats::Bytes& bytes, std::uint64_t number, std::size_t byteCount)
 {
@@ -56,7 +59,7 @@ Formats::Bytes MakeFloatWaveFileBytes(std::uint32_t sampleRate, std::uint16_t ch
     AppendNumber(bytes, std::uint64_t(sampleRate) * bytesPerFrame, sizeof(std::uint32_t));
     AppendNumber(bytes, bytesPerFrame, sizeof(std::uint16_t));
     AppendNumber(bytes, BitsPerSample, sizeof(std::uint16_t));
-    AppendNumber(bytes, 0, sizeof(std::uint16_t));
+    AppendNumber(bytes, FormatExtensionSize, sizeof(std::uint16_t));
 
     AppendTag(bytes, "fact");
     AppendNumber(bytes, FactChunkSize, sizeof(std::uint32_t));

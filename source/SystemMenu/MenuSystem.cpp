@@ -9,7 +9,8 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles,
-    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, SettingsFlowServices* wiiSettingsServices)
+    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole,
+    SettingsFlowServices* wiiSettingsServices)
     : display(device, screenShape)
     , files(titleContents)
     , fonts(device, titleContents, files)
@@ -17,6 +18,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
+    , wiiMenu(wiiMenuConsole)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
     , keyboard(display, files, messages, clock, input, sounds)
     , program(titleContents)
@@ -24,9 +26,10 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , dialogs(display, files)
     , errorScreen(display, program, fonts, fader)
     , frontPanel(display, powerService, screens, nandFiles)
+    , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices}
+          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -68,12 +71,27 @@ void MenuSystem::Update()
 void MenuSystem::RunStep()
 {
     input.Poll();
-    screens.Update();
+    bool isHomeMenuOpen = homeButton.IsOpen();
+    if (!isHomeMenuOpen)
+        screens.Update();
 
-    if (!frontPanel.IsWorking())
+    if (!frontPanel.IsWorking() && !isHomeMenuOpen)
         keyboard.Update();
 
-    dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
+    if (!isHomeMenuOpen)
+        dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
+
+    if (frontPanel.IsWorking())
+        homeButton.HoldForFrontPanel();
+
+    homeButton.Update();
+
+    // The HOME menu pauses the music and the sounds while it is open (the sound events 0 and 4 of 0x81347AD0).
+    if (homeButton.IsOpen() && !isHomeMenuOpen)
+        sounds.PauseAllSounds();
+    if (!homeButton.IsOpen() && isHomeMenuOpen)
+        sounds.ResumeAllSounds();
+
     cursors.Update(input);
     fader.Calculate();
 }
@@ -91,7 +109,7 @@ void MenuSystem::DrawScene()
         screens.Draw();
         keyboard.Draw();
         dialogs.Draw();
-        cursors.Draw();
+        homeButton.Draw();
     }
 
     errorScreen.Draw();
@@ -111,7 +129,11 @@ void MenuSystem::ShowFatalError(FatalError reason)
 
 std::optional<Ios::TitleId> MenuSystem::TakeTitleToLaunch()
 {
-    return frontPanel.TakeTitleToLaunch();
+    std::optional<Ios::TitleId> titleOfFrontPanel = frontPanel.TakeTitleToLaunch();
+    if (titleOfFrontPanel)
+        return titleOfFrontPanel;
+
+    return titleLaunch.Take();
 }
 
 const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
@@ -122,6 +144,22 @@ const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
 void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
 {
     keyboard.UsePhysicalKeyboard(keyboardService);
+}
+
+// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. SYSCONF is not written yet:
+// the settings of the remotes that it changes last until the program ends.
+HomeButtonConnections MenuSystem::ConnectHomeButton()
+{
+    HomeButtonConnections connections;
+    connections.playSound = [this](HomeMenuSound sound) { sounds.Request(NameOfHomeMenuSound(sound)); };
+    connections.textFonts = &fonts.Fonts();
+    // A reset from the HOME menu stops every sound at once (0x8136BC14).
+    connections.startReset = [this]()
+    {
+        sounds.StopAllSounds(0);
+        frontPanel.PressReset();
+    };
+    return connections;
 }
 
 MenuServices& MenuSystem::Services()

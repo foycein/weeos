@@ -44,3 +44,8 @@ add_library(SystemMenu STATIC
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound)
 
 add_subdirectory(WiiSettings)
+add_subdirectory(BackgroundServices)
+add_subdirectory(HomeMenu)
+add_subdirectory(WiiMenu)
+add_subdirectory(DataManagement)
+add_subdirectory(SdCardMenu)

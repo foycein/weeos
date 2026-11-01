@@ -137,6 +137,9 @@ Result<NetworkConfiguration> DecodeNetworkConfiguration(Formats::ByteView fileBy
 // The configuration that has nothing set gives a file of zeros, which is also what the console reads from a missing file.
 Formats::Bytes EncodeNetworkConfiguration(const NetworkConfiguration& configuration);
 
+bool IsUsableWirelessConnection(const ConnectionProfile& profile);
+bool IsUsableWiredConnection(const ConnectionProfile& profile);
+
 // What is wrong with the configuration, one sentence for each problem, by the rules of the network configuration module of IOS80.
 // An empty list means that the module accepts the configuration. The module of IOS9 does not check the proxy settings:
 // it takes a proxy with a server name that is not valid and a port of 0 (checksProxies is false).

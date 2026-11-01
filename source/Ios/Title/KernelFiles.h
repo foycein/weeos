@@ -18,7 +18,7 @@ class KernelFiles
 {
 public:
     // The file system must outlive this object.
-    explicit KernelFiles(FileSystemService& fileSystem);
+    explicit KernelFiles(FileSystemService& fileSystemToUse);
 
     bool Exists(const NandPath& path) const;
 

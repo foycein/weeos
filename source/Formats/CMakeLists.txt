@@ -1,6 +1,7 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    BannerContent.cpp
     BigNumber.cpp
     Boot2Image.cpp
     BootMiiKeyBlock.cpp
@@ -22,15 +23,19 @@ add_library(Formats STATIC
     LayoutAnimation.cpp
     LayoutMaterial.cpp
     Lz77.cpp
+    Md5.cpp
     MessageFile.cpp
     NandBootInfoFile.cpp
     NandFileSystem.cpp
     NandImage.cpp
     NandTitles.cpp
     OneTimeProgrammable.cpp
+    PlayRecordFile.cpp
     PngImage.cpp
     RgbaImage.cpp
     RsaSignature.cpp
+    SaveBanner.cpp
+    SdCardBackup.cpp
     SectionedFile.cpp
     SerialEeprom.cpp
     SettingTextFile.cpp
@@ -44,6 +49,7 @@ add_library(Formats STATIC
     Ticket.cpp
     TitleEncryption.cpp
     TitleMetadata.cpp
+    TitleMetadataBackupFile.cpp
     TplTexture.cpp
     U8Archive.cpp
     Vectors.cpp

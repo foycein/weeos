@@ -10,8 +10,8 @@ constexpr std::uint8_t NoFlags = 0;
 
 }
 
-KernelFiles::KernelFiles(FileSystemService& fileSystem)
-    : fileSystem(fileSystem)
+KernelFiles::KernelFiles(FileSystemService& fileSystemToUse)
+    : fileSystem(fileSystemToUse)
 {
 }
 

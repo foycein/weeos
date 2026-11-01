@@ -368,7 +368,8 @@ void SoundSystem::StartSequenceSound(const SoundCommand& command, const SoundInf
     const LoadedBank& bank = banks.at(archive.banks[info.sequence.bankNumber].fileId);
 
     float soundVolume = float(info.volume) / HighestNumber;
-    RunningSound sound{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, VoiceHandle{}, nullptr};
+    RunningSound sound{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted, VoiceHandle{}, nullptr};
+    ++soundsStarted;
     sound.sequence = std::make_unique<SequencePlayer>(sequenceFile, bank, info.sequence, soundVolume, voices, sequenceGlobals);
     sound.archiveVolume = soundVolume;
     runningSounds.push_back(std::move(sound));
@@ -394,9 +395,15 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
     if (!voice)
         return;
 
-    RunningSound running{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, *voice, nullptr};
+    RunningSound running{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted, *voice, nullptr};
+    ++soundsStarted;
     running.waveSettings = settings;
     runningSounds.push_back(std::move(running));
+}
+
+std::uint8_t SoundSystem::PlayerPriorityOf(const RunningSound& sound) const
+{
+    return archive.sounds[sound.soundNumber].playerPriority;
 }
 
 // A player plays only so many of its sounds at once. When it is full, the sound with the lowest priority (the oldest of
@@ -413,7 +420,7 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
             continue;
 
         ++soundsOfPlayer;
-        bool isWeaker = weakestSound == nullptr || runningInfo.playerPriority < archive.sounds[weakestSound->soundNumber].playerPriority;
+        bool isWeaker = weakestSound == nullptr || runningInfo.playerPriority < PlayerPriorityOf(*weakestSound);
         if (isWeaker)
             weakestSound = &sound;
     }
@@ -421,7 +428,7 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
     if (soundsOfPlayer < archive.players[info.playerNumber].maximumSoundCount)
         return true;
 
-    if (weakestSound == nullptr || archive.sounds[weakestSound->soundNumber].playerPriority > info.playerPriority)
+    if (weakestSound == nullptr || PlayerPriorityOf(*weakestSound) > info.playerPriority)
         return false;
 
     std::uint32_t weakestHandleNumber = weakestSound->handle.number;

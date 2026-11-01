@@ -33,6 +33,7 @@ constexpr std::uint8_t SquareRootPanCurve = 0;
 
 constexpr std::size_t ThreeDimensionalReferenceSize = 8;
 constexpr std::size_t UserParametersSize = 8;
+constexpr std::size_t UnusedAfterSoundTypeSize = 1;
 constexpr std::size_t UnusedAfterPlayerCountSize = 3;
 constexpr std::size_t PlayerHeapAndReservedSize = 8;
 constexpr std::size_t BankReservedSize = 4;
@@ -213,7 +214,7 @@ private:
         sound.volume = reader.ReadByte();
         sound.playerPriority = reader.ReadByte();
         std::uint8_t soundType = reader.ReadByte();
-        reader.Skip(sizeof(std::uint8_t));
+        reader.Skip(UnusedAfterSoundTypeSize);
         Reference settings = ReadReference(reader);
         reader.Skip(UserParametersSize);
 

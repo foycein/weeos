@@ -26,6 +26,9 @@ public:
     // The device, the contents and the files are only used here. The device must stay alive as long as the fonts.
     MenuFonts(Graphics::GraphicsDevice& device, TitleContents& titleContents, const MenuFiles& files);
 
+    // No fonts yet. A channel adds the fonts of its own files.
+    MenuFonts() = default;
+
     const Layout::TextFonts& Fonts() const;
 
     // Makes one more font available under the names that layouts use for it, like the font of the error screen.

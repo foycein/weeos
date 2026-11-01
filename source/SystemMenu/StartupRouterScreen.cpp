@@ -2,6 +2,7 @@
 
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/FirstScreen.h"
+#include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 
@@ -26,6 +27,7 @@ StartupRouterScreen::StartupRouterScreen(MenuServices& menuServices, int routerA
 
 bool StartupRouterScreen::RunMain()
 {
+    services.homeButton.Start();
     if (argument == RouterToSettingsCountryPage)
         services.screens.ReplaceScreen(*this, ScreenId::WiiSettings, SettingsCountryPage);
 

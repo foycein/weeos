@@ -26,6 +26,10 @@ constexpr std::string_view Music = "WIPL_BGM_MENU";
 // The music falls silent on the Sound page of Wii Settings, and comes back when the page is left (0x813F20AC, 90 steps).
 constexpr int MusicFadeStepsOfTheSoundPage = 90;
 
+// A channel that is pressed in the Wii Menu stops the music in 5 steps (0x813ADA94); the music starts again from its beginning when the
+// channel start window has closed (0x813AC7D8).
+constexpr int MusicStopStepsOfAChannel = 5;
+
 // The music and the sounds are paused, and go on, in 5 steps (0x8136BD8C and 0x8136BE34).
 constexpr int PauseFadeSteps = 5;
 

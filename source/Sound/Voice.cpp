@@ -236,6 +236,24 @@ void Voice::BeginFrame(SoundMode mode)
     envelope.Advance(SoundFrameMilliseconds);
 }
 
+namespace
+{
+
+// Adds one sample of the wave to the speakers, and to the reverb when the voice sends to it, with the gains of this point of the frame.
+void AddSample(const MixBuffers& buffers, std::size_t outputNumber, float sample, const MixGains& from, const MixGains& to,
+    float fractionOfFrame, bool sendsToReverb)
+{
+    buffers.left[outputNumber] += sample * Interpolate(from.speakers.left, to.speakers.left, fractionOfFrame);
+    buffers.right[outputNumber] += sample * Interpolate(from.speakers.right, to.speakers.right, fractionOfFrame);
+    if (!sendsToReverb)
+        return;
+
+    buffers.reverbLeft[outputNumber] += sample * Interpolate(from.reverb.left, to.reverb.left, fractionOfFrame);
+    buffers.reverbRight[outputNumber] += sample * Interpolate(from.reverb.right, to.reverb.right, fractionOfFrame);
+}
+
+}
+
 void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
     std::size_t frameLength)
 {
@@ -263,16 +281,8 @@ void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBu
         {
             float sample = resampler.Read(channelSamples[channelNumber], position, step);
             sample = lowPassFilters[channelNumber].Process(sample);
-
-            const MixGains& from = gainsAtFrameStart[channelNumber];
-            const MixGains& to = gainsAtFrameEnd[channelNumber];
-            buffers.left[outputNumber] += sample * Interpolate(from.speakers.left, to.speakers.left, fractionOfFrame);
-            buffers.right[outputNumber] += sample * Interpolate(from.speakers.right, to.speakers.right, fractionOfFrame);
-            if (sendsToReverb)
-            {
-                buffers.reverbLeft[outputNumber] += sample * Interpolate(from.reverb.left, to.reverb.left, fractionOfFrame);
-                buffers.reverbRight[outputNumber] += sample * Interpolate(from.reverb.right, to.reverb.right, fractionOfFrame);
-            }
+            AddSample(buffers, outputNumber, sample, gainsAtFrameStart[channelNumber], gainsAtFrameEnd[channelNumber], fractionOfFrame,
+                sendsToReverb);
         }
 
         position += step;

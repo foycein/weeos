@@ -118,7 +118,9 @@ constexpr float SweepSemitonesPerNumber = 1.0f / 32.0f;
 std::int32_t RandomNumberBetween(SequenceGlobals& globals, std::int32_t lowest, std::int32_t highest)
 {
     std::int64_t choices = std::int64_t(highest) - lowest + 1;
-    return static_cast<std::int32_t>(((std::int64_t(globals.NextRandomNumber()) * choices) >> RandomBitsToDrop) + lowest);
+    std::int64_t randomNumber = globals.NextRandomNumber();
+    std::int64_t chosen = (randomNumber * choices) >> RandomBitsToDrop;
+    return static_cast<std::int32_t>(chosen + lowest);
 }
 
 // The result of one of the commands that compare a variable with a number.
@@ -152,10 +154,13 @@ SequencePlayer::SequencePlayer(const SequenceFile& sequenceFile, const LoadedBan
     , voices(voicePool)
     , globals(sharedGlobals)
 {
-    variables.fill(-1);
+    variables.fill(StartVariableValue);
 
     for (std::size_t trackNumber = 0; trackNumber < tracks.size(); ++trackNumber)
-        tracks[trackNumber].isAllocated = (settings.trackMask >> trackNumber & 1) != 0;
+    {
+        std::uint32_t trackBit = std::uint32_t(1) << trackNumber;
+        tracks[trackNumber].isAllocated = (settings.trackMask & trackBit) != 0;
+    }
 
     if (tracks[0].isAllocated)
     {
@@ -268,7 +273,8 @@ bool SequencePlayer::TickTrack(SequenceTrack& track)
     int commandCount = 0;
     while (track.waitTicks == 0 && !track.isWaitingForNotes)
     {
-        if (++commandCount > MostCommandsInOneTick)
+        ++commandCount;
+        if (commandCount > MostCommandsInOneTick)
         {
             FailTrack(track);
             return true;
@@ -342,6 +348,7 @@ std::int16_t* SequencePlayer::FindVariable(SequenceTrack& track, std::size_t var
 std::int32_t SequencePlayer::ReadNumber(SequenceTrack& track, NumberSource source, NumberWidth width)
 {
     constexpr std::uint8_t MoreBytesFollowBit = 0x80;
+    constexpr std::uint8_t NumberBitsOfAByte = 0x7F;
     constexpr int BitsInOneByteOfALongNumber = 7;
 
     if (source == NumberSource::Random)
@@ -368,7 +375,8 @@ std::int32_t SequencePlayer::ReadNumber(SequenceTrack& track, NumberSource sourc
     do
     {
         byte = ReadByte(track);
-        number = (number << BitsInOneByteOfALongNumber) | (byte & ~MoreBytesFollowBit);
+        int numberBits = byte & NumberBitsOfAByte;
+        number = (number << BitsInOneByteOfALongNumber) | numberBits;
     } while ((byte & MoreBytesFollowBit) != 0 && !dataRanOut);
     return number;
 }
@@ -424,7 +432,9 @@ bool SequencePlayer::RunNote(SequenceTrack& track, int key, bool shouldRun, Numb
     if (!shouldRun)
         return false;
 
-    StartNote(track, std::clamp(key + track.transpose, 0, HighestKey), velocity, length > 0 ? length : -1);
+    int transposedKey = std::clamp(key + track.transpose, 0, HighestKey);
+    int noteLength = length > 0 ? length : HeldUntilReleased;
+    StartNote(track, transposedKey, velocity, noteLength);
 
     if (track.noteWait)
     {
@@ -478,7 +488,8 @@ bool SequencePlayer::RunControlCommand(SequenceTrack& track, std::uint8_t comman
         std::size_t position = ReadThreeBytes(track);
         if (shouldRun && track.returnFrameCount < MaximumCallDepth)
         {
-            track.returnFrames[track.returnFrameCount++] = ReturnFrame{track.position, 0};
+            track.returnFrames[track.returnFrameCount] = ReturnFrame{track.position, 0};
+            ++track.returnFrameCount;
             track.position = position;
         }
         return false;
@@ -620,8 +631,7 @@ void SequencePlayer::ChangeVariable(std::uint8_t command, std::int16_t& variable
         break;
     case RandomVariableCommand:
     {
-        std::int32_t size = std::abs(number);
-        std::int32_t random = static_cast<std::int32_t>((std::int64_t(globals.NextRandomNumber()) * (size + 1)) >> RandomBitsToDrop);
+        std::int32_t random = RandomNumberBetween(globals, 0, std::abs(number));
         result = number < 0 ? -random : random;
         break;
     }
@@ -639,10 +649,13 @@ void SequencePlayer::ChangeVariable(std::uint8_t command, std::int16_t& variable
 // Starts another track of the sequence. A track that exists stops what it does and starts at the place given.
 void SequencePlayer::OpenTrack(std::size_t trackNumber, std::size_t position, const SequenceTrack& openingTrack)
 {
-    if (trackNumber >= tracks.size() || !tracks[trackNumber].isAllocated || &tracks[trackNumber] == &openingTrack)
+    if (trackNumber >= tracks.size())
         return;
 
     SequenceTrack& opened = tracks[trackNumber];
+    if (!opened.isAllocated || &opened == &openingTrack)
+        return;
+
     if (opened.isRunning)
         EndTrack(opened);
 
@@ -665,7 +678,8 @@ void SequencePlayer::StartLoop(SequenceTrack& track, std::uint8_t roundCount)
     if (track.returnFrameCount >= MaximumCallDepth)
         return;
 
-    track.returnFrames[track.returnFrameCount++] = ReturnFrame{track.position, roundCount};
+    track.returnFrames[track.returnFrameCount] = ReturnFrame{track.position, roundCount};
+    ++track.returnFrameCount;
 }
 
 // At the end of a round the loop goes back to its start, until it has gone round as many times as it was told. A loop of 0 rounds never ends.

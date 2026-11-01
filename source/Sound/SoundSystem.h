@@ -124,6 +124,7 @@ private:
         bool resumesAtNextFrame = false;
     };
 
+    std::uint8_t PlayerPriorityOf(const RunningSound& sound) const;
     void LoadWaveSoundFileOf(const SoundInfo& sound);
     void LoadSequenceFilesOf(const SoundInfo& sound);
     void ProcessCommands();

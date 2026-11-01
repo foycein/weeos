@@ -39,7 +39,8 @@ LibraryCoefficients LibraryCoefficientsFor(int cutoffHertz)
     float root = float(std::sqrt(double(distance * distance - 1.0f)));
 
     // The original makes a 16 bit whole number of this, so a value of the full 32768 would wrap around. The cutoffs it is used for stay below.
-    int feedback = static_cast<std::int16_t>(static_cast<int>(CoefficientOne * -(root - distance)));
+    int unwrappedFeedback = static_cast<int>(CoefficientOne * -(root - distance));
+    int feedback = static_cast<std::int16_t>(unwrappedFeedback);
     return {CoefficientAllBitsSet - feedback, feedback};
 }
 
@@ -53,7 +54,8 @@ float LowPassValueFromCutoffNumber(std::uint8_t number)
 int LowPassCutoffHertz(float value)
 {
     double clampedValue = std::clamp(double(value), 0.0, double(OpenLowPass));
-    return static_cast<int>(CutoffForTheOpenValue * std::pow(2.0, OctavesForTheWholeValue * (clampedValue - 1.0)));
+    double octavesFromTheOpenCutoff = OctavesForTheWholeValue * (clampedValue - 1.0);
+    return static_cast<int>(CutoffForTheOpenValue * std::pow(2.0, octavesFromTheOpenCutoff));
 }
 
 std::optional<LowPassCoefficients> LowPassCoefficientsFor(float value, double sampleRate)

@@ -13,9 +13,7 @@ std::optional<std::size_t> VoicePool::ChooseSlot(int newPriority) const
         if (!slot.voice.IsActive())
             return slotNumber;
 
-        bool isWeakerThanTheBest = !weakestSlot || slot.voice.Priority() < slots[*weakestSlot].voice.Priority() ||
-            (slot.voice.Priority() == slots[*weakestSlot].voice.Priority() && slot.startNumber < slots[*weakestSlot].startNumber);
-        if (isWeakerThanTheBest)
+        if (!weakestSlot || IsWeaker(slot, slots[*weakestSlot]))
             weakestSlot = slotNumber;
     }
 
@@ -23,6 +21,14 @@ std::optional<std::size_t> VoicePool::ChooseSlot(int newPriority) const
         return weakestSlot;
 
     return std::nullopt;
+}
+
+bool VoicePool::IsWeaker(const Slot& slot, const Slot& other)
+{
+    if (slot.voice.Priority() != other.voice.Priority())
+        return slot.voice.Priority() < other.voice.Priority();
+
+    return slot.startNumber < other.startNumber;
 }
 
 std::optional<VoiceHandle> VoicePool::Start(
