@@ -93,6 +93,22 @@ public:
         return false;
     }
 
+    // The POWER or RESET button was pressed (the front panel, docs/audit/SystemMenu.md SYS-07). The menu waits until every screen
+    // can stop, tells every screen to stop, and waits until every screen has stopped. Most screens can stop at any time.
+    virtual bool CanStopForFrontPanel()
+    {
+        return true;
+    }
+
+    virtual void StopForFrontPanel()
+    {
+    }
+
+    virtual bool HasStoppedForFrontPanel()
+    {
+        return true;
+    }
+
     // One step of the life of the screen: moves it from state to state and calls what the state needs.
     void Step();
 
