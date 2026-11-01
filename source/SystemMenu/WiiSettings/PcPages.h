@@ -1,0 +1,59 @@
+#pragma once
+
+#include "SystemMenu/WiiSettings/PageBuilder.h"
+#include "SystemMenu/WiiSettings/PageGroup.h"
+#include "SystemMenu/WiiSettings/PageNavigator.h"
+
+#include "Settings/PcSettings.h"
+#include "Settings/SystemSettings.h"
+
+#include <functional>
+
+namespace SystemMenu
+{
+
+// "PC Settings": the window, the sound and the keys of WeeOS on the PC, in the look of the other pages (docs/DECISIONS.md, Product).
+// Every choice counts at once: the pages store it in the file beside the program and the program makes it true while the user looks.
+// The shape of the picture is the console's own widescreen setting, so the page "Screen" changes that one.
+class PcPages : public PageGroup
+{
+public:
+    // The navigator, the settings of the console, the settings of the PC and the program that applies them must outlive the pages.
+    PcPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings, Settings::PcSettingsStore& pcSettingsStore,
+        Settings::PcSettingsTarget& pcSettingsTarget);
+
+    bool Owns(PageId page) const override;
+    void EnterPage(PageId page) override;
+    void BuildPage(PageId page, Page& content) override;
+
+private:
+    void BuildPcIndex(PageBuilder& builder);
+    void BuildScreen(PageBuilder& builder);
+    void BuildWindowSize(PageBuilder& builder);
+    void BuildSound(PageBuilder& builder);
+    void BuildSoundDevice(PageBuilder& builder);
+    void BuildKeys(PageBuilder& builder);
+    void BuildMouse(PageBuilder& builder);
+
+    // The arrows up and down of a list that has more rows than one page holds.
+    void AddListArrows(PageBuilder& builder, int& shownListPage, int listPageCount);
+
+    // Changes the settings of the PC, stores them and makes them true at once.
+    void Change(const std::function<void(Settings::PcSettings&)>& change);
+
+    void TogglePictureShape();
+    void ChangeVolume(int change);
+    void ChangeKey(Input::ButtonMask button, int change);
+
+    PageNavigator& navigator;
+    Settings::SystemSettings& settings;
+    Settings::PcSettingsStore& pcSettings;
+    Settings::PcSettingsTarget& pcTarget;
+
+    // The playback devices of the PC, asked for when the user opens their list, and the page of each list that is shown.
+    std::vector<std::u16string> audioDevices;
+    int shownDevicePage = 0;
+    int shownKeyPage = 0;
+};
+
+}

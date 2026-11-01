@@ -40,6 +40,7 @@ add_library(SystemMenu STATIC
     WiiOptionsChoicesScreen.cpp
 )
 
-add_subdirectory(WiiMenu)
+target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings)
 
-target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)
+add_subdirectory(WiiSettings)
+add_subdirectory(WiiMenu)
