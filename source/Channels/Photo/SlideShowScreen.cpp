@@ -70,13 +70,17 @@ public:
         effect = settings.effect;
         if (settings.order == SlideOrder::Random)
         {
-            std::mt19937 random(std::random_device{}());
             std::shuffle(photoIndexes.begin(), photoIndexes.end(), random);
             position = 0;
         }
 
         StartMusic(settings.song);
         StartSlide();
+    }
+
+    ~SlideShowScreen() override
+    {
+        session.Services().stream.Stop();
     }
 
     void Update() override
@@ -88,6 +92,7 @@ public:
             return;
         }
 
+
         ChannelServices& services = session.Services();
         bool wantsToPause = session.IsRemoteButtonPressed(Input::RemoteButtons::A) || session.IsRemoteButtonPressed(Input::RemoteButtons::B);
         if (wantsToPause && services.fader.GetStatus() == SystemMenu::FaderStatus::Clear)
@@ -98,6 +103,7 @@ public:
             return;
         }
 
+        KeepTheMusicGoing();
         if (!photoIndexes.empty() && SecondsOfSlide() >= SecondsPerSlide)
         {
             position = (position + 1) % static_cast<int>(photoIndexes.size());
@@ -150,7 +156,44 @@ private:
 
         const SlideShowSong& song = songs[songIndex];
         if (song.kind == SongKind::BuiltIn)
+        {
             session.Services().sounds.Request(song.soundName);
+            return;
+        }
+
+        if (song.kind == SongKind::AacFile)
+            musicFiles = {*song.file};
+        else if (song.kind == SongKind::AllAacFiles || song.kind == SongKind::ShuffledAacFiles)
+            musicFiles = session.library.musicFiles;
+
+        if (song.kind == SongKind::ShuffledAacFiles)
+            std::shuffle(musicFiles.begin(), musicFiles.end(), random);
+
+        PlayNextMusicFile();
+    }
+
+    // The user's music plays file after file; one file plays again and again. A file that does not play is passed over.
+    void PlayNextMusicFile()
+    {
+        for (std::size_t tries = 0; tries < musicFiles.size(); ++tries)
+        {
+            const Ios::SdPath& file = musicFiles[nextMusicFile];
+            nextMusicFile = (nextMusicFile + 1) % musicFiles.size();
+            std::optional<Media::PcmSound> music = DecodeMusicFile(session, file);
+            if (!music)
+                continue;
+
+            session.Services().stream.Play(music->samples, music->channelCount, music->sampleRate, 0);
+            return;
+        }
+    }
+
+    void KeepTheMusicGoing()
+    {
+        if (musicFiles.empty() || session.Services().stream.IsPlaying())
+            return;
+
+        PlayNextMusicFile();
     }
 
     void StartSlide()
@@ -200,6 +243,9 @@ private:
     double pausedAtSeconds = 0;
     bool isPaused = false;
     SlideEffect effect = SlideEffect::Simple;
+    std::mt19937 random{std::random_device{}()};
+    std::vector<Ios::SdPath> musicFiles;
+    std::size_t nextMusicFile = 0;
     float previousZoom = 1;
 };
 

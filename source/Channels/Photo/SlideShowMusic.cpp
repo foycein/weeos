@@ -1,7 +1,15 @@
 #include "Channels/Photo/SlideShowMusic.h"
 
 #include "Channels/ChannelText.h"
+#include "Channels/Photo/PhotoPictures.h"
+#include "Channels/Photo/PhotoSession.h"
 
+#include "Media/AacMusic.h"
+#include "Media/QuickTimeReader.h"
+
+#include "Formats/FormatError.h"
+
+#include <algorithm>
 #include <array>
 
 namespace Channels
@@ -26,6 +34,20 @@ constexpr std::array<BuiltInSong, 5> BuiltInSongs = {{
 }};
 
 constexpr std::string_view NoMusicName = "None";
+
+// The sample rates of AAC files that the channel plays (the table at 0x801D7940).
+constexpr std::array<int, 12> AcceptedSampleRates = {96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000};
+
+bool IsAcceptedAacFile(Formats::ByteView file)
+{
+    Media::Movie music = Media::ReadQuickTimeMovie(file);
+    if (!music.sound || music.sound->kind != Media::MovieSoundKind::Aac)
+        return false;
+
+    bool hasAcceptedRate = std::find(AcceptedSampleRates.begin(), AcceptedSampleRates.end(), music.sound->sampleRate) != AcceptedSampleRates.end();
+    bool hasAcceptedChannels = music.sound->channelCount >= 1 && music.sound->channelCount <= 2;
+    return hasAcceptedRate && hasAcceptedChannels;
+}
 constexpr std::string_view AllAacFilesName = "All AAC files";
 constexpr std::string_view ShuffledAacFilesName = "Shuffle AAC files";
 
@@ -49,9 +71,39 @@ std::vector<SlideShowSong> ListSlideShowSongs(const std::vector<Ios::SdPath>& mu
     return songs;
 }
 
-bool IsSongPlayable(PhotoSession&, const SlideShowSong& song)
+std::optional<Media::PcmSound> DecodeMusicFile(PhotoSession& session, const Ios::SdPath& file)
 {
-    return song.kind == SongKind::BuiltIn || song.kind == SongKind::NoMusic;
+    std::optional<Formats::Bytes> bytes = ReadCardFile(session.Services().storage.sdCard, file);
+    if (!bytes)
+        return std::nullopt;
+
+    try
+    {
+        if (!IsAcceptedAacFile(*bytes))
+            return std::nullopt;
+
+        return Media::DecodeAacMusic(*bytes);
+    }
+    catch (const Formats::FormatError&)
+    {
+        return std::nullopt;
+    }
+}
+
+bool IsSongPlayable(PhotoSession& session, const SlideShowSong& song)
+{
+    if (song.kind == SongKind::BuiltIn || song.kind == SongKind::NoMusic)
+        return true;
+
+    if (song.kind == SongKind::AacFile)
+        return DecodeMusicFile(session, *song.file).has_value();
+
+    for (const Ios::SdPath& file : session.library.musicFiles)
+    {
+        if (DecodeMusicFile(session, file))
+            return true;
+    }
+    return false;
 }
 
 }

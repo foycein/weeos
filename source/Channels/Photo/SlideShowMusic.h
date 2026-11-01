@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ios/SdCard/SdPath.h"
+#include "Media/PcmSound.h"
 
 #include <optional>
 #include <string>
@@ -36,8 +37,12 @@ struct SlideShowSong
 // when the card holds AAC files, and the files themselves (up to 100).
 std::vector<SlideShowSong> ListSlideShowSongs(const std::vector<Ios::SdPath>& musicFiles);
 
-// False for the AAC entries: WeeOS has no AAC decoder yet, so the channel answers as for a file it cannot play
-// ("This AAC file format is not supported", layout slide_bgm_error).
+// An AAC file plays when the channel accepts it (CHN-08: the first sound track is mp4a, one of the twelve sample rates, one or two
+// channels) and Windows can decode it; else the channel says "This AAC file format is not supported" (layout slide_bgm_error).
+// "All AAC files" and "Shuffle AAC files" play when one of the files does.
 bool IsSongPlayable(PhotoSession& session, const SlideShowSong& song);
+
+// The music of an AAC file of the card, decoded, or nothing when it does not play.
+std::optional<Media::PcmSound> DecodeMusicFile(PhotoSession& session, const Ios::SdPath& file);
 
 }
