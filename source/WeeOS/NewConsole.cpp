@@ -25,7 +25,6 @@ namespace WeeOS
 namespace
 {
 
-const Ios::TitleId SystemMenuTitle = Ios::SystemMenuTitleId;
 constexpr std::string_view CertificatesFileName = "certificates.bin";
 constexpr std::string_view NewNandFolderEnding = " (being made)";
 
@@ -218,7 +217,7 @@ Formats::Bytes MakeSystemConfiguration()
 
 void WriteSystemFiles(Ios::FileSystemService& fileSystem, const std::filesystem::path& wiiFilesFolder)
 {
-    std::filesystem::path menuFolder = wiiFilesFolder / std::format("{:016x}", SystemMenuTitle.ToValue());
+    std::filesystem::path menuFolder = wiiFilesFolder / std::format("{:016x}", Ios::SystemMenuTitleId.ToValue());
     Formats::Bytes certificates = Formats::ReadFileBytes(menuFolder / CertificatesFileName);
     WriteFile(fileSystem, "/sys/cert.sys", certificates, Ios::SuperUserCaller, ReadWriteForSystem);
 
