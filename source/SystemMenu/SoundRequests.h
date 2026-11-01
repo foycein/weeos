@@ -73,45 +73,45 @@ public:
     void Request(std::string_view soundName)
     {
         effectNames.emplace_back(soundName);
-        requests.push_back({SoundAction::PlayEffect, std::string(soundName)});
+        requests.push_back({.action = SoundAction::PlayEffect, .effectName = std::string(soundName)});
     }
 
     // Starts the music of the menu from its beginning (0x8136B3BC with WIPL_BGM_MENU). The reverb of the menu is set up again
     // when a stop of all sounds had shut it down, as the screens of the original do before they start the music again (0x8136B37C).
     void StartMusic()
     {
-        requests.push_back({SoundAction::StartMusic});
+        requests.push_back({.action = SoundAction::StartMusic});
     }
 
     // Fades the music out in the steps given and stops it (0x8136BA34).
     void StopMusic(int fadeSteps)
     {
-        requests.push_back({SoundAction::StopMusic, {}, 0.0f, fadeSteps});
+        requests.push_back({.action = SoundAction::StopMusic, .fadeSteps = fadeSteps});
     }
 
     // Moves the volume of the music to the new volume in the steps given (0x8136BD24 to 0, 0x8136BD58 to 1).
     void ChangeMusicVolume(float volume, int fadeSteps)
     {
-        requests.push_back({SoundAction::ChangeMusicVolume, {}, volume, fadeSteps});
+        requests.push_back({.action = SoundAction::ChangeMusicVolume, .volume = volume, .fadeSteps = fadeSteps});
     }
 
     // The music and the effects that play now fall silent in PauseFadeSteps and are held; the reverb is shut down (0x8136BD8C).
     // The HOME menu does this when it opens. Effects that start later play.
     void PauseAllSounds()
     {
-        requests.push_back({SoundAction::PauseAllSounds, {}, 0.0f, PauseFadeSteps});
+        requests.push_back({.action = SoundAction::PauseAllSounds, .fadeSteps = PauseFadeSteps});
     }
 
     // The held sounds go on and the reverb is set up again (0x8136BE34).
     void ResumeAllSounds()
     {
-        requests.push_back({SoundAction::ResumeAllSounds, {}, 1.0f, PauseFadeSteps});
+        requests.push_back({.action = SoundAction::ResumeAllSounds, .fadeSteps = PauseFadeSteps});
     }
 
     // Fades the music and every effect out in the steps given and stops them, and shuts the reverb down (0x8136BB10).
     void StopAllSounds(int fadeSteps)
     {
-        requests.push_back({SoundAction::StopAllSounds, {}, 0.0f, fadeSteps});
+        requests.push_back({.action = SoundAction::StopAllSounds, .fadeSteps = fadeSteps});
     }
 
     // The names of the sound effects requested since the last call of StartNextStep, in the order in which they were requested.

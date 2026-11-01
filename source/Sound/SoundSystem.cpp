@@ -246,7 +246,12 @@ void SoundSystem::CarryOut(const SoundCommand& command)
 
 bool SoundSystem::IsPlaying(std::size_t soundNumber) const
 {
-    return std::any_of(runningSounds.begin(), runningSounds.end(), [&](const RunningSound& sound) { return sound.soundNumber == soundNumber; });
+    for (const RunningSound& sound : runningSounds)
+    {
+        if (sound.soundNumber == soundNumber)
+            return true;
+    }
+    return false;
 }
 
 SoundSystem::RunningSound* SoundSystem::FindRunningSound(std::uint32_t handleNumber)
