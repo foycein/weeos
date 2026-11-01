@@ -370,4 +370,15 @@ bool IsUsableMii(const MiiRecord& record)
     return !HasEmptyCreateId(record) && IsValidMii(record) && !IsTemporaryMii(record);
 }
 
+bool WasMadeOnConsole(const MiiRecord& record, std::uint32_t consoleSystemId)
+{
+    if (HasEmptyCreateId(record) || IsTemporaryMii(record))
+        return false;
+
+    if ((record.miiId & ForeignMiiFlag) != 0)
+        return false;
+
+    return record.systemId == consoleSystemId;
+}
+
 }

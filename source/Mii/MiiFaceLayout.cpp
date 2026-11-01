@@ -148,7 +148,8 @@ std::vector<FaceFeatureQuad> LayOutFace(const MiiRecord& record, float textureSi
     float moleGrowth = Grow(record.mole.size);
 
     std::vector<QuadPlacement> placements = {
-        {FaceFeature::Mustache, FaceMiddle, mustacheY, MustacheWidth * mustacheGrowth, MustacheHeight * mustacheGrowth, 0, Anchor::LeftOfPoint},
+        {FaceFeature::Mustache, FaceMiddle, mustacheY, MustacheWidth * mustacheGrowth, MustacheHeight * mustacheGrowth, 0,
+            Anchor::LeftOfPoint},
         {FaceFeature::Mustache, FaceMiddle, mustacheY, MustacheWidth * mustacheGrowth, MustacheHeight * mustacheGrowth, 0,
             Anchor::RightOfPointMirrored},
         {FaceFeature::Mouth, FaceMiddle, mouthY, MouthWidth * mouthGrowth, MouthHeight * mouthGrowth, 0, Anchor::Centered},

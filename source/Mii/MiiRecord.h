@@ -195,4 +195,7 @@ bool IsSpecialMii(const MiiRecord& record);
 // A Mii that a program may show: it has a create id, it is valid and it is not a temporary one.
 bool IsUsableMii(const MiiRecord& record);
 
+// The Mii was made on the console with this system id (and is not a temporary or foreign one).
+bool WasMadeOnConsole(const MiiRecord& record, std::uint32_t consoleSystemId);
+
 }

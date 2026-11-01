@@ -12,6 +12,10 @@
 namespace Mii
 {
 
+// The light of the face library's icons: white, in front of the face above and to the right, with a gray ambient light.
+// It stays with the head: the matrix brings the head's units into view space.
+Graphics::PointLight MakeHeadLight(const Graphics::Matrix4& headModelView);
+
 // A Mii's head ready to draw: its 3D parts and its textures on the graphics device, the face texture showing one expression.
 class MiiHead
 {

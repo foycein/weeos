@@ -22,11 +22,6 @@ constexpr float HalfViewAtNearDistance = 43.2f;
 
 constexpr float DegreesPerRadian = 57.29578f;
 
-// The light: white, in front of the face above and to the right, with a gray ambient light.
-constexpr Formats::Vector3 LightPosition = {1600.0f, 1500.0f, 6000.0f};
-constexpr Formats::Rgba8Color LightColor = {255, 255, 255, 255};
-constexpr Formats::Rgba8Color AmbientColor = {160, 160, 160, 255};
-
 constexpr std::uint32_t SmallFaceTexture = 64;
 constexpr std::uint32_t MiddleFaceTexture = 128;
 constexpr std::uint32_t LargeFaceTexture = 256;
@@ -57,7 +52,7 @@ Graphics::MeshPlacement MakeIconPlacement(float aspect)
     Graphics::MeshPlacement placement;
     placement.modelView = view;
     placement.projection = Graphics::MakePerspective(verticalAngle, aspect, NearDistance, FarDistance);
-    placement.light = Graphics::PointLight{Graphics::TransformPoint(view, LightPosition), LightColor, AmbientColor};
+    placement.light = MakeHeadLight(view);
     return placement;
 }
 

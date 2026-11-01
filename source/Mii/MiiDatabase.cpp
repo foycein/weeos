@@ -78,17 +78,6 @@ std::uint16_t ListEndFrom(std::uint16_t neighbor)
     return neighbor;
 }
 
-bool WasMadeOnConsole(const MiiRecord& record, std::uint32_t consoleSystemId)
-{
-    if (HasEmptyCreateId(record) || IsTemporaryMii(record))
-        return false;
-
-    if ((record.miiId & ForeignMiiFlag) != 0)
-        return false;
-
-    return record.systemId == consoleSystemId;
-}
-
 void RequireSlot(std::size_t slot)
 {
     if (slot >= MiiSlotCount)
@@ -135,7 +124,10 @@ MiiDatabase MiiDatabase::Read(Formats::ByteView fileBytes)
     auto storedChecksum = static_cast<std::uint16_t>(ReadNumber(completeBytes, ChecksumOffset, sizeof(std::uint16_t)));
     std::uint16_t checksum = CalculateMiiChecksum(fileBytes.first(ChecksumOffset));
     if (checksum != storedChecksum)
-        throw Formats::FormatError(std::format("Mii database: the checksum is {:#06x} but the file says {:#06x}", checksum, storedChecksum));
+    {
+        throw Formats::FormatError(
+            std::format("Mii database: the checksum is {:#06x} but the file says {:#06x}", checksum, storedChecksum));
+    }
 
     // A file that ends early is read as if the missing hidden Miis were zero, which is what the console's buffer holds then.
     if (completeBytes.size() < MiiDatabaseFileSize)

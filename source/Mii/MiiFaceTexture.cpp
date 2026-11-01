@@ -21,6 +21,10 @@ constexpr float PixelCenterOffset = 0.0f;
 
 constexpr Formats::Rgba8Color White = {255, 255, 255, 255};
 
+// Mole picture 0 is transparent, so a Mii without a mole draws it too.
+constexpr int NoMolePicture = 0;
+constexpr int MolePicture = 1;
+
 // The device textures of the pictures one face needs. The eyes and the mouth have one texture per color channel.
 struct FacePictures
 {
@@ -44,7 +48,9 @@ FacePictures UploadFacePictures(Graphics::GraphicsDevice& device, const MiiResou
 {
     Formats::RgbaImage eye = resources.ReadTexture(TexturePart::Eye, record.eyes.type).image;
     Formats::RgbaImage mouth = resources.ReadTexture(TexturePart::Mouth, record.mouth.type).image;
-    int moleEntry = record.mole.isVisible ? 1 : 0;
+    int moleEntry = NoMolePicture;
+    if (record.mole.isVisible)
+        moleEntry = MolePicture;
 
     FacePictures pictures;
     pictures.eye = UploadChannels(device, eye, {ColorChannel::Red, ColorChannel::Blue, ColorChannel::Green});
@@ -109,15 +115,20 @@ Graphics::Material MakeThreeChannelMaterial(const std::vector<Graphics::TextureH
 
     for (std::uint8_t stageNumber = 0; stageNumber < tints.size(); ++stageNumber)
     {
-        bool isFirst = stageNumber == 0;
-
         Graphics::TevStage stage;
         stage.textureIndex = stageNumber;
         stage.usesRasterColor = false;
         stage.color.inputB = tints[stageNumber];
         stage.color.inputC = TevColorInput::TextureColor;
-        stage.color.inputD = isFirst ? TevColorInput::Zero : TevColorInput::PreviousColor;
-        stage.alpha.inputD = isFirst ? TevAlphaInput::TextureAlpha : TevAlphaInput::PreviousAlpha;
+        stage.color.inputD = TevColorInput::PreviousColor;
+        stage.alpha.inputD = TevAlphaInput::PreviousAlpha;
+
+        bool isFirst = stageNumber == 0;
+        if (isFirst)
+        {
+            stage.color.inputD = TevColorInput::Zero;
+            stage.alpha.inputD = TevAlphaInput::TextureAlpha;
+        }
 
         material.textures.push_back({channelTextures[stageNumber], {}});
         material.stages.push_back(stage);

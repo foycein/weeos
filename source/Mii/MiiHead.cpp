@@ -15,6 +15,10 @@ using Graphics::FaceCulling;
 using Graphics::TevAlphaInput;
 using Graphics::TevColorInput;
 
+constexpr Formats::Vector3 HeadLightPosition = {1600.0f, 1500.0f, 6000.0f};
+constexpr Formats::Rgba8Color HeadLightColor = {255, 255, 255, 255};
+constexpr Formats::Rgba8Color HeadAmbientColor = {160, 160, 160, 255};
+
 Graphics::RegisterColor ToRegister(Formats::Rgba8Color color)
 {
     return {color.red, color.green, color.blue, color.alpha};
@@ -140,6 +144,11 @@ Graphics::TextureHandle UploadPartTexture(Graphics::GraphicsDevice& device, cons
 
 }
 
+Graphics::PointLight MakeHeadLight(const Graphics::Matrix4& headModelView)
+{
+    return {Graphics::TransformPoint(headModelView, HeadLightPosition), HeadLightColor, HeadAmbientColor};
+}
+
 MiiHead::MiiHead(Graphics::GraphicsDevice& graphicsDevice, const MiiResources& resources, const MiiRecord& miiRecord,
     MiiExpression expression, std::uint32_t faceTextureSize)
     : device(graphicsDevice)
@@ -181,7 +190,10 @@ void MiiHead::Draw(const Graphics::MeshPlacement& placement) const
     DrawPart(model.forehead, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(skinColor));
     DrawPart(model.hair, placement, hairCulling, DepthMode::TestAndWrite, MakeColorMaterial(HairColors[record.hair.color]));
     if (capTexture.IsValid())
-        DrawPart(model.cap, placement, hairCulling, DepthMode::TestAndWrite, MakeCapMaterial(FavoriteColors[record.favoriteColor], capTexture));
+    {
+        Graphics::Material capMaterial = MakeCapMaterial(FavoriteColors[record.favoriteColor], capTexture);
+        DrawPart(model.cap, placement, hairCulling, DepthMode::TestAndWrite, capMaterial);
+    }
     DrawPart(model.faceline, placement, FaceCulling::Back, DepthMode::TestAndWrite, MakeFacelineMaterial(skinColor, makeUpTexture));
 
     DrawPart(model.mask, placement, FaceCulling::Back, DepthMode::TestOnly, MakeMaskMaterial(faceTexture));

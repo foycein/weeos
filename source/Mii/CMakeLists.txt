@@ -1,5 +1,8 @@
 add_library(Mii STATIC
     DefaultMiis.cpp
+    MiiBody.cpp
+    MiiBodyFile.cpp
+    MiiBodyPicture.cpp
     MiiChecksum.cpp
     MiiColors.cpp
     MiiCreateId.cpp
