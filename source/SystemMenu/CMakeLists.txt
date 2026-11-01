@@ -26,4 +26,6 @@ add_library(SystemMenu STATIC
     WiiOptionsChoicesScreen.cpp
 )
 
+add_subdirectory(DataManagement)
+
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)
