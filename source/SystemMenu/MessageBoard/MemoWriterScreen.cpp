@@ -265,7 +265,9 @@ void MemoWriterScreen::Post()
     services.sounds.Request(SoundName::Decide);
 
     LocalTime now = services.wiiMenu.console.GetLocalTime();
-    Formats::Vector2 place = PlaceForNewLetter(data.NextRandomNumber(), data.NextRandomNumber());
+    float firstRandomNumber = data.NextRandomNumber(now);
+    float secondRandomNumber = data.NextRandomNumber(now);
+    Formats::Vector2 place = PlaceForNewLetter(firstRandomNumber, secondRandomNumber);
     Formats::BoardMessage memo = MakeMemo(text, mii, place, now);
     postedMemo = PostMemo(data.store, data.shownDay, memo, now);
 
