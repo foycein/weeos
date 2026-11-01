@@ -767,9 +767,15 @@ void ChannelGridScreen::DrawTheGrid()
     auto isFrontMask = [](const Formats::Pane& pane) { return pane.name == FrontMaskPane; };
     auto isMiddlePane = [&](const Formats::Pane& pane) { return !isBackPane(pane) && !isFrontMask(pane); };
 
+    // The strip holds the pages beside the one that shows; on a screen wider than 16:9 they go on beside the picture, the televisions
+    // of the next page in their holes, so the sheet of the grid continues instead of ending at the edge (docs/DECISIONS.md, Settings).
+    Graphics::GraphicsDevice& device = services.display.Device();
+    device.SetScissor(device.WholeArea());
     DrawPanes(*strip, services.display, placedPanes, isBackPane);
     DrawTiles(placedPanes);
+    device.SetScissor(device.WholeArea());
     DrawPanes(*strip, services.display, placedPanes, isMiddlePane);
+    device.ClearScissor();
 
     for (std::string_view clockPane : ClockPanes)
     {
