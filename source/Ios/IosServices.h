@@ -5,6 +5,7 @@
 #include "Ios/Identity/ConsoleIdentityService.h"
 #include "Ios/IosFolders.h"
 #include "Ios/Keyboard/KeyboardService.h"
+#include "Ios/Microphone/MicrophoneService.h"
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/Network/PcConnection.h"
 #include "Ios/Network/WirelessService.h"
@@ -58,6 +59,7 @@ public:
     SocketService& GetSockets();
     SecureSocketService& GetSecureSockets();
     KeyboardService& GetKeyboard();
+    MicrophoneService& GetMicrophone();
     RemoteService& GetRemote();
     PowerService& GetPower();
     ConsoleIdentityService& GetConsoleIdentity();
@@ -84,6 +86,7 @@ private:
     std::unique_ptr<SocketService> sockets;
     std::unique_ptr<PowerService> power;
     std::unique_ptr<KeyboardService> keyboard;
+    std::unique_ptr<MicrophoneService> microphone;
     std::unique_ptr<SecureSocketService> secureSockets;
 };
 

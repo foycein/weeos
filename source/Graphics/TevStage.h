@@ -178,6 +178,9 @@ struct TevStage
     // in their place (0 red, 1 green, 2 blue, 3 alpha). The Mii Channel's icons of eyes and mouths read one channel of a texture as gray.
     std::array<std::uint8_t, 4> rasterSwap = {0, 1, 2, 3};
     std::array<std::uint8_t, 4> textureSwap = {0, 1, 2, 3};
+
+    // The stage reads its texture at a place that the indirect texture of the material moves (Material::indirectTexture).
+    bool isMovedByIndirectTexture = false;
 };
 
 }

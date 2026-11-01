@@ -6,6 +6,7 @@
 #include "Channels/Photo/PhotoChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
+#include "Channels/WiiSpeak/WiiSpeakChannel.h"
 
 #include "Formats/Huffman.h"
 
@@ -42,6 +43,9 @@ constexpr ChannelSharedFiles PhotoSharedFiles = {std::nullopt, 3, "./HomeButton2
 // The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
 constexpr ChannelSharedFiles InternetSharedFiles = {std::uint16_t{8}, 5, "homebutton", false, WiiMenuAndReset};
 
+// Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts (CHN-33).
+constexpr ChannelSharedFiles WiiSpeakSharedFiles = {std::nullopt, 3, "./HomeButton3", true, WiiMenuAndReset};
+
 // A sound archive of a channel: the content that holds it, its path there, and whether it is packed with Huffman.
 struct ChannelSoundArchive
 {
@@ -56,6 +60,7 @@ constexpr ChannelSoundArchive HomeButton3Sounds = {6, "./HomeButton3/Huf8_HomeBu
 constexpr std::array<ChannelSoundArchive, 2> ForecastSounds = {{{9, "./rev_wtr.brsar", false}, HomeButton3Sounds}};
 constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsar", false}, HomeButton3Sounds}};
 constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSound.brsar", false}}};
+constexpr std::array<ChannelSoundArchive, 2> WiiSpeakSounds = {{{2, "./MicChatSound.brsar", false}, {3, "./HomeButton3/Huf8_HomeButtonSe.brsar", true}}};
 
 // The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts (CHN-70).
 constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/NigaoeSound.brsar", false},
@@ -80,6 +85,9 @@ std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 
     if (titleId == PhotoChannelTitleId)
         return PhotoSounds;
+
+    if (titleId == WiiSpeakChannelTitleId)
+        return WiiSpeakSounds;
 
     return {};
 }
@@ -121,6 +129,9 @@ std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)
     if (titleId == PhotoChannelTitleId)
         return PhotoSharedFiles;
 
+    if (titleId == WiiSpeakChannelTitleId)
+        return WiiSpeakSharedFiles;
+
     return std::nullopt;
 }
 
@@ -148,6 +159,9 @@ std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& serv
 
     if (titleId == PhotoChannelTitleId)
         return std::make_unique<PhotoChannel>(services);
+
+    if (titleId == WiiSpeakChannelTitleId)
+        return std::make_unique<WiiSpeakChannel>(services);
 
     return nullptr;
 }

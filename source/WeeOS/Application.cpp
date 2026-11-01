@@ -201,8 +201,9 @@ private:
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
         std::string serverAddress = wiiSettings.FlowServices().pcSettings.Values().serverAddress;
         Channels::ChannelNetwork network{iosServices.GetNetworkConfig(), iosServices.GetSockets(), serverAddress};
+        Channels::ChannelAudio audio{iosServices.GetMicrophone(), sound.Waves()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            network, storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
+            network, storage, audio, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -283,7 +284,33 @@ void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
     session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer);
+    AttachMicrophone();
     StopOnTheKeyOfKoreanConsoles();
+}
+
+// IOS is new in every session, so the accessory is plugged into the new microphone service. A channel looks for it in its first step.
+void Application::AttachMicrophone()
+{
+    Ios::MicrophoneService& microphone = console.GetServices().GetMicrophone();
+    if (givenMicrophone != nullptr)
+    {
+        microphone.AttachSource(*givenMicrophone);
+        return;
+    }
+
+    if (Sound::HasCaptureDevice())
+        microphone.AttachSource(pcMicrophone);
+}
+
+void Application::UseMicrophoneSource(Ios::MicrophoneSource& source)
+{
+    givenMicrophone = &source;
+    console.GetServices().GetMicrophone().AttachSource(source);
+}
+
+const PcMicrophone& Application::GetPcMicrophone() const
+{
+    return pcMicrophone;
 }
 
 // The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.

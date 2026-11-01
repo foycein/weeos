@@ -146,6 +146,21 @@ Graphics::TevStage ConvertStage(const Formats::Material& material, const Formats
     }
 }
 
+// What WeeOS draws of an indirect texture (TevStageConversion): the first indirect stage, which reads its texture map at that map's own
+// coordinates without making them smaller, and the first indirect matrix.
+void RequireSupportedIndirectTexture(const Formats::Material& material)
+{
+    if (material.indirectStages.empty() || material.indirectTransforms.empty())
+        FailMaterial(material, "a stage is moved by an indirect texture that the material does not have");
+
+    const Formats::IndirectStage& stage = material.indirectStages.front();
+    if (stage.textureMap >= material.textures.size())
+        FailMaterial(material, std::format("its indirect stage reads the texture {} and the material has {}", stage.textureMap, material.textures.size()));
+
+    if (stage.textureCoordinateSet != stage.textureMap || stage.scaleS != 0 || stage.scaleT != 0)
+        FailMaterial(material, "its indirect stage reads other coordinates than those of its texture");
+}
+
 std::vector<Graphics::TevStage> ConvertStages(const Formats::Material& material)
 {
     std::vector<Graphics::TevStage> stages;
@@ -159,6 +174,9 @@ std::vector<Graphics::TevStage> ConvertStages(const Formats::Material& material)
             FailMaterial(material, std::format("a stage reads the texture {} and the material has {}",
                 stage.textureIndex, material.textures.size()));
         }
+
+        if (stage.isMovedByIndirectTexture)
+            RequireSupportedIndirectTexture(material);
 
         stages.push_back(stage);
     }
@@ -209,6 +227,20 @@ LiveMaterial MakeLiveMaterial(Formats::Material description, const std::vector<s
 std::size_t TextureCoordinateSetOf(const Formats::Material& material, std::size_t textureMapIndex)
 {
     return material.textureCoordinateGenerators[textureMapIndex].source - TextureCoordinateSourceBase;
+}
+
+Graphics::IndirectTexture IndirectTextureOf(const Formats::Material& material)
+{
+    const Formats::TextureTransform& transform = material.indirectTransforms.front();
+    float radians = RadiansPerDegree * transform.rotation;
+    float cosine = std::cos(radians);
+    float sine = std::sin(radians);
+
+    Graphics::IndirectTexture indirect;
+    indirect.textureIndex = material.indirectStages.front().textureMap;
+    indirect.matrix[0] = {transform.scale.x * cosine, -transform.scale.y * sine, transform.translation.x};
+    indirect.matrix[1] = {transform.scale.x * sine, transform.scale.y * cosine, transform.translation.y};
+    return indirect;
 }
 
 Graphics::TextureMatrix TextureMatrixOf(const Formats::Material& material, std::size_t textureMapIndex)

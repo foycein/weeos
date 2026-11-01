@@ -19,6 +19,11 @@
 namespace Channels
 {
 
+// The code of the WiiConnect24 download (KD 0x13DB3760): while the network does not start, from the error of SOStartup; while it does,
+// from what the owner's server answered (CHN-04).
+std::uint32_t DownloadErrorCodeOfStart(int startupError);
+std::uint32_t DownloadErrorCodeOfServer(SystemMenu::ServerAnswer answer);
+
 // Where a channel that lives on WiiConnect24 data keeps the files of its start, and what differs between the Forecast and the News Channel.
 struct WiiConnect24ChannelFiles
 {

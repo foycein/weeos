@@ -90,6 +90,16 @@ std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents
 
 }
 
+std::uint32_t DownloadErrorCodeOfStart(int startupError)
+{
+    return DownloadSocketErrorCodeBase + static_cast<std::uint32_t>(-startupError);
+}
+
+std::uint32_t DownloadErrorCodeOfServer(SystemMenu::ServerAnswer answer)
+{
+    return DownloadHttpErrorCodeBase + HttpErrorOf(answer);
+}
+
 WiiConnect24Channel::WiiConnect24Channel(ChannelServices& channelServices, const WiiConnect24ChannelFiles& files)
     : services(channelServices)
     , networkStart(SystemMenu::StartNetwork(channelServices.network.configuration, channelServices.network.sockets))
@@ -168,17 +178,15 @@ std::optional<WiiConnect24Channel::DownloadFailure> WiiConnect24Channel::FindDow
         if (services.clock.Seconds() < networkStart.secondsUntilFailure)
             return std::nullopt;
 
-        std::uint32_t code = DownloadSocketErrorCodeBase + static_cast<std::uint32_t>(-networkStart.startupError);
-        return DownloadFailure{CannotConnectMessage, code};
+        return DownloadFailure{CannotConnectMessage, DownloadErrorCodeOfStart(networkStart.startupError)};
     }
 
     std::optional<SystemMenu::ServerAnswer> answer = server->Answer();
     if (!answer)
         return std::nullopt;
 
-    std::uint32_t httpError = HttpErrorOf(*answer);
-    int message = httpError == HttpNameNotFoundError ? CannotConnectMessage : ServiceUnavailableMessage;
-    return DownloadFailure{message, DownloadHttpErrorCodeBase + httpError};
+    int message = HttpErrorOf(*answer) == HttpNameNotFoundError ? CannotConnectMessage : ServiceUnavailableMessage;
+    return DownloadFailure{message, DownloadErrorCodeOfServer(*answer)};
 }
 
 void WiiConnect24Channel::UpdateStage()
