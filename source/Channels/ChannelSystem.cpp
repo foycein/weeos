@@ -80,7 +80,8 @@ private:
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents,
     SystemMenu::TitleContents& systemMenuContents, Ios::RemoteService& remoteService, Ios::NetworkConfigService& network,
-    const ChannelStorage& storage, Ios::PowerService& powerService, Ios::TitleId titleId, std::optional<Formats::Bytes> consoleFontArchive)
+    const ChannelStorage& storage, Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime,
+    std::optional<Formats::Bytes> consoleFontArchive)
     : runningTitle(titleId)
     , graphicsDevice(device)
     , menuContents(systemMenuContents)
@@ -89,7 +90,7 @@ ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::Title
     , display(device)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, std::move(consoleTime)}
 {
     LoadSystemFonts(contents, std::move(consoleFontArchive));
     channel = MakeChannel(titleId, services);

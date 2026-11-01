@@ -9,9 +9,13 @@
 #include <vector>
 
 // WeeOS.exe [--silent] [--hidden] [nand folder [identity folder]]
-// The NAND folder is the one NandTool import makes. The identity folder holds the keys.txt, device.cert and seeprom.bin of the console.
-// Without folders they are data/nand and data/identity beside the program.
-// The SD card is the folder sd beside the NAND folder, always in the slot.
+// WeeOS is one portable folder. Beside WeeOS.exe are:
+//   NAND                 the NAND of the console (made at the first start, or imported from a Wii)
+//   Identity             who the console is: keys.txt, device.cert, seeprom.bin (and authority.cert for a console that WeeOS made)
+//   SDCard               the SD card, always in its slot; files copied into it or out of it show up at once
+//   WeeOS.settings.txt   the settings of the PC: window, sound, keys
+//   WiiFiles             the Wii files that a new console is made from
+// Folders on the command line are for tests and development; the SD card is then the folder SDCard beside the NAND folder.
 // --silent opens the sound output with nothing but silence, and --hidden draws into a window that is never shown, for the runs of
 // development (docs/HelperRules.md). Without them WeeOS plays its sound and shows its window.
 
@@ -20,15 +24,18 @@ namespace
 
 constexpr std::string_view SilentOption = "--silent";
 constexpr std::string_view HiddenOption = "--hidden";
+constexpr std::string_view NandFolderName = "NAND";
+constexpr std::string_view IdentityFolderName = "Identity";
+constexpr std::string_view SdCardFolderName = "SDCard";
 
 Ios::IosFolders ChooseFolders(const std::vector<std::string_view>& folderArguments)
 {
-    std::filesystem::path dataFolder = Platform::ExecutableFolder() / "data";
+    std::filesystem::path programFolder = Platform::ExecutableFolder();
 
     Ios::IosFolders folders;
-    folders.nandFolder = folderArguments.size() > 0 ? std::filesystem::path(folderArguments[0]) : dataFolder / "nand";
-    folders.identityFolder = folderArguments.size() > 1 ? std::filesystem::path(folderArguments[1]) : dataFolder / "identity";
-    folders.sdCardFolder = folders.nandFolder.parent_path() / "sd";
+    folders.nandFolder = folderArguments.size() > 0 ? std::filesystem::path(folderArguments[0]) : programFolder / NandFolderName;
+    folders.identityFolder = folderArguments.size() > 1 ? std::filesystem::path(folderArguments[1]) : programFolder / IdentityFolderName;
+    folders.sdCardFolder = folders.nandFolder.parent_path() / SdCardFolderName;
     return folders;
 }
 

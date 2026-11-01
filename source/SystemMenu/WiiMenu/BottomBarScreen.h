@@ -10,6 +10,7 @@
 #include "Layout/LayoutArchive.h"
 
 #include <array>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -18,7 +19,7 @@
 namespace SystemMenu
 {
 
-// The buttons of the bar that the Wii Menu answers to.
+// The buttons of the bar. Which of them the bar has depends on what it shows (BarMode).
 enum class BarButton
 {
     // The Wii button on the left: Wii Options.
@@ -32,6 +33,49 @@ enum class BarButton
 
     // The SD card at the left: the SD Card Menu.
     SdCardButton,
+
+    // The buttons of the Message Board: the calendar and "Create Message" on the left, the way back to the channels on the right.
+    CalendarButton,
+    CreateMessageButton,
+    ChannelsButton,
+
+    // The buttons of a letter, the calendar and the memo writer: Back on the left, Trash, and the button on the right (Post).
+    BackButton,
+    TrashButton,
+    RightButton,
+};
+
+// What the bar is showing, and so which buttons it has (the screen that listens to the bar in the original, 0x8139C93C).
+enum class BarMode
+{
+    WiiMenu,
+    MessageBoard,
+    Letter,
+    LetterWithRightButton,
+
+    // A play log has only Back (the bar shows the frames 3113 to 3126 of 0x8139AAA0).
+    PlayLog,
+    Calendar,
+    MemoWriter,
+};
+
+// The looks of the bar: parts of its animation file that move its buttons from one state into another
+// (the table 0x8160F7B8 that 0x8139CB58 plays; the numbers are the original's).
+enum class BarChange
+{
+    ToTheBoard,               // 0: frames 1000 to 1040
+    ToTheChannels,            // 3: 6000 to 6040
+    CalendarOpens,            // 4: 2000 to 2050
+    CalendarClosesWithBack,   // 5: 3000 to 3050
+    CalendarClosesWithADay,   // 6: 3500 to 3550
+    CreateMessageOpens,       // 7: 4000 to 4026
+    LetterOpens,              // 9: 3100 to 3113
+    BackToTheBoard,           // 10: 3426 to 3439
+    PlayLogShows,             // 0x0B: 3113 to 3126
+    LetterShowsWithoutButton, // 0x0D: 3600 to 3613
+    MemoWriterShows,          // 0x0F: 3313 to 3326
+    MemoWriterCloses,         // 0x10: 3413 to 3426
+    LetterShowsWithButton,    // 0x11: 3640 to 3653
 };
 
 // The bar at the bottom of the Wii Menu (screen 0x05, docs/research/SystemMenuStructure.md 4.3): the Wii button, the Message Board
@@ -74,6 +118,23 @@ public:
     // The middle of the area of a button in the picture, in layout units.
     Formats::Vector2 PlaceOfButton(BarButton button);
 
+    // Which buttons the bar has. The SD card button belongs to the Wii Menu only.
+    void SetMode(BarMode newMode);
+    BarMode Mode() const;
+
+    // The bar moves into another look. A change that is asked for while another one plays waits for it, in order.
+    // While the bar changes, it has no buttons.
+    void Change(BarChange change);
+    bool IsChanging() const;
+
+    // The words of the button on the left (Back, Quit), of the button on the right (Post) and of the trash.
+    void SetBackText(std::u16string_view text);
+    void SetRightText(std::u16string_view text);
+    void SetTrashText(std::u16string_view text);
+
+    // The number of the day's messages on the envelope, 0 to 99. Without messages the mark is hidden (0x8138F168, 0x8139D004).
+    void ShowMessageCount(int count);
+
 protected:
     bool RunMain() override;
 
@@ -95,6 +156,8 @@ private:
     void DrawArrow(std::string_view arrowName);
     void SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown);
     bool IsShown(BarButton button) const;
+    bool HasButtonInThisMode(BarButton button) const;
+    void StartTheNextChange();
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
@@ -108,6 +171,10 @@ private:
     std::unique_ptr<FramePlayer> previousPageFlash;
     std::unique_ptr<FramePlayer> nextPageFlash;
     std::unique_ptr<SdCardButton> sdCardButton;
+    std::unique_ptr<FramePlayer> seenChange;
+    std::unique_ptr<FramePlayer> messageSignal;
+    std::deque<BarChange> waitingChanges;
+    BarMode mode = BarMode::WiiMenu;
     bool wasCardInTheSlot = false;
     bool isPreviousPageArrowShown = false;
     bool isNextPageArrowShown = false;

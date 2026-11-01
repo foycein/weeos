@@ -2,18 +2,21 @@
 
 #include "Channels/MiiChannel/MiiChannelData.h"
 
+#include "Mii/MiiExpression.h"
+
 #include "Formats/Vectors.h"
 #include "Graphics/Matrix4.h"
 
 #include <cstddef>
 #include <optional>
 #include <random>
+#include <string_view>
 #include <vector>
 
 namespace Channels
 {
 
-// What a Mii of the plaza is doing.
+// What a Mii of the plaza is doing (the states of 8001F7A8), each with its animation of the body.
 enum class PlazaActivity
 {
     // Standing in bodyWait until its wait is over.
@@ -22,8 +25,33 @@ enum class PlazaActivity
     // Walking in bodyWalk toward its target.
     Walking,
 
-    // Held by a hand above the plaza.
+    // Running in bodyRun to its place in a line of the whistle.
+    Running,
+
+    // Held by a hand above the plaza, kicking in bodyWallow.
     Held,
+
+    // Two Miis that face each other: one talks (bodyTalk), the other answers (bodyTalk_01); then both greet (bodyGreeting).
+    Talking,
+    Answering,
+    Greeting,
+
+    // The idle moments: a nap (bodyCatnap_00, then bodyCatnap_01 to wake up), a sneeze (bodysnart_00, bodysnart_01) and a slip while
+    // running (bodySlip_00 sliding on, bodySlip_01 getting up). A Mii that is bumped during the first part goes on to the second.
+    Napping,
+    WakingUp,
+    Sneezing,
+    AfterSneeze,
+    Slipping,
+    GettingUp,
+};
+
+// The ground the Miis walk on: the plaza, where they wander, or the road of the Mii Parade, where they walk from the far end toward the
+// camera and start again at the far end.
+enum class PlazaKind
+{
+    Plaza,
+    Parade,
 };
 
 // The ways the whistle lines the Miis up (squText_10 to _15 of squareNigaoe_00).
@@ -50,6 +78,10 @@ struct PlazaMii
     PlazaActivity activity = PlazaActivity::Waiting;
     Formats::Vector2 target = {0, 0};
     int stepsToWait = 0;
+
+    // The steps since the activity began, and how many a nap or a talk lasts.
+    int stepsInActivity = 0;
+    int stepsOfActivity = 0;
 
     // The frame of the animation the Mii plays now.
     float animationFrame = 0;
@@ -79,7 +111,11 @@ public:
     static constexpr int FarthestZoomLevel = 3;
 
     // The plaza of the 16:9 picture, which shows more of the ground than the 4:3 one, so the Miis may walk farther to the sides.
-    explicit MiiPlaza(std::uint32_t randomSeed);
+    explicit MiiPlaza(std::uint32_t randomSeed, PlazaKind plazaKind = PlazaKind::Plaza);
+
+    // The parade's fast forward: its Miis run instead of walking.
+    void SetParadeRunning(bool isRunning);
+    bool IsParadeRunning() const;
 
     // The Miis come onto the plaza at random places, each standing for a while before it walks.
     void SetMiis(const std::vector<StoredMii>& miis);
@@ -100,6 +136,9 @@ public:
 
     // The order of the slots in the lines of an arrangement.
     std::vector<std::size_t> ArrangedOrder(PlazaArrangement arrangement) const;
+
+    // The number of Miis that slipped in the last step, for the sound of the fall.
+    int SlipsInLastStep() const;
 
     // The hand picks the Mii up and carries it until it lets go.
     void Grab(std::size_t slot);
@@ -136,20 +175,43 @@ private:
     void MoveMii(PlazaMii& plazaMii);
     void StartWaiting(PlazaMii& plazaMii);
     void StartWalking(PlazaMii& plazaMii, Formats::Vector2 target);
+    void StartRunning(PlazaMii& plazaMii, Formats::Vector2 target);
+    void StartActivity(PlazaMii& plazaMii, PlazaActivity activity);
     void Walk(PlazaMii& plazaMii);
+    void Run(PlazaMii& plazaMii);
+    void Slide(PlazaMii& plazaMii);
+    void PlayOnce(PlazaMii& plazaMii, PlazaActivity nextActivity);
+    void PlayForSteps(PlazaMii& plazaMii, PlazaActivity nextActivity);
+    void FinishActivity(PlazaMii& plazaMii);
+    void ChooseIdleMoment(PlazaMii& plazaMii);
+    void StartTalk(PlazaMii& talker);
+    void TurnAndStep(PlazaMii& plazaMii, float speedKept, float speedAdded, float remaining);
     void PushApart();
+    void WakeWhenBumped(PlazaMii& plazaMii);
     void KeepInside(PlazaMii& plazaMii);
     Formats::Vector2 RandomPlace();
+    void WalkAlongTheParade(PlazaMii& plazaMii);
+    void ReturnToTheFarEnd(PlazaMii& plazaMii);
     int RandomWait();
     void LimitCameraDestination();
 
+    PlazaKind kind;
+    bool isParadeRunning = false;
     std::mt19937 random;
     std::vector<PlazaMii> miis;
     std::optional<std::size_t> heldSlot;
     PlazaCamera camera;
+    int slipsInLastStep = 0;
 };
 
 // The speed at which the walk animation plays for a Mii at a walking speed: a longer body takes longer steps (80022BD0).
 float WalkAnimationRate(float speed, const Mii::MiiRecord& record);
+
+// The animation of the body that a Mii plays in an activity, and its length in frames.
+std::string_view AnimationOf(PlazaActivity activity);
+float AnimationFramesOf(PlazaActivity activity);
+
+// The face a Mii makes in its activity: eyes shut while it naps and sneezes, the mouth opening and closing while it talks.
+Mii::MiiExpression ExpressionOf(const PlazaMii& plazaMii);
 
 }

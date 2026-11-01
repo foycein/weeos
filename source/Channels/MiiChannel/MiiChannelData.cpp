@@ -118,6 +118,40 @@ void MiiChannelData::DeleteMii(std::size_t slot)
     WriteDatabase();
 }
 
+std::vector<Mii::MiiRecord> MiiChannelData::ParadeMiis() const
+{
+    return database.HiddenMiis();
+}
+
+void MiiChannelData::SendToParade(std::size_t slot)
+{
+    std::optional<Mii::MiiRecord> record = database.FindMii(slot);
+    if (!record)
+        return;
+
+    database.AddHiddenMii(*record);
+    database.DeleteMii(slot);
+    WriteDatabase();
+}
+
+std::optional<std::size_t> MiiChannelData::BringBackFromParade(std::size_t place)
+{
+    std::vector<Mii::MiiRecord> paradeMiis = database.HiddenMiis();
+    std::optional<std::size_t> slot = database.FirstFreeSlot();
+    if (place >= paradeMiis.size() || !slot)
+        return std::nullopt;
+
+    database.StoreMii(*slot, paradeMiis[place], systemId);
+    WriteDatabase();
+    return slot;
+}
+
+void MiiChannelData::RemoveFromParade(std::size_t place)
+{
+    database.RemoveHiddenMii(place);
+    WriteDatabase();
+}
+
 bool MiiChannelData::IsFirstStart() const
 {
     return isFirstStart;

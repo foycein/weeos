@@ -53,10 +53,11 @@ bool AreAllContentsPresent(const Ios::TitleMetadataView& view, const std::vector
 
 }
 
-IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock clockOfThePc)
+IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock clockOfThePc, ClockFormat clockFormatOfThePc)
     : titles(iosServices.GetTitles())
     , fileSystem(iosServices.GetFileSystem())
     , pcClock(std::move(clockOfThePc))
+    , clockFormat(clockFormatOfThePc)
     , networkConfig(iosServices.GetNetworkConfig())
 {
 }
@@ -197,6 +198,11 @@ LocalTime IosMenuConsole::GetLocalTime()
     time.minute = now.minute;
     time.second = now.second;
     return time;
+}
+
+ClockFormat IosMenuConsole::GetClockFormat()
+{
+    return clockFormat;
 }
 
 void IosMenuConsole::UpdateSharedFlags()

@@ -37,7 +37,8 @@ public:
     // A channel that brings no fonts of its own draws its texts with the console's fonts, when they are given (ReadConsoleFontArchive).
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, SystemMenu::TitleContents& systemMenuContents,
         Ios::RemoteService& remoteService, Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService,
-        Ios::TitleId titleId, std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
+        Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
+        std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
     ~ChannelSystem();
 
     // One step of the console's picture, 1001/60000 of a second.

@@ -4,12 +4,15 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Formats/Ash0.h"
+#include "Formats/FormatError.h"
+#include "Layout/LayoutError.h"
 #include "Formats/U8Archive.h"
 #include "Text/MessageCatalog.h"
 
@@ -37,6 +40,14 @@ constexpr float FirstFrameToPreviousPage = 0;
 constexpr float LastFrameToPreviousPage = 20;
 constexpr float FirstFrameToNextPage = 40;
 constexpr float LastFrameToNextPage = 60;
+
+// The televisions fly away to make room for the Message Board in frames 70 to 90, and fly in from it in frames 100 to 120
+// (0x813AD980, 0x813AB6C4).
+constexpr float FirstFrameOfLeaving = 70;
+constexpr float LastFrameOfLeaving = 90;
+constexpr float FirstFrameOfComingBack = 100;
+constexpr float LastFrameOfComingBack = 120;
+constexpr int ComingFromTheBoardArgument = 1;
 
 // The columns of pages of the strip, from the left, and which page each shows, counted from the page that shows.
 constexpr std::array<char, 5> ColumnLetters = {'a', 'b', 'c', 'd', 'e'};
@@ -115,10 +126,12 @@ std::unique_ptr<Layout::LayoutArchive> OpenArchiveOfFile(const MenuFiles& files,
 
 }
 
-ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices)
+ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices, int argument)
     : Screen(ScreenId::ChannelGrid)
     , services(menuServices)
 {
+    if (argument == ComingFromTheBoardArgument)
+        state = GridState::ComingFromTheBoard;
 }
 
 void ChannelGridScreen::Load()
@@ -133,6 +146,8 @@ void ChannelGridScreen::Build()
     strip = std::make_unique<MenuLayout>(services.display, *selectionArchive, std::string(StripLayout));
     stripSlide = std::make_unique<FramePlayer>(*strip, *selectionArchive, StripAnimation);
     stripSlide->Show(FrameAtRest);
+    if (state == GridState::ComingFromTheBoard)
+        stripSlide->PlayOnce(FirstFrameOfComingBack, LastFrameOfComingBack);
     UseTheWideMasks();
 
     ListTheSlotsOfTheStrip();
@@ -196,8 +211,21 @@ std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
     if (!channel.icon)
         return ChannelTile::MakeDamagedChannel(services.display, archives);
 
+    // Some channels of homebrew tools, which an imported Wii can bring, have icons that Nintendo's layout engine does not know:
+    // another name of the layout, or animations of texture patterns. They show as damaged channels.
     const std::u16string& name = channel.names[Formats::EnglishLanguageNumber].firstLine;
-    return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
+    try
+    {
+        return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
+    }
+    catch (const Formats::FormatError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
+    catch (const Layout::LayoutError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
 }
 
 GridState ChannelGridScreen::State() const
@@ -267,6 +295,19 @@ bool ChannelGridScreen::RunMain()
     case GridState::LeavingTheWiiMenu:
         if (RunLeaving())
             return true;
+        break;
+
+    case GridState::LeavingForTheBoard:
+        if (!stripSlide->IsPlaying())
+            return true;
+        break;
+
+    case GridState::ComingFromTheBoard:
+        if (!stripSlide->IsPlaying())
+        {
+            stripSlide->Show(FrameAtRest);
+            state = GridState::Idle;
+        }
         break;
     }
 
@@ -388,7 +429,6 @@ bool ChannelGridScreen::HandlePressOfPlayer(int playerIndex, Formats::Vector2 pl
     return true;
 }
 
-// The Message Board is not built yet, so its button does nothing.
 void ChannelGridScreen::HandleBarButton(BarButton button)
 {
     int page = CurrentPage();
@@ -420,8 +460,33 @@ void ChannelGridScreen::HandleBarButton(BarButton button)
         break;
 
     case BarButton::MessageBoardButton:
+        LeaveForTheBoard();
+        break;
+
+    default:
         break;
     }
+}
+
+// The envelope: the bar takes the look of the Message Board and the televisions fly away (0x813B0444, 0x813AD980). When the grid has
+// ended, the main frame shows the board.
+void ChannelGridScreen::LeaveForTheBoard()
+{
+    if (services.messageBoard == nullptr)
+        return;
+
+    services.sounds.Request(DecideSound);
+    if (BottomBarScreen* bar = Bar())
+    {
+        bar->ShowPageArrows(false, false);
+        bar->Change(BarChange::ToTheBoard);
+    }
+    for (std::unique_ptr<ChannelTile>& tile : tiles)
+        tile->SetFocused(false);
+
+    stripSlide->PlayOnce(FirstFrameOfLeaving, LastFrameOfLeaving);
+    services.messageBoard->isComingFromTheChannels = true;
+    state = GridState::LeavingForTheBoard;
 }
 
 void ChannelGridScreen::TurnToPreviousPage()

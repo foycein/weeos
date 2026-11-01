@@ -20,6 +20,7 @@ constexpr std::string_view MainFontPath = "font/newR_font_32_I4.brfnt";
 constexpr std::string_view NameFontPath = "font/nigaoe_font_32_I4.brfnt";
 constexpr std::string_view CharacterArchivePath = "Channel/Character.szs";
 constexpr std::string_view GroundModelPath = "graund_model.brres";
+constexpr std::string_view RoadModelPath = "road_model.brres";
 constexpr std::string_view KeyboardArchivePath = "Channel/sofkeybdkr.szs";
 constexpr std::string_view FacePartsPath = "RFL_Res.dat";
 
@@ -59,6 +60,7 @@ MiiChannelFiles ReadMiiChannelFiles(SystemMenu::TitleContents& contents)
     files.bodies = Mii::ReadMiiBodyFiles(characters);
     Formats::U8Archive characterFiles = ReadPackedArchive(channelFiles, CharacterArchivePath);
     files.ground = ReadPlazaGroundModel(FindFileOrFail(characterFiles, GroundModelPath));
+    files.road = ReadParadeRoadModel(FindFileOrFail(characterFiles, RoadModelPath));
 
     files.keyboardArchive = Formats::DecompressYaz0(FindFileOrFail(channelFiles, KeyboardArchivePath));
 

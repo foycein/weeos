@@ -12,7 +12,7 @@ add_library(SystemMenu STATIC
     Fader.cpp
     FirstScreen.cpp
     FrontPanel.cpp
-    HealthAndSafetyScreen.cpp
+    ConsoleImportScreen.cpp
     InputManager.cpp
     IosNandFiles.cpp
     KeyboardView.cpp
@@ -28,7 +28,6 @@ add_library(SystemMenu STATIC
     MenuSystem.cpp
     InstalledTitleContents.cpp
     OwnTitleContents.cpp
-    ParentalDialogScreen.cpp
     PhysicalKeyboard.cpp
     ProgramImage.cpp
     Screen.cpp
@@ -40,6 +39,7 @@ add_library(SystemMenu STATIC
     TextField.cpp
     TurnOffQuestion.cpp
     UsKeyboardLayout.cpp
+    WelcomeScreen.cpp
     WiiOptionsBackgroundScreen.cpp
     WiiOptionsBarScreen.cpp
     WiiOptionsChoicesScreen.cpp
@@ -47,7 +47,7 @@ add_library(SystemMenu STATIC
     ZoomedWindow.cpp
 )
 
-target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound)
+target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings Sound Mii Media)
 
 add_subdirectory(WiiSettings)
 add_subdirectory(BackgroundServices)
@@ -55,3 +55,4 @@ add_subdirectory(HomeMenu)
 add_subdirectory(WiiMenu)
 add_subdirectory(DataManagement)
 add_subdirectory(SdCardMenu)
+add_subdirectory(MessageBoard)

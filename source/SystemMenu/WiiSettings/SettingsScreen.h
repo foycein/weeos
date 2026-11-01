@@ -21,16 +21,13 @@ std::unique_ptr<Screen> MakeWiiSettingsScreen(MenuServices& services, int argume
 class SettingsScreen : public Screen
 {
 public:
-    // The argument says which page comes first: 0 the first index page, 1 Internet, 3 Wii System Update, 4 the second index page,
-    // 6 Country (docs/research/SystemMenuStructure.md 3.4).
+    // The argument says which page comes first: 1 Internet, any other the index page (docs/research/SystemMenuStructure.md 3.4; the pages
+    // the other arguments name follow the PC in WeeOS).
     // Throws a MenuError when the menu has no settings to work with.
     SettingsScreen(MenuServices& menuServices, int argument);
 
     void Build() override;
     void Draw(DrawPass pass) override;
-
-    // The settings can be seen together with a dialog that lies over them.
-    bool DrawsWithChildren() const override;
 
     // The flow that the screen runs. For the tests and for the program that answers the requests of the pages.
     SettingsFlow& Flow();
@@ -44,8 +41,6 @@ private:
 
     bool IsWaitingForAnswer();
     void OpenKeyboard(const InputRequest& request);
-    void OpenParentalDialog();
-    void TakeAnswerOfParentalDialog();
     void RequestSoundsOfThePages();
     void FadeMusicOnTheSoundPage(PageId pageBefore);
     void HandlePlayers();
@@ -63,8 +58,6 @@ private:
 
     // The button that the pointer of the first remote that points at the screen is on.
     std::optional<std::size_t> pointedButton;
-
-    bool isParentalDialogOpen = false;
 
     // The player who pressed a button last: the soft keyboard follows that player's pointer.
     int pressingPlayer = 0;

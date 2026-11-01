@@ -39,20 +39,19 @@ void NicknamePage::BuildPage(PageId page, Page& content)
     // The field is a button: pressing it opens the keyboard. The page never shows more text than the console can keep.
     builder.AddChoice(0, 1, nickname, false, [this] { AskForNickname(); }).name = "Nickname";
 
-    builder.AddBackButton([this] { navigator.GoTo(PageId::FirstIndex); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
     builder.AddBottomRight(u"Confirm",
         [this]
         {
             settings.SetNickname(nickname);
             settings.Save();
-            navigator.GoTo(PageId::FirstIndex);
+            navigator.GoTo(PageId::Index);
         });
 }
 
 void NicknamePage::AskForNickname()
 {
     InputRequest request;
-    request.kind = InputKind::Text;
     request.title = u"Console Nickname";
     request.initialText = nickname;
     request.maximumLength = MaximumNicknameLength;
@@ -60,7 +59,8 @@ void NicknamePage::AskForNickname()
     navigator.RequestInput(request,
         [this](std::optional<std::u16string> typedText)
         {
-            if (typedText)
+            // A console always has a name, so an empty one is not taken.
+            if (typedText && !typedText->empty())
                 nickname = typedText->substr(0, MaximumNicknameLength);
 
             navigator.Refresh();

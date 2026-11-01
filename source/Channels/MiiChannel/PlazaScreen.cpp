@@ -13,12 +13,39 @@ namespace Channels
 namespace
 {
 
+// A Mii that slips on the plaza falls with this sound (8001F7A8, state 10).
+constexpr std::string_view SlipSound = "SEQ_DOOL_KOROBI";
+
 constexpr std::string_view LayoutName = "squareNigaoe_00";
 
 // The animations that bring the buttons of both sides and the bar at the bottom into the picture (bound by 80041024); the plaza shows
 // their last frame.
 constexpr std::array<std::string_view, 3> ArrivalAnimations = {"anmSQUMenuActionL", "anmSQUMenuActionR_01", "anmSQUWhistleAction"};
 constexpr std::array<std::string_view, 3> ArrivalPanes = {"RootPane", "squButtonNull_07", "squButtonNull_04"};
+
+// The focus of the buttons (the table at 8023B9F0 bound by 80041024): the left buttons with anmSQUMenuFocusL, the right ones with
+// anmSQUMenuFocusR, each on its squPrBtnNull pane; the whistle with its icon and its text; each sort button with anmSQUSortFocus. The
+// round buttons sound big, the two small ones small and the whistle's the editor's (Assumed, CHN-83).
+constexpr std::string_view BigFocusSound = "SEQ_BUT_SELECT_BIG";
+constexpr std::string_view SmallFocusSound = "SEQ_BUT_SELECT_SMALL";
+constexpr std::string_view WhistleFocusSound = "SEQ_EDIT_BUT_SELECT";
+constexpr std::array<FocusedButton, 15> PlazaButtonFocus = {{
+    {"squButtonNull_03", "squPrBtnNull_03", "anmSQUMenuFocusL", SmallFocusSound},
+    {"squButtonNull_05", "squPrBtnNull_05", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_06", "squPrBtnNull_06", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_08", "squPrBtnNull_08", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_09", "squPrBtnNull_09", "anmSQUMenuFocusL", SmallFocusSound},
+    {"squButtonNull_07", "squPrBtnNull_07", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_00", "squPrBtnNull_00", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_01", "squPrBtnNull_01", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_02", "squPrBtnNull_02", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleFocus", WhistleFocusSound},
+    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleTextFocus", WhistleFocusSound},
+    {"squButtonNull_10", "squButtonNull_10", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_11", "squButtonNull_11", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_12", "squButtonNull_12", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_13", "squButtonNull_13", "anmSQUSortFocus", WhistleFocusSound},
+}};
 
 // The sort buttons of the bar (squText_10 to _13) and what they arrange.
 struct SortButton
@@ -37,6 +64,10 @@ constexpr std::array<SortButton, 4> SortButtons = {{
 
 constexpr Formats::Rgba8Color BackgroundColor = {255, 255, 255, 255};
 constexpr std::string_view CountText = "countText_00";
+
+// The words of the whistle: "Arrange" and "Disband".
+constexpr std::string_view WhistleText = "squText_14";
+constexpr std::string_view DisbandText = "squText_15";
 constexpr std::string_view LoadWindow = "loadWindow_00";
 constexpr std::string_view LoadText = "squLoadTextRC_00";
 constexpr std::string_view BalloonPane = "balAnimNull_00";
@@ -68,6 +99,7 @@ constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";
 constexpr std::string_view NewMiiSound = "SEQ_HIROBA_NEW";
 constexpr std::string_view EditDropSound = "SEQ_HIROBA_EDIT";
 constexpr std::string_view EraseSound = "SEQ_HIROBA_TRUSH";
+constexpr std::string_view SendToParadeSound = "SEQ_HIROBA_EDIT";
 constexpr std::string_view GrabSound = "SEQ_DOOL_GLIP_ON";
 constexpr std::string_view LetGoSound = "SEQ_DOOL_GLIP_OFF";
 constexpr std::string_view GroundSound = "SEQ_DOOL_GND";
@@ -106,16 +138,19 @@ PlazaScreen::PlazaScreen(ChannelServices& channelServices, const Layout::LayoutA
             Layout::PlaybackMode::PlayOnce);
         layout->ShowLastFrameOfAnimation(slot);
     }
+    focus = std::make_unique<ButtonFocus>(*layout, channelServices.sounds, PlazaButtonFocus);
 
     for (const SortButton& sort : SortButtons)
         layout->PaneNamed(sort.pane).isVisible = false;
-    layout->PaneNamed("squText_15").isVisible = false;
+    layout->PaneNamed(DisbandText).isVisible = false;
     HideLoadWindow();
 }
 
+// The Miis come in at new places, so a line of the whistle is over.
 void PlazaScreen::Start()
 {
     plaza.SetMiis(data.Miis());
+    ShowWhistleBar(false);
 }
 
 void PlazaScreen::ShowSavedMii(std::size_t slot)
@@ -167,17 +202,18 @@ void PlazaScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     plaza.Update();
+    if (plaza.SlipsInLastStep() > 0)
+        services.sounds.Request(SlipSound);
 
-    std::vector<std::pair<std::size_t, Mii::MiiRecord>> shownMiis;
-    for (const PlazaMii& plazaMii : plaza.Miis())
-        shownMiis.push_back({plazaMii.mii.slot, plazaMii.mii.record});
-    heads.Prepare(shownMiis);
+    heads.Prepare(HeadsOfMiis(plaza));
 
     std::string count = std::format("{:03}", plaza.Miis().size());
     layout->SetText(CountText, std::u16string(count.begin(), count.end()));
     UpdateWaits();
 
     HandleMessageAnswer();
+    bool takesInput = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii();
+    focus->Update(takesInput ? ReadPlayerOne(services).pointer : std::nullopt);
     if (!acceptsInput || message.IsOpen() || loadSteps > 0)
         return;
 
@@ -250,7 +286,7 @@ void PlazaScreen::HandleButtons()
         services.sounds.Request(ButtonPushSound);
         if (hasSeenParade)
         {
-            message.ShowNotice(MiiMessage::NobodyIsHere);
+            request = PlazaRequest::ShowParade;
             return;
         }
         hasSeenParade = true;
@@ -291,16 +327,12 @@ void PlazaScreen::HandleButtons()
         {
             services.sounds.Request(DisbandSound);
             plaza.Arrange(PlazaArrangement::Disband);
-            isArranged = false;
-            layout->PaneNamed("squText_15").isVisible = false;
-            layout->PaneNamed("squText_14").isVisible = true;
+            ShowWhistleBar(false);
             return;
         }
 
         services.sounds.Request(WhistleSound);
-        areSortButtonsShown = !areSortButtonsShown;
-        for (const SortButton& sort : SortButtons)
-            layout->PaneNamed(sort.pane).isVisible = areSortButtonsShown;
+        ShowWhistleBar(!areSortButtonsShown);
         return;
     }
 
@@ -314,14 +346,23 @@ void PlazaScreen::HandleButtons()
 
         services.sounds.Request(sort.sound);
         plaza.Arrange(sort.arrangement);
+        ShowWhistleBar(false);
         isArranged = true;
-        areSortButtonsShown = false;
-        for (const SortButton& hidden : SortButtons)
-            layout->PaneNamed(hidden.pane).isVisible = false;
-        layout->PaneNamed("squText_14").isVisible = false;
-        layout->PaneNamed("squText_15").isVisible = true;
+        layout->PaneNamed(WhistleText).isVisible = false;
+        layout->PaneNamed(DisbandText).isVisible = true;
         return;
     }
+}
+
+// The sort buttons show or hide, and the whistle says "Arrange" again.
+void PlazaScreen::ShowWhistleBar(bool showsSortButtons)
+{
+    areSortButtonsShown = showsSortButtons;
+    isArranged = false;
+    for (const SortButton& sort : SortButtons)
+        layout->PaneNamed(sort.pane).isVisible = showsSortButtons;
+    layout->PaneNamed(DisbandText).isVisible = false;
+    layout->PaneNamed(WhistleText).isVisible = true;
 }
 
 // A and B together grab the Mii under the hand; letting go of either drops it, on a button or on the ground. A alone shows the name.
@@ -436,7 +477,16 @@ void PlazaScreen::HandleMessageAnswer()
         message.ShowNotice(MiiMessage::ParadeExplained);
         return;
     case Pending::ParadeExplained:
-        message.ShowNotice(MiiMessage::NobodyIsHere);
+        request = PlazaRequest::ShowParade;
+        return;
+    case Pending::SendToParade:
+        if (*answer == MessageAnswer::Yes && miiToSend)
+        {
+            services.sounds.Request(SendToParadeSound);
+            data.SendToParade(*miiToSend);
+            plaza.RemoveMii(*miiToSend);
+        }
+        miiToSend.reset();
         return;
     case Pending::Nothing:
         return;
@@ -470,6 +520,20 @@ void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)
         miiToErase = *held;
         pending = Pending::Erase;
         message.AskQuestion(MiiMessage::EraseThisMii, EraseWord, DoNotEraseWord);
+        return;
+    }
+
+    // "Send to Mii Parade": the parade keeps Miis that the plaza has no room for, without their birthday and creator.
+    if (layout->IsPointInPane(ParadeButton, pointer) && record)
+    {
+        if (Mii::IsSpecialMii(*record))
+        {
+            message.ShowNotice(MiiMessage::SpecialMiisCannotJoinParade);
+            return;
+        }
+        miiToSend = *held;
+        pending = Pending::SendToParade;
+        message.AskQuestion(MiiMessage::SendToParadeQuestion);
         return;
     }
 

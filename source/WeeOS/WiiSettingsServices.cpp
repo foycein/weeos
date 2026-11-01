@@ -1,9 +1,8 @@
 #include "WeeOS/WiiSettingsServices.h"
 
 #include "Ios/FileSystem/NandPreparation.h"
+#include "Settings/Countries.h"
 #include "Sound/PlaybackDevices.h"
-
-#include <utility>
 
 namespace WeeOS
 {
@@ -16,19 +15,17 @@ constexpr Ios::Caller SystemMenuCaller = {Ios::SystemMenuUserId, Ios::SystemMenu
 
 }
 
-WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
-    ProgramSound& programSound, Settings::PcClock pcClock, Settings::PcSettingsStore& pcSettingsStore)
+WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, ProgramSound& programSound,
+    const Platform::RegionalSettings& regionalSettings, Settings::PcSettingsStore& pcSettingsStore)
     : window(programWindow)
-    , remote(virtualRemote)
+    , remotes(iosServices.GetRemote())
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
-    , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
-    , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
-    , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
-          pcSettingsStore, *this}
+    , flowServices{systemSettings, iosServices.GetNetworkConfig(), pcSettingsStore, *this}
 {
+    TakeTheCountryOfThePc(regionalSettings);
     ApplyControlsAndSound(pcSettingsStore.Values());
-    KeepThePictureWide();
+    ApplyRumble(systemSettings.IsRumbleOn());
 }
 
 SystemMenu::SettingsFlowServices& WiiSettingsServices::FlowServices()
@@ -41,7 +38,7 @@ Settings::SoundMode WiiSettingsServices::SoundMode() const
     return systemSettings.GetSoundMode();
 }
 
-// A page of PC Settings changed something: the window too.
+// Fullscreen first, so that a window that leaves fullscreen gets its size.
 void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 {
     if (window.IsFullscreen() != settings.isFullscreen)
@@ -53,31 +50,31 @@ void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 
 void WiiSettingsServices::ApplyControlsAndSound(const Settings::PcSettings& settings)
 {
-    std::vector<Input::MouseBinding> mouseMap = Settings::MouseMapOf(settings);
+    Input::VirtualRemote& remote = remotes.GetVirtualRemote();
     remote.SetKeyMap(settings.keyMap);
-    remote.SetMouseMap(mouseMap);
+    remote.SetMouseMap(Settings::MouseMapOf(settings));
     sound.ApplyPcSettings(settings);
 }
 
-void WiiSettingsServices::ApplyPictureShape(Settings::AspectRatio)
+void WiiSettingsServices::ApplyRumble(bool isRumbleOn)
 {
-    systemSettings.SetAspectRatio(Settings::AspectRatio::SixteenByNine);
-}
-
-// The console of an imported NAND may have been set to 4:3. Its settings say 16:9 from the first start on, as the menu and the
-// channels read them.
-void WiiSettingsServices::KeepThePictureWide()
-{
-    if (systemSettings.GetAspectRatio() == Settings::AspectRatio::SixteenByNine)
-        return;
-
-    systemSettings.SetAspectRatio(Settings::AspectRatio::SixteenByNine);
-    systemSettings.Save();
+    remotes.SetRumbleEnabled(isRumbleOn);
 }
 
 std::vector<std::u16string> WiiSettingsServices::ListAudioDevices() const
 {
     return Sound::ListPlaybackDeviceNames();
+}
+
+// The console is where the PC is (docs/DECISIONS.md, Settings). The file is written only when the country changed.
+void WiiSettingsServices::TakeTheCountryOfThePc(const Platform::RegionalSettings& regionalSettings)
+{
+    std::uint8_t countryCode = Settings::CountryCodeOfThePc(regionalSettings.countryLetters);
+    if (systemSettings.GetCountryCode() == countryCode)
+        return;
+
+    systemSettings.SetCountryCode(countryCode);
+    systemSettings.Save();
 }
 
 }

@@ -8,7 +8,8 @@
 namespace SystemMenu
 {
 
-// "Sound": mono, stereo or surround. The sound changes at once, so that the user hears the choice; Back puts the old mode back.
+// "Sound Mode" of PC Settings: mono, stereo or surround, the console's own setting. The sound changes at once, so that the user hears
+// the choice; Back puts the old mode back.
 class SoundPage : public PageGroup
 {
 public:

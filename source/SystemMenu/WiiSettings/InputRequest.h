@@ -6,23 +6,10 @@
 namespace SystemMenu
 {
 
-// What a page needs from the user that the page cannot show itself: some text from the soft keyboard, a number, or the parental password.
-// The page waits. The screen shows the keyboard or the dialog and then tells the flow what the user did.
-enum class InputKind
-{
-    Text,
-
-    // Digits only, for a PIN or an address.
-    Digits,
-
-    // The dialog of the parental controls. It checks the PIN itself, so the answer is only "accepted" or "cancelled".
-    ParentalPassword,
-};
-
+// Text that a page needs from the user and cannot ask for itself. The page waits; the screen shows the soft keyboard and then tells the
+// flow what the user typed.
 struct InputRequest
 {
-    InputKind kind = InputKind::Text;
-
     // The words the keyboard shows above its field.
     std::u16string title;
 

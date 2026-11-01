@@ -15,7 +15,6 @@
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/MenuSettings.h"
 #include "SystemMenu/NandFiles.h"
-#include "SystemMenu/ParentalAnswer.h"
 #include "SystemMenu/ProgramImage.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoftKeyboard.h"
@@ -45,7 +44,7 @@ public:
     // Wii Settings opens only when its services are given; the other screens work without them.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles, Ios::RemoteService& remoteService,
         Ios::PowerService& powerService, MenuConsole& wiiMenuConsole,
-        SettingsFlowServices* wiiSettingsServices = nullptr);
+        SettingsFlowServices* wiiSettingsServices = nullptr, ConsoleImport* consoleImport = nullptr);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
     // A MenuError that a screen throws ends the menu with the error screen.
@@ -82,6 +81,7 @@ private:
     void RunStepOfTheTurnOffQuestion();
     void DrawTheTurnOffQuestion();
     HomeButtonConnections ConnectHomeButton();
+    void SaveRumble(bool isRumbleOn);
 
     Display display;
     MenuFiles files;
@@ -103,7 +103,6 @@ private:
     FrontPanel frontPanel;
     HomeButton homeButton;
     NandFiles& nand;
-    ParentalAnswer parentalAnswer = ParentalAnswer::None;
     TitleLaunchRequest titleLaunch;
     MenuServices services;
     std::optional<std::string> fatalErrorMessage;
