@@ -56,6 +56,9 @@ LookPictures MakeCountryItemLook()
     look.background = ButtonPicture("Btn_List06.gif");
     look.idleOverlay = ButtonPicture("List06_off.png");
     look.pointedOverlay = ButtonPicture("List06_on.png");
+    look.hasChosenFrame = true;
+    look.chosenFrameLeft = {BackgroundPicture("List_flame_M_L.gif"), -9, -4};
+    look.chosenFrameRight = {BackgroundPicture("List_flame_M_R.gif"), -17, -4};
     return look;
 }
 

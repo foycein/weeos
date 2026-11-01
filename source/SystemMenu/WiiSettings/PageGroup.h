@@ -23,9 +23,10 @@ public:
     // Fills the page. It is called again every time something changes, so a page is made from what the group knows now.
     virtual void BuildPage(PageId page, Page& content) = 0;
 
-    // One step of time passes, for the pages that wait for something.
-    virtual void Step()
+    // One step of time passes while one of the pages of the group is shown, for the pages that wait for something.
+    virtual void Step(PageId shownPage)
     {
+        static_cast<void>(shownPage);
     }
 };
 

@@ -75,7 +75,7 @@ bool SettingsFlow::PressButtonNamed(std::string_view name)
 
 void SettingsFlow::Step()
 {
-    GroupOf(currentPageId).Step();
+    GroupOf(currentPageId).Step(currentPageId);
 }
 
 bool SettingsFlow::IsFinished() const

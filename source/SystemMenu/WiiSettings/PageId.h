@@ -37,6 +37,44 @@ enum class PageId
 
     // Language.
     LanguageSet,
+
+    // Country.
+    CountrySelect,
+
+    // Format Wii System Memory.
+    FormatWarning,
+    FormatAccountWarning,
+    FormatConfirm,
+    FormatWorking,
+    FormatDone,
+    FormatFailed,
+
+    // Wii System Update.
+    UpdateIndex,
+    UpdateNeedsConnection,
+
+    // The test of a connection, for Internet and for the update.
+    ConnectionTesting,
+    ConnectionTestFailed,
+
+    // Internet.
+    InternetIndex,
+    ConnectionList,
+    ConnectionKind,
+    WirelessSetup,
+    AccessPointSearch,
+    NoAccessPointFound,
+    AccessPointList,
+    SecurityKeyEntry,
+    ConnectionSaved,
+    UsbConnectorIntroduction,
+    UsbConnectorWaiting,
+    AossWaiting,
+    ConnectionActions,
+    ClearConnectionConfirm,
+    ConnectionInUse,
+    ConnectionTestStart,
+    ConsoleInformation,
 };
 
 }
