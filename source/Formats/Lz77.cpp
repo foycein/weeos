@@ -14,6 +14,7 @@ constexpr std::uint32_t Tag = 0x4C5A3737;
 constexpr Byte SupportedType = 0x10;
 constexpr std::size_t SizeFieldByteCount = 3;
 constexpr std::size_t ShortestMatchLength = 3;
+constexpr std::size_t ShortestDistance = 1;
 constexpr int LengthBitShift = 4;
 constexpr unsigned DistanceHighBitsMask = 0x0F;
 constexpr int FlagsPerByte = 8;
@@ -36,7 +37,8 @@ void CopyMatch(ByteReader& reader, Bytes& output, std::size_t outputSize)
     Byte second = reader.ReadByte();
 
     std::size_t length = (first >> LengthBitShift) + ShortestMatchLength;
-    std::size_t distance = (((first & DistanceHighBitsMask) << BitsPerByte) | second) + 1;
+    std::size_t storedDistance = ((first & DistanceHighBitsMask) << BitsPerByte) | second;
+    std::size_t distance = storedDistance + ShortestDistance;
     if (distance > output.size())
         reader.Fail("a match copies from before the start of the data");
 

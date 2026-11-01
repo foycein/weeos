@@ -14,6 +14,7 @@ namespace
 constexpr std::string_view DataDescription = "Network configuration";
 
 // The header of the file.
+constexpr std::size_t VersionOffset = 0;
 constexpr std::size_t SelectedMediaOffset = 4;
 constexpr std::size_t PermissionOffset = 5;
 constexpr std::size_t FirstProfileOffset = 8;
@@ -247,7 +248,7 @@ Result<NetworkConfiguration> DecodeNetworkConfiguration(Formats::ByteView fileBy
 Formats::Bytes EncodeNetworkConfiguration(const NetworkConfiguration& configuration)
 {
     Formats::Bytes bytes(NetworkConfigurationFileSize);
-    PutUint32(bytes, 0, configuration.version);
+    PutUint32(bytes, VersionOffset, configuration.version);
     PutByte(bytes, SelectedMediaOffset, static_cast<Formats::Byte>(configuration.selectedMedia));
     PutByte(bytes, PermissionOffset, configuration.wiiConnect24Permission);
 

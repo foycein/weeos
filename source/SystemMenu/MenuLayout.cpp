@@ -1,4 +1,4 @@
-#include "SystemMenu/MenuLayout.h"
+﻿#include "SystemMenu/MenuLayout.h"
 
 #include "SystemMenu/MenuError.h"
 
@@ -28,6 +28,16 @@ MenuLayout::MenuLayout(Display& menuDisplay, const Layout::LayoutArchive& layout
     FitToScreenShape();
 }
 
+Layout::LiveLayout& MenuLayout::Live()
+{
+    return layout;
+}
+
+const Layout::PlacementSettings& MenuLayout::Placement() const
+{
+    return placementSettings;
+}
+
 Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
 {
     Formats::Pane* pane = layout.FindPane(paneName);
@@ -35,6 +45,25 @@ Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
         throw MenuError(std::format("The layout {} has no pane {}", layoutName, paneName));
 
     return *pane;
+}
+
+Formats::Pane* MenuLayout::FindPane(std::string_view paneName)
+{
+    return layout.FindPane(paneName);
+}
+
+bool MenuLayout::IsPointInPane(std::string_view paneName, Formats::Vector2 point)
+{
+    const Formats::Pane* pane = layout.FindPane(paneName);
+    for (const Layout::PanePlacement& placement : Layout::PlaceShownPanes(layout.RootPane(), placementSettings))
+    {
+        if (placement.pane != pane)
+            continue;
+
+        std::optional<Formats::Vector2> pointInPane = Layout::FindPointMovedTo(placement.matrix, point);
+        return pointInPane && Layout::Contains(Layout::RectangleOfPane(*pane), *pointInPane);
+    }
+    return false;
 }
 
 Layout::LiveMaterial& MenuLayout::MaterialOf(const Formats::Pane& pane)

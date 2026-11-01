@@ -31,6 +31,9 @@ struct ContentRecord
     Sha1Digest hash;
 };
 
+constexpr std::size_t TitleRatingsSize = 16;
+constexpr std::size_t TitleInputOutputMaskSize = 12;
+
 // The title metadata (TMD) describes a title: who it is, which system software it needs and which contents it has.
 struct TitleMetadata
 {
@@ -48,8 +51,8 @@ struct TitleMetadata
     std::uint32_t titleType;
     std::uint16_t groupId;
     Region region;
-    std::array<Byte, 16> ratings;
-    std::array<Byte, 12> inputOutputMask;
+    std::array<Byte, TitleRatingsSize> ratings;
+    std::array<Byte, TitleInputOutputMaskSize> inputOutputMask;
     std::uint32_t accessRights;
     std::uint16_t titleVersion;
     std::uint16_t bootIndex;

@@ -16,14 +16,25 @@ namespace
 
 constexpr char ColumnSeparator = '\t';
 constexpr char LineEnd = '\n';
+constexpr char CarriageReturn = '\r';
 constexpr char CommentMarker = '#';
 constexpr std::string_view FileKindText = "file";
 constexpr std::string_view DirectoryKindText = "directory";
+constexpr std::size_t PathColumn = 0;
+constexpr std::size_t KindColumn = 1;
+constexpr std::size_t OwnerIdColumn = 2;
+constexpr std::size_t GroupIdColumn = 3;
+constexpr std::size_t PermissionsColumn = 4;
+constexpr std::size_t FlagsColumn = 5;
+constexpr std::size_t LinkNumberColumn = 6;
+constexpr std::size_t HostNameColumn = 7;
 constexpr std::size_t ColumnCountWithoutHostName = 7;
 constexpr std::size_t ColumnCountWithHostName = 8;
 
 // The permissions are written as two letters for each of the owner, the group and everybody else, for example "rw rw r-".
 constexpr std::size_t RightsTextLength = 2;
+constexpr std::size_t ReadLetterOffset = 0;
+constexpr std::size_t WriteLetterOffset = 1;
 constexpr std::size_t PermissionsTextLength = 8;
 constexpr std::size_t OwnerRightsOffset = 0;
 constexpr std::size_t FirstSeparatorOffset = 2;
@@ -44,10 +55,10 @@ std::string RightsText(AccessRights rights)
 {
     std::string text(RightsTextLength, NoRightLetter);
     if (Includes(rights, AccessRights::Read))
-        text[0] = ReadLetter;
+        text[ReadLetterOffset] = ReadLetter;
 
     if (Includes(rights, AccessRights::Write))
-        text[1] = WriteLetter;
+        text[WriteLetterOffset] = WriteLetter;
 
     return text;
 }
@@ -118,12 +129,14 @@ std::optional<Number> ParseNumber(std::string_view text)
 
 std::optional<AccessRights> ParseRights(std::string_view text)
 {
-    bool canRead = text[0] == ReadLetter;
-    bool canWrite = text[1] == WriteLetter;
-    if (!canRead && text[0] != NoRightLetter)
+    char readLetter = text[ReadLetterOffset];
+    char writeLetter = text[WriteLetterOffset];
+    bool canRead = readLetter == ReadLetter;
+    bool canWrite = writeLetter == WriteLetter;
+    if (!canRead && readLetter != NoRightLetter)
         return std::nullopt;
 
-    if (!canWrite && text[1] != NoRightLetter)
+    if (!canWrite && writeLetter != NoRightLetter)
         return std::nullopt;
 
     if (canRead && canWrite)
@@ -180,13 +193,13 @@ std::optional<ParsedLine> ParseLine(std::string_view line)
     if (columns.size() != ColumnCountWithoutHostName && !hasHostName)
         return std::nullopt;
 
-    Result<NandPath> path = NandPath::Parse(columns[0]);
-    std::optional<EntryKind> kind = ParseKind(columns[1]);
-    std::optional<std::uint32_t> ownerId = ParseNumber<std::uint32_t>(columns[2]);
-    std::optional<std::uint16_t> groupId = ParseNumber<std::uint16_t>(columns[3]);
-    std::optional<EntryPermissions> permissions = ParsePermissions(columns[4]);
-    std::optional<std::uint8_t> flags = ParseNumber<std::uint8_t>(columns[5]);
-    std::optional<std::uint64_t> linkNumber = ParseNumber<std::uint64_t>(columns[6]);
+    Result<NandPath> path = NandPath::Parse(columns[PathColumn]);
+    std::optional<EntryKind> kind = ParseKind(columns[KindColumn]);
+    std::optional<std::uint32_t> ownerId = ParseNumber<std::uint32_t>(columns[OwnerIdColumn]);
+    std::optional<std::uint16_t> groupId = ParseNumber<std::uint16_t>(columns[GroupIdColumn]);
+    std::optional<EntryPermissions> permissions = ParsePermissions(columns[PermissionsColumn]);
+    std::optional<std::uint8_t> flags = ParseNumber<std::uint8_t>(columns[FlagsColumn]);
+    std::optional<std::uint64_t> linkNumber = ParseNumber<std::uint64_t>(columns[LinkNumberColumn]);
     if (path.Failed() || !kind || !ownerId || !groupId || !permissions || !flags || !linkNumber)
         return std::nullopt;
 
@@ -211,7 +224,7 @@ std::optional<ParsedLine> ParseLine(std::string_view line)
         return parsed;
     }
 
-    parsed.record.hostName = std::string(columns[7]);
+    parsed.record.hostName = std::string(columns[HostNameColumn]);
     if (!IsValidHostName(parsed.record.hostName))
         return std::nullopt;
 
@@ -256,9 +269,12 @@ Result<EntryMap> ReadEntryIndex(std::string_view text)
     {
         std::size_t lineEnd = text.find(LineEnd);
         std::string_view line = text.substr(0, lineEnd);
-        text.remove_prefix(lineEnd == std::string_view::npos ? text.size() : lineEnd + 1);
+        if (lineEnd == std::string_view::npos)
+            text = std::string_view();
+        else
+            text.remove_prefix(lineEnd + 1);
 
-        if (!line.empty() && line.back() == '\r')
+        if (!line.empty() && line.back() == CarriageReturn)
             line.remove_suffix(1);
 
         if (line.empty() || line.front() == CommentMarker)

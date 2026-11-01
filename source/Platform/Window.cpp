@@ -97,12 +97,26 @@ WindowSize Window::ClientSize() const
 {
     RECT client = {};
     GetClientRect(handle, &client);
-    return {static_cast<std::uint32_t>(client.right - client.left), static_cast<std::uint32_t>(client.bottom - client.top)};
+
+    WindowSize size;
+    size.width = static_cast<std::uint32_t>(client.right - client.left);
+    size.height = static_cast<std::uint32_t>(client.bottom - client.top);
+    return size;
 }
 
 bool Window::IsMinimized() const
 {
     return IsIconic(handle) != FALSE;
+}
+
+void Window::SetClientSize(WindowSize clientSize)
+{
+    if (isFullscreen)
+        return;
+
+    RECT frame = {0, 0, static_cast<LONG>(clientSize.width), static_cast<LONG>(clientSize.height)};
+    AdjustWindowRectExForDpi(&frame, WindowedStyle, FALSE, 0, GetDpiForWindow(handle));
+    SetWindowPos(handle, nullptr, 0, 0, frame.right - frame.left, frame.bottom - frame.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 }
 
 bool Window::IsFullscreen() const
@@ -177,7 +191,7 @@ LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM second
         return TRUE;
 
     case WM_ERASEBKGND:
-        return 1;
+        return TRUE;
 
     // The Alt key alone would open the window menu and stop the program until the menu is closed.
     case WM_SYSCOMMAND:
@@ -269,7 +283,8 @@ void Window::HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPres
 
     unsigned int scanCode = static_cast<unsigned int>((keyInformation >> ScanCodeShift) & ScanCodeMask);
     bool isExtendedKey = (keyInformation & ExtendedKeyBit) != 0;
-    listener->OnKey(ReportedKeyCode(static_cast<int>(virtualKeyCode), scanCode, isExtendedKey), isPressed);
+    int keyCode = ReportedKeyCode(static_cast<int>(virtualKeyCode), scanCode, isExtendedKey);
+    listener->OnKey(keyCode, isPressed);
 }
 
 void Window::EnterFullscreen()

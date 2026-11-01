@@ -1,5 +1,6 @@
 #include "Formats/TextureDecoder.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/BitFields.h"
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
@@ -28,7 +29,6 @@ constexpr std::size_t SubBlocksPerRow = 2;
 constexpr std::size_t CompressedBlockSide = 8;
 constexpr std::size_t CompressedColorCount = 4;
 constexpr int BitsPerPixelIndex = 2;
-constexpr unsigned PixelIndexMask = 0x03;
 
 // The two bytes of a pixel that are stored together, alpha and red or green and blue.
 constexpr std::size_t Rgba8PairSize = 2;
@@ -37,9 +37,8 @@ constexpr std::size_t Rgba8GreenBlueOffset = 32;
 using BlockPixels = std::array<Rgba8Pixel, LargestBlockPixelCount>;
 using Color16Decoder = Rgba8Pixel (*)(std::uint16_t);
 
-// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255. The documents do not say how the
-// console widens a color; rounding to the nearest value instead would change 4 of the 32 five-bit and 10 of the 64 six-bit values, by one level
-// of 255 (FMT-04 in docs/audit/OpenPoints/Formats.md).
+// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255.
+// Likely, FMT-04 in docs/audit/OpenPoints/Formats.md.
 Byte ExpandToEightBits(unsigned value, int bitCount)
 {
     unsigned expanded = 0;
@@ -251,9 +250,7 @@ void DecodePalette14Block(ByteView block, std::size_t pixelCount, const std::vec
 }
 
 // How the colors in between are made from the two colors of a sub block: the weights of the first and of the second color.
-// Yet Another Gamecube Documentation (17.14.1) gives thirds and the middle, and says nothing about rounding. Assumed: the division drops
-// the rest. A round-to-nearest division would change 29% of the pixels of the 143 compressed textures of the channels by one level of 255;
-// weights of eighths instead of thirds would change 38% of them by up to 11 levels. See docs/audit/OpenPoints/Formats.md (FMT-04).
+// Thirds and the middle, as Yet Another Gamecube Documentation (17.14.1) gives them. Assumed: the division drops the rest (FMT-04).
 struct MixWeights
 {
     unsigned first;
@@ -314,9 +311,10 @@ void DecodeCompressedBlock(ByteView block, BlockPixels& pixels)
 
             for (std::size_t column = 0; column < SubBlockSide; ++column)
             {
-                int shift = static_cast<int>(BitsPerByte - BitsPerPixelIndex * (column + 1));
-                std::size_t colorIndex = (rowOfColorIndices >> shift) & PixelIndexMask;
-                pixels[(top + row) * CompressedBlockSide + left + column] = colors[colorIndex];
+                int lowestBit = static_cast<int>(BitsPerByte - BitsPerPixelIndex * (column + 1));
+                std::size_t colorIndex = ExtractBits(rowOfColorIndices, lowestBit, BitsPerPixelIndex);
+                std::size_t pixelIndex = (top + row) * CompressedBlockSide + left + column;
+                pixels[pixelIndex] = colors[colorIndex];
             }
         }
     }
@@ -422,8 +420,8 @@ RgbaImage DecodeTexture(TextureFormat format, std::uint32_t width, std::uint32_t
 
     BlockShape shape = BlockShapeOf(format);
     std::size_t pixelCount = std::size_t(shape.width) * shape.height;
-    std::uint32_t blocksAcross = (width + shape.width - 1) / shape.width;
-    std::uint32_t blocksDown = (height + shape.height - 1) / shape.height;
+    std::uint32_t blocksAcross = static_cast<std::uint32_t>(DivideRoundingUp(width, shape.width));
+    std::uint32_t blocksDown = static_cast<std::uint32_t>(DivideRoundingUp(height, shape.height));
 
     for (std::uint32_t blockRow = 0; blockRow < blocksDown; ++blockRow)
     {

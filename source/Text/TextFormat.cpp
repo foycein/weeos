@@ -13,6 +13,8 @@ namespace
 constexpr char16_t FormatMarker = u'%';
 constexpr char16_t ZeroFlag = u'0';
 constexpr char16_t NumberLetter = u'd';
+constexpr std::u16string_view PercentConversion = u"%";
+constexpr std::u16string_view TextConversion = u"ls";
 constexpr std::size_t ZeroFlagLength = 1;
 constexpr std::size_t NumberLetterLength = 1;
 
@@ -73,11 +75,11 @@ Conversion ReadNumberWithZeros(std::u16string_view afterMarker)
 
 Conversion ReadConversion(std::u16string_view afterMarker)
 {
-    if (afterMarker.starts_with(u"%"))
-        return {ConversionKind::Percent, 0, 1};
+    if (afterMarker.starts_with(PercentConversion))
+        return {ConversionKind::Percent, 0, PercentConversion.size()};
 
-    if (afterMarker.starts_with(u"ls"))
-        return {ConversionKind::Text, 0, 2};
+    if (afterMarker.starts_with(TextConversion))
+        return {ConversionKind::Text, 0, TextConversion.size()};
 
     if (afterMarker.starts_with(NumberLetter))
         return {ConversionKind::Number, 0, NumberLetterLength};

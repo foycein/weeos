@@ -27,7 +27,8 @@ PressedKeys MakeReportedKeys(std::span<const std::uint8_t> pressedKeys)
 
 KeyboardEvent MakeEventWithoutKeys(KeyboardEventKind kind, std::uint32_t keyboardId)
 {
-    return KeyboardEvent{kind, keyboardId, 0, PressedKeys{}};
+    constexpr std::uint8_t noModifiers = 0;
+    return KeyboardEvent{kind, keyboardId, noModifiers, PressedKeys{}};
 }
 
 }

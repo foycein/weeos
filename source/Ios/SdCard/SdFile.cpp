@@ -36,7 +36,8 @@ std::int64_t SeekBase(SeekOrigin origin, std::uint32_t position, std::uint32_t l
 
 }
 
-SdFile::SdFile(std::shared_ptr<SdCardState> cardState, std::uint32_t openedOnCardNumber, OpenMode openMode, std::fstream hostStream, std::uint32_t fileLength)
+SdFile::SdFile(std::shared_ptr<SdCardState> cardState, std::uint32_t openedOnCardNumber, OpenMode openMode,
+    std::fstream hostStream, std::uint32_t fileLength)
     : state(std::move(cardState))
     , cardNumber(openedOnCardNumber)
     , mode(openMode)

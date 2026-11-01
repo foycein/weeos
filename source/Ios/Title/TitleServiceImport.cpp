@@ -19,16 +19,8 @@ namespace Ios
 namespace
 {
 
-const Formats::ContentRecord* FindContentById(const Formats::TitleMetadata& metadata, std::uint32_t contentId)
-{
-    auto found = std::find_if(metadata.contents.begin(), metadata.contents.end(),
-        [contentId](const Formats::ContentRecord& record) { return record.id == contentId; });
-
-    if (found == metadata.contents.end())
-        return nullptr;
-
-    return &*found;
-}
+// A ticket with the console id 0 may be used on every console.
+constexpr std::uint32_t EveryConsoleId = 0;
 
 // The certificates that the NAND has kept in /sys/cert.sys. A NAND without the file, or with a damaged one, has none.
 std::vector<Formats::Certificate> ReadKeptCertificates(const KernelFiles& files)
@@ -85,8 +77,9 @@ Result<void> TitleService::ImportTicket(Formats::ByteView ticketBytes, Formats::
     if (ticket.Failed())
         return ticket.Error();
 
-    bool isForAnotherConsole = ticket.Value().consoleId != 0 && ticket.Value().consoleId != identity.GetDeviceId();
-    if (isForAnotherConsole)
+    bool isForEveryConsole = ticket.Value().consoleId == EveryConsoleId;
+    bool isForThisConsole = ticket.Value().consoleId == identity.GetDeviceId();
+    if (!isForEveryConsole && !isForThisConsole)
         return IosError::DeviceIdMismatch;
 
     Result<void> signatureChecked = CheckSignature(ticketBytes, certificateChain);
@@ -269,11 +262,15 @@ Result<void> TitleService::CheckAllContentsAreThere(const Installation& currentI
 
     for (const Formats::ContentRecord& record : currentInstallation.metadata.contents)
     {
-        if ((record.type & OptionalContentTypeFlag) != 0)
+        if (IsOptionalContent(record))
             continue;
 
-        bool isThere = IsSharedContent(record) ? map.Value().FindName(record.hash).has_value()
-                                               : files.Exists(ImportContentPath(titleId, record.id));
+        bool isThere = false;
+        if (IsSharedContent(record))
+            isThere = map.Value().FindName(record.hash).has_value();
+        else
+            isThere = files.Exists(ImportContentPath(titleId, record.id));
+
         if (!isThere)
             return IosError::TitleInvalidArgument;
     }
@@ -307,39 +304,51 @@ Result<void> TitleService::PublishInstallation(const Installation& currentInstal
     if (metadataMoved.Failed())
         return metadataMoved;
 
-    // An older version of the title keeps its data folder. Only the folder of its contents is replaced.
-    Result<void> moved = Result<void>();
-    if (files.Exists(TitlePath(titleId)))
-    {
-        moved = files.Rename(ImportContentFolderPath(titleId), ContentFolderPath(titleId));
-        if (moved.Succeeded())
-            moved = files.DeleteIfPresent(ImportTitlePath(titleId));
-    }
-    else
-    {
-        moved = files.EnsureDirectory(TitleFamilyPath(titleId.highPart), TitleFolderPermissions);
-        if (moved.Succeeded())
-            moved = files.Rename(ImportTitlePath(titleId), TitlePath(titleId));
-    }
-
+    Result<void> moved = MoveImportIntoPlace(titleId);
     if (moved.Failed())
         return moved;
 
-    if (!files.Exists(DataFolderPath(titleId)))
-    {
-        Result<std::uint32_t> userId = FindOrAssignUserId(titleId);
-        if (userId.Failed())
-            return userId.Error();
-
-        Result<void> dataMade = files.EnsureDirectory(DataFolderPath(titleId), OwnerOnlyPermissions);
-        if (dataMade.Succeeded())
-            dataMade = files.SetOwner(DataFolderPath(titleId), userId.Value(), currentInstallation.metadata.groupId);
-
-        if (dataMade.Failed())
-            return dataMade;
-    }
+    Result<void> dataFolderMade = MakeDataFolder(titleId, currentInstallation.metadata.groupId);
+    if (dataFolderMade.Failed())
+        return dataFolderMade;
 
     return RemoveFolderIfEmpty(ImportFamilyPath(titleId.highPart));
+}
+
+// An older version of the title keeps its data folder. Only the folder of its contents is replaced.
+Result<void> TitleService::MoveImportIntoPlace(TitleId titleId)
+{
+    if (files.Exists(TitlePath(titleId)))
+    {
+        Result<void> contentsMoved = files.Rename(ImportContentFolderPath(titleId), ContentFolderPath(titleId));
+        if (contentsMoved.Failed())
+            return contentsMoved;
+
+        return files.DeleteIfPresent(ImportTitlePath(titleId));
+    }
+
+    Result<void> familyFolderMade = files.EnsureDirectory(TitleFamilyPath(titleId.highPart), TitleFolderPermissions);
+    if (familyFolderMade.Failed())
+        return familyFolderMade;
+
+    return files.Rename(ImportTitlePath(titleId), TitlePath(titleId));
+}
+
+// A title without a data folder gets one that belongs to its own user.
+Result<void> TitleService::MakeDataFolder(TitleId titleId, std::uint16_t groupId)
+{
+    if (files.Exists(DataFolderPath(titleId)))
+        return Result<void>();
+
+    Result<std::uint32_t> userId = FindOrAssignUserId(titleId);
+    if (userId.Failed())
+        return userId.Error();
+
+    Result<void> folderMade = files.EnsureDirectory(DataFolderPath(titleId), OwnerOnlyPermissions);
+    if (folderMade.Failed())
+        return folderMade;
+
+    return files.SetOwner(DataFolderPath(titleId), userId.Value(), groupId);
 }
 
 void TitleService::CancelInstallation()

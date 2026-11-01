@@ -8,9 +8,14 @@ namespace Formats
 namespace
 {
 
+constexpr Byte ZeroByte = 0x00;
 constexpr Byte BlockTypeSignature = 0x01;
 constexpr Byte PaddingByte = 0xFF;
 constexpr std::size_t MinimumPaddingSize = 8;
+
+// The block starts with a zero byte and the block type. One zero byte separates the padding from the algorithm name.
+constexpr std::size_t BlockHeaderSize = 2;
+constexpr std::size_t SeparatorSize = 1;
 
 // The name of the hash algorithm SHA-1 in front of the hash, as PKCS #1 writes it.
 constexpr Byte Sha1AlgorithmName[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14};
@@ -18,14 +23,14 @@ constexpr Byte Sha1AlgorithmName[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 
 // The block that a correct signature of the hash gives back: 00 01 FF ... FF 00, the algorithm name and the hash.
 Bytes MakeExpectedBlock(std::size_t blockSize, const Sha1Digest& hash)
 {
-    std::size_t trailerSize = 1 + sizeof(Sha1AlgorithmName) + Sha1DigestSize;
-    std::size_t paddingSize = blockSize - 2 - trailerSize;
+    std::size_t trailerSize = SeparatorSize + sizeof(Sha1AlgorithmName) + Sha1DigestSize;
+    std::size_t paddingSize = blockSize - BlockHeaderSize - trailerSize;
 
     Bytes block;
-    block.push_back(0x00);
+    block.push_back(ZeroByte);
     block.push_back(BlockTypeSignature);
     block.insert(block.end(), paddingSize, PaddingByte);
-    block.push_back(0x00);
+    block.push_back(ZeroByte);
     block.insert(block.end(), std::begin(Sha1AlgorithmName), std::end(Sha1AlgorithmName));
     block.insert(block.end(), hash.begin(), hash.end());
     return block;
@@ -35,7 +40,7 @@ Bytes MakeExpectedBlock(std::size_t blockSize, const Sha1Digest& hash)
 
 bool VerifyRsaSha1Signature(ByteView modulus, std::uint32_t publicExponent, ByteView signature, const Sha1Digest& hash)
 {
-    std::size_t smallestBlockSize = 2 + MinimumPaddingSize + 1 + sizeof(Sha1AlgorithmName) + Sha1DigestSize;
+    std::size_t smallestBlockSize = BlockHeaderSize + MinimumPaddingSize + SeparatorSize + sizeof(Sha1AlgorithmName) + Sha1DigestSize;
     if (modulus.size() < smallestBlockSize || signature.size() != modulus.size())
         return false;
 

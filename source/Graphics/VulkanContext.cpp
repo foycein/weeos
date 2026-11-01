@@ -230,8 +230,11 @@ int VulkanContext::ValidationMessageCount() const
 void VulkanContext::CreateInstance()
 {
     isValidationActive = ValidationIsWanted && IsLayerInstalled(ValidationLayerName);
-    if (ValidationIsWanted && !isValidationActive)
-        std::cerr << "The Vulkan validation layer is not installed, so nothing is validated.\n";
+    if constexpr (ValidationIsWanted)
+    {
+        if (!isValidationActive)
+            std::cerr << "The Vulkan validation layer is not installed, so nothing is validated.\n";
+    }
 
     std::vector<const char*> extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
     std::vector<const char*> layers;

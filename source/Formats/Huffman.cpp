@@ -79,7 +79,8 @@ public:
             unsigned bit = stream.ReadBit();
 
             std::size_t pairOffset = node & ChildOffsetMask;
-            std::size_t firstChildAddress = (nodeAddress & ~std::size_t(1)) + (pairOffset + 1) * NodePairSize;
+            std::size_t pairStart = nodeAddress - nodeAddress % NodePairSize;
+            std::size_t firstChildAddress = pairStart + (pairOffset + 1) * NodePairSize;
             std::size_t childAddress = firstChildAddress + bit;
             Byte childIsSymbolFlag = bit == 0 ? FirstChildIsSymbolFlag : SecondChildIsSymbolFlag;
             if ((node & childIsSymbolFlag) != 0)
@@ -140,7 +141,9 @@ Bytes DecompressHuffman(ByteView compressedBytes)
         }
 
         Byte secondSymbol = tree.ReadSymbol(stream);
-        output.push_back(static_cast<Byte>((symbol & NibbleMask) | ((secondSymbol & NibbleMask) << NibbleBitCount)));
+        Byte lowNibble = symbol & NibbleMask;
+        Byte highNibble = secondSymbol & NibbleMask;
+        output.push_back(static_cast<Byte>(lowNibble | (highNibble << NibbleBitCount)));
     }
 
     return output;

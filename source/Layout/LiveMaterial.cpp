@@ -40,12 +40,18 @@ constexpr float TextureMiddle = 0.5f;
 void RequireSupportedTextures(const Formats::Material& material, std::size_t layoutTextureCount)
 {
     if (material.textures.size() > Graphics::MaximumTextureCount)
-        FailMaterial(material, std::format("it has {} textures, but at most {} are supported", material.textures.size(), Graphics::MaximumTextureCount));
+    {
+        FailMaterial(material, std::format("it has {} textures, but at most {} are supported",
+            material.textures.size(), Graphics::MaximumTextureCount));
+    }
 
     for (const Formats::MaterialTexture& texture : material.textures)
     {
         if (texture.textureIndex >= layoutTextureCount)
-            FailMaterial(material, std::format("it uses the texture {} and the layout lists only {}", texture.textureIndex, layoutTextureCount));
+        {
+            FailMaterial(material, std::format("it uses the texture {} and the layout lists only {}",
+                texture.textureIndex, layoutTextureCount));
+        }
     }
 }
 
@@ -91,18 +97,27 @@ void RequireSupportedGenerators(const Formats::Material& material)
     }
 }
 
+bool AlphaTestAlwaysPasses(const Formats::Material& material)
+{
+    if (!material.alphaCompare)
+        return true;
+
+    return material.alphaCompare->firstCondition == CompareAlways && material.alphaCompare->secondCondition == CompareAlways;
+}
+
 void RequireSupportedParts(const Formats::Material& material)
 {
     if (material.tevSwapTable && *material.tevSwapTable != PlainSwapTable)
         FailMaterial(material, "it has a swap table other than the plain one");
 
-    bool alphaTestAlwaysPasses = !material.alphaCompare
-        || (material.alphaCompare->firstCondition == CompareAlways && material.alphaCompare->secondCondition == CompareAlways);
-    if (!alphaTestAlwaysPasses)
+    if (!AlphaTestAlwaysPasses(material))
         FailMaterial(material, "it has an alpha test that can reject pixels");
 
     if (material.tevStages.size() > Graphics::MaximumStageCount)
-        FailMaterial(material, std::format("it has {} stages, but at most {} are supported", material.tevStages.size(), Graphics::MaximumStageCount));
+    {
+        FailMaterial(material, std::format("it has {} stages, but at most {} are supported",
+            material.tevStages.size(), Graphics::MaximumStageCount));
+    }
 }
 
 Graphics::BlendMode ConvertBlendMode(const Formats::Material& material)
@@ -145,7 +160,10 @@ std::vector<Graphics::TevStage> ConvertStages(const Formats::Material& material)
 
         bool readsATexture = stage.textureIndex != Graphics::NoTexture;
         if (readsATexture && stage.textureIndex >= material.textures.size())
-            FailMaterial(material, std::format("a stage reads the texture {} and the material has {}", stage.textureIndex, material.textures.size()));
+        {
+            FailMaterial(material, std::format("a stage reads the texture {} and the material has {}",
+                stage.textureIndex, material.textures.size()));
+        }
 
         stages.push_back(stage);
     }
@@ -164,8 +182,10 @@ Graphics::TextureMatrix MakeTextureMatrix(const Formats::TextureTransform& trans
     float verticalFromHorizontal = sine * transform.scale.x;
     float verticalFromVertical = cosine * transform.scale.y;
 
-    float horizontalShift = transform.translation.x + TextureMiddle - TextureMiddle * (horizontalFromHorizontal + horizontalFromVertical);
-    float verticalShift = transform.translation.y + TextureMiddle - TextureMiddle * (verticalFromHorizontal + verticalFromVertical);
+    float turnedHorizontalMiddle = TextureMiddle * (horizontalFromHorizontal + horizontalFromVertical);
+    float turnedVerticalMiddle = TextureMiddle * (verticalFromHorizontal + verticalFromVertical);
+    float horizontalShift = transform.translation.x + TextureMiddle - turnedHorizontalMiddle;
+    float verticalShift = transform.translation.y + TextureMiddle - turnedVerticalMiddle;
 
     Graphics::TextureMatrix matrix;
     matrix.rows[0] = {horizontalFromHorizontal, horizontalFromVertical, horizontalShift};

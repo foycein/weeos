@@ -12,7 +12,6 @@ namespace
 {
 
 constexpr std::size_t NameSize = 20;
-constexpr std::size_t ConstantColorCount = 4;
 constexpr std::size_t MaterialListUnusedSize = 2;
 constexpr std::size_t UnusedAfterGeneratorSize = 1;
 constexpr std::size_t UnusedAfterChannelControlSize = 2;

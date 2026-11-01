@@ -25,7 +25,8 @@ constexpr std::uint32_t FourthStageConstant = 0xCA62C1D6;
 
 constexpr Byte EndOfDataMarker = 0x80;
 
-using Sha1State = std::array<std::uint32_t, 5>;
+constexpr std::size_t StateWordCount = 5;
+using Sha1State = std::array<std::uint32_t, StateWordCount>;
 
 constexpr Sha1State InitialState = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0};
 

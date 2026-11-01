@@ -53,7 +53,8 @@ Result<UserIdTable> UserIdTable::Read(const KernelFiles& files)
 
 std::optional<std::uint32_t> UserIdTable::Find(TitleId titleId) const
 {
-    auto found = std::find_if(entries.begin(), entries.end(), [titleId](const UserIdEntry& entry) { return entry.titleId == titleId; });
+    auto found = std::find_if(entries.begin(), entries.end(),
+        [titleId](const UserIdEntry& entry) { return entry.titleId == titleId; });
     if (found == entries.end())
         return std::nullopt;
 

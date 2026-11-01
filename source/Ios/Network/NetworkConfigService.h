@@ -14,7 +14,9 @@ namespace Ios
 {
 
 // The module of IOS that keeps the network configuration runs as this user. It owns the folder /shared2/sys/net and the file in it.
-constexpr Caller NetworkConfigCaller = {13, 13};
+constexpr std::uint32_t NetworkConfigUserId = 13;
+constexpr std::uint16_t NetworkConfigGroupId = 13;
+constexpr Caller NetworkConfigCaller = {NetworkConfigUserId, NetworkConfigGroupId};
 
 // What GetLinkStatus tells a program. The numbers are the ones the SDK compares: a program waits while the status is
 // Busy and goes on to the sockets when it is 3, 4 or 5.

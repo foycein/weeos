@@ -11,6 +11,7 @@ namespace
 constexpr int PartCount = 4;
 constexpr std::size_t MaximumDigitsPerPart = 3;
 constexpr unsigned int LargestPart = 255;
+constexpr char PartSeparator = '.';
 
 bool IsDigit(char character)
 {
@@ -51,7 +52,7 @@ std::optional<Ipv4Address> ParseIpv4Address(std::string_view text)
         if (isLastPart)
             break;
 
-        if (position >= text.size() || text[position] != '.')
+        if (position >= text.size() || text[position] != PartSeparator)
             return std::nullopt;
 
         ++position;
