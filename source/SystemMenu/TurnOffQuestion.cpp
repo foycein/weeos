@@ -22,8 +22,30 @@ TurnOffQuestion::TurnOffQuestion(Display& display, const MenuFiles& files, Sound
 
 void TurnOffQuestion::Ask()
 {
-    if (dialog.IsOpen())
-        return;
+    if (!dialog.IsOpen())
+        isAsked = true;
+}
+
+bool TurnOffQuestion::IsOpen() const
+{
+    return isAsked || dialog.IsOpen();
+}
+
+bool TurnOffQuestion::Update(const InputManager& input)
+{
+    if (isAsked)
+        OpenTheDialog();
+
+    constexpr bool isActive = true;
+    dialog.Update(input, isActive);
+
+    std::optional<DialogAnswer> answer = dialog.TakeAnswer();
+    return answer == YesButton;
+}
+
+void TurnOffQuestion::OpenTheDialog()
+{
+    isAsked = false;
 
     DialogRequest request;
     request.layout = DialogLayout::TwoButtons;
@@ -32,20 +54,6 @@ void TurnOffQuestion::Ask()
     request.buttonBText = NoText;
     request.cancelButton = NoButton;
     dialog.Open(request);
-}
-
-bool TurnOffQuestion::IsOpen() const
-{
-    return dialog.IsOpen();
-}
-
-bool TurnOffQuestion::Update(const InputManager& input)
-{
-    constexpr bool isActive = true;
-    dialog.Update(input, isActive);
-
-    std::optional<DialogAnswer> answer = dialog.TakeAnswer();
-    return answer == YesButton;
 }
 
 void TurnOffQuestion::Draw()

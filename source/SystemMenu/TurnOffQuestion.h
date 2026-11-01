@@ -18,7 +18,7 @@ public:
     // The display, the files and the sound requests must outlive the question.
     TurnOffQuestion(Display& display, const MenuFiles& files, SoundRequests& sounds);
 
-    // Opens the question. A question that is open already stays as it is.
+    // The question opens in the next step (Update), so that its sound belongs to that step. A question that is open stays as it is.
     void Ask();
 
     // True from Ask until the window has closed again.
@@ -31,6 +31,9 @@ public:
 
 private:
     DialogManager dialog;
+    bool isAsked = false;
+
+    void OpenTheDialog();
 };
 
 }
