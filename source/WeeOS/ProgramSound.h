@@ -4,6 +4,7 @@
 #include "Settings/PcSettings.h"
 #include "Settings/SystemSettings.h"
 #include "Sound/AudioOutput.h"
+#include "Sound/PcmStream.h"
 #include "Sound/SoundSystem.h"
 
 #include <atomic>
@@ -46,8 +47,11 @@ public:
     // same output. Gives nothing before Start or when the PC cannot play sound.
     Sound::SoundSystem* StartTitleArchive(Formats::ByteView titleSoundArchive);
 
-    // The channel has ended: the sound systems of its archives go.
+    // The channel has ended: the sound systems of its archives go, and its own stream.
     void StopTitleArchives();
+
+    // The sound that the running channel decodes itself (CHN-30). The stream must stay until StopTitleArchives.
+    void StartChannelStream(Sound::PcmStream& channelStream);
 
     // The sound mode of the console, IPL.SND. The sounds follow it from the next sound frame on.
     void SetSoundMode(Settings::SoundMode mode);
@@ -82,6 +86,7 @@ private:
     std::mutex titleSoundsMutex;
     std::vector<std::unique_ptr<Sound::SoundSystem>> titleSounds;
     std::vector<float> titleMixBuffer;
+    Sound::PcmStream* channelStream = nullptr;
 
     // The output comes last, so that it goes first: its audio thread stops before the sound system that it renders goes.
     std::unique_ptr<Sound::SoundSystem> sounds;

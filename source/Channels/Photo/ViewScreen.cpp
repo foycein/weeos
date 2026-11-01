@@ -3,6 +3,7 @@
 #include "Channels/Photo/ShownPicture.h"
 
 #include "Media/MovieFrames.h"
+#include "Media/MovieSound.h"
 
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
@@ -39,6 +40,11 @@ public:
         , unsupported(session.MakeLayout("error"))
     {
         Open(fileIndex);
+    }
+
+    ~ViewScreen() override
+    {
+        session.Services().stream.Stop();
     }
 
     void Update() override
@@ -85,6 +91,8 @@ private:
         index = fileIndex;
         shown = nullptr;
         movie = std::nullopt;
+        movieSound = std::nullopt;
+        session.Services().stream.Stop();
         fileBytes.clear();
         zoom = 0;
         quarterTurns = 0;
@@ -129,6 +137,7 @@ private:
             ShowUnsupported(UnsupportedMovieMessage);
             return;
         }
+        movieSound = DecodeSoundOfMovie();
         StartMovie(false);
     }
 
@@ -149,9 +158,52 @@ private:
             buttons->PaneNamed(button).isVisible = false;
     }
 
+    // The movie plays without sound when its sound is of a kind the channel does not play, or has more than two channels (0x800178A0).
+    std::optional<Media::PcmSound> DecodeSoundOfMovie() const
+    {
+        const std::optional<Media::MovieSoundTrack>& sound = movie->sound;
+        bool isPlayable = sound && sound->kind != Media::MovieSoundKind::Unsupported && sound->kind != Media::MovieSoundKind::Aac
+            && sound->channelCount >= 1 && sound->channelCount <= 2;
+        if (!isPlayable)
+            return std::nullopt;
+
+        try
+        {
+            return Media::DecodeMovieSound(*sound, fileBytes);
+        }
+        catch (const Formats::FormatError&)
+        {
+            return std::nullopt;
+        }
+    }
+
+    // Played backward, the sound runs backward too (play_audio_inv of the original).
+    void StartMovieSound(bool backward)
+    {
+        if (!movieSound)
+            return;
+
+        std::vector<std::int16_t> samples = movieSound->samples;
+        if (backward)
+            ReverseFrames(samples, movieSound->channelCount);
+
+        session.Services().stream.Play(samples, movieSound->channelCount, movieSound->sampleRate, 0);
+    }
+
+    static void ReverseFrames(std::vector<std::int16_t>& samples, int channelCount)
+    {
+        std::size_t frameCount = samples.size() / channelCount;
+        for (std::size_t frame = 0; frame < frameCount / 2; ++frame)
+        {
+            for (int channel = 0; channel < channelCount; ++channel)
+                std::swap(samples[frame * channelCount + channel], samples[(frameCount - 1 - frame) * channelCount + channel]);
+        }
+    }
+
     void StartMovie(bool backward)
     {
         isPlayingBackward = backward;
+        StartMovieSound(backward);
         movieStartSeconds = session.Services().clock.Seconds();
         shownFrame = -1;
         for (std::string_view button : ButtonsAtTheEndOfAMovie)
@@ -286,6 +338,7 @@ private:
     Formats::RgbaImage photoPicture;
     std::unique_ptr<ShownPicture> shown;
     std::optional<Media::Movie> movie;
+    std::optional<Media::PcmSound> movieSound;
     double movieStartSeconds = 0;
     int shownFrame = -1;
     bool isPlayingBackward = false;

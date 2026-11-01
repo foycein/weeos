@@ -44,7 +44,7 @@ ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::Title
     , display(device, screenShape)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage, stream}
 {
     LoadSystemFonts(contents);
     channel = MakeChannel(titleId, services);

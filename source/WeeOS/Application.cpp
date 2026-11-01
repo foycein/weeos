@@ -147,6 +147,7 @@ private:
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
             iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
 
+        sound.StartChannelStream(channel->Services().stream);
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
         {
             Sound::SoundSystem* soundSystem = sound.StartTitleArchive(archive);

@@ -95,6 +95,9 @@ void ProgramSound::Render(std::span<float> interleavedStereo)
 void ProgramSound::AddTitleSounds(std::span<float> interleavedStereo)
 {
     std::lock_guard<std::mutex> lock(titleSoundsMutex);
+    if (channelStream != nullptr && output)
+        channelStream->Render(interleavedStereo, output->SampleRate());
+
     titleMixBuffer.resize(interleavedStereo.size());
     for (const std::unique_ptr<Sound::SoundSystem>& titleSound : titleSounds)
     {
@@ -118,9 +121,16 @@ Sound::SoundSystem* ProgramSound::StartTitleArchive(Formats::ByteView titleSound
     return started;
 }
 
+void ProgramSound::StartChannelStream(Sound::PcmStream& stream)
+{
+    std::lock_guard<std::mutex> lock(titleSoundsMutex);
+    channelStream = &stream;
+}
+
 void ProgramSound::StopTitleArchives()
 {
     std::lock_guard<std::mutex> lock(titleSoundsMutex);
+    channelStream = nullptr;
     titleSounds.clear();
 }
 

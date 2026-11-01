@@ -70,6 +70,7 @@ private:
     SystemMenu::InputManager input;
     SystemMenu::SoundRequests sounds;
     WiiMenuReturn wiiMenu;
+    Sound::PcmStream stream;
     SystemMenu::MenuFonts systemFonts;
     ChannelServices services;
     std::unique_ptr<Channel> channel;

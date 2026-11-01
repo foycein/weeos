@@ -28,4 +28,4 @@ add_library(Channels STATIC
     WiiConnect24Channel.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Media)
+target_link_libraries(Channels PUBLIC SystemMenu Media Sound)

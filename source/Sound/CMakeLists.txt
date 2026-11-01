@@ -6,6 +6,7 @@ add_library(Sound STATIC
     LoadedFiles.cpp
     LowPassFilter.cpp
     Mixer.cpp
+    PcmStream.cpp
     Modulation.cpp
     NoteParameters.cpp
     PlaybackDevices.cpp

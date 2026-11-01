@@ -10,6 +10,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/SdCard/SdCardService.h"
+#include "Sound/PcmStream.h"
 #include "Layout/TextFonts.h"
 
 namespace Channels
@@ -61,6 +62,9 @@ struct ChannelServices
     const Layout::TextFonts& systemFonts;
 
     ChannelStorage storage;
+
+    // Sound that the channel decoded itself (the sound of a movie). The program mixes it into its output.
+    Sound::PcmStream& stream;
 };
 
 }
