@@ -121,9 +121,10 @@ Vector2 Turn(float x, float y, float angle)
     return {cosine * x - sine * y, sine * x + cosine * y};
 }
 
-ViewCorner CornerOf(Vector3 position, float s, float t)
+// The texture coordinates run from 0 at the left and the top to 1 at the right and the bottom of the picture.
+ViewCorner CornerOf(Vector3 position, float pictureX, float pictureY)
 {
-    return {position, {s, t}};
+    return {position, {pictureX, pictureY}};
 }
 
 // A picture that faces the viewer, turned by the particle's z rotation.
@@ -136,9 +137,9 @@ ViewQuad FacingQuad(const EmitterView& view, const Particle& particle, float wid
     Vector2 pivotOffset = Turn(pivot.x - width * pivot.x, height * pivot.y - pivot.y, angle);
     center = Add(center, RollIntoView(view, pivotOffset.x, pivotOffset.y));
 
-    auto corner = [&](float x, float y, float s, float t) {
+    auto corner = [&](float x, float y, float pictureX, float pictureY) {
         Vector2 turned = Turn(x, y, angle);
-        return CornerOf(Add(center, RollIntoView(view, turned.x, turned.y)), s, t);
+        return CornerOf(Add(center, RollIntoView(view, turned.x, turned.y)), pictureX, pictureY);
     };
     return {corner(-width, height, 0, 0), corner(width, height, 1, 0), corner(width, -height, 1, 1), corner(-width, -height, 0, 1)};
 }
@@ -191,7 +192,7 @@ ViewQuad AlongTheDirectionQuad(const EmitterView& view, const Particle& particle
 }
 
 // A picture lying in the world: its height along the particle's direction, its width across it in the plane of the emitter's form
-// (DirectionalWidthAcross), turned about one of its own axes by the particle's rotation.
+// (EFF-06, Assumed), turned about one of its own axes by the particle's rotation.
 ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, float width, float height)
 {
     constexpr std::uint8_t TurnsAboutX = 0;
@@ -212,10 +213,10 @@ ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, floa
     Vector3 pivotShift = Graphics::TransformDirection(turn, {width * pivot.x, height * (pivot.y + stretch - 1), 0});
     Vector3 shift = Subtract({pivot.x, pivot.y, 0}, pivotShift);
 
-    auto corner = [&](float x, float y, float s, float t) {
+    auto corner = [&](float x, float y, float pictureX, float pictureY) {
         Vector3 local = Add(Graphics::TransformDirection(turn, {x * width, y * stretch * height, 0}), shift);
         Vector3 world = Add(particle.position, Add(Add(Multiply(side, local.x), Multiply(direction, local.y)), Multiply(upward, local.z)));
-        return CornerOf(Graphics::TransformPoint(view.cameraView, world), s, t);
+        return CornerOf(Graphics::TransformPoint(view.cameraView, world), pictureX, pictureY);
     };
     return {corner(-1, 1, 0, 0), corner(1, 1, 1, 0), corner(1, -1, 1, 1), corner(-1, -1, 0, 1)};
 }
@@ -228,72 +229,70 @@ struct StripePoint
     float along;
 };
 
-StripePoint Blend3(const StripePoint& first, const StripePoint& second, const StripePoint& third, float t)
+// The weights of three neighbouring points of a quadratic B-spline at a fraction of the way through the middle segment.
+struct SplineWeights
 {
-    float firstWeight = 0.5f * (1 - t) * (1 - t);
-    float secondWeight = 0.5f + t - t * t;
-    float thirdWeight = 0.5f * t * t;
+    float first;
+    float second;
+    float third;
+};
 
-    auto mix = [&](Vector3 a, Vector3 b, Vector3 c) {
-        return Add(Add(Multiply(a, firstWeight), Multiply(b, secondWeight)), Multiply(c, thirdWeight));
-    };
-    return {mix(first.positive, second.positive, third.positive), mix(first.negative, second.negative, third.negative),
-        firstWeight * first.along + secondWeight * second.along + thirdWeight * third.along};
+SplineWeights WeightsAt(float fraction)
+{
+    float rest = 1 - fraction;
+    return {0.5f * rest * rest, 0.5f + fraction - fraction * fraction, 0.5f * fraction * fraction};
 }
 
-// A ring of particles joined into a closed ribbon that bends smoothly through them (a quadratic B-spline), newest particle first.
-std::vector<ViewQuad> SmoothStripeQuads(const EmitterView& view, const std::vector<Particle>& particles)
+Vector3 Weighted(Vector3 first, Vector3 second, Vector3 third, const SplineWeights& weights)
 {
-    constexpr std::size_t FewestParticlesOfALoop = 3;
+    return Add(Add(Multiply(first, weights.first), Multiply(second, weights.second)), Multiply(third, weights.third));
+}
 
+StripePoint PointOnTheSpline(const StripePoint& first, const StripePoint& second, const StripePoint& third, float fraction)
+{
+    SplineWeights weights = WeightsAt(fraction);
+    StripePoint point;
+    point.positive = Weighted(first.positive, second.positive, third.positive, weights);
+    point.negative = Weighted(first.negative, second.negative, third.negative, weights);
+    point.along = weights.first * first.along + weights.second * second.along + weights.third * third.along;
+    return point;
+}
+
+// The particles in the order the stripe runs through them: the newest first, unless the draw setting asks for the oldest first.
+std::vector<const Particle*> WalkOfTheStripe(const EmitterView& view, const std::vector<Particle>& particles)
+{
     std::vector<const Particle*> walk;
     bool oldestFirst = (view.resource.drawSetting.flags & Formats::DrawFlag::OldestFirst) != 0;
     for (std::size_t index = 0; index < particles.size(); ++index)
         walk.push_back(oldestFirst ? &particles[index] : &particles[particles.size() - 1 - index]);
+    return walk;
+}
 
+// The two edges of the stripe at one particle of the walk: across the way from its neighbours, as wide as the particle.
+StripePoint EdgesAt(const EmitterView& view, const std::vector<const Particle*>& walk, std::size_t index, float along)
+{
     std::size_t count = walk.size();
-    if (count < FewestParticlesOfALoop)
-        return {};
+    const Particle& particle = *walk[index];
+    Vector3 toNext = NormalizeOr(Subtract(walk[(index + 1) % count]->position, particle.position), {0, 0, 0});
+    Vector3 toPrevious = NormalizeOr(Subtract(walk[(index + count - 1) % count]->position, particle.position), {0, 0, 0});
+    Vector3 direction = NormalizeOr(Subtract(toNext, toPrevious), view.upAxis);
+    Vector3 side = NormalizeOr(Cross(direction, view.upAxis), {1, 0, 0});
+    Vector3 axis = NormalizeOr(Cross(side, direction), view.upAxis);
 
-    const Formats::ParticleShape& shape = view.resource.shape;
-    bool texturePerSegment = (shape.stripeFlags & Formats::StripeTexturePerSegmentMask) == Formats::StripeTexturePerSegment;
-    float alongStep = texturePerSegment ? 0.5f : 0.5f / static_cast<float>(count);
+    float width = HalfWidth(view, particle);
+    float turn = particle.rotation.y + particle.rotationOffset.y + view.effect.RotationOffset().y;
+    float pivot = view.resource.shape.pivot.x;
+    auto edge = [&](float sign) {
+        Vector3 sideways = Multiply(side, pivot + width * std::cos(turn) * (sign - pivot));
+        Vector3 upward = Multiply(axis, width * std::sin(turn) * (sign - pivot));
+        return Add(particle.position, Add(sideways, upward));
+    };
+    return {edge(1), edge(-1), along};
+}
 
-    std::vector<StripePoint> points;
-    for (std::size_t index = 0; index < count; ++index)
-    {
-        const Particle& particle = *walk[index];
-        Vector3 toNext = NormalizeOr(Subtract(walk[(index + 1) % count]->position, particle.position), {0, 0, 0});
-        Vector3 toPrevious = NormalizeOr(Subtract(walk[(index + count - 1) % count]->position, particle.position), {0, 0, 0});
-        Vector3 direction = NormalizeOr(Subtract(toNext, toPrevious), view.upAxis);
-        Vector3 side = NormalizeOr(Cross(direction, view.upAxis), {1, 0, 0});
-        Vector3 axis = NormalizeOr(Cross(side, direction), view.upAxis);
-
-        float width = HalfWidth(view, particle);
-        float turn = particle.rotation.y + particle.rotationOffset.y + view.effect.RotationOffset().y;
-        float pivot = shape.pivot.x;
-        auto edge = [&](float sign) {
-            Vector3 sideways = Multiply(side, pivot + width * std::cos(turn) * (sign - pivot));
-            Vector3 upward = Multiply(axis, width * std::sin(turn) * (sign - pivot));
-            return Add(particle.position, Add(sideways, upward));
-        };
-        points.push_back({edge(1), edge(-1), (2 * static_cast<float>(index) - 1) * alongStep});
-    }
-    points.push_back({points[0].positive, points[0].negative, (2 * static_cast<float>(count) - 1) * alongStep});
-    points.push_back({points[1].positive, points[1].negative, (2 * static_cast<float>(count) + 1) * alongStep});
-
-    std::uint32_t subdivisions = shape.stripeSubdivisions == 0 ? 1u : shape.stripeSubdivisions;
-    std::vector<StripePoint> strip;
-    for (std::size_t index = 1; index <= count; ++index)
-    {
-        for (std::uint32_t piece = 0; piece < subdivisions; ++piece)
-        {
-            float t = static_cast<float>(piece) / static_cast<float>(subdivisions);
-            strip.push_back(Blend3(points[index - 1], points[index], points[index + 1], t));
-        }
-    }
-    strip.push_back(Blend3(points[count], points[count], points[count + 1], 1.0f));
-
+// The quads between consecutive points of the strip, in view space.
+std::vector<ViewQuad> QuadsOfTheStrip(const EmitterView& view, const std::vector<StripePoint>& strip)
+{
     std::vector<ViewQuad> quads;
     for (std::size_t index = 0; index + 1 < strip.size(); ++index)
     {
@@ -309,9 +308,44 @@ std::vector<ViewQuad> SmoothStripeQuads(const EmitterView& view, const std::vect
     return quads;
 }
 
+// A ring of particles joined into a closed ribbon that bends smoothly through them (a quadratic B-spline). The texture runs along the
+// ribbon from (i - 0.5) / count at the i-th particle, or once per segment.
+std::vector<ViewQuad> SmoothStripeQuads(const EmitterView& view, const std::vector<Particle>& particles)
+{
+    constexpr std::size_t FewestParticlesOfALoop = 3;
+
+    std::vector<const Particle*> walk = WalkOfTheStripe(view, particles);
+    std::size_t count = walk.size();
+    if (count < FewestParticlesOfALoop)
+        return {};
+
+    const Formats::ParticleShape& shape = view.resource.shape;
+    bool texturePerSegment = (shape.stripeFlags & Formats::StripeTexturePerSegmentMask) == Formats::StripeTexturePerSegment;
+    float alongStep = texturePerSegment ? 0.5f : 0.5f / static_cast<float>(count);
+
+    std::vector<StripePoint> points;
+    for (std::size_t index = 0; index < count; ++index)
+        points.push_back(EdgesAt(view, walk, index, (2 * static_cast<float>(index) - 1) * alongStep));
+    points.push_back({points[0].positive, points[0].negative, (2 * static_cast<float>(count) - 1) * alongStep});
+    points.push_back({points[1].positive, points[1].negative, (2 * static_cast<float>(count) + 1) * alongStep});
+
+    std::uint32_t subdivisions = shape.stripeSubdivisions == 0 ? 1u : shape.stripeSubdivisions;
+    std::vector<StripePoint> strip;
+    for (std::size_t index = 1; index <= count; ++index)
+    {
+        for (std::uint32_t piece = 0; piece < subdivisions; ++piece)
+        {
+            float fraction = static_cast<float>(piece) / static_cast<float>(subdivisions);
+            strip.push_back(PointOnTheSpline(points[index - 1], points[index], points[index + 1], fraction));
+        }
+    }
+    strip.push_back(PointOnTheSpline(points[count], points[count], points[count + 1], 1.0f));
+    return QuadsOfTheStrip(view, strip);
+}
+
 Rgba8Color Product(Rgba8Color first, Rgba8Color second)
 {
-    auto multiply = [](std::uint8_t a, std::uint8_t b) { return static_cast<std::uint8_t>((a * b + ProductRounding) >> ProductShift); };
+    auto multiply = [](std::uint8_t one, std::uint8_t other) { return static_cast<std::uint8_t>((one * other + ProductRounding) >> ProductShift); };
     return {multiply(first.red, second.red), multiply(first.green, second.green), multiply(first.blue, second.blue),
         multiply(first.alpha, second.alpha)};
 }

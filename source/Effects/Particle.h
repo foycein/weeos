@@ -38,10 +38,6 @@ struct Particle
 
     // The steps of the particle are this much longer: 1, or more with the emitter's momentum random.
     float momentum = 1;
-
-    // Stripes and directional particles keep the axis their picture lay along in the step before.
-    Formats::Vector3 axis = {0, 0, 0};
-    bool hasAxis = false;
 };
 
 // The half height of a particle's picture, before the effect's size multiplier: its size and scale as the emitter's rule says.

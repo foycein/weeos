@@ -75,13 +75,13 @@ constexpr std::string_view MuteOnSound = "SE_COM_MUTE_ON";
 constexpr std::string_view MuteOffSound = "SE_COM_MUTE_OFF";
 
 // The ripples of the clock come in the last three seconds before a full hour and at the full hour, at the clock (0x80093B80). The
-// pane they come from is the hour of the clock (ClockRipplePane, Assumed).
+// pane they come from is the hour of the clock (ClockRipplePane, EFF-14, Assumed).
 constexpr std::string_view ClockRipplePane = "T_time_02";
 constexpr int LastMinuteOfTheHour = 59;
 constexpr int FirstSecondOfTheRipples = 57;
 
 // The original lets a drop fall with every third drop of the water's sound (0x800A9DE4); WeeOS does not play the events of that sound,
-// so a drop falls every 150 steps (ChatRoomStepsBetweenDrops, Assumed).
+// so a drop falls every 150 steps (ChatRoomStepsBetweenDrops, EFF-14, Assumed).
 constexpr int ChatRoomStepsBetweenDrops = 150;
 
 // The photo lands in its slot, the Miis come up in the middle of the circle.

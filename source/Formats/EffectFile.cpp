@@ -424,6 +424,12 @@ ParticleParameters ReadParticleParameters(ByteReader& reader, std::size_t parame
     return particle;
 }
 
+// The target that comes this many places after the first one in the list of EffectAnimationTarget.
+EffectAnimationTarget TargetAfter(EffectAnimationTarget first, int places)
+{
+    return static_cast<EffectAnimationTarget>(static_cast<int>(first) + places);
+}
+
 EffectAnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
 {
     constexpr std::uint8_t LastColorTarget = 0x0C;
@@ -439,17 +445,17 @@ EffectAnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
     if (number <= LastColorTarget)
         return static_cast<EffectAnimationTarget>(number);
     if (number >= FirstPatternTarget && number <= LastTextureTarget)
-        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::Texture1Pattern) + number - FirstPatternTarget);
+        return TargetAfter(EffectAnimationTarget::Texture1Pattern, number - FirstPatternTarget);
     if (number == ChildTarget)
         return EffectAnimationTarget::Child;
     if (number >= FirstFieldTarget && number <= static_cast<std::uint8_t>(FirstFieldTarget + 4))
-        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::GravityField) + number - FirstFieldTarget);
+        return TargetAfter(EffectAnimationTarget::GravityField, number - FirstFieldTarget);
     if (number == FieldOfSpin)
         return EffectAnimationTarget::SpinField;
     if (number == FieldOfTail)
         return EffectAnimationTarget::TailField;
     if (number >= FirstEmitterTarget && number <= LastEmitterTarget)
-        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::EmitterFormParameters) + number - FirstEmitterTarget);
+        return TargetAfter(EffectAnimationTarget::EmitterFormParameters, number - FirstEmitterTarget);
 
     reader.Fail(std::format("the animation target {:#x} is not known", number));
 }
@@ -537,7 +543,8 @@ AnimationValueKind ValueKindOf(ByteReader& reader, const AnimationHeader& header
     default: break;
     }
 
-    bool isVersion5Field = version == EffectFileVersion5 && header.target >= Version5FirstFieldTarget && header.target <= Version5LastFieldTarget;
+    bool isFieldTarget = header.target >= Version5FirstFieldTarget && header.target <= Version5LastFieldTarget;
+    bool isVersion5Field = version == EffectFileVersion5 && isFieldTarget;
     if (header.kind == FloatsKind && isVersion5Field)
         return AnimationValueKind::Field;
     if (header.kind == FloatsKind)

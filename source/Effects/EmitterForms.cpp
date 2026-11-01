@@ -99,8 +99,8 @@ float RadiusZ(const EmitterSettings& settings, FormParameter parameter)
 
 FormPlacement PlaceOnPoint(EffectRandom& random)
 {
-    float t = 2 * random.NextFraction() - 1;
-    float spread = t * (PointSpreadBase + PointSpreadGrowth * std::abs(t));
+    float signedFraction = 2 * random.NextFraction() - 1;
+    float spread = signedFraction * (PointSpreadBase + PointSpreadGrowth * std::abs(signedFraction));
     float ring = std::sqrt(std::max(0.0f, 1 - spread * spread));
     float angle = FullTurn * random.NextFraction();
 

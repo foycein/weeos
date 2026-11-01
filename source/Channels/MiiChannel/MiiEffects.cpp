@@ -25,7 +25,7 @@ constexpr float TalkAndSneezeScale = 0.8f;
 constexpr float FlatBoxHalfWidth = 304.0f * 4 / 3;
 constexpr float FlatBoxHalfHeight = 224;
 
-// The sneeze and the Zzz stand in a frame of the Mii that turns with it and whose origin lies this far below the head (MII-EFF,
+// The sneeze and the Zzz stand in a frame of the Mii that turns with it and whose origin lies this far below the head (EFF-13,
 // Assumed): the head of a Mii of the default size stands 94.5 units above its feet (MiiBodyTest), and the effects' own translations
 // (110 and 60 units up) are measured from the feet.
 constexpr float HeadHeightAboveTheFeet = 94.5f;

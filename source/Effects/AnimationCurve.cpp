@@ -161,30 +161,31 @@ std::vector<float> ValuesOfKey(const Formats::EffectAnimation& animation, const 
     return RandomKeyValues(animation, key, particleSeed, loop);
 }
 
-float EaseVersion11(std::uint8_t interpolation, float t)
+float EaseVersion11(std::uint8_t interpolation, float fraction)
 {
     if (interpolation == SmoothInterpolation)
-        return t * t * (3 - 2 * t);
+        return fraction * fraction * (3 - 2 * fraction);
 
     float startSlope = (interpolation & EasesTheStart) != 0 ? EaseSlope : 0.0f;
     float endSlope = (interpolation & EasesTheEnd) != 0 ? EaseSlope : 0.0f;
-    return t * (startSlope + t * (3 - 2 * startSlope - endSlope) + t * t * (startSlope + endSlope - 2));
+    float square = fraction * fraction;
+    return fraction * (startSlope + fraction * (3 - 2 * startSlope - endSlope) + square * (startSlope + endSlope - 2));
 }
 
-// How far from the first key towards the second the value is, for a fraction t of the way between them.
-float Ease(std::uint8_t interpolation, float t, std::uint16_t version)
+// How far from the first key towards the second the value is, for a fraction of the way between them.
+float Ease(std::uint8_t interpolation, float fraction, std::uint16_t version)
 {
     std::uint8_t mode = interpolation & InterpolationMask;
     if (mode == LinearInterpolation)
-        return t;
+        return fraction;
     if (mode == StepInterpolation)
         return 0;
     if (mode != SmoothInterpolation)
         return 0;
 
     if (version == Formats::EffectFileVersion5)
-        return t * t * (3 - 2 * t);
-    return EaseVersion11(interpolation, t);
+        return fraction * fraction * (3 - 2 * fraction);
+    return EaseVersion11(interpolation, fraction);
 }
 
 std::vector<float> BakedValues(const Formats::EffectAnimation& animation, float frame)
@@ -252,8 +253,8 @@ std::vector<float> EvaluateCurve(const Formats::EffectAnimation& animation, cons
 
     const Formats::AnimationKey& nextKey = animation.keys[index + 1];
     std::vector<float> nextValues = ValuesOfKey(animation, nextKey, particleSeed, time.loop);
-    float t = (time.frame - key.frame) / static_cast<float>(nextKey.frame - key.frame);
-    float eased = Ease(key.interpolation, t, version);
+    float fraction = (time.frame - key.frame) / static_cast<float>(nextKey.frame - key.frame);
+    float eased = Ease(key.interpolation, fraction, version);
     for (std::size_t component = 0; component < values.size() && component < nextValues.size(); ++component)
         values[component] += (nextValues[component] - values[component]) * eased;
     return values;

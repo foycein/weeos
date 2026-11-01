@@ -41,7 +41,7 @@ SystemMenu::KeyboardButtonTexts KeyboardTextsOf(const Formats::NumberedMessageFi
 
 // The Mii Channel's hand (EffectManager 0x80028878): only the first player's, in the box of its 2D projection, 810 by 448 units in 16:9
 // (0x80028608), with the shadow 3 units right and 3 down, made 4/3 wider (0x80029A54, 0x800295B0). The closed hand rises above the
-// pointer while it holds a Mii (0x80029264: 80 units, or 95 with another camera; MiiChannelHoldingLift, Assumed).
+// pointer while it holds a Mii (0x80029264: 80 units, or 95 with another camera; MiiChannelHoldingLift, EFF-12, Assumed).
 constexpr float HandBoxHalfWidth = 304.0f * 4 / 3;
 constexpr float HandBoxHalfHeight = 224;
 constexpr float MiiChannelHoldingLift = 80;
