@@ -266,7 +266,7 @@ void ChannelStartWindowScreen::BuildTheFrame()
     if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
         UseTheWideFrame();
 
-    buttons = std::make_unique<ButtonGroup>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
+    buttons = std::make_unique<ButtonController>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
 }
 
 void ChannelStartWindowScreen::UseTheWideFrame()
@@ -465,7 +465,7 @@ void ChannelStartWindowScreen::RunShowingChannel()
         return;
 
     bool isActive = services.fader.GetStatus() == FaderStatus::Clear;
-    for (const ButtonGroupEvent& event : buttons->Update(services.input, isActive))
+    for (const ButtonEvent& event : buttons->Poll(services.input, isActive))
         ReactToButton(event);
 }
 
@@ -555,21 +555,21 @@ void ChannelStartWindowScreen::RunArrivingAtTheNewChannel()
     state = StartWindowState::ShowingChannel;
 }
 
-void ChannelStartWindowScreen::ReactToButton(const ButtonGroupEvent& event)
+void ChannelStartWindowScreen::ReactToButton(const ButtonEvent& event)
 {
     bool isWiiMenu = event.buttonIndex == WiiMenuButton;
     switch (event.kind)
     {
-    case ButtonGroupEventKind::Focused:
+    case ButtonEventKind::FocusGained:
         frame->StartAnimation(isWiiMenu ? focusOnOfWiiMenu : focusOnOfStart);
         services.sounds.Request(FocusSound);
         break;
 
-    case ButtonGroupEventKind::Unfocused:
+    case ButtonEventKind::FocusLost:
         frame->StartAnimation(isWiiMenu ? focusOffOfWiiMenu : focusOffOfStart);
         break;
 
-    case ButtonGroupEventKind::Pressed:
+    case ButtonEventKind::Pressed:
         if (isWiiMenu)
             CloseTowardsTheGrid();
         else

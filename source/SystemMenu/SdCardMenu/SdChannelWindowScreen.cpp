@@ -91,7 +91,7 @@ void SdChannelWindowScreen::Build()
     focusOnOfStart = frame->BindAnimation(std::string(FocusOnAnimation), "G_FocusBtnB", Layout::PlaybackMode::PlayOnce);
     pressOfWiiMenu = frame->BindAnimation(std::string(PressAnimation), "G_SelectBtnA", Layout::PlaybackMode::PlayOnce);
     pressOfStart = frame->BindAnimation(std::string(PressAnimation), "G_SelectBtnB", Layout::PlaybackMode::PlayOnce);
-    buttons = std::make_unique<ButtonGroup>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
+    buttons = std::make_unique<ButtonController>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
 
     background = std::make_unique<MenuLayout>(services.display, *archive, std::string(BackgroundLayout));
     background->SetText("T_title", name);
@@ -155,27 +155,27 @@ bool SdChannelWindowScreen::RunMain()
     }
 
     bool isActive = services.fader.GetStatus() == FaderStatus::Clear;
-    for (const ButtonGroupEvent& event : buttons->Update(services.input, isActive))
+    for (const ButtonEvent& event : buttons->Poll(services.input, isActive))
         ReactToButton(event);
 
     return false;
 }
 
-void SdChannelWindowScreen::ReactToButton(const ButtonGroupEvent& event)
+void SdChannelWindowScreen::ReactToButton(const ButtonEvent& event)
 {
     bool isWiiMenu = event.buttonIndex == WiiMenuButton;
     switch (event.kind)
     {
-    case ButtonGroupEventKind::Focused:
+    case ButtonEventKind::FocusGained:
         frame->StartAnimation(isWiiMenu ? focusOnOfWiiMenu : focusOnOfStart);
         services.sounds.Request(FocusSound);
         break;
 
-    case ButtonGroupEventKind::Unfocused:
+    case ButtonEventKind::FocusLost:
         frame->StartAnimation(isWiiMenu ? focusOffOfWiiMenu : focusOffOfStart);
         break;
 
-    case ButtonGroupEventKind::Pressed:
+    case ButtonEventKind::Pressed:
         if (isWiiMenu)
             CloseTowardsTheList();
         else

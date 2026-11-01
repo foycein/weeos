@@ -181,6 +181,9 @@ void BottomBarScreen::Build()
     messageSignal = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(MessageSignalGroup));
     messageSignal->Show(FrameOfTheWiiMenu);
 
+    // The layout holds "99" under the envelope until the main frame counts the messages of today; a menu without a board shows none.
+    ShowMessageCount(0);
+
     arrowLoop = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(ArrowLoopGroup));
     arrowLoop->Loop(FirstFrameOfTheArrowLoop, LastFrameOfTheArrowLoop);
 

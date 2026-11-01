@@ -35,6 +35,8 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
 {
     display.SetTextFonts(fonts.Fonts());
     services.consoleImport = consoleImport;
+    if (wiiSettingsServices != nullptr)
+        homeButton.SetSpeakerVolumeSetting(wiiSettingsServices->settings.GetSpeakerVolume());
 
     StartFacts facts = ReadStartFacts(nand, settings);
     facts.offersConsoleImport = consoleImport != nullptr && consoleImport->TakeOfferAtStart();
@@ -152,8 +154,8 @@ void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
     keyboard.UsePhysicalKeyboard(keyboardService);
 }
 
-// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. Its rumble choice is the console's
-// setting that PC Settings shows too; the volume of the speakers is not written yet and lasts until the program ends.
+// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. Its volume of the speakers and its
+// rumble choice are settings of the console (BT.SPKV and BT.MOT); PC Settings shows the rumble too.
 HomeButtonConnections MenuSystem::ConnectHomeButton()
 {
     HomeButtonConnections connections;
@@ -167,21 +169,23 @@ HomeButtonConnections MenuSystem::ConnectHomeButton()
     };
     connections.saveRemoteSettings = [this](std::uint8_t speakerVolumeSetting, bool isRumbleOn)
     {
-        static_cast<void>(speakerVolumeSetting);
-        SaveRumble(isRumbleOn);
+        SaveRemoteSettings(speakerVolumeSetting, isRumbleOn);
     };
     return connections;
 }
 
-void MenuSystem::SaveRumble(bool isRumbleOn)
+// The original writes both at every close of the HOME menu (WPADSaveConfig 0x8157B274); WeeOS writes SYSCONF only when one changed.
+void MenuSystem::SaveRemoteSettings(std::uint8_t speakerVolumeSetting, bool isRumbleOn)
 {
     if (services.wiiSettings == nullptr)
         return;
 
     Settings::SystemSettings& systemSettings = services.wiiSettings->settings;
-    if (systemSettings.IsRumbleOn() == isRumbleOn)
+    bool isUnchanged = systemSettings.GetSpeakerVolume() == speakerVolumeSetting && systemSettings.IsRumbleOn() == isRumbleOn;
+    if (isUnchanged)
         return;
 
+    systemSettings.SetSpeakerVolume(speakerVolumeSetting);
     systemSettings.SetRumble(isRumbleOn);
     systemSettings.Save();
 }

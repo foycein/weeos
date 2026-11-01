@@ -73,7 +73,7 @@ public:
 private:
     void RunStep();
     HomeButtonConnections ConnectHomeButton();
-    void SaveRumble(bool isRumbleOn);
+    void SaveRemoteSettings(std::uint8_t speakerVolumeSetting, bool isRumbleOn);
 
     Display display;
     MenuFiles files;
