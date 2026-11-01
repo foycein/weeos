@@ -8,6 +8,9 @@ namespace Graphics
 namespace
 {
 
+// What a register holds for full intensity.
+constexpr std::int16_t FullIntensity = 255;
+
 constexpr std::array<TevConstant, MaximumTextureCount> WeightOfTexture = {
     TevConstant::Color3Alpha,
     TevConstant::Color3Blue,
@@ -120,7 +123,8 @@ bool RegistersKeepBlackAndWhite(const Material& material)
     const RegisterColor& white = material.colorRegisters[1];
 
     bool blackIsBlack = black.red == 0 && black.green == 0 && black.blue == 0 && black.alpha == 0;
-    bool whiteIsWhite = white.red == 255 && white.green == 255 && white.blue == 255 && white.alpha == 255;
+    bool whiteIsWhite = white.red == FullIntensity && white.green == FullIntensity && white.blue == FullIntensity
+        && white.alpha == FullIntensity;
     return blackIsBlack && whiteIsWhite;
 }
 

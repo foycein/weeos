@@ -23,6 +23,11 @@ std::optional<std::uint64_t> RangeAllocator::Allocate(std::uint64_t size, std::u
     return TakeFromRange(*rangeNumber, size, alignment);
 }
 
+std::vector<RangeAllocator::Range>::iterator RangeAllocator::PositionOf(std::size_t rangeNumber)
+{
+    return freeRanges.begin() + static_cast<std::ptrdiff_t>(rangeNumber);
+}
+
 std::optional<std::size_t> RangeAllocator::FindSmallestRangeThatFits(std::uint64_t size, std::uint64_t alignment) const
 {
     std::optional<std::size_t> smallestRangeNumber;
@@ -51,16 +56,16 @@ std::uint64_t RangeAllocator::TakeFromRange(std::size_t rangeNumber, std::uint64
     std::uint64_t rangeEnd = range.offset + range.size;
     std::uint64_t allocationEnd = alignedOffset + size;
 
-    freeRanges.erase(freeRanges.begin() + static_cast<std::ptrdiff_t>(rangeNumber));
+    freeRanges.erase(PositionOf(rangeNumber));
 
     std::size_t insertPosition = rangeNumber;
     if (alignedOffset > range.offset)
     {
-        freeRanges.insert(freeRanges.begin() + static_cast<std::ptrdiff_t>(insertPosition), {range.offset, alignedOffset - range.offset});
+        freeRanges.insert(PositionOf(insertPosition), {range.offset, alignedOffset - range.offset});
         ++insertPosition;
     }
     if (allocationEnd < rangeEnd)
-        freeRanges.insert(freeRanges.begin() + static_cast<std::ptrdiff_t>(insertPosition), {allocationEnd, rangeEnd - allocationEnd});
+        freeRanges.insert(PositionOf(insertPosition), {allocationEnd, rangeEnd - allocationEnd});
 
     return alignedOffset;
 }
@@ -74,19 +79,23 @@ void RangeAllocator::Free(std::uint64_t offset, std::uint64_t size)
     bool hasPrevious = insertPosition > 0;
     bool hasNext = insertPosition < freeRanges.size();
 
+    std::uint64_t previousEnd = 0;
+    if (hasPrevious)
+        previousEnd = freeRanges[insertPosition - 1].offset + freeRanges[insertPosition - 1].size;
+
     std::uint64_t end = offset + size;
-    bool overlapsPrevious = hasPrevious && freeRanges[insertPosition - 1].offset + freeRanges[insertPosition - 1].size > offset;
+    bool overlapsPrevious = hasPrevious && previousEnd > offset;
     bool overlapsNext = hasNext && freeRanges[insertPosition].offset < end;
     if (overlapsPrevious || overlapsNext || end > blockSize)
         throw GraphicsError(std::format("The memory range at {} with the size {} is not in use", offset, size));
 
-    bool touchesPrevious = hasPrevious && freeRanges[insertPosition - 1].offset + freeRanges[insertPosition - 1].size == offset;
+    bool touchesPrevious = hasPrevious && previousEnd == offset;
     bool touchesNext = hasNext && freeRanges[insertPosition].offset == end;
 
     if (touchesPrevious && touchesNext)
     {
         freeRanges[insertPosition - 1].size += size + freeRanges[insertPosition].size;
-        freeRanges.erase(freeRanges.begin() + static_cast<std::ptrdiff_t>(insertPosition));
+        freeRanges.erase(PositionOf(insertPosition));
         return;
     }
 
@@ -103,7 +112,7 @@ void RangeAllocator::Free(std::uint64_t offset, std::uint64_t size)
         return;
     }
 
-    freeRanges.insert(freeRanges.begin() + static_cast<std::ptrdiff_t>(insertPosition), {offset, size});
+    freeRanges.insert(PositionOf(insertPosition), {offset, size});
 }
 
 bool RangeAllocator::IsEntirelyFree() const

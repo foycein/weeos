@@ -63,7 +63,7 @@ struct DrawRecord
     // The indirect texture of the material and the two rows of its matrix.
     uint indirectTextureIndex;
     uint alphaTest;
-    float indirectMatrix[6];
+    float indirectMatrix[NumbersPerTextureMatrix];
     uint unusedAtTheEnd[2];
 };
 

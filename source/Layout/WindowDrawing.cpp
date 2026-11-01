@@ -51,6 +51,7 @@ enum TextureTurn : std::uint8_t
     TurnedBy180Degrees,
     TurnedBy270Degrees,
 };
+constexpr std::size_t TextureTurnCount = 6;
 
 // A window with one frame turns its one texture for each of the four sides: not at all for the top, flipped horizontally
 // for the right side, flipped vertically for the left side, and turned by 180 degrees for the bottom.
@@ -59,7 +60,7 @@ constexpr std::array<std::uint8_t, FourFrames> TurnsOfTheOneFrame = {NotTurned, 
 using CornerCoordinates = std::array<Formats::Vector2, Formats::CornerCount>;
 
 // The texture coordinates of the corners of a frame texture, for each way that a texture can be turned.
-constexpr std::array<CornerCoordinates, 6> CoordinatesOfTurnedTextures = {{
+constexpr std::array<CornerCoordinates, TextureTurnCount> CoordinatesOfTurnedTextures = {{
     {{{0, 0}, {1, 0}, {0, 1}, {1, 1}}},
     {{{1, 0}, {0, 0}, {1, 1}, {0, 1}}},
     {{{0, 1}, {1, 1}, {0, 0}, {1, 0}}},

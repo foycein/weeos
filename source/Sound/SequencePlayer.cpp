@@ -310,7 +310,9 @@ std::uint8_t SequencePlayer::ReadByte(SequenceTrack& track)
         return 0;
     }
 
-    return sequence.commands[track.position++];
+    std::uint8_t nextByte = sequence.commands[track.position];
+    ++track.position;
+    return nextByte;
 }
 
 std::int16_t SequencePlayer::ReadShort(SequenceTrack& track)

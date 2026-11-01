@@ -26,7 +26,7 @@ layout(location = 0) out vec4 pictureColor;
 
 // The registers a stage can read and write. Number 0 is the previous result, 1 to 3 are REG0 to REG2.
 // They hold the colors in the range 0 to 1, where 1 is the 255 of the material, and they can go below 0 and above 1.
-vec4 registers[4];
+vec4 registers[ColorRegisterCount + 1u];
 
 const float MaximumByteValue = 255.0;
 const uint ValuesPerByte = 256u;
@@ -103,7 +103,7 @@ vec2 IndirectShift(uint textureNumber)
 {
     vec4 texel = SampleTexture(drawRecords[drawIndex].indirectTextureIndex);
     vec3 numbers = vec3(texel.a, texel.b, texel.g) * MaximumByteValue - IndirectBias;
-    float matrix[6] = drawRecords[drawIndex].indirectMatrix;
+    float matrix[NumbersPerTextureMatrix] = drawRecords[drawIndex].indirectMatrix;
     float shiftS = matrix[0] * numbers.x + matrix[1] * numbers.y + matrix[2] * numbers.z;
     float shiftT = matrix[3] * numbers.x + matrix[4] * numbers.y + matrix[5] * numbers.z;
     return vec2(shiftS, shiftT) / TextureSize(textureNumber);
@@ -335,10 +335,19 @@ float CalculateAlpha(Stage stage, StageSources sources)
 
 // The swap table of a stage: every channel reads the channel whose number its two bits hold.
 const uint TextureSwapShift = 8u;
+const uint BitsPerSwapChannel = 2u;
+const uint SwapChannelMask = 3u;
+
+float SwappedChannel(vec4 color, uint table, uint channel)
+{
+    uint sourceChannel = (table >> (channel * BitsPerSwapChannel)) & SwapChannelMask;
+    return color[sourceChannel];
+}
 
 vec4 Swapped(vec4 color, uint table)
 {
-    return vec4(color[table & 3u], color[(table >> 2u) & 3u], color[(table >> 4u) & 3u], color[(table >> 6u) & 3u]);
+    return vec4(SwappedChannel(color, table, 0u), SwappedChannel(color, table, 1u), SwappedChannel(color, table, 2u),
+        SwappedChannel(color, table, 3u));
 }
 
 void RunStage(Stage stage)
@@ -406,8 +415,14 @@ bool PassesAlphaTest(float alphaValue, uint test)
         return true;
 
     uint alpha = uint(round(alphaValue * MaximumByteValue));
-    bool first = PassesComparison(alpha, test & ComparisonMask, (test >> FirstReferenceShift) & ByteMask);
-    bool second = PassesComparison(alpha, (test >> SecondComparisonShift) & ComparisonMask, (test >> SecondReferenceShift) & ByteMask);
+
+    uint firstComparison = test & ComparisonMask;
+    uint firstReference = (test >> FirstReferenceShift) & ByteMask;
+    bool first = PassesComparison(alpha, firstComparison, firstReference);
+
+    uint secondComparison = (test >> SecondComparisonShift) & ComparisonMask;
+    uint secondReference = (test >> SecondReferenceShift) & ByteMask;
+    bool second = PassesComparison(alpha, secondComparison, secondReference);
 
     uint join = (test >> JoinShift) & JoinMask;
     if (join == JoinAnd)

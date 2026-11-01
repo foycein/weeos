@@ -161,15 +161,23 @@ std::vector<float> ValuesOfKey(const Formats::EffectAnimation& animation, const 
     return RandomKeyValues(animation, key, particleSeed, loop);
 }
 
+float SmoothStep(float fraction)
+{
+    return fraction * fraction * (3 - 2 * fraction);
+}
+
+// A cubic from 0 to 1 that starts and ends with the given slopes.
 float EaseVersion11(std::uint8_t interpolation, float fraction)
 {
     if (interpolation == SmoothInterpolation)
-        return fraction * fraction * (3 - 2 * fraction);
+        return SmoothStep(fraction);
 
     float startSlope = (interpolation & EasesTheStart) != 0 ? EaseSlope : 0.0f;
     float endSlope = (interpolation & EasesTheEnd) != 0 ? EaseSlope : 0.0f;
+    float squareFactor = 3 - 2 * startSlope - endSlope;
+    float cubeFactor = startSlope + endSlope - 2;
     float square = fraction * fraction;
-    return fraction * (startSlope + fraction * (3 - 2 * startSlope - endSlope) + square * (startSlope + endSlope - 2));
+    return fraction * (startSlope + fraction * squareFactor + square * cubeFactor);
 }
 
 // How far from the first key towards the second the value is, for a fraction of the way between them.
@@ -184,7 +192,7 @@ float Ease(std::uint8_t interpolation, float fraction, std::uint16_t version)
         return 0;
 
     if (version == Formats::EffectFileVersion5)
-        return fraction * fraction * (3 - 2 * fraction);
+        return SmoothStep(fraction);
     return EaseVersion11(interpolation, fraction);
 }
 

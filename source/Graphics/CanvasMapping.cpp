@@ -13,7 +13,8 @@ CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const Platform::PixelRe
 {
 }
 
-CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const Platform::PixelRectangle& coveredArea, const Platform::PixelRectangle& wholeTargetArea)
+CanvasMapping::CanvasMapping(
+    const Canvas& mappedCanvas, const Platform::PixelRectangle& coveredArea, const Platform::PixelRectangle& wholeTargetArea)
     : canvas(mappedCanvas)
     , pictureArea(coveredArea)
     , wholeArea(wholeTargetArea)

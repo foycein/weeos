@@ -37,6 +37,7 @@ constexpr std::size_t UnusedAfterSoundTypeSize = 1;
 constexpr std::size_t UnusedAfterPlayerCountSize = 3;
 constexpr std::size_t PlayerHeapAndReservedSize = 8;
 constexpr std::size_t BankReservedSize = 4;
+constexpr std::size_t UnusedAfterGroupNameSize = sizeof(std::int32_t);
 constexpr std::size_t ExternalPathReferenceSize = 8;
 constexpr std::size_t SymbolTreesSize = 4 * sizeof(std::uint32_t);
 constexpr std::size_t GroupEntryReservedSize = 4;
@@ -270,7 +271,7 @@ private:
 
         GroupInfo group;
         group.name = ReadName();
-        reader.Skip(sizeof(std::int32_t) + ExternalPathReferenceSize);
+        reader.Skip(UnusedAfterGroupNameSize + ExternalPathReferenceSize);
         group.fileBlockOffset = reader.ReadUint32();
         group.fileBlockSize = reader.ReadUint32();
         group.waveBlockOffset = reader.ReadUint32();
@@ -290,16 +291,16 @@ private:
 void CheckGroup(const GroupInfo& group, std::size_t archiveSize)
 {
     std::string_view name = group.name;
-    if (!Formats::IsRangeInside(group.fileBlockOffset, group.fileBlockSize, archiveSize) ||
-        !Formats::IsRangeInside(group.waveBlockOffset, group.waveBlockSize, archiveSize))
-    {
+    bool fileBlockIsInside = Formats::IsRangeInside(group.fileBlockOffset, group.fileBlockSize, archiveSize);
+    bool waveBlockIsInside = Formats::IsRangeInside(group.waveBlockOffset, group.waveBlockSize, archiveSize);
+    if (!fileBlockIsInside || !waveBlockIsInside)
         throw Formats::FormatError(std::format("{}: the blocks of the group {} lie outside the archive", DataDescription, name));
-    }
 
     for (const GroupEntry& entry : group.entries)
     {
-        if (!Formats::IsRangeInside(entry.fileOffset, entry.fileSize, group.fileBlockSize) ||
-            !Formats::IsRangeInside(entry.waveDataOffset, entry.waveDataSize, group.waveBlockSize))
+        bool fileIsInside = Formats::IsRangeInside(entry.fileOffset, entry.fileSize, group.fileBlockSize);
+        bool waveDataIsInside = Formats::IsRangeInside(entry.waveDataOffset, entry.waveDataSize, group.waveBlockSize);
+        if (!fileIsInside || !waveDataIsInside)
         {
             throw Formats::FormatError(
                 std::format("{}: the file {} lies outside the blocks of the group {}", DataDescription, entry.fileId, name));

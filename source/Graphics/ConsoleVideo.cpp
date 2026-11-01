@@ -29,6 +29,16 @@ constexpr std::size_t CoefficientCountOfOutsideLine = 2;
 
 // The three weights are the red, green and blue number of this constant color of the material.
 constexpr std::size_t WeightColorIndex = 3;
+constexpr std::uint8_t OpaqueAlpha = 255;
+
+// The lines the three stages read, counted from the line that is made.
+constexpr int LineAbove = -1;
+constexpr int LineItself = 0;
+constexpr int LineBelow = 1;
+
+// The number of a TextureMatrix that moves t.
+constexpr std::size_t RowOfNewT = 1;
+constexpr std::size_t MoveColumn = 2;
 
 int AddCoefficients(const std::array<std::uint8_t, CoefficientCount>& coefficients, std::size_t firstCoefficient, std::size_t count)
 {
@@ -65,7 +75,7 @@ TevStage MakeWeightedStage(std::uint8_t textureIndex, TevConstant weightChannel)
 void AddWeightedLine(Material& material, TextureHandle frameBuffer, int lineOffset, TevConstant weightChannel)
 {
     TextureMatrix matrix;
-    matrix.rows[1][2] = static_cast<float>(lineOffset) / ConsoleFrameHeight;
+    matrix.rows[RowOfNewT][MoveColumn] = static_cast<float>(lineOffset) / ConsoleFrameHeight;
 
     std::uint8_t textureIndex = static_cast<std::uint8_t>(material.textures.size());
     material.textures.push_back({frameBuffer, matrix});
@@ -120,11 +130,11 @@ Material MakeConsoleFilterMaterial(TextureHandle frameBuffer, ConsoleScan consol
 
     Material material;
     material.blendMode = BlendMode::Replace;
-    material.constantColors[WeightColorIndex] = {weights.lineAbove, weights.lineItself, weights.lineBelow, 255};
+    material.constantColors[WeightColorIndex] = {weights.lineAbove, weights.lineItself, weights.lineBelow, OpaqueAlpha};
 
-    AddWeightedLine(material, frameBuffer, -1, TevConstant::Color3Red);
-    AddWeightedLine(material, frameBuffer, 0, TevConstant::Color3Green);
-    AddWeightedLine(material, frameBuffer, 1, TevConstant::Color3Blue);
+    AddWeightedLine(material, frameBuffer, LineAbove, TevConstant::Color3Red);
+    AddWeightedLine(material, frameBuffer, LineItself, TevConstant::Color3Green);
+    AddWeightedLine(material, frameBuffer, LineBelow, TevConstant::Color3Blue);
     return material;
 }
 

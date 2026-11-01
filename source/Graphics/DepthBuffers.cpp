@@ -25,7 +25,8 @@ const GraphicsImage& DepthBuffers::ForOffscreen(VkExtent2D size, std::uint64_t l
 
 void DepthBuffers::ReleaseFinished(std::uint64_t finishedFrameNumber)
 {
-    std::erase_if(retiredBuffers, [finishedFrameNumber](const RetiredBuffer& retired) { return retired.lastFrameUsing <= finishedFrameNumber; });
+    auto isFinished = [finishedFrameNumber](const RetiredBuffer& retired) { return retired.lastFrameUsing <= finishedFrameNumber; };
+    std::erase_if(retiredBuffers, isFinished);
 }
 
 const GraphicsImage& DepthBuffers::Cover(std::unique_ptr<GraphicsImage>& buffer, VkExtent2D size, std::uint64_t lastFrameUsing)

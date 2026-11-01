@@ -55,24 +55,24 @@ Vector3 NormalizeOr(Vector3 vector, Vector3 fallback)
 
 Graphics::Matrix4 MakeRotationXyz(Vector3 angles)
 {
-    float sinX = std::sin(angles.x);
-    float cosX = std::cos(angles.x);
-    float sinY = std::sin(angles.y);
-    float cosY = std::cos(angles.y);
-    float sinZ = std::sin(angles.z);
-    float cosZ = std::cos(angles.z);
+    float sineX = std::sin(angles.x);
+    float cosineX = std::cos(angles.x);
+    float sineY = std::sin(angles.y);
+    float cosineY = std::cos(angles.y);
+    float sineZ = std::sin(angles.z);
+    float cosineZ = std::cos(angles.z);
 
     Graphics::Matrix4 aroundX;
-    aroundX.rows[1] = {0, cosX, -sinX, 0};
-    aroundX.rows[2] = {0, sinX, cosX, 0};
+    aroundX.rows[1] = {0, cosineX, -sineX, 0};
+    aroundX.rows[2] = {0, sineX, cosineX, 0};
 
     Graphics::Matrix4 aroundY;
-    aroundY.rows[0] = {cosY, 0, sinY, 0};
-    aroundY.rows[2] = {-sinY, 0, cosY, 0};
+    aroundY.rows[0] = {cosineY, 0, sineY, 0};
+    aroundY.rows[2] = {-sineY, 0, cosineY, 0};
 
     Graphics::Matrix4 aroundZ;
-    aroundZ.rows[0] = {cosZ, -sinZ, 0, 0};
-    aroundZ.rows[1] = {sinZ, cosZ, 0, 0};
+    aroundZ.rows[0] = {cosineZ, -sineZ, 0, 0};
+    aroundZ.rows[1] = {sineZ, cosineZ, 0, 0};
 
     return aroundZ * aroundY * aroundX;
 }
@@ -86,7 +86,7 @@ Graphics::Matrix4 WithoutTranslation(const Graphics::Matrix4& matrix)
 {
     Graphics::Matrix4 result = matrix;
     for (int row = 0; row < 3; ++row)
-        result.rows[row][3] = 0;
+        result.rows[row][TranslationColumn] = 0;
     return result;
 }
 
@@ -107,7 +107,7 @@ Graphics::Matrix4 InvertAffine(const Graphics::Matrix4& matrix)
     Vector3 secondRow = Multiply(Cross(thirdColumn, firstColumn), factor);
     Vector3 thirdRow = Multiply(Cross(firstColumn, secondColumn), factor);
 
-    Vector3 translation = ColumnOf(matrix, 3);
+    Vector3 translation = ColumnOf(matrix, TranslationColumn);
     Graphics::Matrix4 inverse;
     inverse.rows[0] = {firstRow.x, firstRow.y, firstRow.z, -Dot(firstRow, translation)};
     inverse.rows[1] = {secondRow.x, secondRow.y, secondRow.z, -Dot(secondRow, translation)};

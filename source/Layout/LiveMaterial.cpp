@@ -27,7 +27,6 @@ constexpr std::uint8_t OneFactor = 1;
 constexpr std::uint8_t SourceAlphaFactor = 4;
 constexpr std::uint8_t InverseSourceAlphaFactor = 5;
 
-
 constexpr float TextureMiddle = 0.5f;
 
 [[noreturn]] void FailMaterial(const Formats::Material& material, const std::string& problem)
@@ -90,8 +89,10 @@ void RequireSupportedGenerators(const Formats::Material& material)
             FailMaterial(material, std::format("it has a texture coordinate generator with the matrix {}", generator.matrixSource));
 
         if (TextureTransformIndexOf(generator.matrixSource) >= material.textureTransforms.size())
+        {
             FailMaterial(material, std::format("its generator uses the matrix {} but it has only {} texture transforms",
                 generator.matrixSource, material.textureTransforms.size()));
+        }
     }
 }
 
@@ -155,9 +156,14 @@ void RequireSupportedIndirectTexture(const Formats::Material& material)
 
     const Formats::IndirectStage& stage = material.indirectStages.front();
     if (stage.textureMap >= material.textures.size())
-        FailMaterial(material, std::format("its indirect stage reads the texture {} and the material has {}", stage.textureMap, material.textures.size()));
+    {
+        FailMaterial(material, std::format("its indirect stage reads the texture {} and the material has {}",
+            stage.textureMap, material.textures.size()));
+    }
 
-    if (stage.textureCoordinateSet != stage.textureMap || stage.scaleS != 0 || stage.scaleT != 0)
+    bool readsOwnCoordinates = stage.textureCoordinateSet == stage.textureMap;
+    bool keepsCoordinateSize = stage.scaleS == 0 && stage.scaleT == 0;
+    if (!readsOwnCoordinates || !keepsCoordinateSize)
         FailMaterial(material, "its indirect stage reads other coordinates than those of its texture");
 }
 

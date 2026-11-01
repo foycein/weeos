@@ -24,6 +24,12 @@ constexpr std::uint32_t VerticesPerQuad = 6;
 
 constexpr std::size_t BytesPerPixel = 4;
 
+// Where the channels lie in the four bytes of a pixel: RGBA, or BGRA in the format of the screen.
+constexpr std::size_t FirstByte = 0;
+constexpr std::size_t GreenByte = 1;
+constexpr std::size_t ThirdByte = 2;
+constexpr std::size_t AlphaByte = 3;
+
 constexpr VkClearColorValue OpaqueBlack = {{0.0f, 0.0f, 0.0f, 1.0f}};
 constexpr VkClearColorValue TransparentBlack = {{0.0f, 0.0f, 0.0f, 0.0f}};
 
@@ -82,6 +88,25 @@ constexpr ImageTransition StartReadingBack = {VK_IMAGE_LAYOUT_SHADER_READ_ONLY_O
 constexpr ImageTransition FinishReadingBack = {VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
     VK_ACCESS_2_SHADER_SAMPLED_READ_BIT};
+
+Formats::RgbaImage ToRgbaImage(const Formats::Byte* bytes, const GraphicsImage& image)
+{
+    bool blueComesFirst = image.Format() == VK_FORMAT_B8G8R8A8_UNORM;
+    std::size_t redByte = blueComesFirst ? ThirdByte : FirstByte;
+    std::size_t blueByte = blueComesFirst ? FirstByte : ThirdByte;
+
+    Formats::RgbaImage picture;
+    picture.width = image.Width();
+    picture.height = image.Height();
+    picture.pixels.resize(static_cast<std::size_t>(picture.width) * picture.height);
+
+    for (std::size_t pixelNumber = 0; pixelNumber < picture.pixels.size(); ++pixelNumber)
+    {
+        const Formats::Byte* pixel = bytes + pixelNumber * BytesPerPixel;
+        picture.pixels[pixelNumber] = {pixel[redByte], pixel[GreenByte], pixel[blueByte], pixel[AlphaByte]};
+    }
+    return picture;
+}
 
 VkRect2D ToVulkanRectangle(const Platform::PixelRectangle& rectangle)
 {
@@ -381,22 +406,7 @@ Formats::RgbaImage VulkanGraphicsDevice::ReadTexturePixels(TextureHandle texture
     TransitionImage(commandBuffer, image.Handle(), FinishReadingBack);
     commands.SubmitAndWait();
 
-    bool blueComesFirst = image.Format() == VK_FORMAT_B8G8R8A8_UNORM;
-    std::size_t redOffset = blueComesFirst ? 2 : 0;
-    std::size_t blueOffset = blueComesFirst ? 0 : 2;
-
-    Formats::RgbaImage pixels;
-    pixels.width = image.Width();
-    pixels.height = image.Height();
-    pixels.pixels.resize(pixelCount);
-
-    const Formats::Byte* bytes = static_cast<const Formats::Byte*>(readBuffer.MappedBytes());
-    for (std::size_t pixelNumber = 0; pixelNumber < pixelCount; ++pixelNumber)
-    {
-        const Formats::Byte* source = bytes + pixelNumber * BytesPerPixel;
-        pixels.pixels[pixelNumber] = {source[redOffset], source[1], source[blueOffset], source[3]};
-    }
-    return pixels;
+    return ToRgbaImage(static_cast<const Formats::Byte*>(readBuffer.MappedBytes()), image);
 }
 
 std::string VulkanGraphicsDevice::DeviceName() const
@@ -810,7 +820,8 @@ void VulkanGraphicsDevice::CheckTextures(const Material& material)
     }
 }
 
-std::uint32_t VulkanGraphicsDevice::WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement)
+std::uint32_t VulkanGraphicsDevice::WriteMeshData(
+    Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement)
 {
     if (recording.meshCornerCount + triangleCorners.size() > MaximumMeshCornersPerPicture)
         throw GraphicsError(std::format("The meshes of a picture have more than the {} corners that fit", MaximumMeshCornersPerPicture));

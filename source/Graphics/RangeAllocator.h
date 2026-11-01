@@ -31,6 +31,7 @@ private:
         std::uint64_t size;
     };
 
+    std::vector<Range>::iterator PositionOf(std::size_t rangeNumber);
     std::optional<std::size_t> FindSmallestRangeThatFits(std::uint64_t size, std::uint64_t alignment) const;
 
     // Cuts the new range out of the free range. What is left in front of and behind it stays free.
