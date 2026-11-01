@@ -19,6 +19,13 @@ namespace SystemMenu
 // The screens of the Wii Menu draw their layouts in parts: the channel grid draws the icons of the channels between the back
 // of its layout and the front of it, and puts the clock and the balloon where panes of the layout are.
 
+// From where to where a pane reaches across the picture.
+struct HorizontalSpan
+{
+    float left = 0;
+    float right = 0;
+};
+
 // The shown panes of a layout, placed once for one picture.
 class PlacedPanes
 {
@@ -30,6 +37,9 @@ public:
 
     // Where the origin of the pane lies in the picture. Nothing for a pane that is not shown.
     std::optional<Formats::Vector2> PlaceOf(std::string_view paneName) const;
+
+    // From where to where the rectangle of the pane reaches across the picture. Nothing for a pane that is not shown.
+    std::optional<HorizontalSpan> SpanOf(std::string_view paneName) const;
 
     // True when the place of the picture lies on the rectangle of the pane. False for a pane that is not shown.
     bool IsOnPane(std::string_view paneName, Formats::Vector2 place) const;

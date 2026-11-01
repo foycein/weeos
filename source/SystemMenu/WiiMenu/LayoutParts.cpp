@@ -6,7 +6,9 @@
 #include "Layout/PaneRectangle.h"
 #include "Layout/TransformMatrix.h"
 
+#include <algorithm>
 #include <format>
+#include <limits>
 
 namespace SystemMenu
 {
@@ -46,6 +48,21 @@ std::optional<Formats::Vector2> PlacedPanes::PlaceOf(std::string_view paneName) 
         return std::nullopt;
 
     return Layout::TransformPoint(placement->matrix, {0, 0});
+}
+
+std::optional<HorizontalSpan> PlacedPanes::SpanOf(std::string_view paneName) const
+{
+    const Layout::PanePlacement* placement = Find(paneName);
+    if (placement == nullptr)
+        return std::nullopt;
+
+    HorizontalSpan span = {std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest()};
+    for (Formats::Vector2 corner : Layout::CornersOf(Layout::RectangleOfPane(*placement->pane), placement->matrix))
+    {
+        span.left = std::min(span.left, corner.x);
+        span.right = std::max(span.right, corner.x);
+    }
+    return span;
 }
 
 bool PlacedPanes::IsOnPane(std::string_view paneName, Formats::Vector2 place) const
