@@ -9,7 +9,8 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles,
-    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, SettingsFlowServices* wiiSettingsServices)
+    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole,
+    SettingsFlowServices* wiiSettingsServices)
     : display(device, screenShape)
     , files(titleContents)
     , fonts(device, titleContents, files)
@@ -17,6 +18,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
+    , wiiMenu(wiiMenuConsole)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
     , keyboard(display, files, messages, clock, input, sounds)
     , program(titleContents)
@@ -27,7 +29,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices, homeButton}
+          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu}
 {
     display.SetTextFonts(fonts.Fonts());
 

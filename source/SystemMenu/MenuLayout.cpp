@@ -28,6 +28,16 @@ MenuLayout::MenuLayout(Display& menuDisplay, const Layout::LayoutArchive& layout
     FitToScreenShape();
 }
 
+Layout::LiveLayout& MenuLayout::Live()
+{
+    return layout;
+}
+
+const Layout::PlacementSettings& MenuLayout::Placement() const
+{
+    return placementSettings;
+}
+
 Formats::Pane& MenuLayout::PaneNamed(std::string_view paneName)
 {
     Formats::Pane* pane = layout.FindPane(paneName);

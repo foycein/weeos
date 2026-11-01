@@ -8,6 +8,9 @@
 #include "SystemMenu/WiiOptionsBackgroundScreen.h"
 #include "SystemMenu/WiiOptionsBarScreen.h"
 #include "SystemMenu/WiiOptionsChoicesScreen.h"
+#include "SystemMenu/WiiMenu/BottomBarScreen.h"
+#include "SystemMenu/WiiMenu/ChannelGridScreen.h"
+#include "SystemMenu/WiiMenu/MainFrameScreen.h"
 #include "SystemMenu/WiiSettings/SettingsScreen.h"
 
 namespace SystemMenu
@@ -19,6 +22,18 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
     {
     case ScreenId::HealthAndSafety:
         return std::make_unique<HealthAndSafetyScreen>(services);
+
+    case ScreenId::MainFrame:
+        return std::make_unique<MainFrameScreen>(services);
+
+    case ScreenId::BottomBar:
+        return std::make_unique<BottomBarScreen>(services);
+
+    case ScreenId::BarOverlay:
+        return std::make_unique<BarOverlayScreen>(services);
+
+    case ScreenId::ChannelGrid:
+        return std::make_unique<ChannelGridScreen>(services);
 
     case ScreenId::BackToWiiMenu:
         return std::make_unique<BackToWiiMenuScreen>(services);

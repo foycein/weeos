@@ -10,8 +10,16 @@ enum class ScreenId : int
     // The root of the tree of screens. It opens the first real screen.
     Launcher = 0x01,
 
+    // The channel grid, and the window that opens when a channel is pressed (not built yet).
+    ChannelGrid = 0x02,
+    ChannelStartWindow = 0x03,
+
     // The Wii Menu: the Message Board with the bottom bar and the channel grid as its children.
     MainFrame = 0x04,
+
+    // The bar at the bottom of the Wii Menu, and the overlay that draws its page arrows over the channel grid.
+    BottomBar = 0x05,
+    BarOverlay = 0x06,
 
     // The editors of Data Management: the channels, and the save data of the Wii.
     ChannelDataEditor = 0x0c,

@@ -1,6 +1,7 @@
 add_library(Formats STATIC
     Aes128.cpp
     Ash0.cpp
+    BannerContent.cpp
     BigNumber.cpp
     Boot2Image.cpp
     BootMiiKeyBlock.cpp
@@ -22,6 +23,7 @@ add_library(Formats STATIC
     LayoutAnimation.cpp
     LayoutMaterial.cpp
     Lz77.cpp
+    Md5.cpp
     MessageFile.cpp
     NandBootInfoFile.cpp
     NandFileSystem.cpp

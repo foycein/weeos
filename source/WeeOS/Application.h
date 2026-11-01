@@ -39,6 +39,9 @@ public:
     Graphics::VulkanGraphicsDevice& GetDevice();
     SystemMenu::MenuSystem& GetMenu();
 
+    // The virtual remote 1 of the session that runs, which the mouse of the window moves. A test moves it too.
+    Input::VirtualRemote& GetVirtualRemote();
+
 private:
     // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
     class Session;

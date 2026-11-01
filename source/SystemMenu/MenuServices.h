@@ -26,6 +26,7 @@ class ScreenManager;
 class SoftKeyboard;
 class SoundRequests;
 struct SettingsFlowServices;
+struct WiiMenuData;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -57,6 +58,7 @@ struct MenuServices
 
     // The HOME button: the Wii Menu starts it, a screen that must not be interrupted disables it.
     HomeButton& homeButton;
+    WiiMenuData& wiiMenu;
 };
 
 }

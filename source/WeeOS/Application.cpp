@@ -7,6 +7,7 @@
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/WiiMenu/IosMenuConsole.h"
 #include "WeeOS/WiiSettingsServices.h"
 
 #include <format>
@@ -35,8 +36,9 @@ public:
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
         , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote())
+        , wiiMenuConsole(iosServices)
         , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), wiiSettings.PictureShape(),
-              &wiiSettings.FlowServices())
+              wiiMenuConsole, &wiiSettings.FlowServices())
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -70,6 +72,7 @@ private:
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
     WiiSettingsServices wiiSettings;
+    SystemMenu::IosMenuConsole wiiMenuConsole;
     SystemMenu::MenuSystem menu;
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;
@@ -282,6 +285,11 @@ Graphics::VulkanGraphicsDevice& Application::GetDevice()
 SystemMenu::MenuSystem& Application::GetMenu()
 {
     return session->Menu();
+}
+
+Input::VirtualRemote& Application::GetVirtualRemote()
+{
+    return session->VirtualRemote();
 }
 
 }
