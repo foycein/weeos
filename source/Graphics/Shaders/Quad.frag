@@ -35,6 +35,9 @@ const float HighestRegisterValue = 1023.0 / MaximumByteValue;
 
 const uint EighthsInOne = 8u;
 
+// An alpha below half a step of 1/255 is the alpha 0 of the Wii.
+const float LargestZeroAlpha = 0.5 / MaximumByteValue;
+
 // Assumed (docs/audit/OpenPoints/Graphics.md): the inputs A, B and C of a stage are limited to black and white, input D is not.
 // The registers hold more than that, and no public document says what the Wii does with such a value in A, B or C.
 const float LowestSaturatedInput = 0.0;
@@ -315,4 +318,8 @@ void main()
         RunStage(stages[firstStage + stageNumber]);
 
     pictureColor = clamp(registers[0], 0.0, 1.0);
+
+    bool isTransparent = pictureColor.a < LargestZeroAlpha;
+    if (drawRecords[drawIndex].skipsTransparentPixels != 0u && isTransparent)
+        discard;
 }

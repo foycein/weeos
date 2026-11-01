@@ -2,9 +2,10 @@
 
 #include "Graphics/CanvasMapping.h"
 #include "Graphics/ConsoleVideo.h"
+#include "Graphics/DepthBuffers.h"
+#include "Graphics/DrawPipelines.h"
 #include "Graphics/FrameResources.h"
 #include "Graphics/GraphicsDevice.h"
-#include "Graphics/QuadPipeline.h"
 #include "Graphics/Swapchain.h"
 #include "Graphics/TextureStore.h"
 #include "Graphics/VulkanContext.h"
@@ -38,6 +39,7 @@ public:
     void SetScissor(const ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
+    void DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material) override;
     TextureHandle BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;
@@ -70,10 +72,12 @@ private:
         FrameResources* resources = nullptr;
         std::uint32_t drawCount = 0;
         std::uint32_t stageCount = 0;
-        std::optional<BlendMode> boundBlendMode;
+        std::uint32_t meshCount = 0;
+        std::uint32_t meshCornerCount = 0;
+        VkPipeline boundPipeline = VK_NULL_HANDLE;
     };
 
-    // A picture that quads are drawn into: the picture of the screen or an offscreen picture.
+    // A picture that quads and meshes are drawn into: the picture of the screen or an offscreen picture, with its depth buffer.
     struct Target
     {
         CanvasMapping mapping;
@@ -81,6 +85,7 @@ private:
         VkImage image;
         VkImageView imageView;
         VkExtent2D size;
+        const GraphicsImage* depthBuffer;
     };
 
     // The picture that the frame buffer of the console is drawn into. It is copied to the screen when the picture is finished.
@@ -120,13 +125,22 @@ private:
 
     // Puts the stages and the record of the quad into the buffers of the picture. Gives the number of the draw.
     std::uint32_t WriteDrawData(Recording& recording, const Quad& quad, const Material& material);
-    void BindPipeline(Recording& recording, BlendMode blendMode);
+
+    // Puts the record and the corners of a mesh into the buffers of the picture. Gives the number of the mesh.
+    std::uint32_t WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement);
+    void ApplyMeshState(const MeshPlacement& placement);
+
+    void BindPipeline(Recording& recording, VkPipeline drawPipeline);
+
+    // The depth buffer of the screen pictures: as big as the window, and in the console mode at least as big as its frame buffer.
+    const GraphicsImage& ScreenDepthBuffer();
     void BindTextures(const Material& material);
 
     VulkanContext context;
     Swapchain swapchain;
-    QuadPipeline pipeline;
+    DrawPipelines pipeline;
     TextureStore textures;
+    DepthBuffers depthBuffers;
 
     // The pictures of the screen take turns using these. The resources for offscreen pictures that are drawn between
     // two screen pictures are separate, because the card finishes them before the call returns.
