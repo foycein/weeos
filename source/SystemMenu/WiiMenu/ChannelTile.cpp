@@ -72,8 +72,20 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const Ti
     const std::u16string& name, std::uint32_t randomNumber)
 {
     const Layout::LayoutArchive& icon = *channel.icon;
-    auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
+    std::unique_ptr<Layout::PictureSource> postedPhotoPictures;
+    std::unique_ptr<MenuLayout> picture;
+    if (channel.postedPhoto)
+    {
+        postedPhotoPictures = std::make_unique<PostedPhotoPictures>(icon, *channel.postedPhoto);
+        picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout), *postedPhotoPictures);
+    }
+    else
+    {
+        picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
+    }
+
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
+    tile->postedPhotoPictures = std::move(postedPhotoPictures);
     ShowOnlyTheEnglishPanes(tile->picture->Live(), icon.ReadLayout(std::string(IconLayout)));
 
     std::uint32_t randomNumberOfTheIcon = channel.isIconDrivenByCode ? NoRandomNumber : randomNumber;
@@ -83,7 +95,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const Ti
     if (channel.isIconDrivenByCode)
     {
         tile->scriptAnimations = std::make_unique<ScriptAnimations>(*tile->picture, icon, channel.scriptAnimationNumbers);
-        RunIconScript(channel.iconScript, *tile->picture, *tile->scriptAnimations);
+        RunIconScript(channel.iconScript, *tile->picture, *tile->scriptAnimations, channel.postedPhoto.has_value());
     }
 
     tile->AddBalloon(archives, name);

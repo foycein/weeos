@@ -32,16 +32,19 @@ constexpr std::string_view NewsShownNewsNumber = "send_id";
 // its bag and title, icon_Rso0 of the Forecast Channel its logo of weathernews; icon_Rso1 and icon_Rso2 of the News Channel move
 // its line of headlines and the belts behind it.
 constexpr int PhotoDefaultPhotosAnimation = 0;
+constexpr int PhotoPostedPhotoAnimation = 1;
+constexpr std::string_view PostedPhotoTexture = "plate1.tpl";
 constexpr int ShopBagAndTitleAnimation = 0;
 constexpr int ForecastLogoAnimation = 0;
 constexpr int NewsHeadlinesAnimation = 1;
 constexpr int NewsBeltsAnimation = 2;
 
 // Photo.icon: without a photo posted to the Wii Menu (noerase/photo_i.dat), the first run starts animation 0: the three photos
-// come one after the other, the belt with the logo follows, everything fades away and it begins again.
-void RunPhotoChannelScript(ScriptAnimations& animations)
+// come one after the other, the belt with the logo follows, everything fades away and it begins again. With a posted photo it starts
+// animation 1, which shows the pane pic_photo with that photo.
+void RunPhotoChannelScript(ScriptAnimations& animations, bool hasPostedPhoto)
 {
-    animations.Start(PhotoDefaultPhotosAnimation);
+    animations.Start(hasPostedPhoto ? PhotoPostedPhotoAnimation : PhotoDefaultPhotosAnimation);
 }
 
 // The Shop's script ([shopping]): without recommendations (RcmdData.bin, a WiiConnect24 download) it shows the title of the
@@ -169,12 +172,12 @@ FramePlayer* ScriptAnimations::Find(int number)
     return found->second.get();
 }
 
-void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animations)
+void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animations, bool hasPostedPhoto)
 {
     switch (script)
     {
     case IconScript::PhotoChannel:
-        RunPhotoChannelScript(animations);
+        RunPhotoChannelScript(animations, hasPostedPhoto);
         break;
 
     case IconScript::ShopChannel:
@@ -192,6 +195,20 @@ void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animat
     case IconScript::None:
         break;
     }
+}
+
+PostedPhotoPictures::PostedPhotoPictures(const Layout::LayoutArchive& iconArchive, Formats::RgbaImage postedPhoto)
+    : archive(iconArchive)
+    , photo(std::move(postedPhoto))
+{
+}
+
+std::optional<Formats::RgbaImage> PostedPhotoPictures::FindPicture(const std::string& textureFileName) const
+{
+    if (textureFileName == PostedPhotoTexture)
+        return photo;
+
+    return archive.FindPicture(textureFileName);
 }
 
 }

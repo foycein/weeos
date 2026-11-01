@@ -81,13 +81,6 @@ private:
     PhotoSettings settings;
 };
 
-// A picture file of the Wii Menu photo (photo_i.dat, photo_b.dat): the header (the code HAYA, the size of the file, the CRC-32 of
-// everything after it, width and height) and the picture as a GX texture of RGB565 in tiles of 4 x 4.
-Formats::Bytes MakePostedPictureFile(const Formats::RgbaImage& picture);
-
-// The picture of such a file; nothing for an empty file (all zeros) or one whose header or check number does not fit.
-std::optional<Formats::RgbaImage> ReadPostedPictureFile(Formats::ByteView bytes, int width, int height);
-
 // The bytes of noerase/savedata.dat for the settings, with the CRC-32 in its last four bytes, and back.
 Formats::Bytes MakeSaveFile(const PhotoSettings& settings);
 std::optional<PhotoSettings> ReadSaveFile(Formats::ByteView bytes);

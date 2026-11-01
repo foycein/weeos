@@ -3,7 +3,7 @@
 #include "Formats/ByteReader.h"
 #include "Formats/ByteWriter.h"
 #include "Formats/Crc32.h"
-#include "Formats/TextureDecoder.h"
+#include "Formats/PostedPictureFile.h"
 
 #include "Ios/FileSystem/NandPath.h"
 
@@ -23,14 +23,7 @@ constexpr std::string_view PreviewFileName = "photo_b.dat";
 
 // The sizes of the files in the dump of the reference console.
 constexpr std::size_t SaveFileSize = 64160;
-constexpr std::size_t PictureHeaderSize = 0x20;
-constexpr std::size_t BytesPerRgb565Pixel = 2;
 
-// The header of a picture file: the code of the title, the size, the CRC-32 of everything behind it, width and height (0x80009F5C).
-constexpr std::uint32_t PictureFileCode = 0x48415941;
-constexpr std::size_t ChecksumPlace = 8;
-constexpr std::size_t CheckedPartStart = 12;
-constexpr std::size_t HeaderFieldsSize = 20;
 
 // The save file has no header; its last four bytes are the CRC-32 of the rest (0x8001AAC8). The places of the settings in it were
 // not read from the program; they are WeeOS's own (Assumed, docs/audit/OpenPoints/Channels.md CHN-33).
@@ -42,28 +35,9 @@ constexpr std::size_t PuzzleRecordsPlace = 4;
 constexpr Formats::Byte PieceCountMayBeChosenFlag = 0x01;
 constexpr std::size_t ChecksumSize = 4;
 
-// RGB565: five bits of red, six of green, five of blue. A GX texture keeps the pixels in tiles of 4 x 4, row by row.
-constexpr int TileSide = 4;
-constexpr int RedShift = 11;
-constexpr int GreenShift = 5;
-constexpr int FiveBitDrop = 3;
-constexpr int SixBitDrop = 2;
 
 const Ios::EntryPermissions OwnerReadsAndWrites{Ios::AccessRights::ReadWrite, Ios::AccessRights::None, Ios::AccessRights::None};
 constexpr std::uint8_t NoAttributeFlags = 0;
-
-std::uint16_t ToRgb565(const Formats::Rgba8Pixel& pixel)
-{
-    int red = pixel.red >> FiveBitDrop;
-    int green = pixel.green >> SixBitDrop;
-    int blue = pixel.blue >> FiveBitDrop;
-    return static_cast<std::uint16_t>((red << RedShift) | (green << GreenShift) | blue);
-}
-
-std::size_t PictureFileSize(int width, int height)
-{
-    return PictureHeaderSize + static_cast<std::size_t>(width) * height * BytesPerRgb565Pixel;
-}
 
 Ios::NandPath PathOf(std::string_view name)
 {
@@ -74,50 +48,6 @@ Ios::NandPath PathOf(std::string_view name)
     return Ios::NandPath::Parse(text).Value();
 }
 
-}
-
-Formats::Bytes MakePostedPictureFile(const Formats::RgbaImage& picture)
-{
-    Formats::ByteWriter pixels;
-    for (std::uint32_t tileTop = 0; tileTop < picture.height; tileTop += TileSide)
-    {
-        for (std::uint32_t tileLeft = 0; tileLeft < picture.width; tileLeft += TileSide)
-        {
-            for (std::uint32_t y = tileTop; y < tileTop + TileSide; ++y)
-            {
-                for (std::uint32_t x = tileLeft; x < tileLeft + TileSide; ++x)
-                    pixels.WriteUint16(ToRgb565(picture.pixels[static_cast<std::size_t>(y) * picture.width + x]));
-            }
-        }
-    }
-
-    Formats::ByteWriter checkedPart;
-    checkedPart.WriteUint32(picture.width);
-    checkedPart.WriteUint32(picture.height);
-    checkedPart.WriteZeros(PictureHeaderSize - HeaderFieldsSize);
-    checkedPart.WriteBytes(pixels.GetBytes());
-
-    Formats::ByteWriter file;
-    file.WriteUint32(PictureFileCode);
-    file.WriteUint32(static_cast<std::uint32_t>(PictureHeaderSize + pixels.GetBytes().size()));
-    file.WriteUint32(Formats::ComputeCrc32(checkedPart.GetBytes()));
-    file.WriteBytes(checkedPart.GetBytes());
-    return file.GetBytes();
-}
-
-std::optional<Formats::RgbaImage> ReadPostedPictureFile(Formats::ByteView bytes, int width, int height)
-{
-    if (bytes.size() != PictureFileSize(width, height))
-        return std::nullopt;
-
-    Formats::ByteReader reader(bytes, "posted picture");
-    bool isRightFile = reader.ReadUint32() == PictureFileCode && reader.ReadUint32() == bytes.size();
-    std::uint32_t checksum = reader.ReadUint32();
-    bool hasRightSize = reader.ReadUint32() == static_cast<std::uint32_t>(width) && reader.ReadUint32() == static_cast<std::uint32_t>(height);
-    if (!isRightFile || !hasRightSize || checksum != Formats::ComputeCrc32(bytes.subspan(CheckedPartStart)))
-        return std::nullopt;
-
-    return Formats::DecodeTexture(Formats::TextureFormat::Rgb565, width, height, bytes.subspan(PictureHeaderSize), std::nullopt);
 }
 
 Formats::Bytes MakeSaveFile(const PhotoSettings& settings)
@@ -176,8 +106,8 @@ PhotoStorage::StartResult PhotoStorage::Start()
     }
 
     bool hasEveryFile = MakeFileWhenMissing(SaveFileName, SaveFileSize)
-        && MakeFileWhenMissing(IconFileName, PictureFileSize(IconPictureWidth, IconPictureHeight))
-        && MakeFileWhenMissing(PreviewFileName, PictureFileSize(PreviewPictureWidth, PreviewPictureHeight));
+        && MakeFileWhenMissing(IconFileName, Formats::PostedPictureFileSize(IconPictureWidth, IconPictureHeight))
+        && MakeFileWhenMissing(PreviewFileName, Formats::PostedPictureFileSize(PreviewPictureWidth, PreviewPictureHeight));
     if (!hasEveryFile)
         return StartResult::CannotCreate;
 
@@ -210,19 +140,19 @@ bool PhotoStorage::SaveSettings()
 bool PhotoStorage::HasWiiMenuPhoto()
 {
     std::optional<Formats::Bytes> icon = ReadFile(IconFileName);
-    return icon && ReadPostedPictureFile(*icon, IconPictureWidth, IconPictureHeight).has_value();
+    return icon && Formats::ReadPostedPictureFile(*icon, IconPictureWidth, IconPictureHeight).has_value();
 }
 
 bool PhotoStorage::PostToWiiMenu(const Formats::RgbaImage& icon, const Formats::RgbaImage& preview)
 {
-    return WriteFile(IconFileName, MakePostedPictureFile(icon)) && WriteFile(PreviewFileName, MakePostedPictureFile(preview));
+    return WriteFile(IconFileName, Formats::MakePostedPictureFile(icon)) && WriteFile(PreviewFileName, Formats::MakePostedPictureFile(preview));
 }
 
 // Removing the photo leaves the files with zeros, as the files of a channel that never posted.
 bool PhotoStorage::RemoveWiiMenuPhoto()
 {
-    Formats::Bytes emptyIcon(PictureFileSize(IconPictureWidth, IconPictureHeight), 0);
-    Formats::Bytes emptyPreview(PictureFileSize(PreviewPictureWidth, PreviewPictureHeight), 0);
+    Formats::Bytes emptyIcon(Formats::PostedPictureFileSize(IconPictureWidth, IconPictureHeight), 0);
+    Formats::Bytes emptyPreview(Formats::PostedPictureFileSize(PreviewPictureWidth, PreviewPictureHeight), 0);
     return WriteFile(IconFileName, emptyIcon) && WriteFile(PreviewFileName, emptyPreview);
 }
 
