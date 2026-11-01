@@ -191,12 +191,11 @@ void SetMaterialColorElement(Formats::Material& material, unsigned element, int 
         SetChannel(*material.materialColor, element, ClampToByte(value));
 }
 
-void SetTextureTransformValue(Formats::Material& material, std::size_t transformIndex, unsigned property, float value)
+namespace
 {
-    if (transformIndex >= material.textureTransforms.size())
-        return;
 
-    Formats::TextureTransform& transform = material.textureTransforms[transformIndex];
+void SetTransformValue(const Formats::Material& material, Formats::TextureTransform& transform, unsigned property, float value)
+{
     switch (property)
     {
     case ShiftHorizontally:
@@ -217,6 +216,20 @@ void SetTextureTransformValue(Formats::Material& material, std::size_t transform
     default:
         throw LayoutError(std::format("The material {} cannot be animated with the texture transform property {}", material.name, property));
     }
+}
+
+}
+
+void SetTextureTransformValue(Formats::Material& material, std::size_t transformIndex, unsigned property, float value)
+{
+    if (transformIndex < material.textureTransforms.size())
+        SetTransformValue(material, material.textureTransforms[transformIndex], property, value);
+}
+
+void SetIndirectTransformValue(Formats::Material& material, std::size_t transformIndex, unsigned property, float value)
+{
+    if (transformIndex < material.indirectTransforms.size())
+        SetTransformValue(material, material.indirectTransforms[transformIndex], property, value);
 }
 
 }

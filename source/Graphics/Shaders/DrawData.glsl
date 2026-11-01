@@ -36,6 +36,7 @@ struct Stage
     uint alphaClamp;
     uint alphaOutput;
     uint swaps;
+    uint isMovedByIndirectTexture;
 };
 
 struct DrawRecord
@@ -58,7 +59,12 @@ struct DrawRecord
 
     // For a mesh: its number in the mesh buffer.
     uint meshNumber;
-    uint unused[2];
+
+    // The indirect texture of the material and the two rows of its matrix.
+    uint indirectTextureIndex;
+    uint unused;
+    float indirectMatrix[6];
+    uint unusedAtTheEnd[2];
 };
 
 // One mesh: the rows of its matrices and its light.

@@ -5,6 +5,7 @@
 #include "Formats/SectionedFile.h"
 
 #include <format>
+#include <optional>
 
 namespace Formats
 {
@@ -28,6 +29,13 @@ constexpr std::size_t UnusedAfterTargetCountSize = 3;
 constexpr std::size_t UnusedAfterTargetKindSize = 1;
 constexpr std::size_t UnusedAfterKeyCountSize = 2;
 constexpr std::size_t UnusedAfterStepValueSize = 2;
+
+// The section pat1: the order of the tags, the number of groups, where the name of the animation and the group names are, the first
+// and the last frame, and whether the animation reaches below its groups. A group name takes a field of 20 bytes.
+constexpr std::size_t TagOrderSize = 2;
+constexpr std::size_t AnimationNameOffsetSize = 4;
+constexpr std::size_t FrameRangeSize = 4;
+constexpr std::size_t GroupNameFieldSize = 20;
 
 struct TagNameAndKind
 {
@@ -172,6 +180,21 @@ std::vector<std::string> ReadTextureNames(ByteReader& reader, std::size_t count,
     return names;
 }
 
+void ReadGroupSection(const Section& section, LayoutAnimation& animation)
+{
+    ByteReader reader = OpenSection(section, DataDescription);
+    reader.Skip(TagOrderSize);
+    std::uint16_t groupCount = reader.ReadUint16();
+    reader.Skip(AnimationNameOffsetSize);
+    std::uint32_t groupNamesOffset = reader.ReadUint32();
+    reader.Skip(FrameRangeSize);
+    animation.reachesPanesBelowTheGroups = reader.ReadByte() != 0;
+
+    reader.MoveTo(groupNamesOffset);
+    for (std::uint16_t group = 0; group < groupCount; ++group)
+        animation.groupNames.push_back(reader.ReadText(GroupNameFieldSize));
+}
+
 LayoutAnimation ReadAnimationSection(const Section& section)
 {
     ByteReader reader = OpenSection(section, DataDescription);
@@ -209,13 +232,15 @@ LayoutAnimation ReadLayoutAnimation(ByteView bytes)
             file.version, SupportedVersion, LaterSupportedVersion));
     }
 
-    // Some animations (those of the Wii Speak Channel) start with the section pat1, which names the animation and the groups it was
-    // made for. Playing the animation does not need it.
+    // Some animations (those of the Wii Speak Channel) start with the section pat1, which names the groups they were made for.
     SectionCursor cursor(file.sections, DataDescription);
+    std::optional<Section> groupSection;
     if (cursor.NextIs("pat1"))
-        cursor.Take();
+        groupSection = cursor.Take();
 
     LayoutAnimation animation = ReadAnimationSection(cursor.Take("pai1"));
+    if (groupSection)
+        ReadGroupSection(*groupSection, animation);
 
     if (!cursor.IsAtEnd())
         throw FormatError(std::format("{}: the section {} comes at a place where no section is expected", DataDescription, cursor.Take().tag));

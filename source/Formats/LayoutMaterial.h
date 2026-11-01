@@ -69,12 +69,15 @@ constexpr std::size_t TevSwapTableSize = 4;
 // One stage of the graphics chip that combines colors. The format documents no fields, so the 16 bytes are kept as they are.
 using TevStage = std::array<Byte, TevStageSize>;
 
-// An indirect texture matrix (offset, rotation and scale, five floats) and an indirect stage (which coordinates and texture move
-// the picture, and how much).
-constexpr std::size_t IndirectMatrixSize = 20;
-constexpr std::size_t IndirectStageSize = 4;
-using IndirectMatrix = std::array<Byte, IndirectMatrixSize>;
-using IndirectStage = std::array<Byte, IndirectStageSize>;
+// An indirect stage reads a texture whose texels say how far the stages move the places where they read their own textures: the set
+// of texture coordinates and the texture map it reads, and how much smaller its coordinates are (0 the same, 1 a half and so on).
+struct IndirectStage
+{
+    std::uint8_t textureCoordinateSet;
+    std::uint8_t textureMap;
+    std::uint8_t scaleS;
+    std::uint8_t scaleT;
+};
 
 using TevSwapTable = std::array<Byte, TevSwapTableSize>;
 
@@ -115,9 +118,9 @@ struct Material
     std::optional<Rgba8Color> materialColor;
     std::optional<TevSwapTable> tevSwapTable;
 
-    // Only the water of the Wii Speak Channel's chat room has them; WeeOS draws that material without moving its picture
-    // (docs/audit/WiiSpeak.md).
-    std::vector<IndirectMatrix> indirectMatrices;
+    // The indirect matrices are written as offset, rotation and scale, like the texture transforms. Only the water of the Wii Speak
+    // Channel's chat room has them.
+    std::vector<TextureTransform> indirectTransforms;
     std::vector<IndirectStage> indirectStages;
     std::vector<TevStage> tevStages;
     std::optional<AlphaCompare> alphaCompare;

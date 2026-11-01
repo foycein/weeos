@@ -2,6 +2,8 @@
 
 #include "Layout/LayoutError.h"
 
+#include <algorithm>
+
 namespace Channels
 {
 
@@ -9,6 +11,15 @@ namespace
 {
 
 constexpr float SqueezedTextMargin = 0.99f;
+constexpr std::string_view BoundPanePrefix = "B_";
+
+// "B_nbtn_00" and "nbtn_00" are both the button nbtn_00.
+std::string ButtonNameOf(std::string_view boundPaneName)
+{
+    if (boundPaneName.starts_with(BoundPanePrefix))
+        boundPaneName.remove_prefix(BoundPanePrefix.size());
+    return std::string(boundPaneName);
+}
 
 }
 
@@ -29,54 +40,141 @@ void SceneLayout::AddButton(const std::string& boundPaneName)
 {
     buttons.AddButton(boundPaneName);
     buttons.SetEnabled(boundPaneName, true);
+    lights.push_back({boundPaneName});
 }
 
 void SceneLayout::SetButtonEnabled(std::string_view boundPaneName, bool isEnabled)
 {
     buttons.SetEnabled(boundPaneName, isEnabled);
+    ButtonLight* light = FindLight(boundPaneName);
+    if (light && !isEnabled)
+        light->isLit = false;
 }
 
 void SceneLayout::PlayAnimation(const std::string& animationName)
 {
-    std::optional<std::size_t> slot = FindOrBindAnimation(layoutName + "_" + animationName);
-    if (slot)
-        layout.StartAnimation(*slot);
+    BoundAnimation* bound = FindOrBindAnimation(animationName);
+    if (bound)
+        bound->animation->Start();
 }
 
 bool SceneLayout::IsAnimationPlaying(const std::string& animationName)
 {
-    std::optional<std::size_t> slot = FindOrBindAnimation(layoutName + "_" + animationName);
-    return slot && layout.IsAnimationPlaying(*slot);
+    BoundAnimation* bound = FindOrBindAnimation(animationName);
+    return bound && bound->animation->IsPlaying();
 }
 
 void SceneLayout::ShowAnimationFrame(const std::string& animationName, float frame)
 {
-    std::optional<std::size_t> slot = FindOrBindAnimation(layoutName + "_" + animationName);
-    if (slot)
-        layout.ShowAnimationFrame(*slot, frame);
+    BoundAnimation* bound = FindOrBindAnimation(animationName);
+    if (bound)
+        bound->animation->ShowFrame(frame);
 }
 
-// The animations of the light and the press of a button ("<layout>_<button>_onOff" and "_down") are not played: each one names
-// the panes of every button of its layout, the bounding panes too, so that the hand would lose the button it lights
-// (docs/audit/WiiSpeak.md).
 std::optional<std::string> SceneLayout::TakePressedButton(const SystemMenu::InputManager& input)
 {
+    std::optional<std::string> pressed;
     for (const SystemMenu::ButtonEvent& event : buttons.Poll(input))
     {
-        if (event.kind == SystemMenu::ButtonEventKind::Pressed)
-            return event.buttonName;
+        ButtonLight* light = FindLight(event.buttonName);
+        if (event.kind == SystemMenu::ButtonEventKind::FocusGained)
+            light->isLit = true;
+        else if (event.kind == SystemMenu::ButtonEventKind::FocusLost)
+            light->isLit = false;
+        else if (!pressed)
+        {
+            PlayAnimation(ButtonNameOf(event.buttonName) + "_down");
+            pressed = event.buttonName;
+        }
     }
-    return std::nullopt;
+    return pressed;
 }
 
 void SceneLayout::Calculate()
 {
     layout.Calculate();
+    MoveLights();
+    for (const std::unique_ptr<BoundAnimation>& bound : boundAnimations)
+        bound->animation->Step();
 }
 
 void SceneLayout::Draw()
 {
     layout.Draw();
+}
+
+SceneLayout::BoundAnimation* SceneLayout::FindOrBindAnimation(const std::string& animationName)
+{
+    auto known = animationsByName.find(animationName);
+    if (known != animationsByName.end())
+        return known->second;
+
+    BoundAnimation* bound = nullptr;
+    try
+    {
+        boundAnimations.push_back(std::make_unique<BoundAnimation>(BindToItsGroups(archive->ReadAnimation(layoutName + "_" + animationName))));
+        bound = boundAnimations.back().get();
+    }
+    catch (const Layout::LayoutError&)
+    {
+        bound = nullptr;
+    }
+    animationsByName[animationName] = bound;
+    return bound;
+}
+
+// An animation without groups changes the whole layout.
+SceneLayout::BoundAnimation SceneLayout::BindToItsGroups(Formats::LayoutAnimation animation)
+{
+    Layout::LiveLayout& live = layout.Live();
+    std::vector<Formats::Pane*> panes;
+    for (const std::string& groupName : animation.groupNames)
+    {
+        std::vector<Formats::Pane*> panesOfGroup = live.PanesOfGroup(groupName);
+        panes.insert(panes.end(), panesOfGroup.begin(), panesOfGroup.end());
+    }
+
+    Layout::PaneReach reach = animation.reachesPanesBelowTheGroups ? Layout::PaneReach::PanesAndThoseBelow : Layout::PaneReach::GivenPanesOnly;
+    if (panes.empty())
+    {
+        panes.push_back(&live.RootPane());
+        reach = Layout::PaneReach::PanesAndThoseBelow;
+    }
+
+    Layout::PlaybackMode mode = animation.isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
+    float lastFrame = static_cast<float>(animation.frameCount) - 1;
+    auto player = std::make_unique<SystemMenu::MenuAnimation>(live, std::move(animation), mode, panes, reach);
+    return {std::move(player), lastFrame};
+}
+
+SceneLayout::ButtonLight* SceneLayout::FindLight(std::string_view boundPaneName)
+{
+    for (ButtonLight& light : lights)
+    {
+        if (light.buttonName == boundPaneName)
+            return &light;
+    }
+    return nullptr;
+}
+
+void SceneLayout::MoveLights()
+{
+    for (ButtonLight& light : lights)
+    {
+        BoundAnimation* onOff = FindOrBindAnimation(ButtonNameOf(light.buttonName) + "_onOff");
+        if (!onOff)
+            continue;
+
+        float target = light.isLit ? onOff->lastFrame : 0.0f;
+        if (light.frame == target)
+            continue;
+
+        if (light.isLit)
+            light.frame = std::min(light.frame + 1, target);
+        else
+            light.frame = std::max(light.frame - 1, target);
+        onOff->animation->ShowFrame(light.frame);
+    }
 }
 
 // As the channel does with every text it puts in: a text wider than its box is squeezed sideways until it fits, a little narrower
@@ -108,24 +206,5 @@ void SceneLayout::SetVisible(std::string_view paneName, bool isVisible)
     layout.PaneNamed(paneName).isVisible = isVisible;
 }
 
-// An animation is bound the first time it is asked for; one that the bundle does not have is remembered as missing.
-std::optional<std::size_t> SceneLayout::FindOrBindAnimation(const std::string& animationName)
-{
-    auto known = animationSlots.find(animationName);
-    if (known != animationSlots.end())
-        return known->second;
-
-    std::optional<std::size_t> slot;
-    try
-    {
-        slot = layout.BindAnimationToAllPanes(animationName);
-    }
-    catch (const Layout::LayoutError&)
-    {
-        slot = std::nullopt;
-    }
-    animationSlots[animationName] = slot;
-    return slot;
-}
 
 }

@@ -90,6 +90,16 @@ TextureTransform ReadTextureTransform(ByteReader& reader)
     return transform;
 }
 
+IndirectStage ReadIndirectStage(ByteReader& reader)
+{
+    IndirectStage stage;
+    stage.textureCoordinateSet = reader.ReadByte();
+    stage.textureMap = reader.ReadByte();
+    stage.scaleS = reader.ReadByte();
+    stage.scaleT = reader.ReadByte();
+    return stage;
+}
+
 TextureCoordinateGenerator ReadTextureCoordinateGenerator(ByteReader& reader)
 {
     TextureCoordinateGenerator generator;
@@ -189,10 +199,10 @@ Material ReadMaterial(ByteReader& reader)
         material.tevSwapTable = reader.ReadByteArray<TevSwapTableSize>();
 
     for (unsigned count = CountIn(flags, IndirectMatrixCountBit, IndirectMatrixCountBitCount); count > 0; --count)
-        material.indirectMatrices.push_back(reader.ReadByteArray<IndirectMatrixSize>());
+        material.indirectTransforms.push_back(ReadTextureTransform(reader));
 
     for (unsigned count = CountIn(flags, IndirectStageCountBit, IndirectStageCountBitCount); count > 0; --count)
-        material.indirectStages.push_back(reader.ReadByteArray<IndirectStageSize>());
+        material.indirectStages.push_back(ReadIndirectStage(reader));
 
     for (unsigned count = CountIn(flags, TevStageCountBit, TevStageCountBitCount); count > 0; --count)
         material.tevStages.push_back(reader.ReadByteArray<TevStageSize>());

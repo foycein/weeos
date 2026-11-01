@@ -80,6 +80,11 @@ struct LayoutAnimation
     std::vector<std::string> textureNames;
 
     std::vector<AnimatedObject> objects;
+
+    // What the section pat1 says, when the file has one: the groups of the layout that the animation was made for, and whether it
+    // also reaches the panes below them.
+    std::vector<std::string> groupNames;
+    bool reachesPanesBelowTheGroups = true;
 };
 
 LayoutAnimation ReadLayoutAnimation(ByteView bytes);

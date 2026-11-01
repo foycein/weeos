@@ -26,6 +26,19 @@ constexpr std::size_t AlphaInputsABByte = 8;
 constexpr std::size_t AlphaInputsCDByte = 9;
 constexpr std::size_t AlphaOperationByte = 10;
 constexpr std::size_t AlphaOutputByte = 11;
+constexpr std::size_t IndirectStageByte = 12;
+constexpr std::size_t IndirectBiasAndMatrixByte = 13;
+constexpr std::size_t IndirectWrapByte = 14;
+constexpr std::size_t IndirectFormatByte = 15;
+
+// The indirect part: the bias of S, T and U in three bits and the matrix in the next four (0 none, 1 to 3 the matrices 0 to 2).
+constexpr int IndirectBiasBit = 0;
+constexpr int IndirectBiasBitCount = 3;
+constexpr int IndirectMatrixBit = 3;
+constexpr int IndirectMatrixBitCount = 4;
+constexpr unsigned NoIndirectMatrix = 0;
+constexpr unsigned FirstIndirectMatrix = 1;
+constexpr unsigned BiasOnSTAndU = 7;
 
 constexpr Formats::Byte NoneNumber = 0xFF;
 constexpr Formats::Byte RasterColorChannel = 4;
@@ -231,13 +244,27 @@ Graphics::TevConstant ReadConstantAlpha(const Formats::TevStage& record)
     return static_cast<Graphics::TevConstant>(number);
 }
 
+// The last four bytes are the indirect part, which moves the place where the stage reads its texture. WeeOS draws what the water of
+// the Wii Speak Channel's chat room uses: the indirect stage 0 of 8 bit texels less 128, through the first indirect matrix, without
+// wrapping, adding or alpha (docs/audit/WiiSpeak.md).
+bool ReadIsMovedByIndirectTexture(const Formats::TevStage& record)
+{
+    unsigned matrix = Formats::ExtractBits(record[IndirectBiasAndMatrixByte], IndirectMatrixBit, IndirectMatrixBitCount);
+    bool hasOtherIndirectSettings = record[IndirectStageByte] != 0 || record[IndirectWrapByte] != 0 || record[IndirectFormatByte] != 0;
+    if (matrix == NoIndirectMatrix && !hasOtherIndirectSettings)
+        return false;
+
+    unsigned bias = Formats::ExtractBits(record[IndirectBiasAndMatrixByte], IndirectBiasBit, IndirectBiasBitCount);
+    if (matrix != FirstIndirectMatrix || bias != BiasOnSTAndU || hasOtherIndirectSettings)
+        FailStage("a stage uses an indirect texture in a way that WeeOS does not draw");
+
+    return true;
 }
 
-// The last four bytes are the indirect part, which moves the place where the stage reads its texture. Only the water of the Wii Speak
-// Channel's chat room has one; WeeOS reads the texture where it is, so that water stands still (docs/audit/WiiSpeak.md).
+}
+
 Graphics::TevStage ConvertTevStage(const Formats::TevStage& record, const std::optional<Formats::TevSwapTable>& swapTables)
 {
-
     Graphics::TevStage stage;
     ReadSwaps(record, swapTables, stage);
     stage.textureIndex = ReadTextureIndex(record);
@@ -246,6 +273,7 @@ Graphics::TevStage ConvertTevStage(const Formats::TevStage& record, const std::o
     stage.constantAlpha = ReadConstantAlpha(record);
     stage.color = ReadColorCalculation(record);
     stage.alpha = ReadAlphaCalculation(record);
+    stage.isMovedByIndirectTexture = ReadIsMovedByIndirectTexture(record);
     return stage;
 }
 
