@@ -6,7 +6,6 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
-#include "SystemMenu/MenuSettings.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleLaunchRequest.h"
@@ -47,7 +46,6 @@ constexpr std::uint16_t StartMessage = 2;
 constexpr std::uint16_t InsertDiscMessage = 4;
 constexpr std::uint16_t CannotReadDiscMessage = 6;
 constexpr std::uint16_t CannotBeUsedMessage = 19;
-constexpr std::uint16_t UpdateMessage = 20;
 constexpr std::uint16_t QuitMessage = 37;
 constexpr std::uint16_t OkMessage = 46;
 constexpr std::uint16_t InternetRequiredMessage = 323;
@@ -65,12 +63,8 @@ constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 constexpr std::string_view GraySound = "WIPL_SE_GRAY_BUTTON";
 constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 
-// The pages of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): the Internet settings and the system update.
+// The page of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): Internet.
 constexpr int InternetSettingsPage = 1;
-constexpr int SystemUpdatePage = 3;
-
-// The password dialog says, after a right PIN, that the restrictions are lifted until the user is back at the Wii Menu.
-constexpr int PinDialogArgument = 0;
 
 // The original waits 100 ms after Start before it fades out (0x813B9AC0: more than 100 / 16.68 steps).
 constexpr int StepsBeforeTheFadeToStart = 6;
@@ -128,7 +122,6 @@ void ChannelStartWindowScreen::ReadTheChannel()
     std::optional<InstalledTitle> installedTitle = FindInstalledTitle(services.wiiMenu.console, titleId);
     if (installedTitle)
     {
-        isOldVersion = IsOldVersion(titleId, installedTitle->version);
         makerCode = installedTitle->groupId;
     }
 
@@ -168,7 +161,7 @@ void ChannelStartWindowScreen::Build()
 void ChannelStartWindowScreen::BuildTheFrame()
 {
     frame = std::make_unique<MenuLayout>(services.display, *windowArchive, std::string(FrameLayout));
-    startButtonText = services.messages.Find(isOldVersion ? UpdateMessage : StartMessage);
+    startButtonText = services.messages.Find(StartMessage);
     frame->SetText("T_BtnA", services.messages.Find(WiiMenuMessage));
     frame->SetText("T_BtnB", startButtonText);
 
@@ -286,10 +279,6 @@ bool ChannelStartWindowScreen::RunMain()
         ReadAnswerOfInternetQuestion();
         break;
 
-    case StartWindowState::WaitingForPin:
-        ReadAnswerOfPinDialog();
-        break;
-
     case StartWindowState::Starting:
         RunStarting();
         break;
@@ -345,8 +334,9 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonGroupEvent& event)
     }
 }
 
-// What Start does depends on the channel (0x813B9488 and 0x813B6F10): an old channel asks for the system update, a channel that needs the
-// Internet asks for the Internet settings while no connection has passed its test, a restricted channel asks for the PIN.
+// What Start does depends on the channel (0x813B9488 and 0x813B6F10): a channel that needs the Internet asks for the Internet settings
+// while no connection has passed its test. WeeOS has no system update and no parental controls (docs/DECISIONS.md, Settings), so the
+// original's Update button of an old channel and its PIN dialog are not there.
 void ChannelStartWindowScreen::PressStart()
 {
     if (!CanStart())
@@ -358,12 +348,6 @@ void ChannelStartWindowScreen::PressStart()
     frame->StartAnimation(pressOfStart);
     services.sounds.Request(DecideSound);
 
-    if (isOldVersion)
-    {
-        LeaveForSettings(SystemUpdatePage);
-        return;
-    }
-
     if (!services.titleLaunch.HasProgram(titleId))
     {
         ShowMessage(CannotBeUsedMessage);
@@ -373,14 +357,6 @@ void ChannelStartWindowScreen::PressStart()
     if (banner->needsInternetConnection && !services.wiiMenu.console.HasTestedInternetConnection())
     {
         AskForInternetSettings();
-        return;
-    }
-
-    if (IsRestrictedByParentalControls())
-    {
-        services.parentalAnswer = ParentalAnswer::None;
-        services.screens.OpenChild(ScreenId::ParentalDialog, ScreenId::ChannelStartWindow, PinDialogArgument);
-        state = StartWindowState::WaitingForPin;
         return;
     }
 
@@ -424,17 +400,6 @@ void ChannelStartWindowScreen::ReadAnswerOfInternetQuestion()
 
     if (answer == DialogAnswer::ButtonA)
         LeaveForSettings(InternetSettingsPage);
-    else
-        state = StartWindowState::ShowingChannel;
-}
-
-void ChannelStartWindowScreen::ReadAnswerOfPinDialog()
-{
-    if (HasChildren() || services.screens.IsLoadingScreen())
-        return;
-
-    if (services.parentalAnswer == ParentalAnswer::PinCorrect)
-        BeginStart();
     else
         state = StartWindowState::ShowingChannel;
 }
@@ -495,23 +460,6 @@ void ChannelStartWindowScreen::CloseTowardsTheGrid()
         grid->ZoomOutOfPressedChannel();
 
     state = StartWindowState::ZoomingOut;
-}
-
-// The parental controls restrict the News Channel and the Internet Channel when the settings say so (0x813BAB50). The age ratings of
-// games are left out: WeeOS has no games.
-bool ChannelStartWindowScreen::IsRestrictedByParentalControls()
-{
-    std::optional<ParentalControl> parentalControl = services.settings.ReadParentalControl();
-    if (!parentalControl || !parentalControl->isOn)
-        return false;
-
-    if (IsNewsChannel(titleId))
-        return services.settings.IsNewsChannelRestricted();
-
-    if (IsInternetChannel(titleId))
-        return services.settings.IsInternetChannelRestricted();
-
-    return false;
 }
 
 ChannelGridScreen* ChannelStartWindowScreen::Grid()

@@ -3,28 +3,15 @@
 namespace SystemMenu
 {
 
-// The pages of Wii Settings that are built. The original has them as files of a web site (docs/research/SystemMenuStructure.md 4.9 and Appendix B).
+// The pages of Wii Settings. The original has them as files of a web site (docs/research/SystemMenuStructure.md 4.9 and Appendix B);
+// WeeOS keeps the pages that belong to the Wii and adds the settings of the PC (docs/DECISIONS.md, Settings).
 enum class PageId
 {
-    // The three pages that lead to all the others.
-    FirstIndex,
-    SecondIndex,
-    ThirdIndex,
+    // The page that leads to all the others.
+    Index,
 
-    // Calendar.
-    CalendarIndex,
-    DateSet,
-    TimeSet,
-
-    // Screen.
-    DisplayIndex,
-    ScreenPosition,
-    WidescreenSet,
-    TvResolution,
-    BurnInReduction,
-
-    // Sound.
-    SoundSet,
+    // Console Nickname.
+    NicknameSet,
 
     // Sensor Bar.
     SensorBarIndex,
@@ -32,87 +19,24 @@ enum class PageId
     SensitivityIntroduction,
     SensitivitySet,
 
-    // Console Nickname.
-    NicknameSet,
-
-    // Language.
-    LanguageSet,
-
-    // Country.
-    CountrySelect,
-
-    // Format Wii System Memory.
-    FormatWarning,
-    FormatAccountWarning,
-    FormatConfirm,
-    FormatWorking,
-    FormatDone,
-    FormatFailed,
-
-    // Wii System Update.
-    UpdateIndex,
-    UpdateNeedsConnection,
-
-    // The test of a connection, for Internet and for the update.
+    // Internet: the connection of the PC and its test.
+    ConnectionStatus,
     ConnectionTesting,
+    ConnectionTestPassed,
     ConnectionTestFailed,
 
-    // Internet.
-    InternetIndex,
-    ConnectionList,
-    ConnectionKind,
-    WirelessSetup,
-    AccessPointSearch,
-    NoAccessPointFound,
-    AccessPointList,
-    SecurityKeyEntry,
-    ConnectionSaved,
-    UsbConnectorIntroduction,
-    UsbConnectorWaiting,
-    AossWaiting,
-    ConnectionActions,
-    ClearConnectionConfirm,
-    ConnectionInUse,
-    ConnectionTestStart,
-    ConsoleInformation,
-
-    // Parental Controls: the setup, one step after the other.
-    ParentalUseQuestion,
-    ParentalDescription,
-    ParentalGuardianNote,
-    ParentalPinChoice,
-    ParentalPinRepeat,
-    ParentalPinMismatch,
-    ParentalQuestionChoice,
-    ParentalAnswerChoice,
-
-    // Parental Controls: what can be changed, once the PIN is set.
-    ParentalSettingsMenu,
-    ParentalSettingsOverview,
-    ParentalRatingChoice,
-    ParentalRestriction,
-    ParentalClearQuestion,
-    ParentalCleared,
-
-    // Parental Controls that are on: the PIN, the answer or the master key before anything can be changed.
-    ParentalChangeQuestion,
-    ParentalPinCheck,
-    ParentalPinWrong,
-    ParentalAnswerCheck,
-    ParentalAnswerWrong,
-    ParentalMasterKeyInformation,
-    ParentalMasterKeyEntry,
-    ParentalMasterKeyWrong,
-    ParentalDisabled,
-
-    // PC Settings: the window, the sound and the keys of WeeOS on the PC.
+    // PC Settings: the window, the sound and the controls of WeeOS on the PC.
     PcIndex,
-    PcScreen,
+    PcWindow,
     PcWindowSize,
     PcSound,
     PcSoundDevice,
+    PcControls,
     PcKeys,
     PcMouse,
+
+    // The sound mode of the console: mono, stereo or surround. It is a page of PC Settings.
+    SoundSet,
 };
 
 }

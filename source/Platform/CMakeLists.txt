@@ -5,6 +5,7 @@ add_library(Platform STATIC
     KeyCodes.cpp
     MessagePump.cpp
     PreciseTimer.cpp
+    RegionalSettings.cpp
     Window.cpp
 )
 

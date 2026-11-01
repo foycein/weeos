@@ -6,6 +6,7 @@
 #include "Platform/FileLocations.h"
 #include "Platform/HostKeys.h"
 #include "Platform/PreciseTimer.h"
+#include "Platform/RegionalSettings.h"
 #include "Platform/Window.h"
 #include "Settings/ConsoleClock.h"
 #include "SystemMenu/MenuSystem.h"
@@ -23,11 +24,12 @@ class ChannelSystem;
 namespace WeeOS
 {
 
-// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock of Windows and the file
-// WeeOS.settings.txt beside the program; a test gives a clock of its own and a file of its own.
+// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows
+// and the file WeeOS.settings.txt beside the program; a test gives its own.
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
+    Platform::RegionalSettings regionalSettings = Platform::ReadRegionalSettings();
     std::filesystem::path pcSettingsFile = Platform::ExecutableFolder() / "WeeOS.settings.txt";
 };
 

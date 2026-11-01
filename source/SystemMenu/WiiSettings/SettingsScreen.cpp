@@ -6,7 +6,6 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
-#include "SystemMenu/ParentalAnswer.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoftKeyboard.h"
 #include "SystemMenu/SoundRequests.h"
@@ -17,17 +16,10 @@ namespace SystemMenu
 namespace
 {
 
-// The pages that the argument of the screen names.
-// The pages that the argument of the screen names (the tables 0x81610A30 and 0x81610AA4 of the original). The arguments 2 and 5 open
-// the first-time setup, which WeeOS does not have (docs/DECISIONS.md: no first-run setup), so they open the first index page.
-constexpr int FirstIndexArgument = 0;
+// The page that the argument of the screen names (the tables 0x81610A30 and 0x81610AA4 of the original). The other arguments name the
+// first-time setup, the system update, the second index page and the country, which WeeOS does not have: they open the index page.
+constexpr int IndexArgument = 0;
 constexpr int InternetArgument = 1;
-constexpr int SystemUpdateArgument = 3;
-constexpr int SecondIndexArgument = 4;
-constexpr int CountryArgument = 6;
-
-// The parental dialog tells, after a right PIN, that the restriction is lifted until the user has finished (SystemMenuStructure.md 4.10).
-constexpr int ParentalDialogArgument = 1;
 
 // A button that is held down presses again after 400 milliseconds, then every 150 milliseconds. A step lasts 1001/60000 of a second.
 constexpr int StepsBeforeRepeat = 24;
@@ -101,23 +93,10 @@ SettingsScreen::SettingsScreen(MenuServices& menuServices, int argumentOfTheScre
 
 PageId SettingsScreen::FirstPageOf(int argument)
 {
-    switch (argument)
-    {
-    case InternetArgument:
-        return PageId::InternetIndex;
+    if (argument == InternetArgument)
+        return PageId::ConnectionStatus;
 
-    case SystemUpdateArgument:
-        return PageId::UpdateIndex;
-
-    case SecondIndexArgument:
-        return PageId::SecondIndex;
-
-    case CountryArgument:
-        return PageId::CountrySelect;
-
-    default:
-        return PageId::FirstIndex;
-    }
+    return PageId::Index;
 }
 
 void SettingsScreen::Build()
@@ -125,7 +104,7 @@ void SettingsScreen::Build()
     images = std::make_unique<PageImages>(services.display.Device(), services.files);
     font = std::make_unique<PageFont>(services.display.Device(), services.files);
     painter = std::make_unique<PagePainter>(services.display.Device(), *images, *font);
-    flow = std::make_unique<SettingsFlow>(*services.wiiSettings, services.messages, FirstPageOf(argument));
+    flow = std::make_unique<SettingsFlow>(*services.wiiSettings, FirstPageOf(argument));
 
     services.cursors.SetVisible(true);
     services.fader.StartFadeIn();
@@ -137,11 +116,6 @@ void SettingsScreen::Draw(DrawPass pass)
         return;
 
     painter->Draw(flow->CurrentPage(), pointedButton, services.display.GetCanvas());
-}
-
-bool SettingsScreen::DrawsWithChildren() const
-{
-    return true;
 }
 
 SettingsFlow& SettingsScreen::Flow()
@@ -173,7 +147,7 @@ bool SettingsScreen::RunClosing()
     if (services.fader.GetStatus() != FaderStatus::Covered)
         return false;
 
-    GoToRoot(ScreenId::WiiOptionsBackground, FirstIndexArgument);
+    GoToRoot(ScreenId::WiiOptionsBackground, 0);
     return true;
 }
 
@@ -199,21 +173,9 @@ void SettingsScreen::RequestSoundsOfThePages()
     }
 }
 
-// A page that asks for text or digits gets the soft keyboard, a page that needs the PIN of the parental controls gets their dialog
-// (screen 0x1b, opened with the argument 1 as the original does, 0x813F20AC). While one of them is open the pages wait, and its
-// answer goes to the page. The dialog is a child of this screen, so this screen stands still until the dialog is gone.
+// A page that asks for text gets the soft keyboard. While it is open the pages wait, and its answer goes to the page.
 bool SettingsScreen::IsWaitingForAnswer()
 {
-    if (isParentalDialogOpen)
-    {
-        // The dialog is made in the step of the request and comes into the tree in the next one. Until then there is no answer.
-        if (services.screens.IsLoadingScreen())
-            return true;
-
-        TakeAnswerOfParentalDialog();
-        return false;
-    }
-
     if (services.keyboard.IsOpen())
         return true;
 
@@ -232,11 +194,7 @@ bool SettingsScreen::IsWaitingForAnswer()
     if (!request)
         return false;
 
-    if (request->kind == InputKind::ParentalPassword)
-        OpenParentalDialog();
-    else
-        OpenKeyboard(*request);
-
+    OpenKeyboard(*request);
     return true;
 }
 
@@ -246,28 +204,9 @@ void SettingsScreen::OpenKeyboard(const InputRequest& request)
     keyboardRequest.title = request.title;
     keyboardRequest.initialText = request.initialText;
     keyboardRequest.rules.maximumLength = request.maximumLength;
-    if (request.kind == InputKind::Digits)
-        keyboardRequest.rules.allowedCharacters = IsDigit;
 
     keyboardRequest.playerIndex = pressingPlayer;
     services.keyboard.Open(keyboardRequest);
-}
-
-void SettingsScreen::OpenParentalDialog()
-{
-    services.parentalAnswer = ParentalAnswer::None;
-    services.screens.OpenChild(ScreenId::ParentalDialog, ScreenId::WiiSettings, ParentalDialogArgument);
-    isParentalDialogOpen = true;
-}
-
-// Only a right PIN lets the page go on; three wrong PINs and Quit leave the user where he was.
-void SettingsScreen::TakeAnswerOfParentalDialog()
-{
-    isParentalDialogOpen = false;
-    if (services.parentalAnswer == ParentalAnswer::PinCorrect)
-        flow->AnswerInput(u"");
-    else
-        flow->CancelInput();
 }
 
 // Every remote that points at the screen points at a button or at nothing. The highlight follows the first of them, and a press of A

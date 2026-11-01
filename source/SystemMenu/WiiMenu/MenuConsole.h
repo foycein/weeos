@@ -39,6 +39,14 @@ struct LocalTime
     int second = 0;
 };
 
+// How the clock of the menu writes the time of day: the hours of 12 with AM and PM, as a console of the USA does, or the hours of 24,
+// with or without a 0 in front of the hours below 10. WeeOS follows the PC (docs/DECISIONS.md, Settings).
+struct ClockFormat
+{
+    bool usesTwentyFourHours = false;
+    bool showsLeadingZeroOfHours = false;
+};
+
 // What the menu asks of the console that it runs on, besides its own title: the titles on the NAND, the files of the menu
 // on the NAND and the clock. The original asks the system libraries ES, NAND and SC and the OS for these.
 class MenuConsole
@@ -63,6 +71,11 @@ public:
     virtual void WriteNandFile(std::string_view path, Formats::ByteView bytes) = 0;
 
     virtual LocalTime GetLocalTime() = 0;
+
+    virtual ClockFormat GetClockFormat()
+    {
+        return ClockFormat();
+    }
 
     // True when one of the three Internet connections is switched on and has passed its connection test (0x813FB944). A channel that
     // needs the Internet asks for the Internet settings before it starts when none has.

@@ -37,9 +37,6 @@ enum class StartWindowState
     // The question whether to set up the Internet first is open (0x0C).
     AskingForInternetSettings,
 
-    // The password dialog of the parental controls is open (0x0B).
-    WaitingForPin,
-
     // Start was pressed and the channel may start: a moment passes, then the picture fades to black (4, 5).
     Starting,
     FadingOutToStart,
@@ -47,7 +44,7 @@ enum class StartWindowState
     // The title was handed to the console, which starts it after this step.
     Started,
 
-    // Wii Settings comes next, for the update of an old channel or for the Internet settings: the picture fades out first (7).
+    // Wii Settings comes next, for the Internet settings: the picture fades out first (7).
     LeavingForSettings,
 
     // Wii Menu was pressed: the grid zooms out, the window fades out inside the television (6).
@@ -99,14 +96,12 @@ private:
     void AskForInternetSettings();
     void ReadAnswerOfCannotBeUsed();
     void ReadAnswerOfInternetQuestion();
-    void ReadAnswerOfPinDialog();
     void BeginStart();
     void RunStarting();
     void RunFadingOutToStart();
     void LeaveForSettings(int settingsPage);
     void CloseTowardsTheGrid();
 
-    bool IsRestrictedByParentalControls();
     ChannelGridScreen* Grid();
     void DrawTheWindow();
     void DrawTheWindowInsideTheTelevision();
@@ -120,7 +115,6 @@ private:
     std::optional<Formats::BannerContent> banner;
     BannerAnimations bannerAnimations;
     std::u16string startButtonText;
-    bool isOldVersion = false;
     std::uint16_t makerCode = 0;
 
     std::unique_ptr<Layout::LayoutArchive> windowArchive;

@@ -30,6 +30,14 @@ namespace
 
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 
+SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
+{
+    SystemMenu::ClockFormat format;
+    format.usesTwentyFourHours = regionalSettings.usesTwentyFourHourClock;
+    format.showsLeadingZeroOfHours = regionalSettings.showsLeadingZeroOfHours;
+    return format;
+}
+
 }
 
 // The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
@@ -45,8 +53,8 @@ public:
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
-        , wiiMenuConsole(iosServices, host.clock)
+        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock, ClockFormatOf(host.regionalSettings))
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -125,7 +133,6 @@ private:
         menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
             iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices());
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
-        wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
         menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
 

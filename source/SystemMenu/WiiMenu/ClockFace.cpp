@@ -33,18 +33,24 @@ int WeekdayNumberOf(const LocalTime& time)
 
 }
 
-ClockFace MakeClockFace(const LocalTime& time)
+ClockFace MakeClockFace(const LocalTime& time, const ClockFormat& format)
 {
-    int hour = time.hour % HoursOnTheClock;
-    if (hour == 0)
-        hour = HoursOnTheClock;
+    int hour = time.hour;
+    if (!format.usesTwentyFourHours)
+    {
+        hour = time.hour % HoursOnTheClock;
+        if (hour == 0)
+            hour = HoursOnTheClock;
+    }
 
     ClockFace face;
     face.hourTens = hour / NumberBase;
     face.hourOnes = hour % NumberBase;
     face.minuteTens = time.minute / NumberBase;
     face.minuteOnes = time.minute % NumberBase;
-    face.isAfternoon = time.hour >= NoonHour;
+    face.isAfternoon = !format.usesTwentyFourHours && time.hour >= NoonHour;
+    face.showsHourTens = face.hourTens != 0 || format.showsLeadingZeroOfHours;
+    face.showsMorningOrAfternoon = !format.usesTwentyFourHours;
     return face;
 }
 

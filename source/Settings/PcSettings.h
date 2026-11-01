@@ -12,20 +12,20 @@
 namespace Settings
 {
 
-// The size of the window when nothing else is set (docs/DECISIONS.md: 1280 x 720).
+// The size of the window when nothing else is set (docs/DECISIONS.md: 1280 x 720). WeeOS starts in borderless fullscreen.
 constexpr std::uint32_t DefaultWindowWidth = 1280;
 constexpr std::uint32_t DefaultWindowHeight = 720;
 
 constexpr int LowestVolume = 0;
 constexpr int HighestVolume = 100;
 
-// The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device and the keys. They are pages inside
-// Wii Settings (docs/DECISIONS.md, Product). The shape of the picture is not here: it is the console's own widescreen setting.
+// The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device and the keys. They are the pages "PC Settings"
+// of Wii Settings (docs/DECISIONS.md, Settings). The sound mode and the rumble are the console's own settings (SystemSettings).
 struct PcSettings
 {
     std::uint32_t windowWidth = DefaultWindowWidth;
     std::uint32_t windowHeight = DefaultWindowHeight;
-    bool isFullscreen = false;
+    bool isFullscreen = true;
 
     // The name Windows gives the playback device. Empty for the device that Windows uses by default.
     std::u16string audioDevice;
@@ -75,7 +75,7 @@ private:
 };
 
 // The program that makes a change of the settings come true at once: it resizes the window, gives the keys to the remote, sets the
-// volume, changes the shape of the picture. The pages call it as soon as the user changes something.
+// volume, lets the remotes rumble or not. The pages call it as soon as the user changes something.
 class PcSettingsTarget
 {
 public:
@@ -83,8 +83,8 @@ public:
 
     virtual void ApplyPcSettings(const PcSettings& settings) = 0;
 
-    // The console's widescreen setting changed: the window shows the picture in the new shape.
-    virtual void ApplyPictureShape(AspectRatio aspectRatio) = 0;
+    // The console's rumble setting changed.
+    virtual void ApplyRumble(bool isRumbleOn) = 0;
 
     // The names of the playback devices of the PC, as the audio page lists them.
     virtual std::vector<std::u16string> ListAudioDevices() const = 0;

@@ -11,7 +11,6 @@ add_library(SystemMenu STATIC
     Fader.cpp
     FirstScreen.cpp
     FrontPanel.cpp
-    HealthAndSafetyScreen.cpp
     InputManager.cpp
     IosNandFiles.cpp
     KeyboardView.cpp
@@ -26,7 +25,6 @@ add_library(SystemMenu STATIC
     MenuStateFile.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
-    ParentalDialogScreen.cpp
     PhysicalKeyboard.cpp
     ProgramImage.cpp
     Screen.cpp
@@ -37,6 +35,7 @@ add_library(SystemMenu STATIC
     TelevisionZoom.cpp
     TextField.cpp
     UsKeyboardLayout.cpp
+    WelcomeScreen.cpp
     WiiOptionsBackgroundScreen.cpp
     WiiOptionsBarScreen.cpp
     WiiOptionsChoicesScreen.cpp
