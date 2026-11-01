@@ -23,7 +23,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , keyboard(display, files, messages, clock, input, sounds)
     , program(titleContents)
     , settings(nandFiles)
-    , dialogs(display, files)
+    , dialogs(display, files, sounds)
     , errorScreen(display, program, fonts, fader)
     , frontPanel(display, powerService, screens, nandFiles)
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
@@ -91,6 +91,7 @@ void MenuSystem::RunStep()
         sounds.PauseAllSounds();
     if (!homeButton.IsOpen() && isHomeMenuOpen)
         sounds.ResumeAllSounds();
+    sounds.ChangeConsoleVolume(homeButton.SoundVolume());
 
     cursors.Update(input);
     fader.Calculate();

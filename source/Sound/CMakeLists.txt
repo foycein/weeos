@@ -1,5 +1,6 @@
 add_library(Sound STATIC
     AudioCapture.cpp
+    AudioFile.cpp
     AudioOutput.cpp
     BankFile.cpp
     BannerSound.cpp

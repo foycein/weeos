@@ -64,9 +64,17 @@ void ChannelSystem::Update()
     FollowHomeButtonPermission();
 
     // The HOME button is seen before the channel moves on, so a press stops the channel in the step it came.
+    bool wasHomeMenuOpen = homeButton->IsOpen();
     homeButton->Update();
     if (!homeButton->IsOpen())
         channel->Update();
+
+    // The HOME menu pauses the sounds of the channel while it is open and fades the console out with its picture.
+    if (homeButton->IsOpen() && !wasHomeMenuOpen)
+        sounds.PauseAllSounds();
+    if (!homeButton->IsOpen() && wasHomeMenuOpen)
+        sounds.ResumeAllSounds();
+    sounds.ChangeConsoleVolume(homeButton->SoundVolume());
 
     channel->Hands().Update(input);
     fader.Calculate();
