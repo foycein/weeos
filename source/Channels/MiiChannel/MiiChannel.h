@@ -77,6 +77,7 @@ private:
     void AskNewMiiQuestion(ProfileQuestion question);
     Mii::MiiRecord AsNewMiiOfThisConsole(Mii::MiiRecord record) const;
     void ShowPlaza();
+    void PlayKeyboardSounds();
 
     ChannelServices& services;
     MiiChannelFiles files;
@@ -86,6 +87,7 @@ private:
     PlazaGround ground;
     MessageWindow message;
     ProfileDialog profile;
+    SystemMenu::SoundRequests keyboardSounds;
     SystemMenu::SoftKeyboard keyboard;
     PlazaScreen plaza;
     LookAlikeScreen lookAlike;

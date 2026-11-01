@@ -54,7 +54,7 @@ public:
         if (runningTitle == Ios::SystemMenuTitleId)
             StartMenu(iosServices, graphicsDevice);
         else
-            StartChannel(iosServices, graphicsDevice, runningTitle);
+            StartChannel(iosServices, graphicsDevice, runningTitle, host.clock);
 
         window.SetListener(&hostKeys);
     }
@@ -148,11 +148,12 @@ private:
             menuSound->PlayRequests(menu->Services().sounds);
     }
 
-    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
+    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle,
+        const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle,
+            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
