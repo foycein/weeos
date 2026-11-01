@@ -9,6 +9,7 @@ add_library(Formats STATIC
     ByteWriter.cpp
     BoardMessageFile.cpp
     CdbRecordFile.cpp
+    CdbSdCopy.cpp
     Certificate.cpp
     Crc32.cpp
     ConsoleKeys.cpp

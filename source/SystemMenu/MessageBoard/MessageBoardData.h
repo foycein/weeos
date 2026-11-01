@@ -36,6 +36,10 @@ struct MessageBoardData
     // The envelope of the bar was pressed: the main frame shows the board when the channel grid has ended.
     bool isComingFromTheChannels = false;
 
+    // The board is nearly full: the menu stops and makes room (FullBoardProcedure), then the board reads its day again.
+    bool mustMakeRoom = false;
+    bool hasMadeRoom = false;
+
     // The random numbers of the menu (0x81343624 on the state 0x810890D4): the state becomes state * 0x19660D + 0x3C6EF35F and the
     // number is the state divided by 2 to the 32nd, from 0 up to 1. The places of new letters come from it.
     // Where the original starts the state was not read: WeeOS starts it from the time of the console when the first letter needs it.

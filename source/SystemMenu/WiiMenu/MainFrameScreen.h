@@ -44,6 +44,8 @@ private:
     bool AreTheChildrenBuilt();
     void ShowTheMessagesOfToday();
     void OpenTheBoardWhenTheGridHasGone();
+    void AskForRoomWhenTheBoardIsNearlyFull();
+    void ReadTheDayAgainAfterMakingRoom();
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;

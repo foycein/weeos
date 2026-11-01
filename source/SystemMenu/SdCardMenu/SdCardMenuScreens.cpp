@@ -12,6 +12,7 @@
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SdCardMenu/SdChannelPlaces.h"
 #include "SystemMenu/SoundRequests.h"
+#include "SystemMenu/WiiMenu/LayoutParts.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Formats/BannerContent.h"
@@ -56,6 +57,16 @@ constexpr std::size_t WiiMenuButton = 0;
 constexpr std::size_t HelpButton = 1;
 constexpr std::size_t NextPageButton = 2;
 constexpr std::size_t PreviousPageButton = 3;
+
+// The Wii Menu button and the help button have balloons, the arrows none (0x813E95E0, the messages of the table 0x81694B88). A balloon
+// appears 17 steps after the hand came, 50 units above the middle of its button, and keeps 120 units from the edges of the 16:9
+// picture (0x813EA55C), as the balloons of the Wii Menu's bar.
+constexpr std::uint16_t WiiMenuBalloonMessage = 168;
+constexpr std::uint16_t HelpBalloonMessage = 166;
+constexpr std::string_view BalloonBundleName = "balloon";
+constexpr int StepsBeforeABarBalloonAppears = 17;
+constexpr float BalloonHeightAboveTheButton = 50;
+constexpr float BalloonMarginFromTheEdges = 120;
 
 constexpr ButtonSet NextPageButtons = {Input::RemoteButtons::Plus, Input::ClassicButtons::Plus};
 constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus};
@@ -150,6 +161,7 @@ SdCardMenuBarScreen::SdCardMenuBarScreen(MenuServices& menuServices)
 void SdCardMenuBarScreen::Load()
 {
     archive = services.files.OpenLayoutBundle("sdButton");
+    balloonArchive = services.files.OpenLayoutBundle(BalloonBundleName);
 }
 
 void SdCardMenuBarScreen::Build()
@@ -158,6 +170,11 @@ void SdCardMenuBarScreen::Build()
     layout->SetText("T_page", services.messages.Find(SdCardMenuMessage));
     layout->Calculate();
     buttons = std::make_unique<ButtonController>(*layout, services.display, std::vector<std::string>{"B_Wiimenu", "B_Help", "B_ArwR", "B_ArwL"});
+
+    wiiMenuBalloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABarBalloonAppears);
+    wiiMenuBalloon->SetText(services.messages.Find(WiiMenuBalloonMessage));
+    helpBalloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABarBalloonAppears);
+    helpBalloon->SetText(services.messages.Find(HelpBalloonMessage));
 
     services.screens.OpenChild(ScreenId::SdChannelList, Id(), 0);
     services.fader.StartFadeIn();
@@ -171,8 +188,12 @@ void SdCardMenuBarScreen::Draw(DrawPass pass)
         layout->Draw();
 
     bool isWindowOpen = services.screens.FindScreen(ScreenId::SdChannelWindow) != nullptr;
-    if (pass == DrawPass::Overlay && !isWindowOpen)
-        DrawArrowsOnly();
+    if (pass != DrawPass::Overlay || isWindowOpen)
+        return;
+
+    DrawArrowsOnly();
+    wiiMenuBalloon->Draw();
+    helpBalloon->Draw();
 }
 
 void SdCardMenuBarScreen::DrawArrowsOnly()
@@ -195,6 +216,16 @@ void SdCardMenuBarScreen::DrawArrowsOnly()
 
     for (std::size_t index = 0; index < hiddenPanes.size(); ++index)
         hiddenPanes[index]->isVisible = wasVisible[index];
+}
+
+const Balloon& SdCardMenuBarScreen::WiiMenuBalloon() const
+{
+    return *wiiMenuBalloon;
+}
+
+const Balloon& SdCardMenuBarScreen::HelpBalloon() const
+{
+    return *helpBalloon;
 }
 
 int SdCardMenuBarScreen::PageArrowAt(Formats::Vector2 place)
@@ -222,10 +253,16 @@ bool SdCardMenuBarScreen::DrawsWithChildren() const
 bool SdCardMenuBarScreen::RunMain()
 {
     layout->Calculate();
+    CalculateTheBalloons();
 
-    // The window of a channel lies over the bar and answers its own dialogs.
+    // The window of a channel lies over the bar and answers its own dialogs. A pressed or held channel takes the balloons away
+    // (0x813EA75C).
     if (services.screens.FindScreen(ScreenId::SdChannelWindow) != nullptr)
+    {
+        wiiMenuBalloon->PointerLeft();
+        helpBalloon->PointerLeft();
         return false;
+    }
 
     bool isActive = !services.dialogs.IsOpen();
 
@@ -236,6 +273,8 @@ bool SdCardMenuBarScreen::RunMain()
     {
         if (event.kind == ButtonEventKind::FocusGained)
             services.sounds.Request(SoundName::ButtonTargeted);
+
+        FollowTheFocusWithTheBalloons(event);
 
         if (event.kind != ButtonEventKind::Pressed)
             continue;
@@ -260,6 +299,42 @@ bool SdCardMenuBarScreen::RunMain()
         }
     }
     return false;
+}
+
+// A balloon grows when the first hand reaches its button and shrinks when the last one leaves (0x813E9D08, 0x813E9F60).
+void SdCardMenuBarScreen::FollowTheFocusWithTheBalloons(const ButtonEvent& event)
+{
+    Balloon* balloon = nullptr;
+    if (event.buttonIndex == WiiMenuButton)
+        balloon = wiiMenuBalloon.get();
+    else if (event.buttonIndex == HelpButton)
+        balloon = helpBalloon.get();
+
+    if (balloon == nullptr)
+        return;
+
+    if (event.kind == ButtonEventKind::FocusGained)
+        balloon->PointerArrived();
+    else if (event.kind == ButtonEventKind::FocusLost)
+        balloon->PointerLeft();
+}
+
+void SdCardMenuBarScreen::CalculateTheBalloons()
+{
+    PlacedPanes placedPanes(*layout);
+    CalculateBalloon(*wiiMenuBalloon, placedPanes.PlaceOf("B_Wiimenu"));
+    CalculateBalloon(*helpBalloon, placedPanes.PlaceOf("B_Help"));
+}
+
+void SdCardMenuBarScreen::CalculateBalloon(Balloon& balloon, std::optional<Formats::Vector2> placeOfTheButton)
+{
+    Formats::Vector2 button = placeOfTheButton.value_or(Formats::Vector2{0, 0});
+    balloon.PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, BalloonMarginFromTheEdges);
+
+    bool wasShown = balloon.IsShown();
+    balloon.Calculate();
+    if (!wasShown && balloon.IsShown())
+        services.sounds.Request(BalloonSound);
 }
 
 bool SdCardMenuBarScreen::RunClosing()

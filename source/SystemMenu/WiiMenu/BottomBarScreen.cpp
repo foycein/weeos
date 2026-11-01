@@ -304,6 +304,12 @@ void BottomBarScreen::FlashPageArrow(BarButton arrow)
     flash.PlayOnce(FirstFrameOfTheFlash, LastFrameOfTheFlash);
 }
 
+bool BottomBarScreen::IsPageArrowFlashing(BarButton arrow) const
+{
+    const FramePlayer& flash = arrow == BarButton::PreviousPage ? *previousPageFlash : *nextPageFlash;
+    return flash.IsPlaying();
+}
+
 void BottomBarScreen::PressSdCardButton()
 {
     sdCardButton->PlayPress();

@@ -3,6 +3,7 @@ target_sources(SystemMenu PRIVATE
     BoardPosting.cpp
     BoardView.cpp
     CalendarScreen.cpp
+    FullBoard.cpp
     LetterPaper.cpp
     LetterPicture.cpp
     LetterView.cpp

@@ -14,6 +14,7 @@
 #include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/MenuSettings.h"
+#include "SystemMenu/MessageBoard/FullBoard.h"
 #include "SystemMenu/NandFiles.h"
 #include "SystemMenu/ProgramImage.h"
 #include "SystemMenu/ScreenManager.h"
@@ -28,6 +29,7 @@
 #include "Ios/Remote/RemoteService.h"
 #include "Text/MessageCatalog.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -76,9 +78,14 @@ public:
 
     MenuServices& Services();
 
+    // The work on a nearly full Message Board while it runs, for the checks of the tests. Nothing otherwise.
+    const FullBoardProcedure* BoardMakingRoom() const;
+
 private:
     void RunStep();
     void RunStepOfTheTurnOffQuestion();
+    bool MustTheBoardMakeRoom() const;
+    void RunStepOfMakingRoom();
     void DrawTheTurnOffQuestion();
     HomeButtonConnections ConnectHomeButton();
     void SaveRemoteSettings(std::uint8_t speakerVolumeSetting, bool isRumbleOn);
@@ -105,6 +112,7 @@ private:
     NandFiles& nand;
     TitleLaunchRequest titleLaunch;
     MenuServices services;
+    std::unique_ptr<FullBoardProcedure> fullBoard;
     std::optional<std::string> fatalErrorMessage;
 };
 
