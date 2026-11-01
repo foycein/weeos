@@ -50,12 +50,6 @@ constexpr std::string_view ChangePane = "Change";
 constexpr std::string_view ChangeInAnimation = "my_ChTop_a_ChangeIn";
 constexpr std::string_view ChangeOutAnimation = "my_ChTop_a_ChangeOut";
 
-// The words of Start fade out and in when they change between Start and Update.
-constexpr std::string_view WordsOutAnimation = "my_ChTop_a_ChangeTextOut";
-constexpr std::string_view WordsInAnimation = "my_ChTop_a_ChangeTextIn";
-constexpr std::string_view WordsOfStartGroup = "G_ChangeTextB";
-constexpr std::string_view WordsOfStartPane = "T_BtnB";
-
 // On a wide screen the frame around the banner takes the textures of three pictures that the layout keeps for it (0x813B4374): the
 // corners, the sides, and the edges at the top and at the bottom.
 struct WideFramePart
@@ -144,17 +138,6 @@ SlotPosition NeighborChannel(const ChannelManager& channels, SlotPosition from, 
     return from;
 }
 
-// An old Forecast, News or Shop Channel reads Update instead of Start (SYS-04).
-bool IsOldChannelAt(WiiMenuData& wiiMenu, SlotPosition position)
-{
-    const SavedSlot& savedSlot = wiiMenu.channels.SlotAt(position);
-    if (savedSlot.kind != SavedSlotKind::Title)
-        return false;
-
-    std::optional<InstalledTitle> installedTitle = FindInstalledTitle(wiiMenu.console, savedSlot.titleId);
-    return installedTitle && IsOldVersion(savedSlot.titleId, installedTitle->version);
-}
-
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
 {
     bool remoteWentDown = (player.state.buttonsPressed & buttons.remoteButtons) != 0;
@@ -209,7 +192,6 @@ void ChannelStartWindowScreen::ReadTheChannel()
 {
     const SavedSlot& savedSlot = services.wiiMenu.channels.SlotAt(slot);
     isDiscChannel = savedSlot.kind == SavedSlotKind::DiscChannel;
-    isOldVersion = false;
     makerCode = 0;
     banner.reset();
     if (isDiscChannel)
@@ -280,8 +262,6 @@ void ChannelStartWindowScreen::BuildTheFrame()
 
     changeIn = frame->BindAnimationToPane(std::string(ChangeInAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
     changeOut = frame->BindAnimationToPane(std::string(ChangeOutAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
-    wordsOfStartOut = frame->BindAnimation(std::string(WordsOutAnimation), WordsOfStartGroup, Layout::PlaybackMode::PlayOnce);
-    wordsOfStartIn = frame->BindAnimation(std::string(WordsInAnimation), WordsOfStartGroup, Layout::PlaybackMode::PlayOnce);
 
     if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
         UseTheWideFrame();
@@ -536,10 +516,6 @@ void ChannelStartWindowScreen::ChangeChannel(int direction)
     slot = NeighborChannel(services.wiiMenu.channels, slot, direction);
     services.wiiMenu.pressedChannel = slot;
 
-    areWordsOfStartChanging = IsOldChannelAt(services.wiiMenu, slot) != isOldVersion;
-    if (areWordsOfStartChanging)
-        frame->StartAnimation(wordsOfStartOut);
-
     frame->StartAnimation(changeIn);
     state = StartWindowState::LeavingTheOldChannel;
 }
@@ -547,8 +523,7 @@ void ChannelStartWindowScreen::ChangeChannel(int direction)
 // When ChangeIn has played, the banner of the new channel takes the place of the old one (0x813B6778).
 void ChannelStartWindowScreen::RunLeavingTheOldChannel()
 {
-    bool isChanging = frame->IsAnimationPlaying(changeIn) || frame->IsAnimationPlaying(wordsOfStartOut);
-    if (isChanging)
+    if (frame->IsAnimationPlaying(changeIn))
         return;
 
     services.sounds.StopBannerSound();
@@ -564,13 +539,6 @@ void ChannelStartWindowScreen::ShowTheNewChannel()
     bannerLayout.reset();
     ReadTheChannel();
     BuildTheBanner();
-
-    if (areWordsOfStartChanging)
-    {
-        startButtonText = services.messages.Find(isOldVersion ? UpdateMessage : StartMessage);
-        frame->SetText(WordsOfStartPane, startButtonText);
-        frame->StartAnimation(wordsOfStartIn);
-    }
 
     if (couldStart && !CanStart())
         frame->StartAnimation(grayStart);

@@ -159,12 +159,9 @@ private:
     std::size_t grayStart = 0;
     std::size_t brightStart = 0;
 
-    // The change to another channel, and the words of Start fading out and in when they change between Start and Update.
+    // The change to another channel. WeeOS has no system update, so the words of Start never change to Update.
     std::size_t changeIn = 0;
     std::size_t changeOut = 0;
-    std::size_t wordsOfStartOut = 0;
-    std::size_t wordsOfStartIn = 0;
-    bool areWordsOfStartChanging = false;
 
     // The banner plays its start once and then its loop, or the first animation of its script, from the moment it is started.
     std::optional<std::size_t> bannerStart;
