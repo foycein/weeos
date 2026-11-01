@@ -13,8 +13,9 @@ namespace
 
 constexpr std::u16string_view QuestionText =
     u"Welcome to WeeOS!\n"
-    u"Do you have a Wii? Import it to bring its Miis, saves, channels and Message Board here. "
-    u"You need its NAND backup made with BootMii (nand.bin).";
+    u"Do you have your own Wii? Import it\n"
+    u"from its BootMii backup to bring its\n"
+    u"Miis, saves and channels.";
 constexpr std::u16string_view ImportButtonText = u"Import your Wii";
 constexpr std::u16string_view SkipButtonText = u"Skip";
 constexpr std::u16string_view ImportingText = u"Importing your Wii...\nPlease wait.";
@@ -83,7 +84,7 @@ bool ConsoleImportScreen::RunClosing()
 void ConsoleImportScreen::Ask()
 {
     DialogRequest request;
-    request.layout = DialogLayout::WideTwoButtons;
+    request.layout = DialogLayout::TwoButtons;
     request.message = QuestionText;
     request.buttonAText = ImportButtonText;
     request.buttonBText = SkipButtonText;
