@@ -149,7 +149,11 @@ std::optional<std::string> ConsoleImporter::TakeFailure()
 
 bool ConsoleImporter::TakeFinishedImport()
 {
-    if (!job.valid() || job.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+    if (!job.valid())
+        return false;
+
+    bool isDone = job.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    if (!isDone)
         return false;
 
     failure = job.get();

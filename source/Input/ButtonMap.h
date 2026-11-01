@@ -35,6 +35,8 @@ struct KeyBinding
 {
     int virtualKeyCode;
     ButtonMask button;
+
+    bool operator==(const KeyBinding&) const = default;
 };
 
 // While the mouse button is down, the button of the virtual remote is down.

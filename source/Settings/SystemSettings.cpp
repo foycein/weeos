@@ -183,10 +183,10 @@ void WriteText(Formats::Bytes& bytes, std::size_t offset, const std::u16string& 
 
 }
 
-SystemSettings::SystemSettings(Ios::FileSystemService& fileSystem, const Ios::Caller& caller)
-    : fileSystem(fileSystem)
-    , caller(caller)
-    , configuration(ReadConfiguration(fileSystem, caller))
+SystemSettings::SystemSettings(Ios::FileSystemService& fileSystemToUse, const Ios::Caller& menuCaller)
+    : fileSystem(fileSystemToUse)
+    , caller(menuCaller)
+    , configuration(ReadConfiguration(fileSystemToUse, menuCaller))
 {
 }
 

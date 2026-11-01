@@ -164,7 +164,11 @@ std::string_view YesOrNo(bool value)
 void ReadWindowSide(std::string_view value, std::uint32_t& side)
 {
     std::optional<int> number = ReadWholeNumber(value);
-    if (!number || *number < static_cast<int>(SmallestWindowSide) || *number > static_cast<int>(LargestWindowSide))
+    if (!number)
+        return;
+
+    bool isPossibleSide = *number >= static_cast<int>(SmallestWindowSide) && *number <= static_cast<int>(LargestWindowSide);
+    if (!isPossibleSide)
         return;
 
     side = static_cast<std::uint32_t>(*number);
@@ -274,23 +278,6 @@ int DefaultKeyOfButton(Input::ButtonMask button)
     return NoKey;
 }
 
-}
-
-bool PcSettings::operator==(const PcSettings& other) const
-{
-    if (keyMap.size() != other.keyMap.size())
-        return false;
-
-    for (std::size_t index = 0; index < keyMap.size(); ++index)
-    {
-        if (keyMap[index].virtualKeyCode != other.keyMap[index].virtualKeyCode || keyMap[index].button != other.keyMap[index].button)
-            return false;
-    }
-
-    return windowWidth == other.windowWidth && windowHeight == other.windowHeight && windowLeft == other.windowLeft
-        && windowTop == other.windowTop && isFullscreen == other.isFullscreen
-        && audioDevice == other.audioDevice && volume == other.volume && areMouseButtonsSwapped == other.areMouseButtonsSwapped
-        && serverAddress == other.serverAddress;
 }
 
 PcSettings DefaultPcSettings()

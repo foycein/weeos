@@ -48,7 +48,7 @@ class SystemSettings
 public:
     // Reads the file. Throws a SettingsError when it cannot be read or is not a settings file.
     // The file system must outlive this object.
-    SystemSettings(Ios::FileSystemService& fileSystem, const Ios::Caller& caller);
+    SystemSettings(Ios::FileSystemService& fileSystemToUse, const Ios::Caller& menuCaller);
 
     // Writes all settings to the file. Throws a SettingsError when that fails.
     void Save();

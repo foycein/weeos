@@ -7,9 +7,11 @@
 #include "Formats/SettingTextFile.h"
 #include "Formats/SystemConfiguration.h"
 #include "Ios/FileSystem/HostNames.h"
+#include "Ios/FileSystem/NandPreparation.h"
 #include "Ios/FileSystem/NewEntryDefaults.h"
 #include "Ios/Identity/IdentityFiles.h"
 #include "Ios/IosServices.h"
+#include "Settings/Countries.h"
 #include "Settings/SystemSettings.h"
 
 #include <algorithm>
@@ -29,7 +31,7 @@ constexpr std::string_view CertificatesFileName = "certificates.bin";
 constexpr std::string_view NewNandFolderEnding = " (being made)";
 
 // The System Menu runs as this user and group; the files it keeps belong to it, as on the reference console.
-constexpr Ios::Caller SystemMenuOwner = {0x1000, 1};
+constexpr Ios::Caller SystemMenuOwner = {Ios::SystemMenuUserId, Ios::SystemMenuGroupId};
 
 // The network configuration module owns its folders and its file (user and group 13 on the reference console).
 constexpr Ios::Caller NetworkModuleOwner = {13, 13};
@@ -89,10 +91,8 @@ constexpr NewSetting NewSettings[] = {
 };
 
 constexpr std::string_view AddressSettingName = "IPL.SADR";
-constexpr Formats::Byte UnitedStatesCountryCode = 49;
 constexpr std::string_view IdleSettingName = "IPL.IDL";
 constexpr Formats::Byte IdleSettingByte = 1;
-constexpr std::u16string_view NewNickname = u"WeeOS";
 
 void Require(const Ios::Result<void>& result, std::string_view step)
 {
@@ -113,7 +113,8 @@ Ios::NandPath MakePath(std::string_view text)
 void MakeDirectory(Ios::FileSystemService& fileSystem, std::string_view path, const Ios::Caller& owner)
 {
     Ios::NandPath nandPath = MakePath(path);
-    Require(fileSystem.CreateDirectory(nandPath, Ios::ReadWriteForEveryone, Ios::NoEntryFlags, Ios::SuperUserCaller), std::format("making {}", path));
+    Ios::Result<void> created = fileSystem.CreateDirectory(nandPath, Ios::ReadWriteForEveryone, Ios::NoEntryFlags, Ios::SuperUserCaller);
+    Require(created, std::format("making {}", path));
     Ios::EntryAttributes attributes{owner.userId, owner.groupId, Ios::ReadWriteForEveryone, Ios::NoEntryFlags};
     Require(fileSystem.SetAttributes(nandPath, attributes, Ios::SuperUserCaller), std::format("giving {} to its owner", path));
 }
@@ -207,7 +208,7 @@ Formats::Bytes MakeSystemConfiguration()
     ResetPersonalSettings(configuration);
 
     Formats::Setting* address = FindSetting(configuration, AddressSettingName);
-    address->bytes.front() = UnitedStatesCountryCode;
+    address->bytes.front() = Settings::UnitedStatesCode;
 
     Formats::Setting* idle = FindSetting(configuration, IdleSettingName);
     std::fill(idle->bytes.begin(), idle->bytes.end(), IdleSettingByte);
@@ -228,13 +229,14 @@ void WriteSystemFiles(Ios::FileSystemService& fileSystem, const std::filesystem:
 
     MakeDirectory(fileSystem, "/shared2/sys/net", NetworkModuleOwner);
     MakeDirectory(fileSystem, "/shared2/sys/net/02", NetworkModuleOwner);
-    WriteFile(fileSystem, "/shared2/sys/net/02/config.dat", MakeWeeOSNetworkConfigurationFile(), NetworkModuleOwner, Ios::ReadWriteForEveryone);
+    Formats::Bytes networkConfiguration = MakeWeeOSNetworkConfigurationFile();
+    WriteFile(fileSystem, "/shared2/sys/net/02/config.dat", networkConfiguration, NetworkModuleOwner, Ios::ReadWriteForEveryone);
 }
 
 void GiveTheConsoleItsName(Ios::FileSystemService& fileSystem)
 {
     Settings::SystemSettings settings(fileSystem, SystemMenuOwner);
-    settings.SetNickname(std::u16string(NewNickname));
+    settings.SetNickname(std::u16string(Settings::FreshConsoleNickname));
     settings.Save();
 }
 

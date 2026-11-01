@@ -33,7 +33,9 @@ bool Covers(const ImportRule& rule, const std::vector<std::string>& pathNames)
 
     for (std::size_t nameNumber = 0; nameNumber < patternNames.size(); ++nameNumber)
     {
-        if (patternNames[nameNumber] != AnyName && patternNames[nameNumber] != pathNames[nameNumber])
+        const std::string& patternName = patternNames[nameNumber];
+        bool nameMatches = patternName == AnyName || patternName == pathNames[nameNumber];
+        if (!nameMatches)
             return false;
     }
     return true;
@@ -121,8 +123,11 @@ std::vector<std::string> SplitPath(std::string_view path)
         }
 
         std::size_t nameEnd = path.find(PathSeparator);
+        if (nameEnd == std::string_view::npos)
+            nameEnd = path.size();
+
         names.emplace_back(path.substr(0, nameEnd));
-        path.remove_prefix(nameEnd == std::string_view::npos ? path.size() : nameEnd);
+        path.remove_prefix(nameEnd);
     }
     return names;
 }

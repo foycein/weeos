@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 
 #include <algorithm>
+#include <cmath>
 #include <exception>
 #include <iterator>
 
@@ -58,6 +59,7 @@ constexpr int FolderCornerSize = 14;
 constexpr int FrameWidth = 2;
 constexpr int FocusFrameWidth = 3;
 constexpr int TextMargin = 14;
+constexpr int LongestButtonLabel = 64;
 
 constexpr int FirstButtonId = 1001;
 constexpr int SecondButtonId = 1002;
@@ -68,12 +70,17 @@ constexpr UINT ProgressMessage = WM_APP + 1;
 constexpr UINT InstalledMessage = WM_APP + 2;
 constexpr int ProgressSteps = 1000;
 
+int MixPart(int first, int second, double shareOfSecond)
+{
+    double mixed = first + (second - first) * shareOfSecond;
+    return static_cast<int>(std::lround(mixed));
+}
+
 COLORREF Mix(COLORREF firstColor, COLORREF secondColor, double shareOfSecond)
 {
-    auto mixPart = [shareOfSecond](int first, int second) { return static_cast<int>(first + (second - first) * shareOfSecond + 0.5); };
-    int red = mixPart(GetRValue(firstColor), GetRValue(secondColor));
-    int green = mixPart(GetGValue(firstColor), GetGValue(secondColor));
-    int blue = mixPart(GetBValue(firstColor), GetBValue(secondColor));
+    int red = MixPart(GetRValue(firstColor), GetRValue(secondColor), shareOfSecond);
+    int green = MixPart(GetGValue(firstColor), GetGValue(secondColor), shareOfSecond);
+    int blue = MixPart(GetBValue(firstColor), GetBValue(secondColor), shareOfSecond);
     return RGB(red, green, blue);
 }
 
@@ -95,7 +102,8 @@ void FillGradient(HDC deviceContext, const RECT& area, COLORREF startColor, COLO
 {
     TRIVERTEX corners[] = {Corner(area.left, area.top, startColor), Corner(area.right, area.bottom, endColor)};
     GRADIENT_RECT rectangle = {0, 1};
-    GradientFill(deviceContext, corners, 2, &rectangle, 1, direction);
+    ULONG rectangleCount = 1;
+    GradientFill(deviceContext, corners, static_cast<ULONG>(std::size(corners)), &rectangle, rectangleCount, direction);
 }
 
 void DrawRoundedBox(HDC deviceContext, const RECT& area, int cornerSize, COLORREF fill, COLORREF frame, int frameWidth)
@@ -133,8 +141,9 @@ std::wstring WideText(const char* text)
 
 }
 
-SetupWindow::SetupWindow(SetupKind kind, std::filesystem::path installFolder)
-    : kind(kind), installFolder(std::move(installFolder))
+SetupWindow::SetupWindow(SetupKind setupKind, std::filesystem::path chosenInstallFolder)
+    : kind(setupKind)
+    , installFolder(std::move(chosenInstallFolder))
 {
     page = kind == SetupKind::Install ? Page::ChooseFolder : Page::AskToRemove;
     CreateTheWindow();
@@ -352,8 +361,9 @@ LRESULT SetupWindow::HandleMessage(UINT message, WPARAM firstParameter, LPARAM s
         dotsPerInch = HIWORD(firstParameter);
         MakeFonts();
         const RECT* suggested = reinterpret_cast<const RECT*>(secondParameter);
-        SetWindowPos(window, nullptr, suggested->left, suggested->top, suggested->right - suggested->left, suggested->bottom - suggested->top,
-            SWP_NOZORDER | SWP_NOACTIVATE);
+        int suggestedWidth = suggested->right - suggested->left;
+        int suggestedHeight = suggested->bottom - suggested->top;
+        SetWindowPos(window, nullptr, suggested->left, suggested->top, suggestedWidth, suggestedHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         LayOut();
         return 0;
     }
@@ -530,7 +540,8 @@ void SetupWindow::Paint(HDC deviceContext)
     DrawBackground(pictureContext, clientArea, 0);
     DrawLogo(pictureContext);
     DrawWords(pictureContext);
-    if (page == Page::ChooseFolder || (page == Page::Removed && consoleWasKept))
+    bool showsFolder = page == Page::ChooseFolder || (page == Page::Removed && consoleWasKept);
+    if (showsFolder)
         DrawFolderBox(pictureContext);
     if (page == Page::Installing)
         DrawProgressBar(pictureContext);
@@ -611,7 +622,7 @@ void SetupWindow::DrawButton(const DRAWITEMSTRUCT& drawing)
     int height = area.bottom - area.top;
     DrawRoundedBox(deviceContext, area, height, fill, frame, frameWidth);
 
-    wchar_t label[64] = {};
+    wchar_t label[LongestButtonLabel] = {};
     GetWindowTextW(drawing.hwndItem, label, static_cast<int>(std::size(label)));
     DrawTextIn(deviceContext, label, area, buttonFont, TextGray, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 }

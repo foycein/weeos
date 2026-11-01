@@ -24,9 +24,19 @@ BackgroundBottom = (222, 236, 247)
 FrameColor = (170, 200, 222)
 WiiBlue = (52, 190, 237)
 
+Opaque = (255,)
+
+# The sizes and places of the parts of the tile, as parts of its side.
 CornerRadiusPart = 0.2
 FramePart = 0.03
 MarginPart = 0.04
+LogoLineWidthPart = 0.42
+LogoLineHeightPart = 0.02
+LetterSizePart = 0.66
+LetterMiddlePart = 0.47
+LogoSizePart = 0.3
+LogoMiddlePart = 0.45
+LogoLineTopPart = 0.64
 
 
 def Mix(firstColor, secondColor, shareOfSecond):
@@ -41,7 +51,7 @@ def DrawBackground(side):
     background = Image.new("RGBA", (side, side))
     draw = ImageDraw.Draw(background)
     for row in range(side):
-        draw.line([(0, row), (side, row)], fill=BackgroundColorAt(row, side) + (255,))
+        draw.line([(0, row), (side, row)], fill=BackgroundColorAt(row, side) + Opaque)
     return background
 
 
@@ -56,20 +66,20 @@ def DrawTile(side):
     tile = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     tile.paste(DrawBackground(side), (0, 0), shape)
     frameWidth = max(1, round(side * FramePart))
-    ImageDraw.Draw(tile).rounded_rectangle(tileBox, radius=radius, outline=FrameColor + (255,), width=frameWidth)
+    ImageDraw.Draw(tile).rounded_rectangle(tileBox, radius=radius, outline=FrameColor + Opaque, width=frameWidth)
     return tile
 
 
 def DrawCenteredText(tile, text, fontSize, middleY):
     draw = ImageDraw.Draw(tile)
     font = ImageFont.truetype(str(FontPath), fontSize)
-    draw.text((tile.width / 2, middleY), text, font=font, fill=WiiBlue + (255,), anchor="mm")
+    draw.text((tile.width / 2, middleY), text, font=font, fill=WiiBlue + Opaque, anchor="mm")
 
 
 def DrawLogoLine(tile, middleY):
     side = tile.width
-    lineWidth = side * 0.42
-    lineHeight = max(1, round(side * 0.02))
+    lineWidth = side * LogoLineWidthPart
+    lineHeight = max(1, round(side * LogoLineHeightPart))
     left = (side - lineWidth) / 2
     background = BackgroundColorAt(round(middleY), side)
     draw = ImageDraw.Draw(tile)
@@ -78,17 +88,17 @@ def DrawLogoLine(tile, middleY):
         distanceFromMiddle = abs(step - steps / 2) / (steps / 2)
         color = Mix(WiiBlue, background, distanceFromMiddle)
         x = left + step
-        draw.line([(x, middleY), (x, middleY + lineHeight)], fill=color + (255,))
+        draw.line([(x, middleY), (x, middleY + lineHeight)], fill=color + Opaque)
 
 
 def DrawIcon(size):
     side = size * DrawingScale
     tile = DrawTile(side)
     if size <= LargestSmallSize:
-        DrawCenteredText(tile, "W", round(side * 0.66), side * 0.47)
+        DrawCenteredText(tile, "W", round(side * LetterSizePart), side * LetterMiddlePart)
     else:
-        DrawCenteredText(tile, "WeeOS", round(side * 0.3), side * 0.45)
-        DrawLogoLine(tile, side * 0.64)
+        DrawCenteredText(tile, "WeeOS", round(side * LogoSizePart), side * LogoMiddlePart)
+        DrawLogoLine(tile, side * LogoLineTopPart)
     return tile.resize((size, size), Image.LANCZOS)
 
 

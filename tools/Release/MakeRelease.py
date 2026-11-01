@@ -48,6 +48,8 @@ ConsoleNames = ["NAND", "Identity", "WeeOS.settings.txt"]
 # Names that must never be in the clean source. external/Chromium (the WebView2 SDK) is part of it: the source does not build without it.
 NamesNeverInTheSource = ["assets", "reference", "Worktrees", "data", "out", "build", "build-release"]
 
+BestZipCompression = 9
+
 
 def ReadVersion():
     match = re.search(r'WeeOSVersion = u"([^"]+)"', VersionHeader.read_text(encoding="utf-8"))
@@ -101,7 +103,7 @@ def StageProgramFolder(programFolder):
 # The zip holds the folder WeeOS, so that unpacking it anywhere gives one folder. Empty folders (SDCard) get an entry of their own.
 def WriteZip(programFolder, zipPath):
     RemoveIfThere(zipPath)
-    with zipfile.ZipFile(zipPath, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+    with zipfile.ZipFile(zipPath, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=BestZipCompression) as archive:
         archive.write(programFolder, ProgramFolderName + "/")
         for path in sorted(programFolder.rglob("*")):
             nameInZip = ProgramFolderName + "/" + path.relative_to(programFolder).as_posix()
