@@ -1,5 +1,6 @@
 #include "Settings/PcSettings.h"
 
+#include "Settings/PcGamepad.h"
 #include "Settings/PcKeys.h"
 #include "Settings/SettingsError.h"
 
@@ -24,9 +25,20 @@ constexpr std::string_view AudioDeviceName = "AudioDevice";
 constexpr std::string_view VolumeName = "Volume";
 constexpr std::string_view MouseButtonsSwappedName = "MouseButtonsSwapped";
 constexpr std::string_view ServerAddressName = "Server";
+constexpr std::string_view GamepadPointerName = "GamepadPointer";
+constexpr std::string_view JoyConPointerName = "JoyConPointer";
+constexpr std::string_view PointerSpeedName = "PointerSpeed";
+
+constexpr std::string_view LeftStickText = "Left Stick";
+constexpr std::string_view RightStickText = "Right Stick";
+constexpr std::string_view TurningText = "Turning";
+constexpr std::string_view StickText = "Stick";
 
 // The key of a button is the line "Key <name of the button>", for example "Key HOME = Home".
 constexpr std::string_view KeyNamePrefix = "Key ";
+
+// The gamepad button of a button of the remote is the line "Gamepad <name of the button>", for example "Gamepad HOME = Left Bumper".
+constexpr std::string_view GamepadNamePrefix = "Gamepad ";
 
 constexpr std::string_view YesText = "yes";
 constexpr std::string_view NoText = "no";
@@ -179,6 +191,66 @@ std::string KeyLineName(const RemoteButtonName& button)
     return std::string(KeyNamePrefix) + Utf8FromText(button.name);
 }
 
+std::string GamepadLineName(const RemoteButtonName& button)
+{
+    return std::string(GamepadNamePrefix) + Utf8FromText(button.name);
+}
+
+std::string_view PointerStickText(Input::PointerStick stick)
+{
+    return stick == Input::PointerStick::Right ? RightStickText : LeftStickText;
+}
+
+std::string_view JoyConPointerText(Input::JoyConPointer pointer)
+{
+    return pointer == Input::JoyConPointer::Stick ? StickText : TurningText;
+}
+
+// "Gamepad A = Right Trigger": the button and the gamepad button, both by the names the pages show.
+void ReadGamepadLine(std::string_view name, std::string_view value, PcSettings& settings)
+{
+    for (const RemoteButtonName& button : AssignableButtons())
+    {
+        if (name != GamepadLineName(button))
+            continue;
+
+        std::optional<GamepadButtonName> gamepadButton = FindGamepadButtonByName(TextFromUtf8(value));
+        if (gamepadButton)
+            SetGamepadButtonOf(settings.controllers, button.button, gamepadButton->gamepadButton);
+
+        return;
+    }
+}
+
+void ReadControllerLine(std::string_view name, std::string_view value, PcSettings& settings)
+{
+    Input::ControllerSettings& controllers = settings.controllers;
+    if (name == GamepadPointerName)
+    {
+        if (value == LeftStickText)
+            controllers.gamepadPointerStick = Input::PointerStick::Left;
+        if (value == RightStickText)
+            controllers.gamepadPointerStick = Input::PointerStick::Right;
+    }
+    else if (name == JoyConPointerName)
+    {
+        if (value == TurningText)
+            controllers.joyConPointer = Input::JoyConPointer::Gyroscope;
+        if (value == StickText)
+            controllers.joyConPointer = Input::JoyConPointer::Stick;
+    }
+    else if (name == PointerSpeedName)
+    {
+        std::optional<int> speed = ReadWholeNumber(value);
+        if (speed && *speed >= Input::SlowestPointerSpeed && *speed <= Input::FastestPointerSpeed)
+            controllers.pointerSpeed = *speed;
+    }
+    else
+    {
+        ReadGamepadLine(name, value, settings);
+    }
+}
+
 // A key that a line gives one button is taken away from any other button that had it until then (by default, or by an earlier
 // line of a file changed by hand), so two buttons never share a key.
 void GiveKeyToOnlyThisButton(PcSettings& settings, Input::ButtonMask button, int virtualKeyCode)
@@ -247,9 +319,9 @@ void ReadLine(std::string_view name, std::string_view value, PcSettings& setting
     {
         settings.serverAddress = std::string(value);
     }
-    else
+    else if (!ReadKeyLine(name, value, settings))
     {
-        ReadKeyLine(name, value, settings);
+        ReadControllerLine(name, value, settings);
     }
 }
 
@@ -284,7 +356,10 @@ PcSettings DefaultPcSettings()
 {
     PcSettings settings;
     for (const RemoteButtonName& button : AssignableButtons())
+    {
         SetKeyOfButton(settings, button.button, DefaultKeyOfButton(button.button));
+        SetGamepadButtonOf(settings.controllers, button.button, GamepadButtonOf(settings.controllers, button.button));
+    }
 
     return settings;
 }
@@ -370,6 +445,17 @@ std::string WritePcSettingsText(const PcSettings& settings)
         std::optional<PcKey> key = FindKeyByCode(KeyOfButton(settings, button.button));
         std::u16string_view keyName = key ? key->name : u"None";
         text += std::format("{} = {}\n", KeyLineName(button), Utf8FromText(keyName));
+    }
+
+    const Input::ControllerSettings& controllers = settings.controllers;
+    text += std::format("{} = {}\n", GamepadPointerName, PointerStickText(controllers.gamepadPointerStick));
+    text += std::format("{} = {}\n", JoyConPointerName, JoyConPointerText(controllers.joyConPointer));
+    text += std::format("{} = {}\n", PointerSpeedName, controllers.pointerSpeed);
+    for (const RemoteButtonName& button : AssignableButtons())
+    {
+        std::optional<GamepadButtonName> gamepadButton = FindGamepadButton(GamepadButtonOf(controllers, button.button));
+        std::u16string_view gamepadButtonName = gamepadButton ? gamepadButton->name : u"None";
+        text += std::format("{} = {}\n", GamepadLineName(button), Utf8FromText(gamepadButtonName));
     }
 
     return text;

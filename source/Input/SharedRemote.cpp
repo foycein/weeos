@@ -35,6 +35,8 @@ void SharedRemote::SetRealSource(RemoteSource* source)
     real = source;
     lastRealState.reset();
     lastRealPointer.reset();
+    if (real != nullptr)
+        real->SetPlayerLeds(playerLeds);
 }
 
 DeviceKind SharedRemote::Probe() const
@@ -120,6 +122,7 @@ void SharedRemote::SetRumble(bool shouldRumble)
 
 void SharedRemote::SetPlayerLeds(const PlayerLeds& leds)
 {
+    playerLeds = leds;
     mouse.SetPlayerLeds(leds);
     if (real != nullptr)
         real->SetPlayerLeds(leds);

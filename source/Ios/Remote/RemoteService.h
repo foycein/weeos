@@ -42,7 +42,7 @@ struct RemoteEvent
 // its battery, and it takes the outputs of the programs: rumble, the four lights and the speaker.
 //
 // The virtual remote of the Input part is attached to channel 0 from the start, so a remote is connected as soon as the service exists.
-// The other channels stay empty until a device is attached. Real Wii Remotes, Joy-Cons and gamepads plug in the same way later.
+// The other channels stay empty until a device is attached. The program attaches the real Wii Remotes, Joy-Cons and gamepads the same way.
 //
 // The service is polled the way the menu polls WPAD and KPAD: in every frame it probes the channels and reads their new states.
 // The devices cannot call the service. A connection that changes is noticed when the channel is probed or read next, and the event comes then.

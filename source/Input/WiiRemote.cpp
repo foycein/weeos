@@ -129,6 +129,9 @@ void WiiRemote::SetSensorBarPosition(SensorBarPosition position)
 
 void WiiRemote::SetRumble(bool shouldRumble)
 {
+    if (shouldRumble == isRumbling)
+        return;
+
     isRumbling = shouldRumble;
     if (linkState == LinkState::Connected)
         Send(MakeRumbleReport());
@@ -189,7 +192,15 @@ void WiiRemote::HandleReport(const ReportBytes& report)
     else if (std::optional<WiiRemoteData> data = ReadDataReport(report))
         HandleData(*data);
     else if (std::optional<ButtonMask> buttons = ReadButtons(report))
-        NoticeButtons(*buttons);
+        NoticeButtonsOnly(*buttons);
+}
+
+// The report of the buttons alone, which a remote sends before it is set up and while it sleeps. The Nunchuk's buttons stay.
+void WiiRemote::NoticeButtonsOnly(ButtonMask buttons)
+{
+    hasNewData = true;
+    ButtonMask nunchukButtons = latestButtons & (RemoteButtons::NunchukZ | RemoteButtons::NunchukC);
+    NoticeButtons(buttons | nunchukButtons);
 }
 
 // A remote that sends its status without being asked stops its data reports until it is told the reporting mode again (WiiBrew).

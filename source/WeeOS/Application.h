@@ -3,7 +3,9 @@
 #include "Boot/ConsoleStartup.h"
 #include "Graphics/FramePacer.h"
 #include "Graphics/VulkanGraphicsDevice.h"
+#include "Input/RealControllers.h"
 #include "Platform/FileLocations.h"
+#include "Platform/InputDevices.h"
 #include "Platform/PreciseTimer.h"
 #include "Platform/RegionalSettings.h"
 #include "Platform/Window.h"
@@ -47,6 +49,9 @@ struct HostEnvironment
     // Whether the PC is connected: the console is online through it (docs/DECISIONS.md, Online).
     Ios::PcConnectionCheck isPcConnected = Ios::IsWindowsConnected;
     Platform::WindowVisibility windowVisibility = Platform::WindowVisibility::Hidden;
+
+    // The controllers of the PC: Wii Remotes, Joy-Cons and gamepads, as Windows sees them. A test gives devices of its own.
+    std::shared_ptr<Platform::InputDeviceAccess> inputDevices = std::make_shared<Platform::WindowsInputDevices>();
 };
 
 // WeeOS.exe: the console starts, a window opens and the System Menu runs in it. A NAND folder without a console gets a new console
@@ -54,7 +59,8 @@ struct HostEnvironment
 // channel, IOS restarts with the IOS of the channel and the channel's program runs in the window, until it asks for the Wii Menu
 // (Boot::ConsoleStartup::LaunchTitle).
 // The mouse over the window is the hand of remote 1: the left button is A, the right one B, the wheel Plus and Minus; the keys of the
-// PC press the other buttons (docs/DECISIONS.md, PC controls). Closing the window asks "Turn off WeeOS?" and Yes is the POWER button.
+// PC press the other buttons (docs/DECISIONS.md, PC controls). Real controllers take the remotes 1 to 4 as they connect; the first one
+// shares remote 1 with the mouse and the keys. Closing the window asks "Turn off WeeOS?" and Yes is the POWER button.
 // The window starts where the settings of the PC say, in fullscreen unless they say otherwise, and they remember where the user puts it.
 class Application
 {
@@ -122,6 +128,7 @@ private:
     void RememberWindowPlace();
     void WaitForTheNextStepOfAHiddenWindow();
     void RunDueSteps();
+    void RunStep();
     void CarryOutRequestsOfTheMenu();
     void ResetConsole();
     void LaunchTitle(Ios::TitleId titleId);
@@ -142,6 +149,8 @@ private:
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;
     ProgramSound sound;
+    Input::RealControllers controllers;
+    double controllerSeconds = 0;
     std::unique_ptr<Session> session;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;

@@ -185,8 +185,9 @@ private:
     {
         ResetEvent(readOverlapped.hEvent);
         DWORD bufferBytes = static_cast<DWORD>(readBuffer.size());
-        bool hasStarted = ReadFile(device.Get(), readBuffer.data(), bufferBytes, nullptr, &readOverlapped) || GetLastError() == ERROR_IO_PENDING;
-        if (!hasStarted)
+        bool hasFinishedAtOnce = ReadFile(device.Get(), readBuffer.data(), bufferBytes, nullptr, &readOverlapped);
+        bool isUnderWay = !hasFinishedAtOnce && GetLastError() == ERROR_IO_PENDING;
+        if (!hasFinishedAtOnce && !isUnderWay)
         {
             isOpen = false;
             return;

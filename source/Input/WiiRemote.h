@@ -68,6 +68,7 @@ private:
     void HandleMemoryData(const MemoryData& data);
     void HandleData(const WiiRemoteData& data);
     void NoticeButtons(ButtonMask buttons);
+    void NoticeButtonsOnly(ButtonMask buttons);
     void NoticeClassicButtons(ButtonMask buttons);
     void NoticeMotion(Formats::Vector3 acceleration);
 

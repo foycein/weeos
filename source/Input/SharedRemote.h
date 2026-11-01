@@ -18,6 +18,7 @@ public:
     explicit SharedRemote(VirtualRemote& virtualRemote);
 
     // The real controller on remote 1, or null for the mouse and keyboard alone. It must stay alive while it is set.
+    // A new controller gets the lights of remote 1 at once: the channel was connected before it came, so no connection lights them.
     void SetRealSource(RemoteSource* source);
 
     DeviceKind Probe() const override;
@@ -39,6 +40,7 @@ private:
     std::optional<Formats::Vector2> lastMousePointer;
     std::optional<Formats::Vector2> lastRealPointer;
     bool mouseMovedLast = false;
+    PlayerLeds playerLeds = {true, false, false, false};
     ButtonMask buttonsHeldAtLastRead = 0;
 };
 

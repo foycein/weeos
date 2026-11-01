@@ -36,6 +36,8 @@ private:
     void BuildControls(PageBuilder& builder);
     void BuildKeys(PageBuilder& builder);
     void BuildMouse(PageBuilder& builder);
+    void BuildControllers(PageBuilder& builder);
+    void BuildGamepadButtons(PageBuilder& builder);
 
     // The arrows up and down of a list that has more rows than one page holds.
     void AddListArrows(PageBuilder& builder, int& shownListPage, int listPageCount);
@@ -46,6 +48,7 @@ private:
     void ToggleRumble();
     void ChangeVolume(int change);
     void ChangeKey(Input::ButtonMask button, int change);
+    void ChangeGamepadButton(Input::ButtonMask button);
 
     PageNavigator& navigator;
     Settings::SystemSettings& settings;
@@ -57,6 +60,7 @@ private:
     std::vector<std::u16string> audioDevices;
     int shownDevicePage = 0;
     int shownKeyPage = 0;
+    int shownGamepadPage = 0;
 };
 
 }
