@@ -2,6 +2,7 @@
 
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/Fader.h"
+#include "SystemMenu/FrontPanel.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
@@ -143,6 +144,7 @@ bool HealthAndSafetyScreen::RunClosing()
         return false;
 
     services.cursors.SetVisible(true);
+    services.frontPanel.NoteMenuReached();
     GoToRoot(ScreenId::MainFrame, 0);
     return true;
 }

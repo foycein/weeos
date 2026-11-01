@@ -47,6 +47,10 @@ constexpr int RouterToSettingsCountryPage = 1;
 // The screen that shows first, as the original chooses it (0x813DA8FC). A cold start with everything set up shows Health and Safety.
 FirstScreen ChooseFirstScreen(const StartFacts& facts);
 
+// True when RESET leads back to the Wii Menu from the start on: every first screen but Health and Safety and the first setup
+// (0x813DA8FC sets the flag of the front panel for them). After those two, the front panel learns it when they end.
+bool IsMenuReachedAtStart(ScreenId firstScreen);
+
 // Reads the facts from the files of the NAND: the settings, the state file of the System Menu, the boot information and the record of
 // an expired title. The record is deleted when the menu does not start after a title, as the original does.
 StartFacts ReadStartFacts(NandFiles& nand, MenuSettings& settings);

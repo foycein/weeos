@@ -22,6 +22,10 @@ public:
 
     // Deletes the file. Nothing happens when it is not there. Throws a MenuError when it is there and cannot be deleted.
     virtual void DeleteFile(std::string_view path) = 0;
+
+    // Makes the file anew with these bytes, readable and writable by everybody, as the menu makes its files. Throws a MenuError when
+    // the NAND does not take it.
+    virtual void WriteFile(std::string_view path, Formats::ByteView bytes) = 0;
 };
 
 }

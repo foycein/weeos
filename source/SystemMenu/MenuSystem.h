@@ -50,11 +50,14 @@ public:
     // Draws the picture into the picture that is open, for example an offscreen picture.
     void DrawScene();
 
-    // The menu stops and shows the text of the reason, until the console is switched off or reset.
+    // The menu stops and shows the text of the reason, until the console is switched off.
     void ShowFatalError(FatalError reason);
 
     // What went wrong, when an error ended the menu. For the log of the program.
     const std::optional<std::string>& FatalErrorMessage() const;
+
+    // The title that the console should start now. The program ends the menu and launches it. Nothing most of the time.
+    std::optional<Ios::TitleId> TakeTitleToLaunch();
 
     MenuServices& Services();
 

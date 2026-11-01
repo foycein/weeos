@@ -14,6 +14,7 @@ class CursorManager;
 class DialogManager;
 class Display;
 class Fader;
+class FrontPanel;
 class InputManager;
 class MenuClock;
 class MenuFiles;
@@ -43,6 +44,9 @@ struct MenuServices
 
     // Where the password dialog of the parental controls leaves its answer.
     ParentalAnswer& parentalAnswer;
+
+    // The POWER and RESET buttons. A screen can press them too, and see whether one was pressed.
+    FrontPanel& frontPanel;
 };
 
 }

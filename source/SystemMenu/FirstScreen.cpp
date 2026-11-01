@@ -1,8 +1,9 @@
 #include "SystemMenu/FirstScreen.h"
 
+#include "SystemMenu/MenuStateFile.h"
+
 #include "Formats/FormatError.h"
 #include "Formats/NandBootInfoFile.h"
-#include "Formats/StateFile.h"
 
 namespace SystemMenu
 {
@@ -17,8 +18,7 @@ constexpr int ResumedSetupPage = 5;
 constexpr int FirstUpdateTypeThatResumes = 1;
 constexpr int LastUpdateTypeThatResumes = 2;
 
-// The file of the System Menu that remembers how the last title ended, and the file with which a title starts the menu with arguments.
-constexpr std::string_view StateFilePath = "/title/00000001/00000002/data/state.dat";
+// The file with which a title starts the menu with arguments.
 constexpr std::string_view BootInformationPath = "/shared2/sys/NANDBOOTINFO";
 
 // The record of a title that ran out of time: 32 bytes.
@@ -26,22 +26,6 @@ constexpr std::string_view ExpiredRecordPath = "/shared2/expired";
 constexpr std::size_t ExpiredRecordSize = 32;
 
 // A file that is missing or damaged is as good as no file.
-std::optional<Formats::StateFile> ReadState(NandFiles& nand)
-{
-    std::optional<Formats::Bytes> bytes = nand.ReadFile(StateFilePath);
-    if (!bytes)
-        return std::nullopt;
-
-    try
-    {
-        return Formats::ReadStateFile(*bytes);
-    }
-    catch (const Formats::FormatError&)
-    {
-        return std::nullopt;
-    }
-}
-
 std::optional<Formats::NandBootInfo> ReadBootInformation(NandFiles& nand)
 {
     std::optional<Formats::Bytes> bytes = nand.ReadFile(BootInformationPath);
@@ -60,7 +44,7 @@ std::optional<Formats::NandBootInfo> ReadBootInformation(NandFiles& nand)
 
 void ReadBootType(NandFiles& nand, StartFacts& facts)
 {
-    std::optional<Formats::StateFile> state = ReadState(nand);
+    std::optional<Formats::StateFile> state = ReadMenuState(nand);
     if (!state || state->type != Formats::StateTypeReturnToMenu)
         return;
 
@@ -136,6 +120,11 @@ FirstScreen ChooseFirstScreen(const StartFacts& facts)
         return {ScreenId::LimitOver, 0};
 
     return ChooseByBootType(facts);
+}
+
+bool IsMenuReachedAtStart(ScreenId firstScreen)
+{
+    return firstScreen != ScreenId::HealthAndSafety && firstScreen != ScreenId::WiiSettings;
 }
 
 StartFacts ReadStartFacts(NandFiles& nand, MenuSettings& settings)

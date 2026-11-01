@@ -8,7 +8,7 @@
 namespace SystemMenu
 {
 
-// The files of the NAND, read and deleted through the file system service of IOS as the title that runs.
+// The files of the NAND, read, written and deleted through the file system service of IOS as the title that runs.
 class IosNandFiles : public NandFiles
 {
 public:
@@ -17,6 +17,7 @@ public:
 
     std::optional<Formats::Bytes> ReadFile(std::string_view path) override;
     void DeleteFile(std::string_view path) override;
+    void WriteFile(std::string_view path, Formats::ByteView bytes) override;
 
 private:
     Ios::NandPath ParsePath(std::string_view path) const;

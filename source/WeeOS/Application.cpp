@@ -10,6 +10,8 @@
 
 #include <format>
 #include <iostream>
+#include <stdexcept>
+#include <vector>
 
 namespace WeeOS
 {
@@ -90,6 +92,15 @@ void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
     session = std::make_unique<Session>(console.GetServices(), window, device, commandListener);
+    StopOnTheKeyOfKoreanConsoles();
+}
+
+// The System object of the original asks the title service this when the menu starts (0x8133400C). A failed question is no error.
+void Application::StopOnTheKeyOfKoreanConsoles()
+{
+    Ios::Result<bool> hasKoreanKey = console.GetServices().GetTitles().CheckHasKoreanKey();
+    if (hasKoreanKey.Succeeded() && hasKoreanKey.Value())
+        session->Menu().ShowFatalError(SystemMenu::FatalError::UnauthorizedDevice);
 }
 
 void Application::Run()
@@ -113,7 +124,7 @@ void Application::ShowNextPicture()
     }
 
     RunDueSteps();
-    CarryOutPowerRequests();
+    CarryOutRequestsOfTheMenu();
     ReportProblems();
 
     if (isPoweredOff)
@@ -145,8 +156,15 @@ void Application::RunDueSteps()
         session->Menu().Update();
 }
 
-void Application::CarryOutPowerRequests()
+void Application::CarryOutRequestsOfTheMenu()
 {
+    std::optional<Ios::TitleId> title = session->Menu().TakeTitleToLaunch();
+    if (title)
+    {
+        LaunchTitle(*title);
+        return;
+    }
+
     Ios::EventQueue<Ios::PowerRequest>& requests = console.GetServices().GetPower().Requests();
 
     std::optional<Ios::PowerRequest> request = requests.TryTake();
@@ -159,13 +177,33 @@ void Application::CarryOutPowerRequests()
         ResetConsole();
 }
 
-// IOS starts again, so everything that holds a service goes first and the new session takes the new services.
+// The whole console starts again, from boot2 on (the HotReset of the original). IOS starts again, so everything that holds a service
+// goes first and the new session takes the new services.
 void Application::ResetConsole()
 {
     session.reset();
     console.PowerOff();
     console.PowerOn();
     StartSession();
+    ForgetReportedProblems();
+}
+
+// IOS starts again with the IOS of the title, as after ES_LaunchTitle. The ticket is the first of the title, as the original takes it.
+void Application::LaunchTitle(Ios::TitleId titleId)
+{
+    Ios::Result<std::vector<Ios::TicketView>> ticketViews = console.GetServices().GetTitles().ListTicketViews(titleId);
+    if (ticketViews.Failed() || ticketViews.Value().empty())
+        throw std::runtime_error(std::format("The title {} has no ticket and cannot start", titleId.ToString()));
+
+    Ios::TicketView ticketView = ticketViews.Value().front();
+    session.reset();
+    console.LaunchTitle(titleId, ticketView);
+    StartSession();
+    ForgetReportedProblems();
+}
+
+void Application::ForgetReportedProblems()
+{
     hasReportedFatalError = false;
     reportedUnbuiltScreen.reset();
 }

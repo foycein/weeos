@@ -46,10 +46,13 @@ private:
     void OnHostCommand(Platform::HostCommand command) override;
 
     void StartSession();
+    void StopOnTheKeyOfKoreanConsoles();
     void ReportCloseOfTheWindowAsPowerButton();
     void RunDueSteps();
-    void CarryOutPowerRequests();
+    void CarryOutRequestsOfTheMenu();
     void ResetConsole();
+    void LaunchTitle(Ios::TitleId titleId);
+    void ForgetReportedProblems();
     void ToggleSdCard();
     void ReportProblems();
 

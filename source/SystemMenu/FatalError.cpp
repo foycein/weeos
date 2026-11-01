@@ -3,25 +3,14 @@
 namespace SystemMenu
 {
 
+// The original shows "damaged" for the NAND library's result "corrupt" (-4) and "corrupted files" for every other failure it does not
+// handle. Of the errors of WeeOS only a storage failure means that the NAND itself let the menu down.
 FatalError FatalErrorOf(Ios::IosError error)
 {
-    switch (error)
-    {
-    case Ios::IosError::StorageFailure:
-    case Ios::IosError::NoFileSystem:
-    case Ios::IosError::ShutDown:
+    if (error == Ios::IosError::StorageFailure)
         return FatalError::SystemMemoryDamaged;
 
-    case Ios::IosError::DeviceIdMismatch:
-    case Ios::IosError::IssuerNotFound:
-    case Ios::IosError::SignatureInvalid:
-    case Ios::IosError::TicketNotFound:
-    case Ios::IosError::TicketInvalid:
-        return FatalError::UnauthorizedDevice;
-
-    default:
-        return FatalError::SystemFilesCorrupted;
-    }
+    return FatalError::SystemFilesCorrupted;
 }
 
 }

@@ -21,6 +21,7 @@ add_library(SystemMenu STATIC
     MenuFonts.cpp
     MenuLayout.cpp
     MenuSettings.cpp
+    MenuStateFile.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp
     ParentalDialogScreen.cpp
