@@ -78,7 +78,6 @@ private:
 
     void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
     void PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
-    void ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive);
     void AddBalloon(const TileArchives& archives, const std::u16string& name);
 
     Display& display;
@@ -92,5 +91,9 @@ private:
     float lastFrameOfFocusOff = 0;
     bool isFocused = false;
 };
+
+// A layout of a channel (its icon or its banner) holds its words in every language, each language in a group named after it.
+// Hides the panes of the other languages, except those that English uses as well.
+void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName);
 
 }

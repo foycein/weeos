@@ -35,6 +35,10 @@ public:
     float ReadFloat();
     ByteView ReadBytes(std::size_t count);
 
+    // Numbers of the files of the PC (RIFF, and TIFF files that start with "II") put the least significant byte first.
+    std::uint16_t ReadLittleEndianUint16();
+    std::uint32_t ReadLittleEndianUint32();
+
     template <std::size_t Size>
     std::array<Byte, Size> ReadByteArray()
     {
@@ -57,6 +61,7 @@ public:
 private:
     void RequireBytes(std::size_t count) const;
     std::uint64_t ReadBigEndianNumber(std::size_t byteCount);
+    std::uint64_t ReadLittleEndianNumber(std::size_t byteCount);
 
     ByteView bytes;
     std::string description;

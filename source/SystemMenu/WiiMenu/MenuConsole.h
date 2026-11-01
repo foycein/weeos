@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Formats/Bytes.h"
+#include "Formats/PlayRecordFile.h"
 #include "Ios/Title/TitleId.h"
 
 #include <cstdint>
@@ -22,6 +23,9 @@ struct InstalledTitle
 
     // True when the title has a ticket and all its contents are on the NAND.
     bool isInstalledProperly = false;
+
+    // The two letters of the maker, as the title metadata names its group: "01" for Nintendo.
+    std::uint16_t groupId = 0;
 };
 
 // The date and the time of the place where the console is, as the clock of the menu shows them.
@@ -59,6 +63,13 @@ public:
     virtual void WriteNandFile(std::string_view path, Formats::ByteView bytes) = 0;
 
     virtual LocalTime GetLocalTime() = 0;
+
+    // True when one of the three Internet connections is switched on and has passed its connection test (0x813FB944). A channel that
+    // needs the Internet asks for the Internet settings before it starts when none has.
+    virtual bool HasTestedInternetConnection() = 0;
+
+    // Writes the record of the title that starts now, play_rec.dat (the call 0x81536DC4 of the channel start window).
+    virtual void WritePlayRecord(const Formats::PlayRecord& record) = 0;
 
     // Brings /shared2/sys/flags.dat up to date with the settings, as the channel grid of the original does when it is built
     // (CSFlags::UpdateFlagsFile, 0x81368650).

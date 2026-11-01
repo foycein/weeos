@@ -43,6 +43,9 @@ constexpr int PauseFadeSteps = 5;
 // The wave player of the menu plays its files at this volume (0x8136B280 sets 0.9).
 constexpr float WavePlayerVolume = 0.9f;
 
+// The banner sound of the channel start window fades out in 28 steps when the window closes or a channel starts (0x813B76D8, 0x813B9488).
+constexpr int BannerSoundStopFadeSteps = 28;
+
 // The error screen stops every sound in 5 steps (0x81334F0C). Before a title starts and before the menu starts again, the
 // screens stop them in 20 steps (0x813B5130, 0x813F7DA4, 0x81409988).
 constexpr int ErrorStopFadeSteps = 5;
@@ -59,6 +62,7 @@ enum class SoundAction
     StopAllSounds,
     ChangeConsoleVolume,
     PlayWaveFile,
+    PlayBannerSound,
     StopWaveFile,
 };
 
@@ -72,7 +76,7 @@ struct SoundRequest
     // The new volume of ChangeMusicVolume and ChangeConsoleVolume: 1 is full, 0 is silence.
     float volume = 1.0f;
 
-    // The file that PlayWaveFile plays.
+    // The file that PlayWaveFile or PlayBannerSound plays.
     Formats::Bytes waveFile;
 
     // In how many steps the stop or the change of the volume happens. 0 is at once.
@@ -165,6 +169,20 @@ public:
     const std::vector<SoundRequest>& AllRequestsInThisStep() const
     {
         return requests;
+    }
+
+    // The sound of a channel's banner, its file meta/sound.bin, which the channel start window plays while it shows the banner
+    // (0x8136C198), on the wave player of the menu. The player decodes it with Sound::ReadBannerSound; it loops when the sound loops.
+    // It replaces a file that still plays.
+    void StartBannerSound(Formats::ByteView soundFile)
+    {
+        requests.push_back({.action = SoundAction::PlayBannerSound, .waveFile = Formats::Bytes(soundFile.begin(), soundFile.end())});
+    }
+
+    // The banner sound fades out in BannerSoundStopFadeSteps (0x8136C1F8 with 28).
+    void StopBannerSound()
+    {
+        StopWaveFile(BannerSoundStopFadeSteps);
     }
 
     void StartNextStep()

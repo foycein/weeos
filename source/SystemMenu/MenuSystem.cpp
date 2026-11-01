@@ -13,7 +13,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     SettingsFlowServices* wiiSettingsServices)
     : display(device, screenShape)
     , files(titleContents)
-    , fonts(device, titleContents, files)
+    , fonts(display.Device(), titleContents, files)
     , messages(files.OpenEnglishMessages())
     , fader(display)
     , input(remoteService)

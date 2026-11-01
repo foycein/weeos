@@ -67,6 +67,8 @@ private:
     void StopAllSounds(int fadeSteps);
     void ChangeConsoleVolume(float volume);
     void PlayWaveFile(const Formats::Bytes& file);
+    void PlayBannerSound(const Formats::Bytes& soundFile);
+    void PlayDecodedWave(std::optional<Sound::DecodedWave> wave);
     void StopWaveFile(int fadeSteps);
 
     std::vector<Sound::SoundSystem*> systems;

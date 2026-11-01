@@ -36,14 +36,15 @@ ChannelSharedFiles SharedFilesOrFail(Ios::TitleId titleId)
 }
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, Ios::PowerService& powerService, Platform::ScreenShape screenShape, Ios::TitleId titleId)
+    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
+    Ios::TitleId titleId)
     : runningTitle(titleId)
     , sharedFiles(SharedFilesOrFail(titleId))
     , power(powerService)
     , display(device, screenShape)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts()}
+    , services{display, clock, fader, input, sounds, contents, network, wiiMenu, systemFonts.Fonts(), storage}
 {
     LoadSystemFonts(contents);
     channel = MakeChannel(titleId, services);
@@ -115,7 +116,10 @@ bool ChannelSystem::IsHomeMenuOpen() const
 
 void ChannelSystem::LoadSystemFonts(SystemMenu::TitleContents& contents)
 {
-    Formats::U8Archive fontFiles = ReadArchiveContent(contents, sharedFiles.fontContentIndex);
+    if (!sharedFiles.fontContentIndex)
+        return;
+
+    Formats::U8Archive fontFiles = ReadArchiveContent(contents, *sharedFiles.fontContentIndex);
     Graphics::GraphicsDevice& device = display.Device();
     systemFonts.AddFont(device, Formats::ReadFont(FindFileOrFail(fontFiles, FirstFontFile)),
         {"RevoIpl_RodinNTLGPro_DB_32_I4.brfnt", "WiiBitmapFontType1.brfnt", FirstFontFile});

@@ -2,6 +2,7 @@ add_library(Sound STATIC
     AudioFile.cpp
     AudioOutput.cpp
     BankFile.cpp
+    BannerSound.cpp
     Envelope.cpp
     LoadedFiles.cpp
     LowPassFilter.cpp

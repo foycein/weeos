@@ -5,6 +5,7 @@
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/TelevisionZoom.h"
 
 #include "Formats/SdCardBackup.h"
 #include "Layout/LayoutArchive.h"
@@ -64,6 +65,21 @@ public:
     // The low half of the title id of the channel in each place of the page shown, zero for an empty place.
     std::array<std::uint32_t, Formats::ChannelPlacesPerPage> ChannelsOfPage() const;
 
+    // The low half of the title id of the channel that was pressed last.
+    std::uint32_t PressedChannel() const;
+
+    // The window of a channel (0x23) asks for the zoom into the television of the pressed channel when it is ready, and for the zoom
+    // back when it closes, as the channel start window asks the grid (0x813E0BEC).
+    void ZoomIntoPressedChannel();
+    void ZoomOutOfPressedChannel();
+
+    // The zoom while a window of a channel is open. Nothing at other times.
+    const TelevisionZoom* Zoom() const;
+
+    // The list zooms and paints while the window of a channel is its child.
+    bool UpdatesWithChildren() const override;
+    bool DrawsWithChildren() const override;
+
 protected:
     bool RunMain() override;
 
@@ -81,6 +97,8 @@ private:
     void PlaceTiles();
     void FollowThePointer();
     std::optional<std::size_t> TileUnderPointer() const;
+    void RunZoom();
+    void DrawTheList();
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
@@ -97,6 +115,11 @@ private:
     bool isNoticeShown = false;
     bool hasToldTooManyChannels = false;
     std::optional<std::size_t> focusedTile;
+
+    // The channel whose window is open, the zoom into its television, and whether the window covers the picture.
+    std::optional<std::size_t> pressedTile;
+    std::unique_ptr<TelevisionZoom> zoom;
+    bool isCoveredByWindow = false;
 };
 
 }

@@ -4,6 +4,7 @@
 
 #include "Formats/FormatError.h"
 #include "Sound/AudioFile.h"
+#include "Sound/BannerSound.h"
 
 namespace SystemMenu
 {
@@ -53,6 +54,7 @@ void MenuSound::PlayRequests(const SoundRequests& requests)
         case SoundAction::StopAllSounds: StopAllSounds(request.fadeSteps); break;
         case SoundAction::ChangeConsoleVolume: ChangeConsoleVolume(request.volume); break;
         case SoundAction::PlayWaveFile: PlayWaveFile(request.waveFile); break;
+        case SoundAction::PlayBannerSound: PlayBannerSound(request.waveFile); break;
         case SoundAction::StopWaveFile: StopWaveFile(request.fadeSteps); break;
         }
     }
@@ -167,22 +169,41 @@ void MenuSound::ChangeConsoleVolume(float volume)
         system->SetConsoleVolume(volume);
 }
 
-// The wave player stops the file that plays at once and plays the new one (0x8140E800). A file it cannot read plays nothing.
+// A file that the wave player cannot read plays nothing, as in the original.
 void MenuSound::PlayWaveFile(const Formats::Bytes& file)
 {
-    Stop(waveFile, 0);
-    waveFile = {};
-
     try
     {
-        waveOfTheFile = std::make_shared<const Sound::DecodedWave>(Sound::ReadAudioFile(file));
+        PlayDecodedWave(Sound::ReadAudioFile(file));
     }
     catch (const Formats::FormatError&)
     {
-        waveOfTheFile.reset();
-        return;
+        PlayDecodedWave(std::nullopt);
     }
+}
 
+void MenuSound::PlayBannerSound(const Formats::Bytes& soundFile)
+{
+    try
+    {
+        PlayDecodedWave(Sound::ReadBannerSound(soundFile));
+    }
+    catch (const Formats::FormatError&)
+    {
+        PlayDecodedWave(std::nullopt);
+    }
+}
+
+// The wave player stops the file that plays at once and plays the new one (0x8140E800).
+void MenuSound::PlayDecodedWave(std::optional<Sound::DecodedWave> wave)
+{
+    Stop(waveFile, 0);
+    waveFile = {};
+    waveOfTheFile.reset();
+    if (!wave)
+        return;
+
+    waveOfTheFile = std::make_shared<const Sound::DecodedWave>(std::move(*wave));
     Sound::SoundSystem* system = systems.front();
     waveFile = {system, system->PlayWave(waveOfTheFile, WavePlayerVolume)};
 }
