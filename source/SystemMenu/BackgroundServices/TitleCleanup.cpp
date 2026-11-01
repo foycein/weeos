@@ -163,10 +163,10 @@ int TitleCleanup::CountOwnContentsOnNand(Ios::TitleId titleId)
     if (metadata.Failed() || presentIds.Failed())
         return 0;
 
+    const std::vector<std::uint32_t>& ids = presentIds.Value();
     int count = 0;
     for (const Formats::ContentRecord& record : metadata.Value().contents)
     {
-        const std::vector<std::uint32_t>& ids = presentIds.Value();
         bool isPresent = std::find(ids.begin(), ids.end(), record.id) != ids.end();
         if (isPresent && !Ios::IsSharedContent(record))
             ++count;
