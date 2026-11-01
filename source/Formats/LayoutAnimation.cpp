@@ -13,7 +13,9 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Layout animation";
+// The System Menu and most channels write version 8; the Photo Channel 1.1 writes version 10, whose sections it uses are the same.
 constexpr std::uint16_t SupportedVersion = 8;
+constexpr std::uint16_t PhotoChannelVersion = 10;
 
 constexpr std::size_t ObjectNameSize = 20;
 constexpr std::size_t TagKindSize = 4;
@@ -200,10 +202,10 @@ LayoutAnimation ReadAnimationSection(const Section& section)
 LayoutAnimation ReadLayoutAnimation(ByteView bytes)
 {
     SectionedFile file = ReadSectionedFile(bytes, "RLAN", DataDescription);
-    if (file.version != SupportedVersion)
+    if (file.version != SupportedVersion && file.version != PhotoChannelVersion)
     {
-        throw FormatError(std::format("{}: the version {} is not supported, only version {} is known", DataDescription,
-            file.version, SupportedVersion));
+        throw FormatError(std::format("{}: the version {} is not supported, only versions {} and {} are known", DataDescription,
+            file.version, SupportedVersion, PhotoChannelVersion));
     }
 
     SectionCursor cursor(file.sections, DataDescription);

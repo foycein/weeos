@@ -1,4 +1,4 @@
-﻿#include "WeeOS/Application.h"
+#include "WeeOS/Application.h"
 
 #include "Channels/ChannelSystem.h"
 #include "Channels/NativeChannels.h"
@@ -114,8 +114,9 @@ private:
 
     void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
     {
+        Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
     }
 
     Platform::Window& window;

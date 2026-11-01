@@ -1,5 +1,6 @@
-﻿#include "Channels/NativeChannels.h"
+#include "Channels/NativeChannels.h"
 
+#include "Channels/Photo/PhotoChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
 
@@ -21,7 +22,8 @@ constexpr WiiConnect24ChannelFiles NewsFiles = {
 
 bool HasNativeProgram(Ios::TitleId titleId)
 {
-    return titleId == WiiShopChannelTitleId || titleId == ForecastChannelTitleId || titleId == NewsChannelTitleId;
+    return titleId == WiiShopChannelTitleId || titleId == ForecastChannelTitleId || titleId == NewsChannelTitleId
+        || titleId == PhotoChannelTitleId;
 }
 
 std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& services)
@@ -34,6 +36,9 @@ std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& serv
 
     if (titleId == NewsChannelTitleId)
         return std::make_unique<WiiConnect24Channel>(services, NewsFiles);
+
+    if (titleId == PhotoChannelTitleId)
+        return std::make_unique<PhotoChannel>(services);
 
     return nullptr;
 }

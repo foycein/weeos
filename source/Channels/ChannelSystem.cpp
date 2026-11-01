@@ -1,4 +1,4 @@
-﻿#include "Channels/ChannelSystem.h"
+#include "Channels/ChannelSystem.h"
 
 #include "Channels/ChannelError.h"
 #include "Channels/NativeChannels.h"
@@ -9,12 +9,13 @@ namespace Channels
 {
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, Ios::PowerService& powerService, Platform::ScreenShape screenShape, Ios::TitleId titleId)
+    Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
+    Ios::TitleId titleId)
     : power(powerService)
     , display(device, screenShape)
     , fader(display)
     , input(remoteService)
-    , services{display, clock, fader, input, sounds, contents, network, wiiMenu}
+    , services{display, clock, fader, input, sounds, contents, network, storage, wiiMenu}
     , channel(MakeChannel(titleId, services))
 {
     if (!channel)

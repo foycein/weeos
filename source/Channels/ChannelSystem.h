@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
@@ -32,7 +32,8 @@ class ChannelSystem
 public:
     // Throws a ChannelError when WeeOS has no program for the title. The device, the contents and the services must outlive the channel system.
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-        Ios::NetworkConfigService& network, Ios::PowerService& powerService, Platform::ScreenShape screenShape, Ios::TitleId titleId);
+        Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
+        Ios::TitleId titleId);
 
     // One step of the console's picture, 1001/60000 of a second.
     void Update();
