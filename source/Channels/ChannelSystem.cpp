@@ -1,4 +1,4 @@
-#include "Channels/ChannelSystem.h"
+﻿#include "Channels/ChannelSystem.h"
 
 #include "Channels/ChannelError.h"
 #include "Channels/NativeChannels.h"
@@ -9,8 +9,9 @@ namespace Channels
 {
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-    Ios::NetworkConfigService& network, Platform::ScreenShape screenShape, Ios::TitleId titleId)
-    : display(device, screenShape)
+    Ios::NetworkConfigService& network, Ios::PowerService& powerService, Platform::ScreenShape screenShape, Ios::TitleId titleId)
+    : power(powerService)
+    , display(device, screenShape)
     , fader(display)
     , input(remoteService)
     , services{display, clock, fader, input, sounds, contents, network, wiiMenu}
@@ -25,6 +26,7 @@ void ChannelSystem::Update()
     sounds.StartNextStep();
     clock.Advance();
     input.Poll();
+    AnswerFrontPanel();
 
     if (input.AnyPlayerPressed(HomeButtons) && channel->AllowsHomeButton())
         wiiMenu.Request();
@@ -59,6 +61,19 @@ ChannelServices& ChannelSystem::Services()
 Channel& ChannelSystem::RunningChannel()
 {
     return *channel;
+}
+
+// The SDK of the channels switches the console off for POWER and restarts it for RESET (CHN-27).
+void ChannelSystem::AnswerFrontPanel()
+{
+    std::optional<Ios::PowerEvent> button = power.TryTakeEvent();
+    if (!button)
+        return;
+
+    if (*button == Ios::PowerEvent::PowerButtonPressed)
+        power.RequestShutdown();
+    else
+        power.RequestReset();
 }
 
 void ChannelSystem::LeaveWhenAsked()

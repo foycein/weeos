@@ -1,13 +1,12 @@
 #pragma once
 
-#include "SystemMenu/InputManager.h"
+#include "SystemMenu/ContinueWatcher.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
 
 #include "Layout/LayoutArchive.h"
 
-#include <bitset>
 #include <memory>
 
 namespace SystemMenu
@@ -43,7 +42,6 @@ private:
     void ShowOnlyTheEnglishWarning();
     void NoteWhenTheWarningHasFadedIn();
     void StartNotice();
-    bool DoesTheUserWantToGoOn();
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> archive;
@@ -58,11 +56,7 @@ private:
     bool hasWarningFadedIn = false;
     double noticeWaitBeganSeconds = 0;
 
-    // The notice began to blink at this time.
-    double noticeBeganSeconds = 0;
-
-    // The remotes that were connected when the notice began, and as the screen last saw them.
-    std::bitset<PlayerCount> rememberedPlayers;
+    ContinueWatcher continueWatcher;
 };
 
 }

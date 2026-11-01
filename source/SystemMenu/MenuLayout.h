@@ -39,12 +39,21 @@ public:
     // True when the pane is shown and the point of the picture, in layout units, lies inside its rectangle.
     bool IsPointInPane(std::string_view paneName, Formats::Vector2 point);
 
+    // The material of a picture pane. Throws a MenuError when the pane is not a picture.
+    Layout::LiveMaterial& MaterialOf(const Formats::Pane& pane);
+
     // Puts the text into the text box with this name. Throws a MenuError when the layout has no such text box.
     void SetText(std::string_view paneName, std::u16string_view text);
 
     // Binds the animation "<animationName>.brlan" of the archive to the panes of the group and the panes below them.
     // Gives back the slot of the animation: 0 for the first animation that was bound, then 1 and so on.
     std::size_t BindAnimation(const std::string& animationName, std::string_view groupName, Layout::PlaybackMode mode);
+
+    // The same with the mode that the loop bit of the animation file says: it plays once, or it plays again and again.
+    std::size_t BindAnimation(const std::string& animationName, std::string_view groupName);
+
+    // Binds the animation to every pane of the layout.
+    std::size_t BindAnimationToAllPanes(const std::string& animationName);
 
     // The same for one pane and the panes below it, for an animation that moves a whole set of panes of which this is one.
     std::size_t BindAnimationToPane(const std::string& animationName, std::string_view paneName, Layout::PlaybackMode mode);
@@ -55,6 +64,9 @@ public:
     void StopAnimation(std::size_t slot);
 
     bool IsAnimationPlaying(std::size_t slot) const;
+
+    // Shows a frame of the animation and plays nothing.
+    void ShowAnimationFrame(std::size_t slot, float frame);
 
     // The animation shows its last frame at once and stands still.
     void ShowLastFrameOfAnimation(std::size_t slot);
@@ -76,6 +88,7 @@ public:
     void Draw();
 
 private:
+    Layout::PlaybackMode ModeOfAnimationFile(const std::string& animationName) const;
     void FitToScreenShape();
 
     Display& display;

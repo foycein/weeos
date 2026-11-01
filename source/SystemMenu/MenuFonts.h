@@ -29,10 +29,10 @@ public:
     // No fonts yet. A channel adds the fonts of its own files.
     MenuFonts() = default;
 
-    // The font is drawn for each of the names. The device must stay alive as long as the fonts.
-    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
-
     const Layout::TextFonts& Fonts() const;
+
+    // Makes one more font available under the names that layouts use for it, like the font of the error screen.
+    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
 
 private:
     struct LoadedFont

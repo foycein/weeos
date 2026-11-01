@@ -1,4 +1,4 @@
-#include "Channels/WiiConnect24Channel.h"
+﻿#include "Channels/WiiConnect24Channel.h"
 
 #include "Channels/ChannelFiles.h"
 #include "Channels/ChannelText.h"
@@ -34,7 +34,7 @@ constexpr std::array<std::string_view, 6> OtherLanguages = {"JP", "GE", "FR", "I
 
 // The hands are the ones of the HOME Button Menu: the channels' own hand is a NintendoWare effect (nw4r_defcursor_all01) that WeeOS
 // cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
-constexpr std::string_view HandArchivePath = "HomeButton2/LZ77_homeBtn.arc";
+constexpr std::string_view HandArchivePath = "./HomeButton2/LZ77_homeBtn.arc";
 
 // The label in front of the code is a text of the program (0x8000B9C8 of the Forecast, "%ls %ls%06d").
 constexpr std::u16string_view ErrorCodeLabel = u"Error Code: ";
