@@ -4,6 +4,7 @@
 #include "SystemMenu/WiiMenu/Balloon.h"
 #include "SystemMenu/WiiMenu/ChannelManager.h"
 #include "SystemMenu/WiiMenu/FramePlayer.h"
+#include "SystemMenu/WiiMenu/IconScripts.h"
 
 #include "Formats/Vectors.h"
 
@@ -86,7 +87,6 @@ private:
     ChannelTile(Display& display, TileKind kind, std::unique_ptr<MenuLayout> picture, const TileArchives& archives);
 
     void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName, std::uint32_t randomNumber);
-    void PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
     void AddBalloon(const TileArchives& archives, const std::u16string& name);
 
     Display& display;
@@ -95,7 +95,7 @@ private:
     std::unique_ptr<MenuLayout> focusFrame;
     std::unique_ptr<Balloon> balloon;
     std::unique_ptr<FramePlayer> pictureAnimation;
-    std::unique_ptr<FramePlayer> scriptAnimation;
+    std::unique_ptr<ScriptAnimations> scriptAnimations;
     std::unique_ptr<FramePlayer> focusOn;
     std::unique_ptr<FramePlayer> focusOff;
     std::unique_ptr<FramePlayer> select;
@@ -103,7 +103,7 @@ private:
 };
 
 // A layout of a channel (its icon or its banner) holds its words in every language, each language in a group named after it.
-// Hides the panes of the other languages, except those that English uses as well.
+// Hides the panes of the other languages and of every other group that no script animates; the English panes show.
 void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName);
 
 }

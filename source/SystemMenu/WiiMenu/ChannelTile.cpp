@@ -2,7 +2,6 @@
 
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 
-#include <algorithm>
 #include <array>
 
 namespace SystemMenu
@@ -26,14 +25,23 @@ constexpr std::string_view SelectAnimation = "my_IplTop_d_Select";
 // The animations of the disc and of a damaged channel, and the icons that a script drives, start at their first frame.
 constexpr std::uint32_t NoRandomNumber = 0;
 
-// The groups of an icon that hold the words of one language each, and the group of the first animation of its script.
-constexpr std::string_view EnglishGroup = "ENG";
-constexpr std::array<std::string_view, 8> OtherLanguageGroups = {"JPN", "GER", "FRA", "SPA", "ITA", "NED", "KOR", "CHN"};
-constexpr std::string_view ScriptGroup = "Rso0";
+// The groups of the languages that a console of the USA looks for, in this order. The menu speaks English.
+constexpr std::array<std::string_view, 3> LanguagesInTheOrderOfTheUsa = {"ENG", "FRA", "SPA"};
 
 // The balloon hangs below the television of the place, which is 96 units high, 20 steps after the pointer came (0x816949E0).
 constexpr float HalfHeightOfAPlace = 48;
 constexpr int StepsBeforeTheBalloonAppears = 20;
+
+// The groups Rso0 to Rso15 belong to the animations of a script.
+bool IsGroupOfAScript(std::string_view groupName)
+{
+    for (int number = 0; number < ScriptAnimationCount; ++number)
+    {
+        if (groupName == ScriptGroupName(number))
+            return true;
+    }
+    return false;
+}
 
 }
 
@@ -48,23 +56,25 @@ ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_pt
     select = std::make_unique<FramePlayer>(*focusFrame, archives.channelSelection, SelectAnimation);
 }
 
-// The icons that a script drives get from the menu what the script shows while the channel has no data of its own:
-// the panes of the language of the console and the first animation of the script (docs/research/Channels.md 1.6, CHN-03).
+// Every icon shows the panes of its language (0x813B2B18 calls 0x813B24C0). An icon that a script drives then gets what its script
+// does, run once when the tile is made (docs/research/Channels.md 1.6, CHN-03).
 std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
     const std::u16string& name, std::uint32_t randomNumber)
 {
     const Layout::LayoutArchive& icon = *channel.icon;
     auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
+    ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
+
     std::uint32_t randomNumberOfTheIcon = channel.isIconDrivenByCode ? NoRandomNumber : randomNumber;
     if (channel.iconAnimation)
         tile->PlayAnimation(icon, *channel.iconAnimation, randomNumberOfTheIcon);
 
     if (channel.isIconDrivenByCode)
-        ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
-
-    if (channel.scriptAnimation)
-        tile->PlayScriptAnimation(icon, *channel.scriptAnimation);
+    {
+        tile->scriptAnimations = std::make_unique<ScriptAnimations>(*tile->picture, icon, channel.scriptAnimationNumbers);
+        RunIconScript(channel.iconScript, *tile->picture, *tile->scriptAnimations);
+    }
 
     tile->AddBalloon(archives, name);
     return tile;
@@ -143,8 +153,8 @@ bool ChannelTile::Calculate()
     if (pictureAnimation)
         pictureAnimation->Step();
 
-    if (scriptAnimation)
-        scriptAnimation->Step();
+    if (scriptAnimations)
+        scriptAnimations->Step();
 
     picture->Calculate();
     focusOn->Step();
@@ -193,40 +203,33 @@ void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std:
     pictureAnimation->LoopFrom(0, lastFrame + 1, startFrame);
 }
 
-// The script plays its first animation on the group of the same name, Rso0.
-void ChannelTile::PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName)
-{
-    scriptAnimation = std::make_unique<FramePlayer>(*picture, archive, animationName, picture->Live().PanesOfGroup(ScriptGroup));
-    scriptAnimation->Loop(0, scriptAnimation->LastFrameOfTheFile() + 1);
-}
-
-// A layout of a channel holds its words in every language, each language in a group named after it. The panes of the other languages
-// are hidden, except those that English uses as well.
+// The menu hides the panes of every group except the groups of the script, Rso0 to Rso15, and then shows the panes of the group of
+// its language again, so a pane that two languages share stays shown. Without an English group the first of French and Spanish
+// shows, the order of a console of the USA (0x813B24C0 with the table 0x8164E368).
 void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName)
 {
     Formats::Layout file = archive.ReadLayout(layoutName);
     if (!file.rootGroup)
         return;
 
-    std::vector<std::string> englishPanes;
     for (const Formats::Group& group : file.rootGroup->children)
     {
-        if (group.name == EnglishGroup)
-            englishPanes = group.paneNames;
-    }
-
-    for (const Formats::Group& group : file.rootGroup->children)
-    {
-        bool isOtherLanguage = std::find(OtherLanguageGroups.begin(), OtherLanguageGroups.end(), group.name) != OtherLanguageGroups.end();
-        if (!isOtherLanguage)
+        if (IsGroupOfAScript(group.name))
             continue;
 
         for (const std::string& paneName : group.paneNames)
-        {
-            bool isEnglishToo = std::find(englishPanes.begin(), englishPanes.end(), paneName) != englishPanes.end();
-            if (!isEnglishToo)
-                layout.PaneNamed(paneName).isVisible = false;
-        }
+            layout.PaneNamed(paneName).isVisible = false;
+    }
+
+    for (std::string_view languageName : LanguagesInTheOrderOfTheUsa)
+    {
+        const Formats::Group* languageGroup = FindTopGroup(file, languageName);
+        if (!languageGroup)
+            continue;
+
+        for (const std::string& paneName : languageGroup->paneNames)
+            layout.PaneNamed(paneName).isVisible = true;
+        return;
     }
 }
 
