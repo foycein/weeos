@@ -37,6 +37,11 @@ enum class ScreenId : int
     BackToWiiMenu = 0x1e,
     LimitOver = 0x1f,
     StartupRouter = 0x20,
+
+    // The SD Card Menu: the list of the channels of the card, the window of one channel, and the bar with the Wii Menu button.
+    SdChannelList = 0x22,
+    SdChannelWindow = 0x23,
+    SdCardMenuBar = 0x24,
 };
 
 }

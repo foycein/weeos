@@ -11,6 +11,7 @@ namespace SystemMenu
 {
 
 class CursorManager;
+struct DataManagementServices;
 class DialogManager;
 class Display;
 class Fader;
@@ -59,6 +60,9 @@ struct MenuServices
     // The HOME button: the Wii Menu starts it, a screen that must not be interrupted disables it.
     HomeButton& homeButton;
     WiiMenuData& wiiMenu;
+
+    // The titles, the NAND, the SD card and the identity for Data Management and the SD Card Menu. Nothing when the menu runs without IOS.
+    DataManagementServices* dataManagement = nullptr;
 };
 
 }

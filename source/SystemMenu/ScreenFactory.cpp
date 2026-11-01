@@ -1,6 +1,8 @@
 #include "SystemMenu/ScreenFactory.h"
 
 #include "SystemMenu/BackToWiiMenuScreen.h"
+#include "SystemMenu/DataManagement/DataEditorScreen.h"
+#include "SystemMenu/SdCardMenu/SdCardMenuScreens.h"
 #include "SystemMenu/HealthAndSafetyScreen.h"
 #include "SystemMenu/LimitOverScreen.h"
 #include "SystemMenu/ParentalDialogScreen.h"
@@ -58,6 +60,18 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::WiiSettings:
         return MakeWiiSettingsScreen(services, argument);
+
+    case ScreenId::ChannelDataEditor:
+        return std::make_unique<DataEditorScreen>(services, DataKind::Channels);
+
+    case ScreenId::WiiSaveDataEditor:
+        return std::make_unique<DataEditorScreen>(services, DataKind::SaveData);
+
+    case ScreenId::SdChannelList:
+        return std::make_unique<SdChannelListScreen>(services);
+
+    case ScreenId::SdCardMenuBar:
+        return std::make_unique<SdCardMenuBarScreen>(services);
 
     default:
         return nullptr;

@@ -34,6 +34,8 @@ add_library(Formats STATIC
     PngImage.cpp
     RgbaImage.cpp
     RsaSignature.cpp
+    SaveBanner.cpp
+    SdCardBackup.cpp
     SectionedFile.cpp
     SerialEeprom.cpp
     SettingTextFile.cpp
