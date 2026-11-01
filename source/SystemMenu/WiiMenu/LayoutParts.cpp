@@ -79,6 +79,7 @@ void DrawPanes(MenuLayout& layout, Display& display, const PlacedPanes& placedPa
         if (isDrawn(*placement.pane))
             Layout::DrawPlacedPane(display.Device(), layout.Live(), placement, display.TextFonts());
     }
+    display.NoteDrawnLayout(layout.Live(), layout.Placement());
 }
 
 void MoveLayoutTo(MenuLayout& layout, Formats::Vector2 place)

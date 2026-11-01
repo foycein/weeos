@@ -4,13 +4,23 @@
 
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Layout/LiveLayout.h"
+#include "Layout/PanePlacement.h"
 #include "Layout/TextFonts.h"
 #include "Platform/ScreenShape.h"
 
 #include <optional>
+#include <vector>
 
 namespace SystemMenu
 {
+
+// A layout that was drawn into the picture, and how it was placed.
+struct DrawnLayout
+{
+    const Layout::LiveLayout* layout = nullptr;
+    Layout::PlacementSettings placement;
+};
 
 // The picture of a 4:3 screen is 608 by 456 layout units. The picture of a 16:9 screen is 832 by 456 units.
 constexpr Graphics::Canvas StandardCanvas = {608, 456};
@@ -71,12 +81,19 @@ public:
     // The root pane stretches the place, so the pane gets the place divided by the stretch.
     Formats::Vector2 CanvasToRootPaneSpace(Formats::Vector2 canvasPoint) const;
 
+    // The layouts that were drawn since the scene began, the one at the back first. A test finds the panes of the picture here.
+    // They are valid until the menu takes its next step.
+    void NoteDrawnLayout(const Layout::LiveLayout& layout, const Layout::PlacementSettings& placement);
+    void ForgetDrawnLayouts();
+    const std::vector<DrawnLayout>& DrawnLayouts() const;
+
 private:
     Graphics::GraphicsDevice& device;
     ZoomedDevice zoomedDevice;
     std::optional<PictureArea> camera;
     const Layout::TextFonts* textFonts = nullptr;
     Platform::ScreenShape screenShape;
+    std::vector<DrawnLayout> drawnLayouts;
 };
 
 }
