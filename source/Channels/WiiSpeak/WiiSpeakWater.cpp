@@ -34,12 +34,12 @@ std::unique_ptr<WiiSpeakWater> WiiSpeakWater::OfTheMenus(WiiSpeakSession& sessio
     return std::make_unique<WiiSpeakWater>(session, std::move(layout), WiiSpeakRipples::MenuDrop, MenuStepsBetweenDrops);
 }
 
-WiiSpeakWater::WiiSpeakWater(WiiSpeakSession& waterSession, std::unique_ptr<SceneLayout> waterLayout, std::string_view drop,
-    std::optional<int> steps)
+WiiSpeakWater::WiiSpeakWater(WiiSpeakSession& waterSession, std::unique_ptr<SceneLayout> waterLayout, std::string_view waterDropName,
+    std::optional<int> waterStepsBetweenDrops)
     : session(waterSession)
     , layout(std::move(waterLayout))
-    , dropName(drop)
-    , stepsBetweenDrops(steps)
+    , dropName(waterDropName)
+    , stepsBetweenDrops(waterStepsBetweenDrops)
 {
 }
 

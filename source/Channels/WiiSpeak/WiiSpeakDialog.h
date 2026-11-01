@@ -18,6 +18,10 @@ namespace Channels
 class WiiSpeakDialog
 {
 public:
+    // The choices that TakeChoice gives: the single or the left button (Yes), and the right button (No).
+    static constexpr int FirstChoice = 0;
+    static constexpr int SecondChoice = 1;
+
     // The display and the files must outlive the dialog.
     WiiSpeakDialog(SystemMenu::Display& display, const WiiSpeakFiles& files);
 
@@ -29,7 +33,7 @@ public:
 
     bool IsOpen() const;
 
-    // The button that was pressed (0 for the single or the left one, 1 for the right one), once, after the window has closed.
+    // The button that was pressed (FirstChoice or SecondChoice), once, after the window has closed.
     std::optional<int> TakeChoice();
 
     void Update(const SystemMenu::InputManager& input, SystemMenu::SoundRequests& sounds);

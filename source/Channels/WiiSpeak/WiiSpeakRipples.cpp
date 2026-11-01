@@ -11,7 +11,8 @@ namespace
 {
 
 // The box of the projection: 608 by 456 in 4:3, 4/3 wider in 16:9 (0x8019EA78).
-constexpr float BoxHalfWidth = 304.0f * 4 / 3;
+constexpr float BoxHalfWidthIn4By3 = 304;
+constexpr float BoxHalfWidth = BoxHalfWidthIn4By3 * 4 / 3;
 constexpr float BoxHalfHeight = 228;
 
 // The rings lie flat on the water: the program turns them a quarter about X and makes them 200 times larger (0x800A623C). The ring of
@@ -33,6 +34,7 @@ constexpr std::uint8_t FullIntensity = 255;
 // The Miis' own ripples come 25 steps after the large ring, 2.3 times larger (0x800B2988, 0x800A6414).
 constexpr int StepsBeforeTheMiisAppear = 25;
 constexpr float AppearingScale = 2.3f;
+constexpr bool LargeRing = true;
 
 }
 
@@ -95,7 +97,7 @@ void WiiSpeakRipples::StartPhotoRipple(Formats::Vector2 canvasPlace)
 
 void WiiSpeakRipples::StartMiisAppearing(Formats::Vector2 canvasPlace)
 {
-    StartClockRipple(canvasPlace, true);
+    StartClockRipple(canvasPlace, LargeRing);
     appearingPlace = canvasPlace;
     stepsUntilTheMiisAppear = StepsBeforeTheMiisAppear;
 }
@@ -139,7 +141,8 @@ void WiiSpeakRipples::Clear()
 
 std::size_t WiiSpeakRipples::Count(std::string_view name) const
 {
-    return static_cast<std::size_t>(std::count_if(ripples.begin(), ripples.end(), [name](const PlayingRipple& ripple) { return ripple.name == name; }));
+    auto hasTheName = [name](const PlayingRipple& ripple) { return ripple.name == name; };
+    return static_cast<std::size_t>(std::count_if(ripples.begin(), ripples.end(), hasTheName));
 }
 
 }

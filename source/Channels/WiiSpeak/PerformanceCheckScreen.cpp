@@ -24,6 +24,9 @@ constexpr double FullScale = 32767.0;
 constexpr int BestScoreOfABadResult = 1;
 constexpr int BestScoreOfAMiddleResult = 3;
 
+// The level animation shows one light more than the score.
+constexpr int LightsOfScoreZero = 1;
+
 // The sounds of the check, by their names in MicChatSound.brsar (0x5E to 0x60 of 0x800A1B60).
 constexpr std::string_view ButtonSound = "SE_CON_CLK_BTN";
 constexpr std::string_view GoodResultSound = "SE_CON_EC_RESULT_GOOD";
@@ -40,7 +43,8 @@ std::vector<std::int16_t> MeasuredPartOfTheMusic(const Sound::DecodedWave& music
     {
         // Whole numbers, so that every microphone sample takes the same sample of the music's own rate.
         std::size_t microphoneSample = firstMicrophoneSample + sample;
-        std::size_t musicSample = std::min(microphoneSample * music.sampleRate / Ios::MicrophoneSampleRate, music.SampleCount() - 1);
+        std::size_t scaledSample = microphoneSample * music.sampleRate / Ios::MicrophoneSampleRate;
+        std::size_t musicSample = std::min(scaledSample, music.SampleCount() - 1);
         double sum = 0.0;
         for (const std::vector<float>& channel : music.channels)
             sum += channel[musicSample];
@@ -95,14 +99,9 @@ PerformanceCheckScreen::~PerformanceCheckScreen()
 std::optional<WiiSpeakScreenName> PerformanceCheckScreen::Update()
 {
     std::optional<WiiSpeakScreenName> nextScreen;
-    if (phase == Phase::Refused && session.dialog.TakeChoice())
-        nextScreen = WiiSpeakScreenName::SettingsMenu;
-
-    if (phase == Phase::Introduction && session.dialog.TakeChoice())
-        phase = Phase::Ready;
-
-    if (phase == Phase::ShowingProblem && session.dialog.TakeChoice())
-        ShowReady();
+    bool waitsForTheWindow = phase == Phase::Refused || phase == Phase::Introduction || phase == Phase::ShowingProblem;
+    if (waitsForTheWindow)
+        nextScreen = FollowTheWindow();
 
     if (phase == Phase::WaitingForMusic || phase == Phase::Measuring)
         FollowTheMeasurement();
@@ -144,11 +143,28 @@ void PerformanceCheckScreen::ShowReady()
     phase = Phase::Ready;
 }
 
+// The window of the refusal leads back to the settings; the introduction and a problem lead to the Begin button.
+std::optional<WiiSpeakScreenName> PerformanceCheckScreen::FollowTheWindow()
+{
+    if (!session.dialog.TakeChoice())
+        return std::nullopt;
+
+    if (phase == Phase::Refused)
+        return WiiSpeakScreenName::SettingsMenu;
+
+    if (phase == Phase::Introduction)
+        phase = Phase::Ready;
+    else
+        ShowReady();
+    return std::nullopt;
+}
+
+// Cancel is the left button before the check, Finish the right one after it.
 std::optional<WiiSpeakScreenName> PerformanceCheckScreen::PressButton(const std::string& button)
 {
     session.services.sounds.Request(ButtonSound);
-    bool leaves = phase == Phase::Ready ? button == LeftButton : button == RightButton;
-    if (leaves)
+    const std::string& leaveButton = phase == Phase::Ready ? LeftButton : RightButton;
+    if (button == leaveButton)
         return WiiSpeakScreenName::SettingsMenu;
 
     Begin();
@@ -202,7 +218,11 @@ void PerformanceCheckScreen::Judge()
     if (result == CheckResult::TooQuiet || result == CheckResult::TooLoud)
     {
         session.services.sounds.Request(BadResultSound);
-        session.ShowMessage(result == CheckResult::TooQuiet ? WiiSpeakText::CheckTooQuiet : WiiSpeakText::CheckTooLoud, {WiiSpeakText::Ok});
+        std::uint32_t problemMessageId = WiiSpeakText::CheckTooLoud;
+        if (result == CheckResult::TooQuiet)
+            problemMessageId = WiiSpeakText::CheckTooQuiet;
+
+        session.ShowMessage(problemMessageId, {WiiSpeakText::Ok});
         phase = Phase::ShowingProblem;
         return;
     }
@@ -215,7 +235,7 @@ void PerformanceCheckScreen::Judge()
     else
         session.services.sounds.Request(GoodResultSound);
 
-    layout.ShowAnimationFrame(LevelAnimation, float(score + 1));
+    layout.ShowAnimationFrame(LevelAnimation, float(score + LightsOfScoreZero));
     layout.SetText("T_button_01", session.Text(WiiSpeakText::CheckTryAgain));
     layout.SetText("T_button_02", session.Text(WiiSpeakText::CheckFinish));
     phase = Phase::ShowingResult;

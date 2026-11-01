@@ -24,13 +24,15 @@ float HeardLevelInDecibels(std::span<const std::int16_t> samples)
         return SilenceLevel;
 
     double meanSize = sum / double(samples.size()) / FullScale;
-    return std::max(SilenceLevel, float(DecibelsPerAmplitudeDecade * std::log10(meanSize)));
+    float levelInDecibels = float(DecibelsPerAmplitudeDecade * std::log10(meanSize));
+    return std::max(SilenceLevel, levelInDecibels);
 }
 
 float MeterFrame(float levelInDecibels)
 {
     float fraction = (levelInDecibels - QuietestMeterLevel) / -QuietestMeterLevel;
-    return std::round(std::clamp(fraction, 0.0f, 1.0f) * MeterBarCount);
+    float fractionOnTheMeter = std::clamp(fraction, 0.0f, 1.0f);
+    return std::round(fractionOnTheMeter * MeterBarCount);
 }
 
 bool IsVoiceHeard(float levelInDecibels)

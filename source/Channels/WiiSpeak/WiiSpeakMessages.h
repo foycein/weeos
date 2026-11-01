@@ -12,9 +12,11 @@ namespace Channels
 
 // The id of a message of the Wii Speak Channel is the number of the layout it belongs to times 256 plus its number in that layout,
 // for example 19010 * 256 + 2 for "Performance Check" of the settings menu (layout 19010_setMenu).
+constexpr std::uint32_t MessagesPerLayout = 256;
+
 constexpr std::uint32_t WiiSpeakMessageId(std::uint32_t layoutNumber, std::uint32_t messageNumber)
 {
-    return layoutNumber * 256 + messageNumber;
+    return layoutNumber * MessagesPerLayout + messageNumber;
 }
 
 // The messages of the Wii Speak Channel by their ids, with the escape sequences of the file worked out: a number to fill in is

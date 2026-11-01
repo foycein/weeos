@@ -29,7 +29,8 @@ public:
 
     static std::unique_ptr<WiiSpeakWater> OfTheMenus(WiiSpeakSession& session, MenuColor color);
 
-    WiiSpeakWater(WiiSpeakSession& session, std::unique_ptr<SceneLayout> layout, std::string_view dropName, std::optional<int> stepsBetweenDrops);
+    WiiSpeakWater(WiiSpeakSession& session, std::unique_ptr<SceneLayout> layout, std::string_view dropName,
+        std::optional<int> stepsBetweenDrops);
 
     // Once in every step: the waves and the drops.
     void Update();

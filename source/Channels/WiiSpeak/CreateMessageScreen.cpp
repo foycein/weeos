@@ -25,12 +25,6 @@ const std::string CommentVoice = "B_nbtn_00";
 const std::string CommentLeftButton = "B_nbutton_01";
 const std::string CommentRightButton = "B_nbutton_02";
 
-struct PaneText
-{
-    std::string_view pane;
-    std::uint32_t messageId;
-};
-
 constexpr std::array<PaneText, 11> LetterTexts = {{
     {"T_shadow", WiiSpeakText::CreateMessageTitle},
     {"T_micSet", WiiSpeakText::CreateMessageTitle},
@@ -48,12 +42,12 @@ constexpr std::array<PaneText, 11> LetterTexts = {{
 constexpr std::uint8_t ShownAlpha = 255;
 constexpr std::uint8_t HiddenAlpha = 0;
 constexpr float FramesPerSecond = 60.0f;
+constexpr std::size_t MiisOfALetter = 1;
 
 // The sounds of the message, by their names in MicChatSound.brsar.
 constexpr std::string_view FrameSound = "SE_LET_CLK_FRAME_REC";
 constexpr std::string_view MiiFrameSound = "SE_LET_CLK_FRAME_MII";
 constexpr std::string_view MiiToLetterSound = "SE_SEL_CLK_MII_TO_LETTER";
-constexpr std::size_t MiisOfALetter = 1;
 constexpr std::string_view BackSound = "SE_LET_CLK_BTN_RET";
 constexpr std::string_view HelpSound = "SE_LET_CLK_BTN_HELP";
 constexpr std::string_view SendSound = "SE_LET_CLK_BTN_SEND";
@@ -68,7 +62,7 @@ constexpr std::string_view VoiceChangeOnSound = "SE_LET_VOICE_FX_START";
 constexpr std::string_view VoiceChangeOffSound = "SE_LET_VOICE_FX_END";
 constexpr std::array<std::string_view, 4> CountSounds = {"SE_LET_COUNT_0", "SE_LET_COUNT_1", "SE_LET_COUNT_2", "SE_LET_COUNT_3"};
 
-constexpr SystemMenu::ButtonSet ChangeVoiceButtons = {Input::RemoteButtons::One, 0};
+constexpr SystemMenu::ButtonSet ChangeVoiceButtons = {.remoteButtons = Input::RemoteButtons::One};
 
 }
 
@@ -84,8 +78,7 @@ CreateMessageScreen::CreateMessageScreen(WiiSpeakSession& messageSession)
     for (const std::string& button : {CommentVoice, CommentLeftButton, CommentRightButton})
         comment.AddButton(button);
 
-    for (const PaneText& text : LetterTexts)
-        letter.SetText(text.pane, session.Text(text.messageId));
+    session.SetTexts(letter, LetterTexts);
 
     letter.SetVisible("N_photoBox", false);
     letter.SetText("T_Cno_01", u"0");
@@ -184,76 +177,96 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::UpdateLetter()
     }
 
     if (session.dialog.IsOpen() || isAskingToQuit)
-    {
-        std::optional<int> choice = session.dialog.TakeChoice();
-        if (!isAskingToQuit || !choice)
-            return std::nullopt;
-
-        isAskingToQuit = false;
-        if (*choice == 0)
-            return WiiSpeakScreenName::ChatRoom;
-        return std::nullopt;
-    }
+        return FollowQuitQuestion();
 
     std::optional<std::string> pressed = letter.TakePressedButton(session.services.input);
     if (!pressed)
         return std::nullopt;
 
-    if (*pressed == VoiceBox)
-    {
-        session.services.sounds.Request(FrameSound);
-        if (session.services.audio.microphone.IsMuted())
-        {
-            session.ShowMessage(WiiSpeakText::MutedCannotRecord, {WiiSpeakText::Ok});
-            return std::nullopt;
-        }
-
-        phase = hasKeptVoice ? Phase::Recorded : Phase::CommentReady;
-        comment.PlayAnimation("all_inOut");
-        ShowCommentButtons();
-        return std::nullopt;
-    }
-
     if (*pressed == LetterBackButton)
-    {
-        session.services.sounds.Request(BackSound);
-        if (!hasKeptVoice)
-            return WiiSpeakScreenName::ChatRoom;
+        return LeaveLetter();
 
-        session.ShowMessage(WiiSpeakText::QuitCreatingMessage, {WiiSpeakText::Yes, WiiSpeakText::No});
-        isAskingToQuit = true;
+    PressLetterButton(*pressed);
+    return std::nullopt;
+}
+
+std::optional<WiiSpeakScreenName> CreateMessageScreen::FollowQuitQuestion()
+{
+    std::optional<int> choice = session.dialog.TakeChoice();
+    if (!isAskingToQuit || !choice)
         return std::nullopt;
-    }
 
-    if (*pressed == LetterHelpButton)
+    isAskingToQuit = false;
+    if (*choice == WiiSpeakDialog::FirstChoice)
+        return WiiSpeakScreenName::ChatRoom;
+    return std::nullopt;
+}
+
+// Back leaves at once while the letter holds no voice, else it asks first.
+std::optional<WiiSpeakScreenName> CreateMessageScreen::LeaveLetter()
+{
+    session.services.sounds.Request(BackSound);
+    if (!hasKeptVoice)
+        return WiiSpeakScreenName::ChatRoom;
+
+    session.ShowMessage(WiiSpeakText::QuitCreatingMessage, {WiiSpeakText::Yes, WiiSpeakText::No});
+    isAskingToQuit = true;
+    return std::nullopt;
+}
+
+void CreateMessageScreen::PressLetterButton(const std::string& button)
+{
+    if (button == VoiceBox)
+    {
+        OpenComment();
+    }
+    else if (button == LetterHelpButton)
     {
         session.services.sounds.Request(HelpSound);
         session.ShowMessage(WiiSpeakText::CreateMessageHelp, {WiiSpeakText::Ok});
     }
-    else if (*pressed == SendButton)
+    else if (button == SendButton)
     {
         session.services.sounds.Request(SendSound);
         session.ShowMessage(WiiSpeakText::ChooseAddressees, {WiiSpeakText::Ok});
     }
-    else if (*pressed == AddresseesBox)
+    else if (button == AddresseesBox)
     {
         session.services.sounds.Request(FrameSound);
         session.ShowMessage(WiiSpeakText::NoWiiFriends, {WiiSpeakText::Ok});
     }
-    else if (*pressed == MiiBox && session.consoleMiis.empty())
+    else if (button == MiiBox && session.consoleMiis.empty())
     {
         session.services.sounds.Request(FrameSound);
         session.ShowMessage(WiiSpeakText::NoMiisForMessage, {WiiSpeakText::Ok});
     }
-    else if (*pressed == MiiBox)
+    else if (button == MiiBox)
     {
-        session.services.sounds.Request(MiiFrameSound);
-        std::vector<Mii::MiiRecord> chosenBefore;
-        if (letterMii)
-            chosenBefore.push_back(*letterMii);
-        miiChooser = std::make_unique<MiiChooser>(session, chosenBefore, MiisOfALetter);
+        OpenMiiChooser();
     }
-    return std::nullopt;
+}
+
+void CreateMessageScreen::OpenComment()
+{
+    session.services.sounds.Request(FrameSound);
+    if (session.services.audio.microphone.IsMuted())
+    {
+        session.ShowMessage(WiiSpeakText::MutedCannotRecord, {WiiSpeakText::Ok});
+        return;
+    }
+
+    phase = hasKeptVoice ? Phase::Recorded : Phase::CommentReady;
+    comment.PlayAnimation("all_inOut");
+    ShowCommentButtons();
+}
+
+void CreateMessageScreen::OpenMiiChooser()
+{
+    session.services.sounds.Request(MiiFrameSound);
+    std::vector<Mii::MiiRecord> chosenBefore;
+    if (letterMii)
+        chosenBefore.push_back(*letterMii);
+    miiChooser = std::make_unique<MiiChooser>(session, chosenBefore, MiisOfALetter);
 }
 
 // The lineup of the Miis for the letter: one circle. OK puts its Mii in the Mii box of the letter, or empties the box.
@@ -363,7 +376,9 @@ void CreateMessageScreen::PressCommentButton(const std::string& button)
     if (leavesTheComment)
     {
         session.services.audio.waves.Stop(playback);
-        hasKeptVoice = hasKeptVoice || (phase == Phase::Recorded && !recording.IsEmpty());
+        bool keepsTheRecording = phase == Phase::Recorded && !recording.IsEmpty();
+        if (keepsTheRecording)
+            hasKeptVoice = true;
         session.services.sounds.Request(isRightButton ? KeepSound : CancelSound);
         phase = Phase::Letter;
         ShowLetterVoice();

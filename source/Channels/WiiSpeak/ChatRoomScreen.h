@@ -17,9 +17,9 @@ namespace Channels
 // which lights up while the microphone hears a voice, the mute sign and the buttons on both sides.
 //
 // The buttons: Wii Menu (with the question "Returning to the Wii Menu. Is this OK?"), Choose Miis, Show Photos, Help, Settings,
-// Wii Number, Create Message, Address Book and Lobby. The Lobby connects to Nintendo Wi-Fi Connection, which fails as with an
-// unplugged cable: "Connecting to Nintendo Wi-Fi Connection." until the connection gives up, then "Unable to connect to the
-// Internet." with the support code (CHN-04). The chosen Miis stand in the circle; a photo of Show Photos comes out of the slot.
+// Wii Number, Create Message, Address Book and Lobby. The Lobby logs in to Nintendo Wi-Fi Connection, whose place the owner's
+// server takes: "Connecting to Nintendo Wi-Fi Connection." until the network gives up or the server does not answer, then
+// "Unable to connect to the Internet." with the code (CHN-04, CHN-99). The chosen Miis stand in the circle; a photo of Show Photos comes out of the slot.
 // The - button mutes the accessory and unmutes it again.
 class ChatRoomScreen : public WiiSpeakScreen
 {

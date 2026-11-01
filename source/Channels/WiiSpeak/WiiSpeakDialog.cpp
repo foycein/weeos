@@ -98,7 +98,9 @@ void WiiSpeakDialog::Update(const SystemMenu::InputManager& input, SystemMenu::S
     if (phase == Phase::Open && pressed)
     {
         sounds.Request(PressSound);
-        pendingChoice = pressed == BoundPanes[RightButton] ? 1 : 0;
+        pendingChoice = FirstChoice;
+        if (pressed == BoundPanes[RightButton])
+            pendingChoice = SecondChoice;
         Close();
     }
 

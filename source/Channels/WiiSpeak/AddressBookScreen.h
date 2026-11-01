@@ -36,10 +36,12 @@ private:
     };
 
     std::optional<WiiSpeakScreenName> Press(const std::string& button);
+    void TurnPage(bool isForward);
+    bool IsKnownFriend(std::uint64_t wiiNumber) const;
     void StartAddingAFriend();
     void TakeTheWiiNumber(const std::u16string& typed);
     void TakeTheNickname(const std::u16string& typed);
-    void OpenKeyboard(std::uint32_t titleMessageId, std::size_t maximumLength, bool takesDigitsOnly);
+    void OpenKeyboard(std::uint32_t titleMessageId, std::size_t maximumLength, SystemMenu::CharacterRule allowedCharacters);
     void ShowPage();
     std::size_t PageCount() const;
 

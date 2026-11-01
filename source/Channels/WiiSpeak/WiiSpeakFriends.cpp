@@ -12,12 +12,13 @@ namespace
 constexpr std::size_t DigitsPerGroup = 4;
 constexpr std::uint64_t DigitBase = 10;
 
-// A Wii number holds 53 bits. Its scramble is undone in four steps: the mask 0x5E5E..., a turn right by one bit, the bytes put back
+// A Wii number holds 53 bits. Its scramble is undone in five steps: the mask 0x5E5E..., a turn right by one bit, the bytes put back
 // in their places with each half byte replaced (the table of 0x803B9560), a turn left by ten bits, and the mask 0xB3B3....
 constexpr int WiiNumberBits = 53;
 constexpr std::uint64_t WiiNumberMask = (std::uint64_t{1} << WiiNumberBits) - 1;
 constexpr std::uint64_t OuterMask = 0x5E5E5E5E5E5E;
 constexpr std::uint64_t InnerMask = 0xB3B3B3B3B3B3;
+constexpr int OuterTurnBits = 1;
 constexpr int InnerTurnBits = 10;
 constexpr int BitsPerByte = 8;
 constexpr int BitsPerHalfByte = 4;
@@ -38,6 +39,11 @@ std::uint64_t TurnRight(std::uint64_t bits, int count)
     return ((bits >> count) | (bits << (WiiNumberBits - count))) & WiiNumberMask;
 }
 
+bool IsBitSet(std::uint64_t bits, int bitNumber)
+{
+    return ((bits >> bitNumber) & 1) != 0;
+}
+
 std::uint64_t ByteOf(std::uint64_t bits, int byteNumber)
 {
     return (bits >> (byteNumber * BitsPerByte)) & ByteMask;
@@ -52,11 +58,15 @@ std::uint64_t ReplaceHalfBytes(std::uint64_t byte)
 
 std::uint64_t UnscrambleWiiNumber(std::uint64_t wiiNumber)
 {
-    std::uint64_t turned = TurnRight((wiiNumber ^ OuterMask) & WiiNumberMask, 1);
+    std::uint64_t unmasked = (wiiNumber ^ OuterMask) & WiiNumberMask;
+    std::uint64_t turned = TurnRight(unmasked, OuterTurnBits);
 
     std::uint64_t placed = ByteOf(turned, UnmovedByte) << (UnmovedByte * BitsPerByte);
     for (int byteNumber = 0; byteNumber < static_cast<int>(SourceByteOfByte.size()); ++byteNumber)
-        placed |= ReplaceHalfBytes(ByteOf(turned, SourceByteOfByte[byteNumber])) << (byteNumber * BitsPerByte);
+    {
+        std::uint64_t sourceByte = ByteOf(turned, SourceByteOfByte[byteNumber]);
+        placed |= ReplaceHalfBytes(sourceByte) << (byteNumber * BitsPerByte);
+    }
 
     return TurnRight(placed, WiiNumberBits - InnerTurnBits) ^ InnerMask;
 }
@@ -69,7 +79,7 @@ bool IsValidWiiNumber(std::uint64_t wiiNumber)
     for (int step = 0; step < DividedBitCount; ++step)
     {
         int bit = WiiNumberBits - 1 - step;
-        if ((remainder >> bit) & 1)
+        if (IsBitSet(remainder, bit))
             remainder ^= CheckPolynomial << (DividedBitCount - 1 - step);
     }
     return remainder == 0;

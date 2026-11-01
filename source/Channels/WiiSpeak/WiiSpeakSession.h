@@ -15,7 +15,9 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Channels
@@ -34,6 +36,13 @@ enum class WiiSpeakScreenName
     ChooseMiis,
     AddressBook,
     ShowPhotos,
+};
+
+// A text pane of a layout and the message it shows.
+struct PaneText
+{
+    std::string_view pane;
+    std::uint32_t messageId;
 };
 
 // What every screen of the channel shares: the services of the channel system, the files and messages of the title, the message
@@ -77,6 +86,9 @@ struct WiiSpeakSession
     std::vector<std::int16_t> heardThisStep;
 
     std::u16string Text(std::uint32_t messageId, std::u16string_view argument = {}) const;
+
+    // Shows each message in its pane of the layout.
+    void SetTexts(SceneLayout& layout, std::span<const PaneText> texts) const;
 
     // Opens the message window with a text of the channel and the labels of its buttons, all by message id.
     void ShowMessage(std::uint32_t messageId, const std::vector<std::uint32_t>& buttonMessageIds);

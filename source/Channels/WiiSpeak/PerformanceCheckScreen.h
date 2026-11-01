@@ -22,7 +22,7 @@ constexpr double CheckMusicDelaySeconds = 2.0;
 constexpr double MeasureStartInMusicSeconds = 1.0;
 constexpr double MeasureSeconds = 10.0;
 
-// How late the heard music may come: the time from the speakers to the microphone and through the PC (CHN-10, Assumed).
+// How late the heard music may come: the time from the speakers to the microphone and through the PC (CHN-98, Assumed).
 constexpr double LongestEchoDelaySeconds = 0.4;
 
 // Wii Speak Performance Check (scene echoCheck, kiuchiMicEchoCancelCheckScene 0x800A16E8 and 0x800A1B60 of the program).
@@ -58,6 +58,7 @@ private:
     void Begin();
     void FollowTheMeasurement();
     void Judge();
+    std::optional<WiiSpeakScreenName> FollowTheWindow();
     std::optional<WiiSpeakScreenName> PressButton(const std::string& button);
 
     WiiSpeakSession& session;

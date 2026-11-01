@@ -55,6 +55,8 @@ private:
 
     std::optional<WiiSpeakScreenName> UpdatePlace(const std::string& pressed);
     void UpdateThumbnails(const std::optional<std::string>& pressed);
+    void ViewPhotoAtPress();
+    std::size_t NeighborPhoto(bool isNext) const;
     std::optional<WiiSpeakScreenName> UpdateView(const std::string& pressed);
     void OpenThePhotos(std::vector<ChatPhoto> foundPhotos, std::uint32_t noPhotosMessageId);
     void OpenCardPhotos();

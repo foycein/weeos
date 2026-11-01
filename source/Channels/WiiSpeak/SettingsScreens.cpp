@@ -16,18 +16,6 @@ namespace
 constexpr SystemMenu::ButtonSet PlusButtons = {Input::RemoteButtons::Plus, Input::ClassicButtons::Plus};
 constexpr SystemMenu::ButtonSet MinusButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus};
 
-struct PaneText
-{
-    std::string_view pane;
-    std::uint32_t messageId;
-};
-
-void SetTexts(SceneLayout& layout, const WiiSpeakSession& session, std::span<const PaneText> texts)
-{
-    for (const PaneText& text : texts)
-        layout.SetText(text.pane, session.Text(text.messageId));
-}
-
 // The sounds of the settings, by their names in MicChatSound.brsar.
 constexpr std::string_view ButtonSound = "SE_CON_CLK_BTN";
 constexpr std::string_view OkSound = "SE_CON_CLK_BTN_OK";
@@ -81,6 +69,14 @@ const std::string HeadphoneOkButton = "dbutton_02";
 constexpr std::uint8_t ChosenFrameAlpha = 255;
 constexpr std::uint8_t OtherFrameAlpha = 0;
 
+std::uint8_t FrameAlpha(bool isChosen)
+{
+    if (isChosen)
+        return ChosenFrameAlpha;
+
+    return OtherFrameAlpha;
+}
+
 constexpr std::array<PaneText, 6> HeadphoneTexts = {{
     {"T_shadow", WiiSpeakText::HeadphoneTitle},
     {"T_micSet", WiiSpeakText::HeadphoneTitle},
@@ -93,43 +89,44 @@ constexpr std::array<PaneText, 6> HeadphoneTexts = {{
 // ---- The precautions (20001_attention).
 
 constexpr int PageCount = 8;
+constexpr std::uint32_t PrecautionsLayout = 20001;
 const std::string PageBackButton = "dbutton_01";
 const std::string PageNextButton = "dbutton_02";
 
 constexpr std::array<PaneText, 33> PrecautionTexts = {{
-    {"T_texHdP1_00", WiiSpeakMessageId(20001, 3)},
-    {"T_texP1", WiiSpeakMessageId(20001, 4)},
-    {"T_texHdP2_00", WiiSpeakMessageId(20001, 5)},
-    {"T_texP2_00", WiiSpeakMessageId(20001, 7)},
-    {"T_texP2_01", WiiSpeakMessageId(20001, 8)},
-    {"T_texP2_02", WiiSpeakMessageId(20001, 9)},
-    {"T_texHdP3_00", WiiSpeakMessageId(20001, 10)},
-    {"T_texP3_00", WiiSpeakMessageId(20001, 12)},
-    {"T_texHdP4_00", WiiSpeakMessageId(20001, 13)},
-    {"T_texP4_00", WiiSpeakMessageId(20001, 14)},
-    {"T_textMiniP4_00", WiiSpeakMessageId(20001, 35)},
-    {"T_textMiniP4_01", WiiSpeakMessageId(20001, 36)},
-    {"T_textMiniP4_02", WiiSpeakMessageId(20001, 37)},
-    {"T_textMiniP4_03", WiiSpeakMessageId(20001, 38)},
-    {"T_textMiniP4_04", WiiSpeakMessageId(20001, 39)},
-    {"T_textMiniP4_05", WiiSpeakMessageId(20001, 40)},
-    {"T_texHdP5_00", WiiSpeakMessageId(20001, 15)},
-    {"T_textP5_00", WiiSpeakMessageId(20001, 16)},
-    {"T_textMiniP5_01", WiiSpeakMessageId(20001, 18)},
-    {"T_textMiniP5_02", WiiSpeakMessageId(20001, 19)},
-    {"T_textMiniP5_04", WiiSpeakMessageId(20001, 21)},
-    {"T_textMiniP5_06", WiiSpeakMessageId(20001, 23)},
-    {"T_texHdP6_00", WiiSpeakMessageId(20001, 25)},
-    {"T_textP6_00", WiiSpeakMessageId(20001, 26)},
-    {"T_textMiniP6_00", WiiSpeakMessageId(20001, 27)},
-    {"T_texHdP7_00", WiiSpeakMessageId(20001, 28)},
-    {"T_texP7_00", WiiSpeakMessageId(20001, 29)},
-    {"T_textMiniP7_01", WiiSpeakMessageId(20001, 42)},
-    {"T_textMiniP7_02", WiiSpeakMessageId(20001, 43)},
-    {"T_textMiniP7_03", WiiSpeakMessageId(20001, 44)},
-    {"T_textMiniP7_04", WiiSpeakMessageId(20001, 45)},
-    {"T_texHdP8_00", WiiSpeakMessageId(20001, 30)},
-    {"T_texP8_00", WiiSpeakMessageId(20001, 31)},
+    {"T_texHdP1_00", WiiSpeakMessageId(PrecautionsLayout, 3)},
+    {"T_texP1", WiiSpeakMessageId(PrecautionsLayout, 4)},
+    {"T_texHdP2_00", WiiSpeakMessageId(PrecautionsLayout, 5)},
+    {"T_texP2_00", WiiSpeakMessageId(PrecautionsLayout, 7)},
+    {"T_texP2_01", WiiSpeakMessageId(PrecautionsLayout, 8)},
+    {"T_texP2_02", WiiSpeakMessageId(PrecautionsLayout, 9)},
+    {"T_texHdP3_00", WiiSpeakMessageId(PrecautionsLayout, 10)},
+    {"T_texP3_00", WiiSpeakMessageId(PrecautionsLayout, 12)},
+    {"T_texHdP4_00", WiiSpeakMessageId(PrecautionsLayout, 13)},
+    {"T_texP4_00", WiiSpeakMessageId(PrecautionsLayout, 14)},
+    {"T_textMiniP4_00", WiiSpeakMessageId(PrecautionsLayout, 35)},
+    {"T_textMiniP4_01", WiiSpeakMessageId(PrecautionsLayout, 36)},
+    {"T_textMiniP4_02", WiiSpeakMessageId(PrecautionsLayout, 37)},
+    {"T_textMiniP4_03", WiiSpeakMessageId(PrecautionsLayout, 38)},
+    {"T_textMiniP4_04", WiiSpeakMessageId(PrecautionsLayout, 39)},
+    {"T_textMiniP4_05", WiiSpeakMessageId(PrecautionsLayout, 40)},
+    {"T_texHdP5_00", WiiSpeakMessageId(PrecautionsLayout, 15)},
+    {"T_textP5_00", WiiSpeakMessageId(PrecautionsLayout, 16)},
+    {"T_textMiniP5_01", WiiSpeakMessageId(PrecautionsLayout, 18)},
+    {"T_textMiniP5_02", WiiSpeakMessageId(PrecautionsLayout, 19)},
+    {"T_textMiniP5_04", WiiSpeakMessageId(PrecautionsLayout, 21)},
+    {"T_textMiniP5_06", WiiSpeakMessageId(PrecautionsLayout, 23)},
+    {"T_texHdP6_00", WiiSpeakMessageId(PrecautionsLayout, 25)},
+    {"T_textP6_00", WiiSpeakMessageId(PrecautionsLayout, 26)},
+    {"T_textMiniP6_00", WiiSpeakMessageId(PrecautionsLayout, 27)},
+    {"T_texHdP7_00", WiiSpeakMessageId(PrecautionsLayout, 28)},
+    {"T_texP7_00", WiiSpeakMessageId(PrecautionsLayout, 29)},
+    {"T_textMiniP7_01", WiiSpeakMessageId(PrecautionsLayout, 42)},
+    {"T_textMiniP7_02", WiiSpeakMessageId(PrecautionsLayout, 43)},
+    {"T_textMiniP7_03", WiiSpeakMessageId(PrecautionsLayout, 44)},
+    {"T_textMiniP7_04", WiiSpeakMessageId(PrecautionsLayout, 45)},
+    {"T_texHdP8_00", WiiSpeakMessageId(PrecautionsLayout, 30)},
+    {"T_texP8_00", WiiSpeakMessageId(PrecautionsLayout, 31)},
 }};
 
 }
@@ -142,7 +139,7 @@ SettingsMenuScreen::SettingsMenuScreen(WiiSpeakSession& menuSession)
     for (const std::string& button : {SensitivityButton, HeadphoneButton, CheckButton, PrecautionsButton, MenuBackButton, MenuHelpButton})
         layout.AddButton(button);
 
-    SetTexts(layout, session, MenuTexts);
+    session.SetTexts(layout, MenuTexts);
     layout.PlayAnimation("all_inOut");
     layout.PlayAnimation("btn_in");
 }
@@ -199,7 +196,7 @@ SensitivityScreen::SensitivityScreen(WiiSpeakSession& sensitivitySession)
     for (const std::string& button : {DownButton, UpButton, SensitivityOkButton})
         layout.AddButton(button);
 
-    SetTexts(layout, session, SensitivityTexts);
+    session.SetTexts(layout, SensitivityTexts);
     layout.PlayAnimation("all_inOut");
     ShowSensitivity();
 }
@@ -275,7 +272,7 @@ HeadphoneScreen::HeadphoneScreen(WiiSpeakSession& headphoneSession)
     for (const std::string& button : {YesButton, NoButton, HeadphoneOkButton})
         layout.AddButton(button);
 
-    SetTexts(layout, session, HeadphoneTexts);
+    session.SetTexts(layout, HeadphoneTexts);
     layout.PlayAnimation("all_inOut");
     ShowChoice();
 }
@@ -324,8 +321,8 @@ std::vector<SceneLayout*> HeadphoneScreen::ShownLayouts()
 // The frame around the chosen answer: W_box_00 around Yes, W_box_01 around No.
 void HeadphoneScreen::ShowChoice()
 {
-    layout.Layout().PaneNamed("W_box_00").alpha = choosesHeadphones ? ChosenFrameAlpha : OtherFrameAlpha;
-    layout.Layout().PaneNamed("W_box_01").alpha = choosesHeadphones ? OtherFrameAlpha : ChosenFrameAlpha;
+    layout.Layout().PaneNamed("W_box_00").alpha = FrameAlpha(choosesHeadphones);
+    layout.Layout().PaneNamed("W_box_01").alpha = FrameAlpha(!choosesHeadphones);
 }
 
 PrecautionsScreen::PrecautionsScreen(WiiSpeakSession& precautionsSession, WiiSpeakScreenName screenAfterwards)
@@ -335,7 +332,7 @@ PrecautionsScreen::PrecautionsScreen(WiiSpeakSession& precautionsSession, WiiSpe
 {
     layout.AddButton(PageBackButton);
     layout.AddButton(PageNextButton);
-    SetTexts(layout, session, PrecautionTexts);
+    session.SetTexts(layout, PrecautionTexts);
     layout.SetText("T_button_01", session.Text(WiiSpeakText::PrecautionsBack));
     layout.SetText("T_Pno_03", AsciiToText(std::to_string(PageCount)));
     layout.PlayAnimation("dialog_in");

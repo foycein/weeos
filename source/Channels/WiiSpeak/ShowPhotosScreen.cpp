@@ -4,6 +4,8 @@
 #include "Channels/Photo/PhotoPictures.h"
 #include "Channels/WiiSpeak/WiiSpeakMessageIds.h"
 
+#include "Formats/Alignment.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -14,15 +16,17 @@ namespace Channels
 namespace
 {
 
-struct PaneText
-{
-    std::string_view pane;
-    std::uint32_t messageId;
-};
-
-constexpr std::array<PaneText, 2> PlaceTitleTexts = {{{"textTJP", WiiSpeakText::ChoosePhotoLocation}, {"backTJP", WiiSpeakText::PhotoBack}}};
-constexpr std::array<PaneText, 2> CardButtonTexts = {{{"sdTJP0A", WiiSpeakText::DigitalCameraOrCellPhone}, {"sdTJP0B", WiiSpeakText::SdCardsOnly}}};
-constexpr std::array<PaneText, 1> BoardButtonTexts = {{{"wiiTJP", WiiSpeakText::WiiMessageBoardPhotos}}};
+constexpr std::array<PaneText, 2> PlaceTitleTexts = {{
+    {"textTJP", WiiSpeakText::ChoosePhotoLocation},
+    {"backTJP", WiiSpeakText::PhotoBack},
+}};
+constexpr std::array<PaneText, 2> CardButtonTexts = {{
+    {"sdTJP0A", WiiSpeakText::DigitalCameraOrCellPhone},
+    {"sdTJP0B", WiiSpeakText::SdCardsOnly},
+}};
+constexpr std::array<PaneText, 1> BoardButtonTexts = {{
+    {"wiiTJP", WiiSpeakText::WiiMessageBoardPhotos},
+}};
 constexpr std::array<PaneText, 4> ThumbnailTexts = {{
     {"zoom_outTJP", WiiSpeakText::ZoomOut},
     {"zoom_inTJP", WiiSpeakText::ZoomIn},
@@ -50,7 +54,7 @@ const std::string PreviousButton = "prevB";
 const std::string NextButton = "nextB";
 const std::string ShowButton = "todayB";
 
-// The list of the thumbnails as the Photo Channel draws it: the original draws it itself, so these numbers are Assumed (CHN-31).
+// The list of the thumbnails as the Photo Channel draws it: the original draws it itself, so these numbers are Assumed (CHN-100).
 constexpr float ListTop = 150;
 constexpr float ListBottom = -150;
 constexpr float ListSideMargin = 40;
@@ -61,6 +65,11 @@ constexpr std::size_t FirstZoom = 1;
 constexpr int ThumbnailsMadePerStep = 2;
 constexpr Formats::Byte UnreadableGray = 90;
 constexpr Formats::Byte Opaque = 255;
+
+constexpr SystemMenu::ButtonSet ScrollUpButtons = {.remoteButtons = Input::RemoteButtons::Up};
+constexpr SystemMenu::ButtonSet ScrollDownButtons = {.remoteButtons = Input::RemoteButtons::Down};
+constexpr SystemMenu::ButtonSet ZoomInButtons = {.remoteButtons = Input::RemoteButtons::Plus};
+constexpr SystemMenu::ButtonSet ZoomOutButtons = {.remoteButtons = Input::RemoteButtons::Minus};
 
 // Where one photo is drawn between the two rows of buttons, in layout units.
 constexpr PictureBox PhotoBox = {0, 0, 560, 300};
@@ -73,13 +82,6 @@ constexpr std::string_view NextPhotoSound = "SE_PHT_PHOTO_NEXT";
 constexpr std::string_view ShowPhotoSound = "SE_PHT_PHOTO_SELECT";
 constexpr std::string_view CancelSound = "SE_PHT_CANCEL";
 
-template <std::size_t Count>
-void SetTexts(SceneLayout& layout, const WiiSpeakSession& session, const std::array<PaneText, Count>& texts)
-{
-    for (const PaneText& text : texts)
-        layout.SetText(text.pane, session.Text(text.messageId));
-}
-
 }
 
 ShowPhotosScreen::ShowPhotosScreen(WiiSpeakSession& photoSession)
@@ -91,11 +93,11 @@ ShowPhotosScreen::ShowPhotosScreen(WiiSpeakSession& photoSession)
     , viewButtons(session.services.display, session.files.PhotoLayouts(), "view")
     , zoom(FirstZoom)
 {
-    SetTexts(placeTitle, session, PlaceTitleTexts);
-    SetTexts(cardButton, session, CardButtonTexts);
-    SetTexts(boardButton, session, BoardButtonTexts);
-    SetTexts(thumbnailButtons, session, ThumbnailTexts);
-    SetTexts(viewButtons, session, ViewTexts);
+    session.SetTexts(placeTitle, PlaceTitleTexts);
+    session.SetTexts(cardButton, CardButtonTexts);
+    session.SetTexts(boardButton, BoardButtonTexts);
+    session.SetTexts(thumbnailButtons, ThumbnailTexts);
+    session.SetTexts(viewButtons, ViewTexts);
     placeTitle.SetVisible("blank", false);
     viewButtons.SetVisible("rot", false);
     viewButtons.SetVisible("blank", false);
@@ -118,7 +120,7 @@ std::optional<WiiSpeakScreenName> ShowPhotosScreen::Update()
     if (session.dialog.IsOpen() || waiting != Waiting::Nothing)
     {
         std::optional<int> choice = session.dialog.TakeChoice();
-        if (choice && waiting == Waiting::AnswerToFinishing && *choice == 0)
+        if (choice && waiting == Waiting::AnswerToFinishing && *choice == WiiSpeakDialog::FirstChoice)
             nextScreen = WiiSpeakScreenName::ChatRoom;
         if (choice)
             waiting = Waiting::Nothing;
@@ -263,30 +265,35 @@ void ShowPhotosScreen::UpdateThumbnails(const std::optional<std::string>& presse
     }
     else if (pressed == FinishButton)
         AskToFinish();
-    else if (pressed == UpButton || input.AnyPlayerPressed({Input::RemoteButtons::Up, 0}))
+    else if (pressed == UpButton || input.AnyPlayerPressed(ScrollUpButtons))
         Scroll(-1);
-    else if (pressed == DownButton || input.AnyPlayerPressed({Input::RemoteButtons::Down, 0}))
+    else if (pressed == DownButton || input.AnyPlayerPressed(ScrollDownButtons))
         Scroll(1);
-    else if (pressed == ZoomInButton || input.AnyPlayerPressed({Input::RemoteButtons::Plus, 0}))
+    else if (pressed == ZoomInButton || input.AnyPlayerPressed(ZoomInButtons))
         ChangeZoom(-1);
-    else if (pressed == ZoomOutButton || input.AnyPlayerPressed({Input::RemoteButtons::Minus, 0}))
+    else if (pressed == ZoomOutButton || input.AnyPlayerPressed(ZoomOutButtons))
         ChangeZoom(1);
-    else if (std::optional<std::size_t> number = PhotoAtPress())
-    {
-        session.services.sounds.Request(SelectPhotoSound);
-        stage = Stage::Viewing;
-        ShowPhoto(*number);
-    }
+    else
+        ViewPhotoAtPress();
+}
+
+void ShowPhotosScreen::ViewPhotoAtPress()
+{
+    std::optional<std::size_t> number = PhotoAtPress();
+    if (!number)
+        return;
+
+    session.services.sounds.Request(SelectPhotoSound);
+    stage = Stage::Viewing;
+    ShowPhoto(*number);
 }
 
 std::optional<WiiSpeakScreenName> ShowPhotosScreen::UpdateView(const std::string& pressed)
 {
     if (pressed == PreviousButton || pressed == NextButton)
     {
-        std::size_t count = photos.size();
-        std::size_t next = pressed == NextButton ? (shownPhoto + 1) % count : (shownPhoto + count - 1) % count;
         session.services.sounds.Request(NextPhotoSound);
-        ShowPhoto(next);
+        ShowPhoto(NeighborPhoto(pressed == NextButton));
     }
     else if (pressed == BackButton)
     {
@@ -303,6 +310,16 @@ std::optional<WiiSpeakScreenName> ShowPhotosScreen::UpdateView(const std::string
     else if (pressed == FinishButton)
         AskToFinish();
     return std::nullopt;
+}
+
+// Previous and Next go round: after the last photo comes the first.
+std::size_t ShowPhotosScreen::NeighborPhoto(bool isNext) const
+{
+    std::size_t count = photos.size();
+    if (isNext)
+        return (shownPhoto + 1) % count;
+
+    return (shownPhoto + count - 1) % count;
 }
 
 // A photo of a kind the viewer cannot read says so, and the viewer stays on it without a picture.
@@ -408,12 +425,13 @@ float ShowPhotosScreen::CellHeight() const
 
 std::size_t ShowPhotosScreen::VisibleRows() const
 {
-    return std::max<std::size_t>(1, static_cast<std::size_t>((ListTop - ListBottom) / CellHeight()));
+    std::size_t fittingRows = static_cast<std::size_t>((ListTop - ListBottom) / CellHeight());
+    return std::max<std::size_t>(1, fittingRows);
 }
 
 std::size_t ShowPhotosScreen::RowCount() const
 {
-    return (photos.size() + ColumnsOfThumbnails() - 1) / ColumnsOfThumbnails();
+    return Formats::DivideRoundingUp(photos.size(), ColumnsOfThumbnails());
 }
 
 std::size_t ShowPhotosScreen::FirstShownPhoto() const
