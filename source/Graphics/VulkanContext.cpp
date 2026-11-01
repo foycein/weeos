@@ -70,7 +70,8 @@ bool HasRequiredFeatures(VkPhysicalDevice candidate)
     VkPhysicalDeviceFeatures2 features = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features13};
     vkGetPhysicalDeviceFeatures2(candidate, &features);
 
-    return features13.dynamicRendering == VK_TRUE && features13.synchronization2 == VK_TRUE;
+    return features13.dynamicRendering == VK_TRUE && features13.synchronization2 == VK_TRUE
+        && features13.shaderDemoteToHelperInvocation == VK_TRUE;
 }
 
 // A family of queues that can draw and can show pictures in the window.
@@ -340,8 +341,10 @@ void VulkanContext::CreateDevice()
         .pQueuePriorities = &queuePriority,
     };
 
+    // The fragment program skips transparent pixels for the alpha test, which needs the third feature.
     VkPhysicalDeviceVulkan13Features features13 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .shaderDemoteToHelperInvocation = VK_TRUE,
         .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE,
     };

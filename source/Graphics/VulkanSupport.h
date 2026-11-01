@@ -20,6 +20,9 @@ constexpr std::uint64_t NoTimeLimit = std::numeric_limits<std::uint64_t>::max();
 // The colors are stored as they are, without any conversion for gamma.
 constexpr VkFormat PictureFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
+// The format of the depth buffers that every picture has.
+constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
+
 // Throws a GraphicsError that names the action when a Vulkan call did not succeed.
 void CheckVulkan(VkResult result, std::string_view action);
 
@@ -33,6 +36,7 @@ struct ImageTransition
     VkAccessFlags2 sourceAccess;
     VkPipelineStageFlags2 destinationStage;
     VkAccessFlags2 destinationAccess;
+    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 };
 
 void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const ImageTransition& transition);

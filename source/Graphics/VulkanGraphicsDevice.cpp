@@ -27,6 +27,35 @@ constexpr std::size_t BytesPerPixel = 4;
 constexpr VkClearColorValue OpaqueBlack = {{0.0f, 0.0f, 0.0f, 1.0f}};
 constexpr VkClearColorValue TransparentBlack = {{0.0f, 0.0f, 0.0f, 0.0f}};
 
+// The depth buffers: before a picture starts, the drawing of the pictures before it must be done with the buffer, which is then
+// cleared. When a paused picture of the screen goes on, its depth must be complete before it is tested again.
+constexpr float FarDepth = 1.0f;
+
+constexpr VkPipelineStageFlags2 DepthTestStages = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+constexpr VkAccessFlags2 DepthReadAndWrite = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+constexpr ImageTransition StartDepth = {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, DepthTestStages,
+    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, DepthTestStages, DepthReadAndWrite, VK_IMAGE_ASPECT_DEPTH_BIT};
+
+constexpr ImageTransition KeepDepth = {VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+    DepthTestStages, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, DepthTestStages, DepthReadAndWrite, VK_IMAGE_ASPECT_DEPTH_BIT};
+
+constexpr std::size_t CornersPerTriangle = 3;
+
+VkCullModeFlags ToVulkanCulling(FaceCulling culling)
+{
+    switch (culling)
+    {
+    case FaceCulling::None:
+        return VK_CULL_MODE_NONE;
+    case FaceCulling::Back:
+        return VK_CULL_MODE_BACK_BIT;
+    case FaceCulling::Front:
+        return VK_CULL_MODE_FRONT_BIT;
+    }
+    return VK_CULL_MODE_NONE;
+}
+
 // A new picture is drawn to as soon as the display has handed it over.
 constexpr ImageTransition StartDrawing = {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -68,6 +97,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(const Platform::Window& window)
     , swapchain(context)
     , pipeline(context)
     , textures(context, pipeline.TextureSetLayout())
+    , depthBuffers(context)
     , standaloneResources(context, pipeline.DrawDataSetLayout())
 {
     for (std::size_t frameNumber = 0; frameNumber < FramesInFlight; ++frameNumber)
@@ -167,11 +197,38 @@ void VulkanGraphicsDevice::DrawQuad(const Quad& quad, const Material& material)
 
     std::uint32_t drawIndex = WriteDrawData(*recording, quad, material);
 
-    BindPipeline(*recording, material.blendMode);
+    BindPipeline(*recording, pipeline.QuadPipelineFor(material.blendMode));
     BindTextures(material);
 
     // The draw number travels as the first instance, and the vertex shader finds the quad with it.
     vkCmdDraw(CurrentCommandBuffer(), VerticesPerQuad, 1, 0, drawIndex);
+}
+
+void VulkanGraphicsDevice::DrawMesh(std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement, const Material& material)
+{
+    RequireActivePicture("DrawMesh");
+    CheckMaterial(material);
+    CheckTextures(material);
+
+    if (triangleCorners.size() % CornersPerTriangle != 0)
+        throw GraphicsError(std::format("A mesh has {} corners, which is not three per triangle", triangleCorners.size()));
+
+    Recording* recording = CurrentRecording();
+    if (recording == nullptr || triangleCorners.empty())
+        return;
+
+    std::uint32_t firstCorner = recording->meshCornerCount;
+    std::uint32_t meshNumber = WriteMeshData(*recording, triangleCorners, placement);
+    std::uint32_t drawIndex = WriteDrawData(*recording, Quad(), material);
+    recording->resources->DrawRecords()[drawIndex].meshNumber = meshNumber;
+
+    BindPipeline(*recording, pipeline.MeshPipelineFor(material.blendMode));
+    ApplyMeshState(placement);
+    BindTextures(material);
+
+    // As for quads, the draw number travels as the first instance. The corners of the mesh start at firstCorner.
+    auto cornerCount = static_cast<std::uint32_t>(triangleCorners.size());
+    vkCmdDraw(CurrentCommandBuffer(), cornerCount, 1, firstCorner, drawIndex);
 }
 
 TextureHandle VulkanGraphicsDevice::BeginOffscreen(const Canvas& canvas, std::uint32_t width, std::uint32_t height)
@@ -194,7 +251,8 @@ TextureHandle VulkanGraphicsDevice::BeginOffscreen(const Canvas& canvas, std::ui
 
     TransitionImage(CurrentCommandBuffer(), texture.image->Handle(), StartDrawing);
 
-    offscreenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), {width, height}});
+    const GraphicsImage& depthBuffer = depthBuffers.ForOffscreen({width, height}, lastFrameNumber);
+    offscreenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), {width, height}, &depthBuffer});
     offscreenTexture = handle;
     BeginPass(*offscreenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, TransparentBlack);
     return handle;
@@ -347,6 +405,7 @@ void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
 
     finishedFrameNumber = std::max(finishedFrameNumber, resources.FrameNumber());
     textures.ReleaseFinished(finishedFrameNumber);
+    depthBuffers.ReleaseFinished(finishedFrameNumber);
 }
 
 CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const
@@ -363,7 +422,7 @@ void VulkanGraphicsDevice::StartWindowPicture(const CanvasMapping& mapping)
     VkImage image = swapchain.AcquiredImage();
     TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
 
-    screenTarget.emplace(Target{mapping, std::nullopt, image, swapchain.AcquiredView(), swapchain.Extent()});
+    screenTarget.emplace(Target{mapping, std::nullopt, image, swapchain.AcquiredView(), swapchain.Extent(), &ScreenDepthBuffer()});
     BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
 }
 
@@ -381,7 +440,7 @@ void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, Pla
     TransitionImage(CurrentCommandBuffer(), texture.image->Handle(), StartDrawing);
 
     VkExtent2D size = {ConsoleFrameWidth, ConsoleFrameHeight};
-    screenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), size});
+    screenTarget.emplace(Target{mapping, std::nullopt, texture.image->Handle(), texture.image->View(), size, &ScreenDepthBuffer()});
     BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
 }
 
@@ -402,6 +461,21 @@ void VulkanGraphicsDevice::StartRecording(std::optional<Recording>& recording, F
 
 void VulkanGraphicsDevice::BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor)
 {
+    VkImage depthImage = target.depthBuffer->Handle();
+    if (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        TransitionImage(CurrentCommandBuffer(), depthImage, StartDepth);
+    else
+        TransitionImage(CurrentCommandBuffer(), depthImage, KeepDepth);
+
+    VkRenderingAttachmentInfo depthAttachment = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = target.depthBuffer->View(),
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .loadOp = loadOp,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.depthStencil = {FarDepth, 0}},
+    };
+
     VkRenderingAttachmentInfo colorAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = target.imageView,
@@ -416,6 +490,7 @@ void VulkanGraphicsDevice::BeginPass(const Target& target, VkAttachmentLoadOp lo
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment,
     };
     vkCmdBeginRendering(CurrentCommandBuffer(), &renderingInfo);
 
@@ -507,9 +582,9 @@ void VulkanGraphicsDevice::CopyConsoleFrameToScreen()
     VkImage image = swapchain.AcquiredImage();
     TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
 
-    Target copyTarget{CanvasMapping(ConsoleRasterCanvas, screenArea), std::nullopt, image, swapchain.AcquiredView(), size};
+    Target copyTarget{CanvasMapping(ConsoleRasterCanvas, screenArea), std::nullopt, image, swapchain.AcquiredView(), size, &ScreenDepthBuffer()};
     BeginPass(copyTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
-    BindPipeline(*frameRecording, consoleFrame->copyMaterial.blendMode);
+    BindPipeline(*frameRecording, pipeline.QuadPipelineFor(consoleFrame->copyMaterial.blendMode));
     BindTextures(consoleFrame->copyMaterial);
     vkCmdDraw(CurrentCommandBuffer(), VerticesPerQuad, 1, 0, consoleFrame->copyDrawIndex);
     EndPass();
@@ -583,13 +658,56 @@ void VulkanGraphicsDevice::CheckTextures(const Material& material)
     }
 }
 
-void VulkanGraphicsDevice::BindPipeline(Recording& recording, BlendMode blendMode)
+std::uint32_t VulkanGraphicsDevice::WriteMeshData(Recording& recording, std::span<const MeshVertex> triangleCorners, const MeshPlacement& placement)
 {
-    if (recording.boundBlendMode == blendMode)
+    if (recording.meshCount >= MaximumMeshesPerPicture)
+        throw GraphicsError(std::format("A picture holds at most {} meshes", MaximumMeshesPerPicture));
+
+    if (recording.meshCornerCount + triangleCorners.size() > MaximumMeshCornersPerPicture)
+        throw GraphicsError(std::format("The meshes of a picture have more than the {} corners that fit", MaximumMeshCornersPerPicture));
+
+    for (const MeshVertex& vertex : triangleCorners)
+    {
+        recording.resources->MeshCorners()[recording.meshCornerCount] = MakeMeshCorner(vertex);
+        ++recording.meshCornerCount;
+    }
+
+    std::uint32_t meshNumber = recording.meshCount;
+    ++recording.meshCount;
+    recording.resources->MeshRecords()[meshNumber] = MakeMeshRecord(placement);
+    return meshNumber;
+}
+
+void VulkanGraphicsDevice::ApplyMeshState(const MeshPlacement& placement)
+{
+    VkBool32 writesDepth = VK_FALSE;
+    if (placement.depth == DepthMode::TestAndWrite)
+        writesDepth = VK_TRUE;
+
+    VkCommandBuffer commandBuffer = CurrentCommandBuffer();
+    vkCmdSetCullMode(commandBuffer, ToVulkanCulling(placement.culling));
+    vkCmdSetDepthTestEnable(commandBuffer, VK_TRUE);
+    vkCmdSetDepthWriteEnable(commandBuffer, writesDepth);
+}
+
+void VulkanGraphicsDevice::BindPipeline(Recording& recording, VkPipeline drawPipeline)
+{
+    if (recording.boundPipeline == drawPipeline)
         return;
 
-    vkCmdBindPipeline(CurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineFor(blendMode));
-    recording.boundBlendMode = blendMode;
+    vkCmdBindPipeline(CurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, drawPipeline);
+    recording.boundPipeline = drawPipeline;
+}
+
+const GraphicsImage& VulkanGraphicsDevice::ScreenDepthBuffer()
+{
+    VkExtent2D size = swapchain.Extent();
+    if (pictureSettings.resolution == PictureResolution::Console)
+    {
+        size.width = std::max(size.width, ConsoleFrameWidth);
+        size.height = std::max(size.height, ConsoleFrameHeight);
+    }
+    return depthBuffers.ForScreen(size, lastFrameNumber);
 }
 
 void VulkanGraphicsDevice::BindTextures(const Material& material)
