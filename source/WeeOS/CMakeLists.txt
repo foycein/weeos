@@ -10,6 +10,7 @@ target_link_libraries(WeeOSApplication PUBLIC Boot Channels Graphics Input Ios N
 
 add_executable(WeeOS main.cpp WeeOS.rc)
 target_link_libraries(WeeOS PRIVATE WeeOSApplication)
+CopyWebViewLoader(WeeOS)
 CompileGraphicsShaders(WeeOS)
 
 # The release build is a desktop program, so no console window opens beside it. main stays its start.

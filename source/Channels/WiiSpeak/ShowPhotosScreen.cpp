@@ -202,7 +202,7 @@ std::optional<WiiSpeakScreenName> ShowPhotosScreen::UpdatePlace(const std::strin
     {
         ChannelStorage& storage = session.services.storage;
         std::vector<ChatPhoto> found =
-            FindBoardPhotos(storage.fileSystem, storage.fileSystemCaller, session.services.network.GetWirelessMacAddress());
+            FindBoardPhotos(storage.fileSystem, storage.fileSystemCaller, session.services.network.configuration.GetWirelessMacAddress());
         OpenThePhotos(std::move(found), WiiSpeakText::NoPhotosOnTheMessageBoard);
     }
     return std::nullopt;

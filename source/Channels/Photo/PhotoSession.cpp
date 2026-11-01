@@ -202,7 +202,7 @@ SystemMenu::MessageStore& PhotoSession::BoardStore()
     if (boardStore)
         return *boardStore;
 
-    Ios::MacAddress address = services.network.GetWirelessMacAddress();
+    Ios::MacAddress address = services.network.configuration.GetWirelessMacAddress();
     SystemMenu::WirelessAddress wirelessAddress{};
     std::copy(address.begin(), address.end(), wirelessAddress.begin());
     boardFiles = std::make_unique<BoardFiles>(services.storage.fileSystem, services.storage.fileSystemCaller);

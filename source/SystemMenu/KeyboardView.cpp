@@ -110,11 +110,16 @@ KeyboardView::KeyboardView(Display& menuDisplay, std::unique_ptr<Layout::LayoutA
 
 // The layouts hold the keys of the other languages and the button of the prediction. WeeOS is English and has no prediction
 // (docs/audit/OpenPoints/SystemMenu.md SYS-10). The keys of Shift and Caps show a picture, and not the words that the layout holds.
+// The keyboard of the Internet Channel has no Korean keys, so a pane that is not there is nothing to hide.
 void KeyboardView::HideWhatWeeOSDoesNotNeed()
 {
     for (std::string_view paneName : {"N_KeyChange_JP", "N_VK_grid", "N_modeSelect_all", "N_modeSelect_kr", "W_USEU_prdc_lang", "P_key_HENKAN",
              "T_key_SHIFT", "T_key_CAPS"})
-        keys->PaneNamed(paneName).isVisible = false;
+    {
+        Formats::Pane* pane = keys->FindPane(paneName);
+        if (pane != nullptr)
+            pane->isVisible = false;
+    }
 
     bar->PaneNamed("N_keyboardChange").isVisible = false;
 }

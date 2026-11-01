@@ -182,29 +182,6 @@ void MessageStore::CreateWhenMissing()
     Save();
 }
 
-std::vector<BoardDay> MessageStore::DaysWithRecords()
-{
-    constexpr std::string_view RootFolder = "";
-    Formats::VirtualFatVolume& board = Volume();
-    std::vector<BoardDay> days;
-    for (const Formats::VolumeEntry& year : board.ListFolder(RootFolder))
-    {
-        for (const Formats::VolumeEntry& month : board.ListFolder(year.name))
-        {
-            for (const Formats::VolumeEntry& day : board.ListFolder(year.name + "/" + month.name))
-            {
-                std::optional<int> yearNumber = NumberOfFolder(year.name);
-                std::optional<int> monthNumber = NumberOfFolder(month.name);
-                std::optional<int> dayNumber = NumberOfFolder(day.name);
-                if (yearNumber && monthNumber && dayNumber)
-                    days.push_back({*yearNumber, *monthNumber + 1, *dayNumber});
-            }
-        }
-    }
-    std::sort(days.begin(), days.end());
-    return days;
-}
-
 std::vector<std::string> MessageStore::RecordPathsOfDay(BoardDay day)
 {
     Formats::VirtualFatVolume& board = Volume();

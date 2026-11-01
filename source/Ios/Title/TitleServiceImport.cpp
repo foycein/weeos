@@ -23,6 +23,18 @@ namespace
 // A ticket with the console id 0 may be used on every console.
 constexpr std::uint32_t EveryConsoleId = 0;
 
+constexpr std::string_view ContentFileExtension = ".app";
+
+// The content id in a file name such as "00000011.app", or nothing for another name such as "title.tmd".
+std::optional<std::uint32_t> ReadContentIdFromFileName(std::string_view name)
+{
+    if (!name.ends_with(ContentFileExtension))
+        return std::nullopt;
+
+    name.remove_suffix(ContentFileExtension.size());
+    return ParseNameNumber(name);
+}
+
 // The certificates that the NAND has kept in /sys/cert.sys. A NAND without the file, or with a damaged one, has none.
 std::vector<Formats::Certificate> ReadKeptCertificates(const KernelFiles& files)
 {
@@ -353,6 +365,86 @@ Result<void> TitleService::MoveImportIntoPlace(TitleId titleId)
         return familyFolderMade;
 
     return files.Rename(ImportTitlePath(titleId), TitlePath(titleId));
+}
+
+// ES does this in its start (0x20105538 in IOS80, 0x20104F20 in boot2). The original stops at the first error;
+// here a title that fails is left and the next one is settled.
+void TitleService::SettleInterruptedInstallations()
+{
+    std::lock_guard<std::mutex> lock(installationMutex);
+
+    Result<std::vector<std::string>> familyNames = files.ListNames(ImportsPath());
+    if (familyNames.Failed())
+        return;
+
+    for (const std::string& familyName : familyNames.Value())
+    {
+        std::optional<std::uint32_t> highPart = ParseNameNumber(familyName);
+        if (highPart)
+            SettleInterruptedFamily(*highPart);
+    }
+}
+
+void TitleService::SettleInterruptedFamily(std::uint32_t highPart)
+{
+    Result<std::vector<std::string>> titleNames = files.ListNames(ImportFamilyPath(highPart));
+    if (titleNames.Failed())
+        return;
+
+    for (const std::string& titleName : titleNames.Value())
+    {
+        std::optional<std::uint32_t> lowPart = ParseNameNumber(titleName);
+        if (lowPart)
+            SettleInterruptedInstallation(TitleId{highPart, *lowPart});
+    }
+
+    RemoveFolderIfEmpty(ImportFamilyPath(highPart));
+}
+
+Result<void> TitleService::SettleInterruptedInstallation(TitleId titleId)
+{
+    Result<Formats::Bytes> metadataBytes = files.ReadFile(ImportMetadataPath(titleId));
+    if (metadataBytes.Failed() && metadataBytes.Error() != IosError::NotFound)
+        return metadataBytes.Error();
+
+    if (metadataBytes.Failed())
+        return files.Delete(ImportTitlePath(titleId));
+
+    // The original does not read the metadata beyond its contents. Metadata that cannot be read counts as missing here.
+    Result<Formats::TitleMetadata> metadata = ParseTitleMetadata(metadataBytes.Value(), IosError::TitleInvalidArgument);
+    if (metadata.Failed())
+        return files.Delete(ImportTitlePath(titleId));
+
+    Result<void> leftoversDeleted = DeleteContentsNotInMetadata(titleId, metadata.Value());
+    if (leftoversDeleted.Failed())
+        return leftoversDeleted;
+
+    return MoveImportIntoPlace(titleId);
+}
+
+Result<void> TitleService::DeleteContentsNotInMetadata(TitleId titleId, const Formats::TitleMetadata& metadata)
+{
+    NandPath contentFolder = ImportContentFolderPath(titleId);
+    Result<std::vector<std::string>> names = files.ListNames(contentFolder);
+    if (names.Failed())
+        return names.Error();
+
+    for (const std::string& name : names.Value())
+    {
+        std::optional<std::uint32_t> contentId = ReadContentIdFromFileName(name);
+        if (!contentId)
+            continue;
+
+        bool isListed = FindContentById(metadata, *contentId) != nullptr;
+        if (isListed)
+            continue;
+
+        Result<void> deleted = files.Delete(contentFolder.Child(name).Value());
+        if (deleted.Failed())
+            return deleted;
+    }
+
+    return Result<void>();
 }
 
 Result<void> TitleService::EnsureDataFolder(TitleId titleId)

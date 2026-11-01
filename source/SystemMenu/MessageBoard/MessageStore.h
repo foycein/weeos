@@ -82,8 +82,6 @@ public:
     void CreateWhenMissing();
 
     std::vector<StoredMessage> MessagesOfDay(BoardDay day);
-    // Every day that holds a record, from the folders of the years, months and days, the oldest first.
-    std::vector<BoardDay> DaysWithRecords();
 
     // The days whose folders hold records, the oldest first: every day a program that looks through the whole board reads.
     std::vector<BoardDay> DaysWithRecords();

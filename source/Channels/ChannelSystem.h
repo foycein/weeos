@@ -40,7 +40,7 @@ public:
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, SystemMenu::TitleContents& systemMenuContents,
         Ios::RemoteService& remoteService, const ChannelNetwork& network, const ChannelStorage& storage, const ChannelAudio& audio,
         Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
-        std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
+        std::optional<Formats::Bytes> consoleFontArchive = std::nullopt, const ChannelPc& pc = {});
     ~ChannelSystem();
 
     // One step of the console's picture, 1001/60000 of a second.

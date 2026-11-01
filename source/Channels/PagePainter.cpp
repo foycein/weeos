@@ -93,22 +93,73 @@ void PagePainter::DrawPicturePart(const PagePicture& picture, const PageRectangl
 
 void PagePainter::DrawText(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box)
 {
+    Text::TextStyle textStyle = TextStyleOf(style);
+    Text::TextArea area = TextAreaOf(box);
+    std::u16string wrappedText = WrapAtSpaces(text, textStyle, area.width);
+    Text::LaidOutText laidOutText = font.layouter.LayOut(wrappedText, textStyle, area);
+    font.drawer.Draw(laidOutText);
+}
+
+void PagePainter::DrawTextLine(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box)
+{
+    Text::TextStyle textStyle = TextStyleOf(style);
+    Text::TextArea area = TextAreaOf(box);
+    Text::LaidOutText laidOutText = font.layouter.LayOut(CutWithEllipsis(text, textStyle, area.width), textStyle, area);
+    font.drawer.Draw(laidOutText);
+}
+
+Text::TextStyle PagePainter::TextStyleOf(const PageTextStyle& style) const
+{
     Text::TextStyle textStyle;
     textStyle.fontSize = {style.size * frame.scale, style.size * frame.scale};
     textStyle.topColor = style.color;
     textStyle.bottomColor = style.color;
     textStyle.alignment = {style.alignment, Text::VerticalAlignment::Top};
+    return textStyle;
+}
 
+Text::TextArea PagePainter::TextAreaOf(const PageRectangle& box) const
+{
     Formats::Vector2 topLeft = PageToPicture(box.left, box.top);
     Text::TextArea area;
     area.left = topLeft.x;
     area.top = topLeft.y;
     area.width = box.width * frame.scale;
     area.height = box.height * frame.scale;
+    return area;
+}
 
-    std::u16string wrappedText = WrapAtSpaces(text, textStyle, area.width);
-    Text::LaidOutText laidOutText = font.layouter.LayOut(wrappedText, textStyle, area);
-    font.drawer.Draw(laidOutText);
+// The characters that fit together with "..." stay; the text stays whole when it fits.
+std::u16string PagePainter::CutWithEllipsis(std::u16string_view text, const Text::TextStyle& style, float width) const
+{
+    constexpr std::u16string_view Ellipsis = u"...";
+    Text::TextArea longLine;
+    longLine.width = UnlimitedWidth;
+    longLine.height = UnlimitedWidth;
+
+    Text::LaidOutText laidOutText = font.layouter.LayOut(text, style, longLine);
+    if (laidOutText.characters.empty())
+        return std::u16string(text);
+
+    const Text::PlacedCharacter& last = laidOutText.characters.back();
+    float firstLeft = laidOutText.characters.front().left;
+    if (last.left + last.advance - firstLeft <= width)
+        return std::u16string(text);
+
+    Text::LaidOutText ellipsis = font.layouter.LayOut(Ellipsis, style, longLine);
+    float ellipsisWidth = 0;
+    for (const Text::PlacedCharacter& character : ellipsis.characters)
+        ellipsisWidth += character.advance;
+
+    std::size_t keptCount = 0;
+    while (keptCount < text.size())
+    {
+        const Text::PlacedCharacter& character = laidOutText.characters[keptCount];
+        if (character.left + character.advance - firstLeft + ellipsisWidth > width)
+            break;
+        ++keptCount;
+    }
+    return std::u16string(text.substr(0, keptCount)) + std::u16string(Ellipsis);
 }
 
 // The browser breaks a line at the last space that fits, where the text boxes of the layouts break at any character.

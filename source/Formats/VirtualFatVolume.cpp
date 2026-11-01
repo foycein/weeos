@@ -26,9 +26,15 @@ constexpr std::size_t EntrySize = 32;
 constexpr std::size_t EntriesPerCluster = ClusterSize / EntrySize;
 constexpr std::size_t RootFolderEntryCount = RootFolderSize / EntrySize;
 
-// FAT16 is the kind of FAT for 4085 to 65524 clusters.
+// FAT12 is the kind of FAT for fewer than 4085 clusters, FAT16 for 4085 to 65524. The Internet Channel's opera.vff of 1.5 MB is FAT12.
 constexpr std::size_t SmallestFat16ClusterCount = 4085;
 constexpr std::size_t LargestFat16ClusterCount = 65524;
+
+// An entry of FAT12 has 12 bits; two entries share three bytes. Its special values are those of FAT16 without the top four bits.
+constexpr std::uint16_t Fat12EntryMask = 0x0FFF;
+constexpr std::uint16_t Fat12SpecialValues = 0x0FF0;
+constexpr std::uint16_t Fat16TopBits = 0xF000;
+constexpr int Fat12OddEntryShift = 4;
 
 constexpr std::uint16_t FirstDataCluster = 2;
 constexpr std::uint16_t FreeCluster = 0;
@@ -253,10 +259,12 @@ VirtualFatVolume VirtualFatVolume::Read(Bytes fileBytes)
 void VirtualFatVolume::FindTheParts()
 {
     std::size_t clustersOfTheSize = bytes.size() / ClusterSize;
-    if (clustersOfTheSize < SmallestFat16ClusterCount || clustersOfTheSize > LargestFat16ClusterCount)
-        throw FormatError(std::format("VFF: {} bytes do not make a FAT16 volume", bytes.size()));
+    if (clustersOfTheSize > LargestFat16ClusterCount)
+        throw FormatError(std::format("VFF: {} bytes are too many for a FAT16 volume", bytes.size()));
 
-    fatSize = AlignUp(clustersOfTheSize * sizeof(std::uint16_t), ClusterSize);
+    isFat12 = clustersOfTheSize < SmallestFat16ClusterCount;
+    std::size_t fatBytes = isFat12 ? (clustersOfTheSize * 3 + 1) / 2 : clustersOfTheSize * sizeof(std::uint16_t);
+    fatSize = AlignUp(fatBytes, ClusterSize);
     firstFatOffset = HeaderSize;
     rootFolderOffset = firstFatOffset + 2 * fatSize;
     firstClusterOffset = rootFolderOffset + RootFolderSize;
@@ -655,16 +663,43 @@ std::string VirtualFatVolume::MakeShortName(std::uint16_t folderCluster, std::st
     }
 }
 
+// The entry as a FAT16 value: the special values of FAT12 (free, end of chain) get the top bits of FAT16, so the rest of the class
+// handles both kinds the same way.
 std::uint16_t VirtualFatVolume::FatEntry(std::uint16_t cluster) const
 {
-    return ReadLittleEndian16(bytes, firstFatOffset + cluster * sizeof(std::uint16_t));
+    if (!isFat12)
+        return ReadLittleEndian16(bytes, firstFatOffset + cluster * sizeof(std::uint16_t));
+
+    std::uint16_t pair = ReadLittleEndian16(bytes, firstFatOffset + cluster * 3 / 2);
+    bool isOdd = cluster % 2 == 1;
+    std::uint16_t value = isOdd ? static_cast<std::uint16_t>(pair >> Fat12OddEntryShift) : static_cast<std::uint16_t>(pair & Fat12EntryMask);
+    if (value >= Fat12SpecialValues)
+        value |= Fat16TopBits;
+    return value;
 }
 
 void VirtualFatVolume::SetFatEntry(std::uint16_t cluster, std::uint16_t value)
 {
-    std::size_t place = cluster * sizeof(std::uint16_t);
-    WriteLittleEndian16(bytes, firstFatOffset + place, value);
-    WriteLittleEndian16(bytes, firstFatOffset + fatSize + place, value);
+    if (!isFat12)
+    {
+        std::size_t place = cluster * sizeof(std::uint16_t);
+        WriteLittleEndian16(bytes, firstFatOffset + place, value);
+        WriteLittleEndian16(bytes, firstFatOffset + fatSize + place, value);
+        return;
+    }
+
+    std::size_t place = cluster * 3 / 2;
+    std::uint16_t twelveBits = value & Fat12EntryMask;
+    for (std::size_t fatOffset : {firstFatOffset, firstFatOffset + fatSize})
+    {
+        std::uint16_t pair = ReadLittleEndian16(bytes, fatOffset + place);
+        bool isOdd = cluster % 2 == 1;
+        if (isOdd)
+            pair = static_cast<std::uint16_t>((pair & ~(Fat12EntryMask << Fat12OddEntryShift)) | (twelveBits << Fat12OddEntryShift));
+        else
+            pair = static_cast<std::uint16_t>((pair & ~Fat12EntryMask) | twelveBits);
+        WriteLittleEndian16(bytes, fatOffset + place, pair);
+    }
 }
 
 std::vector<std::uint16_t> VirtualFatVolume::ClusterChain(std::uint16_t firstCluster) const

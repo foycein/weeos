@@ -5,6 +5,8 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Title/TitleService.h"
 
+#include <atomic>
+#include <cstdint>
 namespace SystemMenu
 {
 
@@ -25,10 +27,15 @@ public:
 private:
     Ios::NandPath ParsePath(std::string_view path) const;
     Ios::Caller CurrentCaller() const;
+    Ios::NandPath MakeSafeSaveFolder(std::string_view pathForErrors);
+    void WriteNewFile(const Ios::NandPath& nandPath, std::string_view pathForErrors, Formats::ByteView bytes);
 
     Ios::FileSystemService& fileSystem;
     const Ios::TitleService* titles = nullptr;
     Ios::Caller caller = Ios::SuperUserCaller;
+
+    // Every safe save has a folder of its own, numbered as the NAND library numbers them.
+    std::atomic<std::uint32_t> nextSafeSaveNumber = 0;
 };
 
 }

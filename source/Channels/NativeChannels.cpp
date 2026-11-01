@@ -8,6 +8,7 @@
 #include "Channels/WiiConnect24Channel.h"
 #include "Channels/WiiSpeak/WiiSpeakChannel.h"
 
+#include "Formats/ByteReader.h"
 #include "Formats/Huffman.h"
 
 #include <array>
@@ -82,6 +83,10 @@ constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/Ni
 // The Photo Channel's music and effects are in content 2. Its HOME menu sounds (HomeButtonSe/Huf8_HomeButtonSe.arc) are not a sound archive.
 constexpr std::array<ChannelSoundArchive, 1> PhotoSounds = {{{2, "./rev_photo.brsar", false}}};
 
+// The Internet Channel's sounds and those of its soft keyboard are in remote/operaSound.brsar of content 2. Its HOME menu sounds
+// (homebutton/HomeButtonSe.arc of content 5) are not a sound archive.
+constexpr std::array<ChannelSoundArchive, 1> InternetSounds = {{{2, "./remote/operaSound.brsar", false}}};
+
 std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 {
     if (titleId == ForecastChannelTitleId)
@@ -99,10 +104,32 @@ std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
     if (titleId == PhotoChannelTitleId)
         return PhotoSounds;
 
+    if (titleId == InternetChannelTitleId)
+        return InternetSounds;
+
     if (titleId == WiiSpeakChannelTitleId)
         return WiiSpeakSounds;
 
     return {};
+}
+
+}
+
+namespace
+{
+
+// A file of a U8 archive may have padding behind it (the Internet Channel's operaSound.brsar has 2 bytes); the sound archive is the
+// part that its header counts: the size of the file is the big-endian word after the tag, the byte order mark and the version.
+Formats::ByteView WithoutPadding(Formats::ByteView file)
+{
+    constexpr std::size_t FileSizeOffset = 8;
+    Formats::ByteReader reader(file, "sound archive");
+    reader.Skip(FileSizeOffset);
+    std::uint32_t archiveSize = reader.ReadUint32();
+    if (archiveSize > file.size())
+        return file;
+
+    return file.first(archiveSize);
 }
 
 }
@@ -113,7 +140,7 @@ std::vector<Formats::Bytes> ReadSoundArchives(Ios::TitleId titleId, SystemMenu::
     for (const ChannelSoundArchive& soundArchive : SoundArchivesOf(titleId))
     {
         Formats::U8Archive content = ReadArchiveContent(contents, soundArchive.contentIndex);
-        Formats::ByteView file = FindFileOrFail(content, soundArchive.path);
+        Formats::ByteView file = WithoutPadding(FindFileOrFail(content, soundArchive.path));
         if (soundArchive.isHuffmanPacked)
             archives.push_back(Formats::DecompressHuffman(file));
         else

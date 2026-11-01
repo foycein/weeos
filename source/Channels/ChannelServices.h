@@ -7,8 +7,10 @@
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 
+#include "Browser/WebPage.h"
 #include "Ios/Caller.h"
 #include "Ios/FileSystem/FileSystemService.h"
+#include "Ios/Keyboard/KeyboardService.h"
 #include "Ios/Microphone/MicrophoneService.h"
 #include "Ios/Network/NetworkConfigService.h"
 #include "Ios/SdCard/SdCardService.h"
@@ -61,6 +63,15 @@ struct ChannelStorage
     Ios::Caller fileSystemCaller;
 };
 
+// What a channel gets from the PC: the USB keyboard of IOS that the keyboard of the PC types into, and the place and the sound of the
+// browser engine (the Internet Channel). Without a keyboard the channel takes the pointer only. A browser that is not told otherwise
+// keeps quiet, so that tests make no sound.
+struct ChannelPc
+{
+    Ios::KeyboardService* keyboard = nullptr;
+    Browser::BrowserSettings browser{{}, true};
+};
+
 // What a channel hears and plays beyond its sound archives: the Wii Speak accessory of IOS and the player of the waves that the
 // channel makes itself (a recorded voice, a stream file).
 struct ChannelAudio
@@ -90,6 +101,7 @@ struct ChannelServices
 
     // The time of the console's clock as the PC gives it: what a channel seeds its chances with and the time a Mii is made.
     Settings::PcClock consoleTime;
+    ChannelPc pc;
 };
 
 }

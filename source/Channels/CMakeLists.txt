@@ -2,6 +2,13 @@ add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelText.cpp
     ChannelSystem.cpp
+    Internet/FavoritesScreen.cpp
+    Internet/OperaData.cpp
+    Internet/PageToolbar.cpp
+    Internet/PageView.cpp
+    Internet/SettingsScreen.cpp
+    Internet/ThumbnailPicture.cpp
+    Internet/TypedAddresses.cpp
     InternetChannel.cpp
     Manual/HtmlDocument.cpp
     Manual/ManualViewer.cpp
@@ -71,4 +78,4 @@ add_library(Channels STATIC
     WiiSpeak/WiiSpeakSession.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound)
+target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound Browser)
