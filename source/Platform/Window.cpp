@@ -109,6 +109,16 @@ bool Window::IsMinimized() const
     return IsIconic(handle) != FALSE;
 }
 
+void Window::SetClientSize(WindowSize clientSize)
+{
+    if (isFullscreen)
+        return;
+
+    RECT frame = {0, 0, static_cast<LONG>(clientSize.width), static_cast<LONG>(clientSize.height)};
+    AdjustWindowRectExForDpi(&frame, WindowedStyle, FALSE, 0, GetDpiForWindow(handle));
+    SetWindowPos(handle, nullptr, 0, 0, frame.right - frame.left, frame.bottom - frame.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+}
+
 bool Window::IsFullscreen() const
 {
     return isFullscreen;
