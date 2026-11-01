@@ -134,21 +134,17 @@ def WriteCleanSource(sourceFolder):
 
 def WriteReadme(releaseFolder, version):
     zipName = ZipPathOf(Path(), version).name
-    text = (f"# WeeOS {version}
-
-"
-            "A hand-written reconstruction of the Wii system for the PC.
-
-"
-            f"- `{SetupFileName}` installs WeeOS (by default into Programs\WeeOS of your local application data) with shortcuts and an uninstaller.
-"
-            f"- `{zipName}` is the same WeeOS as a portable folder: unpack it anywhere and start `WeeOS.exe`.
-"
-            f"- `{ProgramFolderName}` is that folder, unpacked.
-"
-            f"- `{SourceFolderName}` is the source code it was built from.
-")
-    (releaseFolder / ReadmeFileName).write_text(text, encoding="utf-8")
+    lines = [
+        f"# WeeOS {version}",
+        "",
+        "A hand-written reconstruction of the Wii system for the PC.",
+        "",
+        f"- `{SetupFileName}` installs WeeOS, by default into Programs/WeeOS of your local application data, with its shortcuts and an uninstaller.",
+        f"- `{zipName}` is the same WeeOS as a portable folder: unpack it anywhere and start `WeeOS.exe`.",
+        f"- `{ProgramFolderName}` is that folder, unpacked.",
+        f"- `{SourceFolderName}` is the source code it was built from.",
+    ]
+    (releaseFolder / ReadmeFileName).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 # RELEASE holds only what this script puts there (and the README that waited for it). Anything else in it stops the copy, so nothing
