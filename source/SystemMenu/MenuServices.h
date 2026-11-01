@@ -15,6 +15,8 @@ class InputManager;
 class MenuClock;
 class MenuFiles;
 class ScreenManager;
+class SoftKeyboard;
+class SoundRequests;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -28,6 +30,8 @@ struct MenuServices
     InputManager& input;
     CursorManager& cursors;
     ScreenManager& screens;
+    SoundRequests& sounds;
+    SoftKeyboard& keyboard;
 };
 
 }

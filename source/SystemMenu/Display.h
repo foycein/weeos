@@ -2,6 +2,7 @@
 
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Layout/TextFonts.h"
 #include "Platform/ScreenShape.h"
 
 namespace SystemMenu
@@ -19,6 +20,11 @@ public:
     Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape);
 
     Graphics::GraphicsDevice& Device();
+
+    // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
+    // The fonts must stay alive as long as the display draws.
+    void SetTextFonts(const Layout::TextFonts& fonts);
+    const Layout::TextFonts* TextFonts() const;
 
     Platform::ScreenShape GetScreenShape() const;
     void SetScreenShape(Platform::ScreenShape newScreenShape);
@@ -43,6 +49,7 @@ public:
 
 private:
     Graphics::GraphicsDevice& device;
+    const Layout::TextFonts* textFonts = nullptr;
     Platform::ScreenShape screenShape;
 };
 

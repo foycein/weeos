@@ -6,8 +6,11 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoftKeyboard.h"
+#include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 
 #include "Ios/Remote/RemoteService.h"
@@ -35,17 +38,23 @@ public:
     // Draws the picture into the picture that is open, for example an offscreen picture.
     void DrawScene();
 
+    // The keys of this USB keyboard type into the soft keyboard. The service must stay alive as long as the menu.
+    void UsePhysicalKeyboard(Ios::KeyboardService& keyboardService);
+
     MenuServices& Services();
 
 private:
     Display display;
     MenuFiles files;
+    MenuFonts fonts;
     Text::MessageCatalog messages;
     MenuClock clock;
     Fader fader;
     InputManager input;
     CursorManager cursors;
     ScreenManager screens;
+    SoundRequests sounds;
+    SoftKeyboard keyboard;
     MenuServices services;
 };
 

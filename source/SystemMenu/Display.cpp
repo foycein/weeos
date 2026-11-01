@@ -21,6 +21,16 @@ Graphics::GraphicsDevice& Display::Device()
     return device;
 }
 
+void Display::SetTextFonts(const Layout::TextFonts& fonts)
+{
+    textFonts = &fonts;
+}
+
+const Layout::TextFonts* Display::TextFonts() const
+{
+    return textFonts;
+}
+
 Platform::ScreenShape Display::GetScreenShape() const
 {
     return screenShape;
