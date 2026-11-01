@@ -1,9 +1,12 @@
 #include "Channels/MiiChannel/MiiEditor.h"
 
+#include "Channels/MiiChannel/MiiChannelData.h"
+
 #include "Mii/DefaultMiis.h"
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <span>
 
 namespace Channels
@@ -30,6 +33,8 @@ constexpr std::array<int, Mii::MouthTypeCount> MouthGridOrder = {23, 1, 19, 21, 
 
 // A mole is a part with two types: none and one.
 constexpr int MoleTypeCount = 2;
+constexpr int HiddenMoleType = 0;
+constexpr int ShownMoleType = 1;
 
 // February always has 29 days, as the face library's check of a birthday says (docs/research/Mii.md 1.2).
 constexpr std::array<int, Mii::MonthCount> DaysInMonth = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -67,6 +72,62 @@ struct AdjustableValue
     int count;
 };
 
+// The numbers of a part that its buttons change; a part without a button of a kind leaves that number empty.
+struct AdjustableValues
+{
+    AdjustableValue size = {};
+    AdjustableValue rotation = {};
+    AdjustableValue spacing = {};
+    AdjustableValue vertical = {};
+    AdjustableValue horizontal = {};
+};
+
+// Nothing for a part that has no buttons, or a mole that is not shown.
+std::optional<AdjustableValues> AdjustableValuesOf(Mii::MiiRecord& record, EditorPart part)
+{
+    AdjustableValues values;
+    switch (part)
+    {
+    case EditorPart::Eyebrows:
+        values.size = {&record.eyebrows.size, 0, Mii::EyebrowSizeCount};
+        values.rotation = {&record.eyebrows.rotation, 0, Mii::EyebrowRotationCount};
+        values.spacing = {&record.eyebrows.spacing, 0, Mii::EyebrowSpacingCount};
+        values.vertical = {&record.eyebrows.vertical, Mii::EyebrowLowestVertical, Mii::EyebrowVerticalCount - Mii::EyebrowLowestVertical};
+        return values;
+    case EditorPart::Eyes:
+        values.size = {&record.eyes.size, 0, Mii::EyeSizeCount};
+        values.rotation = {&record.eyes.rotation, 0, Mii::EyeRotationCount};
+        values.spacing = {&record.eyes.spacing, 0, Mii::EyeSpacingCount};
+        values.vertical = {&record.eyes.vertical, 0, Mii::EyeVerticalCount};
+        return values;
+    case EditorPart::Nose:
+        values.size = {&record.nose.size, 0, Mii::NoseSizeCount};
+        values.vertical = {&record.nose.vertical, 0, Mii::NoseVerticalCount};
+        return values;
+    case EditorPart::Mouth:
+        values.size = {&record.mouth.size, 0, Mii::MouthSizeCount};
+        values.vertical = {&record.mouth.vertical, 0, Mii::MouthVerticalCount};
+        return values;
+    case EditorPart::Glasses:
+        values.size = {&record.glasses.size, 0, Mii::GlassesSizeCount};
+        values.vertical = {&record.glasses.vertical, 0, Mii::GlassesVerticalCount};
+        return values;
+    case EditorPart::Mustache:
+        values.size = {&record.facialHair.mustacheSize, 0, Mii::MustacheSizeCount};
+        values.vertical = {&record.facialHair.mustacheVertical, 0, Mii::MustacheVerticalCount};
+        return values;
+    case EditorPart::Mole:
+        if (!record.mole.isVisible)
+            return std::nullopt;
+        values.size = {&record.mole.size, 0, Mii::MoleSizeCount};
+        values.vertical = {&record.mole.vertical, 0, Mii::MoleVerticalCount};
+        values.horizontal = {&record.mole.horizontal, 0, Mii::MoleHorizontalCount};
+        return values;
+    default:
+        return std::nullopt;
+    }
+}
+
 AdjustResult Step(AdjustableValue adjustable, int step)
 {
     if (adjustable.value == nullptr)
@@ -78,13 +139,6 @@ AdjustResult Step(AdjustableValue adjustable, int step)
 
     *adjustable.value = newValue;
     return AdjustResult::Changed;
-}
-
-std::vector<std::uint8_t> StoredBytes(const Mii::MiiRecord& record)
-{
-    std::array<Formats::Byte, Mii::MiiRecordSize> bytes = {};
-    Mii::WriteMiiRecord(record, bytes);
-    return {bytes.begin(), bytes.end()};
 }
 
 }
@@ -225,7 +279,7 @@ int MiiEditor::ChosenType(EditorPart part) const
     case EditorPart::Beard:
         return record.facialHair.beardType;
     case EditorPart::Mole:
-        return record.mole.isVisible ? 1 : 0;
+        return record.mole.isVisible ? ShownMoleType : HiddenMoleType;
     }
     return 0;
 }
@@ -268,7 +322,7 @@ void MiiEditor::ChooseType(EditorPart part, int type)
         record.facialHair.beardType = type;
         return;
     case EditorPart::Mole:
-        record.mole.isVisible = type == 1;
+        record.mole.isVisible = type == ShownMoleType;
         return;
     }
 }
@@ -335,75 +389,32 @@ void MiiEditor::ChooseColor(ColorPart part, int color)
 // spacing; up and down the vertical place, which grows downward on the face; left and right the place of a mole across the face.
 AdjustResult MiiEditor::Adjust(EditorPart part, Adjustment adjustment)
 {
-    AdjustableValue size = {};
-    AdjustableValue rotation = {};
-    AdjustableValue spacing = {};
-    AdjustableValue vertical = {};
-    AdjustableValue horizontal = {};
-
-    switch (part)
-    {
-    case EditorPart::Eyebrows:
-        size = {&record.eyebrows.size, 0, Mii::EyebrowSizeCount};
-        rotation = {&record.eyebrows.rotation, 0, Mii::EyebrowRotationCount};
-        spacing = {&record.eyebrows.spacing, 0, Mii::EyebrowSpacingCount};
-        vertical = {&record.eyebrows.vertical, Mii::EyebrowLowestVertical, Mii::EyebrowVerticalCount - Mii::EyebrowLowestVertical};
-        break;
-    case EditorPart::Eyes:
-        size = {&record.eyes.size, 0, Mii::EyeSizeCount};
-        rotation = {&record.eyes.rotation, 0, Mii::EyeRotationCount};
-        spacing = {&record.eyes.spacing, 0, Mii::EyeSpacingCount};
-        vertical = {&record.eyes.vertical, 0, Mii::EyeVerticalCount};
-        break;
-    case EditorPart::Nose:
-        size = {&record.nose.size, 0, Mii::NoseSizeCount};
-        vertical = {&record.nose.vertical, 0, Mii::NoseVerticalCount};
-        break;
-    case EditorPart::Mouth:
-        size = {&record.mouth.size, 0, Mii::MouthSizeCount};
-        vertical = {&record.mouth.vertical, 0, Mii::MouthVerticalCount};
-        break;
-    case EditorPart::Glasses:
-        size = {&record.glasses.size, 0, Mii::GlassesSizeCount};
-        vertical = {&record.glasses.vertical, 0, Mii::GlassesVerticalCount};
-        break;
-    case EditorPart::Mustache:
-        size = {&record.facialHair.mustacheSize, 0, Mii::MustacheSizeCount};
-        vertical = {&record.facialHair.mustacheVertical, 0, Mii::MustacheVerticalCount};
-        break;
-    case EditorPart::Mole:
-        if (!record.mole.isVisible)
-            return AdjustResult::NotAdjustable;
-        size = {&record.mole.size, 0, Mii::MoleSizeCount};
-        vertical = {&record.mole.vertical, 0, Mii::MoleVerticalCount};
-        horizontal = {&record.mole.horizontal, 0, Mii::MoleHorizontalCount};
-        break;
-    default:
+    std::optional<AdjustableValues> values = AdjustableValuesOf(record, part);
+    if (!values)
         return AdjustResult::NotAdjustable;
-    }
 
     switch (adjustment)
     {
     case Adjustment::Larger:
-        return Step(size, 1);
+        return Step(values->size, 1);
     case Adjustment::Smaller:
-        return Step(size, -1);
+        return Step(values->size, -1);
     case Adjustment::TurnLeft:
-        return Step(rotation, 1);
+        return Step(values->rotation, 1);
     case Adjustment::TurnRight:
-        return Step(rotation, -1);
+        return Step(values->rotation, -1);
     case Adjustment::Closer:
-        return Step(spacing, -1);
+        return Step(values->spacing, -1);
     case Adjustment::Farther:
-        return Step(spacing, 1);
+        return Step(values->spacing, 1);
     case Adjustment::Up:
-        return Step(vertical, -1);
+        return Step(values->vertical, -1);
     case Adjustment::Down:
-        return Step(vertical, 1);
+        return Step(values->vertical, 1);
     case Adjustment::Left:
-        return Step(horizontal, -1);
+        return Step(values->horizontal, -1);
     case Adjustment::Right:
-        return Step(horizontal, 1);
+        return Step(values->horizontal, 1);
     }
     return AdjustResult::NotAdjustable;
 }

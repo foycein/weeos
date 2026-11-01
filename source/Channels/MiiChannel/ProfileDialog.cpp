@@ -26,8 +26,10 @@ constexpr std::string_view CancelSound = "SEQ_CANCEL";
 
 constexpr int MonthCount = 12;
 constexpr int DayCount = 31;
-constexpr int NoBirthday = 0;
 constexpr int FavoriteColorCount = 12;
+
+// The questions whose words are the buttons have no prompt above them.
+constexpr std::uint32_t NoPrompt = 0;
 
 struct QuestionPanes
 {
@@ -44,7 +46,7 @@ constexpr std::array<QuestionPanes, 7> QuestionTable = {{
     {ProfileQuestion::Day, "DayNull_00", "frmDayCan_00", 300004},
     {ProfileQuestion::FavoriteColor, "ColorNull_00", "frmColorCan_00", 300005},
     {ProfileQuestion::Creator, "NameProducer_00", "frmProCan_00", 300006},
-    {ProfileQuestion::Mingle, "UraNull_00", "", 0},
+    {ProfileQuestion::Mingle, "UraNull_00", "", NoPrompt},
 }};
 
 const QuestionPanes& PanesOf(ProfileQuestion question)
@@ -131,7 +133,7 @@ void ProfileDialog::Update()
             continue;
 
         services.sounds.Request(ChoiceSound);
-        Answer({false, choice.choice});
+        Answer({.choice = choice.choice});
         return;
     }
 
@@ -139,7 +141,7 @@ void ProfileDialog::Update()
     if (!cancelButton.empty() && IsPressed(cancelButton))
     {
         services.sounds.Request(CancelSound);
-        Answer({true, 0});
+        Answer({.wasCancelled = true});
     }
 }
 
@@ -170,20 +172,20 @@ std::vector<ProfileDialog::Choice> ProfileDialog::ChoicesOf(ProfileQuestion ques
     switch (question)
     {
     case ProfileQuestion::Gender:
-        choices = {{"frmMale_00", 0}, {"frmFemale_00", 1}};
+        choices = {{"frmMale_00", MaleChoice}, {"frmFemale_00", FemaleChoice}};
         break;
     case ProfileQuestion::HowToMake:
-        choices = {{"frmEdit_00", 0}, {"frmEdit_01", 1}};
+        choices = {{"frmEdit_00", StartFromScratchChoice}, {"frmEdit_01", LookAlikeChoice}};
         break;
     case ProfileQuestion::Month:
         for (int month = 1; month <= MonthCount; ++month)
             choices.push_back({std::format("frmMonth_{:02}", month - 1), month});
-        choices.push_back({std::format("frmMonth_{:02}", MonthCount), NoBirthday});
+        choices.push_back({std::format("frmMonth_{:02}", MonthCount), NoBirthdayChoice});
         break;
     case ProfileQuestion::Day:
         for (int day = 1; day <= DayCount; ++day)
             choices.push_back({std::format("frmDay_{:02}", day - 1), day});
-        choices.push_back({std::format("frmDay_{:02}", DayCount), NoBirthday});
+        choices.push_back({std::format("frmDay_{:02}", DayCount), NoBirthdayChoice});
         break;
     case ProfileQuestion::FavoriteColor:
         for (int color = 0; color < FavoriteColorCount; ++color)
@@ -195,7 +197,7 @@ std::vector<ProfileDialog::Choice> ProfileDialog::ChoicesOf(ProfileQuestion ques
         choices.push_back({std::format("frmPro_{:02}", NewCreatorChoice), NewCreatorChoice});
         break;
     case ProfileQuestion::Mingle:
-        choices = {{"frmUraON_00", 1}, {"frmUraOff_00", 0}};
+        choices = {{"frmUraON_00", MingleChoice}, {"frmUraOff_00", DoNotMingleChoice}};
         break;
     }
     return choices;
@@ -207,8 +209,9 @@ void ProfileDialog::ShowGroupOf(ProfileQuestion question)
         layout->PaneNamed(panes.group).isVisible = panes.question == question;
 
     const QuestionPanes& shown = PanesOf(question);
-    layout->PaneNamed(PromptGroup).isVisible = shown.prompt != 0;
-    if (shown.prompt != 0)
+    bool hasPrompt = shown.prompt != NoPrompt;
+    layout->PaneNamed(PromptGroup).isVisible = hasPrompt;
+    if (hasPrompt)
         layout->SetText(PromptText, MessageText(texts, shown.prompt));
 }
 

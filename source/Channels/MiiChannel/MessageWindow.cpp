@@ -21,12 +21,10 @@ constexpr std::array<int, 5> AllWindows = {0, 1, 2, 3, 4};
 constexpr std::uint8_t Shown = 255;
 constexpr std::uint8_t Hidden = 0;
 
-constexpr std::string_view YesButton = "frmMsgYes_00";
-constexpr std::string_view NoButton = "frmMsgNo_00";
-constexpr std::string_view OkButton = "frmMsgOk_01";
-constexpr std::string_view TitledOkButton = "frmMsgOk_03";
-constexpr std::array<std::string_view, 3> ChoiceButtons = {"frm1Msg_04", "frm2Msg_04", "frm3Msg_04"};
-constexpr std::array<MessageAnswer, 3> ChoiceAnswers = {MessageAnswer::FirstChoice, MessageAnswer::SecondChoice, MessageAnswer::ThirdChoice};
+constexpr std::array<std::string_view, 3> ChoiceButtons = {
+    MessageWindow::FirstChoiceButton, MessageWindow::SecondChoiceButton, MessageWindow::ThirdChoiceButton};
+constexpr std::array<MessageAnswer, 3> ChoiceAnswers = {
+    MessageAnswer::FirstChoice, MessageAnswer::SecondChoice, MessageAnswer::ThirdChoice};
 
 constexpr std::string_view YesSound = "SEQ_YES";
 constexpr std::string_view NoSound = "SEQ_NO";

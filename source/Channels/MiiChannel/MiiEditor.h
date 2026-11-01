@@ -39,6 +39,8 @@ enum class EditorPart
     Mole,
 };
 
+constexpr int EditorPartCount = 11;
+
 // The parts whose color is chosen from a palette.
 enum class ColorPart
 {

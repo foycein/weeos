@@ -26,8 +26,8 @@ struct LookAlikeResult
 };
 
 // "Choose a look-alike" (selectNigaoe_00, 80060518 and 800601E8): first many random faces of the gender; the face that is picked then
-// stands in the middle of nine, and the eight around it are made again as adults, East Asian in the top row, light in the middle and dark in
-// the bottom one. Every pick moves the picked face to the middle. "Use this face" asks once more and gives the face to the editor.
+// stands in the middle of nine, and the eight around it are made again as adults, East Asian in the top row, light in the middle and dark
+// in the bottom one. Every pick moves the picked face to the middle. "Use this face" asks once more and gives the face to the editor.
 class LookAlikeScreen
 {
 public:
@@ -38,7 +38,7 @@ public:
     LookAlikeScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts, const Formats::NumberedMessageFile& messages,
         const MiiFigures& miiFigures, const Mii::MiiResources& faceParts, MessageWindow& messageWindow, std::uint32_t randomSeed);
 
-    void Start(Mii::Gender gender);
+    void Start(Mii::Gender newGender);
     bool IsOpen() const;
     std::optional<LookAlikeResult> TakeResult();
 
@@ -58,13 +58,14 @@ public:
     void Draw();
 
 private:
+    void HandleConfirmation();
+    void HandleButtons();
     void MakeFirstFaces();
     void Pick(int faceNumber);
     void ShowStage();
     Mii::MiiAge RandomAge();
     bool IsPressed(std::string_view buttonPane) const;
-    PictureRectangle RectangleOf(std::string_view paneName) const;
-    void Finish(LookAlikeResult result);
+    void Finish(LookAlikeResult finished);
 
     ChannelServices& services;
     const MiiFigures& figures;

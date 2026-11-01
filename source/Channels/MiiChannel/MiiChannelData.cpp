@@ -20,12 +20,16 @@ constexpr Ios::EntryPermissions EverybodyReadsAndWrites = {
     Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite};
 constexpr std::uint8_t NoAttributeFlags = 0;
 
-// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps only the flags word in it.
-constexpr std::size_t MiiChannelSaveSize = 0x60;
-constexpr std::size_t FlagsOffset = 0x40;
 constexpr std::size_t FlagsSize = 4;
 constexpr int BitsPerByte = 8;
 
+}
+
+std::vector<std::uint8_t> StoredBytes(const Mii::MiiRecord& record)
+{
+    std::array<Formats::Byte, Mii::MiiRecordSize> bytes = {};
+    Mii::WriteMiiRecord(record, bytes);
+    return {bytes.begin(), bytes.end()};
 }
 
 MiiChannelData::MiiChannelData(Ios::FileSystemService& fileSystemService, Ios::Caller caller, std::uint32_t consoleSystemId)
@@ -175,7 +179,7 @@ std::uint32_t MiiChannelData::Flags() const
 {
     std::uint32_t flags = 0;
     for (std::size_t byte = 0; byte < FlagsSize; ++byte)
-        flags = (flags << BitsPerByte) | channelSave[FlagsOffset + byte];
+        flags = (flags << BitsPerByte) | channelSave[ChannelFlagsOffset + byte];
     return flags;
 }
 
@@ -195,7 +199,7 @@ void MiiChannelData::SetFlag(ChannelFlag flag, bool isSet)
     for (std::size_t byte = 0; byte < FlagsSize; ++byte)
     {
         int shift = static_cast<int>(FlagsSize - 1 - byte) * BitsPerByte;
-        channelSave[FlagsOffset + byte] = static_cast<Formats::Byte>(flags >> shift);
+        channelSave[ChannelFlagsOffset + byte] = static_cast<Formats::Byte>(flags >> shift);
     }
     files->WriteFile(MiiChannelSavePath, channelSave);
 }

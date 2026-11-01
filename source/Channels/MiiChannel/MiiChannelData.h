@@ -17,6 +17,10 @@ namespace Channels
 constexpr std::string_view MiiDatabasePath = "/shared2/menu/FaceLib/RFL_DB.dat";
 constexpr std::string_view MiiChannelSavePath = "/title/00010002/48414341/data/NigaoeCh.dat";
 
+// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps only the flags word in it.
+constexpr std::size_t MiiChannelSaveSize = 0x60;
+constexpr std::size_t ChannelFlagsOffset = 0x40;
+
 // The flags of NigaoeCh.dat that WeeOS uses (the word the program keeps at 0x18 of its record and writes at 0x40 of the file, 8001A984).
 enum class ChannelFlag : std::uint32_t
 {
@@ -37,6 +41,9 @@ struct StoredMii
     Mii::MiiRecord record;
 };
 
+// The bytes a Mii is stored in, which tell whether two Miis differ.
+std::vector<std::uint8_t> StoredBytes(const Mii::MiiRecord& record);
+
 // What the start of the channel found.
 enum class DatabaseState
 {
@@ -53,7 +60,7 @@ class MiiChannelData
 {
 public:
     // The services must outlive the data. Throws a MenuError when the NAND cannot be read or written.
-    MiiChannelData(Ios::FileSystemService& fileSystem, Ios::Caller caller, std::uint32_t consoleSystemId);
+    MiiChannelData(Ios::FileSystemService& fileSystemService, Ios::Caller caller, std::uint32_t consoleSystemId);
 
     DatabaseState State() const;
 
@@ -73,8 +80,7 @@ public:
     void ReplaceMii(std::size_t slot, const Mii::MiiRecord& record);
     void DeleteMii(std::size_t slot);
 
-    // The Miis of the Mii Parade, the hidden Miis of the database, oldest first. Today they come only from this plaza ("Send to Mii
-    // Parade"); the Miis of other consoles will come into the same list (Mii::MiiDatabase::AddHiddenMii).
+    // The Miis of the Mii Parade, the hidden Miis of the database, oldest first.
     std::vector<Mii::MiiRecord> ParadeMiis() const;
 
     // "Send to Mii Parade": the Mii leaves its slot and joins the parade without its birthday and creator.

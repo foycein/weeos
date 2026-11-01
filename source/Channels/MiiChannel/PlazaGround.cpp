@@ -68,11 +68,16 @@ constexpr int TextureCoordinateDescriptorBit = 0;
 constexpr std::uint32_t AttributeDescriptorMask = 3;
 constexpr std::uint32_t AttributeAbsent = 0;
 constexpr std::uint32_t AttributeByteIndex = 2;
+constexpr std::size_t IndexSize = 1;
 
 constexpr std::uint8_t NoOperation = 0x00;
 constexpr std::uint8_t TrianglesCommand = 0x90;
 constexpr std::uint8_t TriangleStripCommand = 0x98;
 constexpr std::uint8_t CommandMask = 0xF8;
+
+// A command of the list is one byte, then the count of its corners in 16 bits, then the corners.
+constexpr std::size_t CommandSize = 1;
+constexpr std::size_t CornerCountSize = 2;
 
 constexpr std::size_t TextureDataPosition = 0x10;
 constexpr std::size_t TextureWidthPosition = 0x1C;
@@ -98,6 +103,12 @@ constexpr std::string_view SideFadeTexture = "alpha_tex";
 constexpr float SideFadeScale = 2.0f;
 constexpr float SideFadeShift = 0.5f - SideFadeScale * 0.5f;
 constexpr Graphics::TextureMatrix SideFadeMatrix = {{{{SideFadeScale, 0.0f, SideFadeShift}, {0.0f, SideFadeScale, SideFadeShift}}}};
+
+constexpr Formats::Rgba8Color White = {255, 255, 255, 255};
+
+// The sizes of the numbers of an array entry.
+constexpr std::size_t FloatSize = sizeof(float);
+constexpr std::size_t ShortSize = sizeof(std::uint16_t);
 
 class FileView
 {
@@ -126,9 +137,11 @@ public:
         return reader.ReadUint32();
     }
 
+    // An offset of the file is signed and counts from a place of its own.
     std::size_t Offset(std::size_t from, std::size_t position)
     {
-        return from + static_cast<std::size_t>(static_cast<std::int32_t>(Uint32(position)));
+        auto signedOffset = static_cast<std::int32_t>(Uint32(position));
+        return from + static_cast<std::size_t>(signedOffset);
     }
 
     float Float(std::size_t offset)
@@ -183,13 +196,13 @@ std::vector<Formats::Vector3> ReadPositions(FileView& file, std::size_t array)
         std::size_t entry = data + std::size_t{number} * stride;
         if (format == FloatFormat)
         {
-            positions.push_back({file.Float(entry), file.Float(entry + 4), file.Float(entry + 8)});
+            positions.push_back({file.Float(entry), file.Float(entry + FloatSize), file.Float(entry + 2 * FloatSize)});
             continue;
         }
 
         auto x = static_cast<std::int16_t>(file.Uint16(entry));
-        auto y = static_cast<std::int16_t>(file.Uint16(entry + 2));
-        auto z = static_cast<std::int16_t>(file.Uint16(entry + 4));
+        auto y = static_cast<std::int16_t>(file.Uint16(entry + ShortSize));
+        auto z = static_cast<std::int16_t>(file.Uint16(entry + 2 * ShortSize));
         positions.push_back({x / unit, y / unit, z / unit});
     }
     return positions;
@@ -223,7 +236,7 @@ std::vector<Formats::Vector2> ReadTextureCoordinates(FileView& file, std::size_t
     for (std::uint16_t number = 0; number < file.Uint16(array + ArrayCountPosition); ++number)
     {
         std::size_t entry = data + std::size_t{number} * stride;
-        coordinates.push_back({file.Uint16(entry) / unit, file.Uint16(entry + 2) / unit});
+        coordinates.push_back({file.Uint16(entry) / unit, file.Uint16(entry + ShortSize) / unit});
     }
     return coordinates;
 }
@@ -264,9 +277,11 @@ CornerLayout ReadCornerLayout(FileView& file, std::size_t object)
 
     CornerLayout layout;
     layout.positionByte = 0;
-    layout.colorByte = hasNormal ? 2 : 1;
-    layout.textureCoordinateByte = layout.colorByte + 1;
-    layout.size = layout.textureCoordinateByte + 1;
+    layout.colorByte = layout.positionByte + IndexSize;
+    if (hasNormal)
+        layout.colorByte += IndexSize;
+    layout.textureCoordinateByte = layout.colorByte + IndexSize;
+    layout.size = layout.textureCoordinateByte + IndexSize;
     return layout;
 }
 
@@ -303,8 +318,8 @@ std::vector<Graphics::MeshVertex> ReadTriangles(FileView& file, std::size_t obje
         if (kind != TrianglesCommand && kind != TriangleStripCommand)
             file.Fail(std::format("the list of triangles has the command {:#04x}", command));
 
-        std::uint16_t count = file.Uint16(position + 1);
-        std::size_t first = position + 3;
+        std::uint16_t count = file.Uint16(position + CommandSize);
+        std::size_t first = position + CommandSize + CornerCountSize;
         std::vector<Graphics::MeshVertex> corners;
         for (std::uint16_t number = 0; number < count; ++number)
             corners.push_back(ReadCorner(file, first + std::size_t{number} * layout.size, layout, arrays));
@@ -404,6 +419,16 @@ PlazaGroundModel ReadParadeRoadModel(Formats::ByteView brres)
     road.pavingWrap = Graphics::WrapMode::Repeat;
     road.fade = WhiteFade::WhereAlphaIsLow;
     return road;
+}
+
+void DrawWhiteBackground(Graphics::GraphicsDevice& device, Graphics::Canvas canvas)
+{
+    float halfWidth = canvas.width / 2;
+    float halfHeight = canvas.height / 2;
+    Graphics::Quad background;
+    background.positions = {{{-halfWidth, halfHeight}, {halfWidth, halfHeight}, {halfWidth, -halfHeight}, {-halfWidth, -halfHeight}}};
+    background.colors.fill(White);
+    device.DrawQuad(background, Graphics::Material());
 }
 
 PlazaGround::PlazaGround(Graphics::GraphicsDevice& graphicsDevice, const PlazaGroundModel& model)

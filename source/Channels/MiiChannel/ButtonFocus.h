@@ -25,8 +25,9 @@ struct FocusedButton
     std::string_view focusSound;
 };
 
-// The buttons of a layout that show the hand is on them: the focus animation of a button (its file says it loops) loops while the hand is on it (the button
-// grows and its name appears) and goes back to its first frame when the hand leaves. A button that is not shown takes no focus.
+// The buttons of a layout that show the hand is on them: the focus animation of a button (its file says it loops) loops while the hand
+// is on it (the button grows and its name appears) and goes back to its first frame when the hand leaves. A button that is not shown
+// takes no focus.
 class ButtonFocus
 {
 public:

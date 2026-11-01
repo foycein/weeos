@@ -34,6 +34,7 @@ constexpr std::string_view PickSound = "SEQ_EDIT_STAMP_PART_FACE";
 constexpr std::string_view UseSound = "SEQ_YES_END_SELECT_FACE";
 constexpr std::string_view ResetSound = "SEQ_YES_RETRY_SELECT_FACE";
 constexpr std::string_view BackSound = "SEQ_CANCEL";
+constexpr std::string_view HelpSound = "SEQ_PUSH_HELP_COMMON";
 
 // The face that was picked keeps its key, so its head is not made again.
 constexpr std::size_t PickedFaceKey = 100;
@@ -41,7 +42,7 @@ constexpr std::size_t PickedFaceKey = 100;
 // The channel's own random age (80060518): 4 in 10 children, 5 in 10 adults, 1 in 10 elders.
 constexpr int AgeDraws = 10;
 constexpr int ChildDraws = 4;
-constexpr int AdultDraws = 9;
+constexpr int ChildOrAdultDraws = 9;
 
 // The rows of the grid around the picked face (800601E8): East Asian above, light in the middle, dark below.
 Mii::MiiLook LookOfGridPlace(int place)
@@ -58,8 +59,8 @@ Mii::MiiLook LookOfGridPlace(int place)
 }
 
 LookAlikeScreen::LookAlikeScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts,
-    const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const Mii::MiiResources& faceParts, MessageWindow& messageWindow,
-    std::uint32_t randomSeed)
+    const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const Mii::MiiResources& faceParts,
+    MessageWindow& messageWindow, std::uint32_t randomSeed)
     : services(channelServices)
     , figures(miiFigures)
     , message(messageWindow)
@@ -129,22 +130,33 @@ void LookAlikeScreen::Update(bool acceptsInput)
 
     if (isConfirming)
     {
-        std::optional<MessageAnswer> answer = message.TakeAnswer();
-        if (!answer)
-            return;
-
-        isConfirming = false;
-        if (*answer == MessageAnswer::Yes)
-        {
-            services.sounds.Request(UseSound);
-            Finish({false, faces[MiddleOfGrid]});
-        }
+        HandleConfirmation();
         return;
     }
 
     if (!acceptsInput || message.IsOpen())
         return;
 
+    HandleButtons();
+}
+
+// "Is this the face you want?": Yes gives the face to the editor, No goes on choosing.
+void LookAlikeScreen::HandleConfirmation()
+{
+    std::optional<MessageAnswer> answer = message.TakeAnswer();
+    if (!answer)
+        return;
+
+    isConfirming = false;
+    if (*answer == MessageAnswer::Yes)
+    {
+        services.sounds.Request(UseSound);
+        Finish({.record = faces[MiddleOfGrid]});
+    }
+}
+
+void LookAlikeScreen::HandleButtons()
+{
     for (int faceNumber = 0; faceNumber < static_cast<int>(faces.size()); ++faceNumber)
     {
         if (IsPressed(CardPane(faceNumber)))
@@ -157,7 +169,7 @@ void LookAlikeScreen::Update(bool acceptsInput)
     if (!isRefining && IsPressed(LeaveButton))
     {
         services.sounds.Request(BackSound);
-        Finish({true, {}});
+        Finish({.wasCancelled = true});
         return;
     }
 
@@ -170,7 +182,7 @@ void LookAlikeScreen::Update(bool acceptsInput)
 
     if (IsPressed(isRefining ? GridHelpButton : FirstStageHelpButton))
     {
-        services.sounds.Request("SEQ_PUSH_HELP_COMMON");
+        services.sounds.Request(HelpSound);
         message.ShowNotice(isRefining ? GridHelp : FirstFacesHelp);
         return;
     }
@@ -193,12 +205,12 @@ void LookAlikeScreen::Draw()
     {
         const Mii::MiiHead* head = heads.Find(faceNumber);
         if (head != nullptr)
-            figures.DrawHead(*head, RectangleOf(CardPane(static_cast<int>(faceNumber))), canvas);
+            figures.DrawHead(*head, RectangleOfPane(*layout, CardPane(static_cast<int>(faceNumber))), canvas);
     }
 
     const Mii::MiiHead* picked = heads.Find(PickedFaceKey);
     if (isRefining && picked != nullptr)
-        figures.DrawHead(*picked, RectangleOf(PickedFacePane), canvas);
+        figures.DrawHead(*picked, RectangleOfPane(*layout, PickedFacePane), canvas);
 }
 
 void LookAlikeScreen::MakeFirstFaces()
@@ -241,7 +253,7 @@ Mii::MiiAge LookAlikeScreen::RandomAge()
     int draw = std::uniform_int_distribution<int>(0, AgeDraws - 1)(random);
     if (draw < ChildDraws)
         return Mii::MiiAge::Child;
-    if (draw < AdultDraws)
+    if (draw < ChildOrAdultDraws)
         return Mii::MiiAge::Adult;
     return Mii::MiiAge::Elder;
 }
@@ -253,17 +265,6 @@ bool LookAlikeScreen::IsPressed(std::string_view buttonPane) const
         return false;
 
     return layout->IsPointInPane(buttonPane, *input.pointer);
-}
-
-PictureRectangle LookAlikeScreen::RectangleOf(std::string_view paneName) const
-{
-    const Formats::Pane& pane = layout->PaneNamed(paneName);
-    std::optional<Formats::Vector2> middle = layout->PointOfPaneInPicture(paneName, {0, 0});
-    std::optional<Formats::Vector2> corner = layout->PointOfPaneInPicture(paneName, {pane.width / 2, pane.height / 2});
-    if (!middle || !corner)
-        return {};
-
-    return {*middle, {corner->x - middle->x, corner->y - middle->y}};
 }
 
 void LookAlikeScreen::Finish(LookAlikeResult finished)
