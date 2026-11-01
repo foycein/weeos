@@ -2,6 +2,9 @@
 
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
+#include "Channels/WiiSpeak/WiiSpeakWater.h"
+
+#include <memory>
 
 #include <optional>
 
@@ -9,7 +12,7 @@ namespace Channels
 {
 
 // Wii Speak Settings (scene setMenu, 0x800A27F8 of the program): Sensitivity Settings, Headphone Settings, Performance Check and
-// Precautions, with Back and Help.
+// Precautions, with Back and Help, on the water of the menus.
 class SettingsMenuScreen : public WiiSpeakScreen
 {
 public:
@@ -21,6 +24,7 @@ public:
 
 private:
     WiiSpeakSession& session;
+    std::unique_ptr<WiiSpeakWater> water;
     SceneLayout layout;
 };
 

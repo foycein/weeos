@@ -136,6 +136,7 @@ constexpr std::array<PaneText, 33> PrecautionTexts = {{
 
 SettingsMenuScreen::SettingsMenuScreen(WiiSpeakSession& menuSession)
     : session(menuSession)
+    , water(WiiSpeakWater::OfTheMenus(menuSession, WiiSpeakWater::MenuColor::Settings))
     , layout(session.services.display, session.files.SceneLayouts("setMenu", "19010_setMenu.arc"), "19010_setMenu")
 {
     for (const std::string& button : {SensitivityButton, HeadphoneButton, CheckButton, PrecautionsButton, MenuBackButton, MenuHelpButton})
@@ -148,6 +149,7 @@ SettingsMenuScreen::SettingsMenuScreen(WiiSpeakSession& menuSession)
 
 std::optional<WiiSpeakScreenName> SettingsMenuScreen::Update()
 {
+    water->Update();
     std::optional<WiiSpeakScreenName> nextScreen;
     if (session.dialog.IsOpen())
     {
@@ -179,6 +181,8 @@ std::optional<WiiSpeakScreenName> SettingsMenuScreen::Update()
 
 void SettingsMenuScreen::Draw()
 {
+    water->Draw();
+    session.ripples.Draw();
     layout.Draw();
 }
 

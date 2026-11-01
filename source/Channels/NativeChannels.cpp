@@ -102,7 +102,7 @@ constexpr ChannelSharedFiles InternetSharedFiles = {.fontContentIndex = 8,
     .isHomeMenuPacked = false,
     .offeredHomeMenuButtons = WiiMenuAndReset};
 
-// Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts (CHN-33).
+// Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts (CHN-97).
 constexpr ChannelSharedFiles WiiSpeakSharedFiles = {.fontContentIndex = std::nullopt,
     .homeMenuContentIndex = 3,
     .homeMenuFolder = "./HomeButton3",
@@ -118,7 +118,6 @@ struct ChannelSoundArchive
 };
 
 // Forecast and News play their own archive and the sounds of HomeButton3; the Shop's archive holds the sounds of its HOME menu too.
-// The Internet Channel's sounds of its HOME menu are wave tables of the browser (HomeButtonSe.arc), which WeeOS does not read.
 constexpr ChannelSoundArchive HomeButton3Sounds = {6, "./HomeButton3/Huf8_HomeButtonSe.brsar", true};
 constexpr std::array<ChannelSoundArchive, 2> ForecastSounds = {{{9, "./rev_wtr.brsar", false}, HomeButton3Sounds}};
 constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsar", false}, HomeButton3Sounds}};
@@ -133,7 +132,7 @@ constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/Ni
 constexpr std::array<ChannelSoundArchive, 1> PhotoSounds = {{{2, "./rev_photo.brsar", false}}};
 
 // The Internet Channel's sounds and those of its soft keyboard are in remote/operaSound.brsar of content 2. Its HOME menu sounds
-// (homebutton/HomeButtonSe.arc of content 5) are not a sound archive.
+// (homebutton/HomeButtonSe.arc of content 5) are MIDI files, which Channels/HomeMenuWaveSounds plays.
 constexpr std::array<ChannelSoundArchive, 1> InternetSounds = {{{2, "./remote/operaSound.brsar", false}}};
 
 std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)

@@ -101,6 +101,15 @@ void ParadeScreen::Start()
 {
     isWayBackAsked = false;
     ShowParadeMiis();
+    if (!data.HasFlag(ChannelFlag::ParadeIntroduced))
+    {
+        isIntroducing = true;
+        message.ShowNoticePages({{MiiMessage::ParadeExplained, MiiMessage::Next, MiiMessage::WelcomeToTheParade},
+            {MiiMessage::ParadeMiisCome, MiiMessage::Next}, {MiiMessage::ParadeStoresMiisFirst, MiiMessage::Next},
+            {MiiMessage::ParadeStoresMiisFirst + 1, MiiMessage::Next}, {MiiMessage::ParadeStoresMiisLast, MiiMessage::Ok}});
+        return;
+    }
+
     if (parade.Miis().empty())
         message.ShowNotice(MiiMessage::NobodyIsHere);
 }
@@ -257,6 +266,15 @@ void ParadeScreen::HandleHand()
 
 void ParadeScreen::HandleMessageAnswer()
 {
+    if (isIntroducing && message.TakeAnswer())
+    {
+        isIntroducing = false;
+        data.SetFlag(ChannelFlag::ParadeIntroduced, true);
+        if (parade.Miis().empty())
+            message.ShowNotice(MiiMessage::NobodyIsHere);
+        return;
+    }
+
     if (!miiToErase)
         return;
 

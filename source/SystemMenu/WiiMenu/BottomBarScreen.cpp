@@ -5,6 +5,7 @@
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
+#include "SystemMenu/WiiMenu/BarHousings.h"
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 
 #include "Ios/SdCard/SdCardService.h"
@@ -229,7 +230,7 @@ void BottomBarScreen::Draw(DrawPass pass)
         return;
 
     services.display.LookThroughCamera();
-    layout->Draw();
+    DrawBarWithHousingsToTheSides(*layout, services.display);
     if (mode == BarMode::WiiMenu)
         sdCardButton->Draw();
     services.display.StopMovingAreas();

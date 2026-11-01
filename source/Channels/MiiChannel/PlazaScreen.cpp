@@ -15,6 +15,12 @@ namespace
 
 // A Mii that slips on the plaza falls with this sound (8001F7A8, state 10).
 constexpr std::string_view SlipSound = "SEQ_DOOL_KOROBI";
+constexpr std::string_view FirstHitSound = "SEQ_DOOL_THROW_GND1";
+
+// The parade is almost full from 9501 Miis on and has room again below 9400 (0x80042B54: 0x251D and 0x24B8).
+constexpr std::size_t ParadeAlmostFullCount = 9501;
+constexpr std::size_t ParadeHasRoomCount = 9400;
+constexpr std::string_view BounceSound = "SEQ_DOOL_THROW_GND2";
 
 constexpr std::string_view LayoutName = "squareNigaoe_00";
 
@@ -153,13 +159,17 @@ void PlazaScreen::Start()
 {
     plaza.SetMiis(data.Miis());
     ShowWhistleBar(false);
+    shouldTellWhatIsNew = true;
 }
 
 void PlazaScreen::ShowSavedMii(std::size_t slot)
 {
     std::optional<Mii::MiiRecord> record = data.FindMii(slot);
-    if (record)
-        plaza.UpdateMii({slot, *record});
+    if (!record)
+        return;
+
+    plaza.UpdateMii({slot, *record});
+    plaza.DropIn(slot);
 }
 
 std::optional<PlazaRequest> PlazaScreen::TakeRequest()
@@ -204,7 +214,13 @@ void PlazaScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     plaza.Update();
-    ShowPlazaMoments(effects, plaza, figures);
+    for (const PlazaMomentOfMii& moment : ShowPlazaMoments(effects, plaza, figures))
+    {
+        if (moment.moment == PlazaMoment::HitsTheGround)
+            services.sounds.Request(FirstHitSound);
+        if (moment.moment == PlazaMoment::BouncesOnTheGround)
+            services.sounds.Request(BounceSound);
+    }
     if (plaza.SlipsInLastStep() > 0)
         services.sounds.Request(SlipSound);
 
@@ -215,6 +231,10 @@ void PlazaScreen::Update(bool acceptsInput)
     UpdateWaits();
 
     HandleMessageAnswer();
+    bool isQuiet = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii() && pending == Pending::Nothing;
+    if (isQuiet && shouldTellWhatIsNew)
+        TellWhatIsNew();
+
     bool takesInput = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii();
     focus->Update(takesInput ? ReadPlayerOne(services).pointer : std::nullopt);
     if (!acceptsInput || message.IsOpen() || loadSteps > 0)
@@ -288,14 +308,7 @@ void PlazaScreen::HandleButtons()
     if (IsPressed(ParadeButton))
     {
         services.sounds.Request(ButtonPushSound);
-        if (hasSeenParade)
-        {
-            request = PlazaRequest::ShowParade;
-            return;
-        }
-        hasSeenParade = true;
-        pending = Pending::ParadeWelcome;
-        message.ShowNotice(MiiMessage::WelcomeToTheParade);
+        request = PlazaRequest::ShowParade;
         return;
     }
 
@@ -476,12 +489,11 @@ void PlazaScreen::HandleMessageAnswer()
             messageAfterLoad = MiiMessage::NoDsFound;
         }
         return;
-    case Pending::ParadeWelcome:
-        pending = Pending::ParadeExplained;
-        message.ShowNotice(MiiMessage::ParadeExplained);
+    case Pending::ParadeAnnouncements:
+        data.SetFlag(ChannelFlag::ParadeAnnounced, true);
         return;
-    case Pending::ParadeExplained:
-        request = PlazaRequest::ShowParade;
+    case Pending::ParadeAlmostFull:
+        data.SetFlag(ChannelFlag::ParadeAlmostFullTold, true);
         return;
     case Pending::SendToParade:
         if (*answer == MessageAnswer::Yes && miiToSend)
@@ -489,12 +501,39 @@ void PlazaScreen::HandleMessageAnswer()
             services.sounds.Request(SendToParadeSound);
             data.SendToParade(*miiToSend);
             plaza.RemoveMii(*miiToSend);
+            shouldTellWhatIsNew = true;
         }
         miiToSend.reset();
         return;
     case Pending::Nothing:
         return;
     }
+}
+
+// Once the plaza is quiet it announces the Mii Parade, once (0x80043920), and tells once that the parade is almost full; that warning
+// may come again after the parade has had room (0x80042B54).
+void PlazaScreen::TellWhatIsNew()
+{
+    shouldTellWhatIsNew = false;
+    if (!data.HasFlag(ChannelFlag::ParadeAnnounced))
+    {
+        pending = Pending::ParadeAnnouncements;
+        message.ShowNoticePages({{MiiMessage::ParadeAnnouncementFirst, MiiMessage::Next, MiiMessage::ParadeAnnouncementTitle},
+            {MiiMessage::ParadeAnnouncementFirst + 1, MiiMessage::Next}, {MiiMessage::ParadeAnnouncementFirst + 2, MiiMessage::Next},
+            {MiiMessage::ParadeAnnouncementFirst + 3, MiiMessage::Next}, {MiiMessage::ParadeAnnouncementLast, MiiMessage::Ok}});
+        return;
+    }
+
+    std::size_t paradeCount = data.ParadeMiis().size();
+    bool isTold = data.HasFlag(ChannelFlag::ParadeAlmostFullTold);
+    if (paradeCount >= ParadeAlmostFullCount && !isTold)
+    {
+        pending = Pending::ParadeAlmostFull;
+        message.ShowNotice(MiiMessage::ParadeAlmostFull);
+        return;
+    }
+    if (paradeCount < ParadeHasRoomCount && isTold)
+        data.SetFlag(ChannelFlag::ParadeAlmostFullTold, false);
 }
 
 void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)

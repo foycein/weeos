@@ -196,9 +196,27 @@ std::optional<std::size_t> FavoritesScreen::MovingFavorite() const
     return movingFavorite;
 }
 
-void FavoritesScreen::SetMovingFavorite(std::size_t favoriteIndex)
+void FavoritesScreen::SetMovingFavorite(std::size_t favoriteIndex, const PageFrame& frame)
 {
     movingFavorite = favoriteIndex;
+    ScrollToTheRowOf(favoriteIndex, frame);
+}
+
+int FavoritesScreen::FirstRowInView() const
+{
+    return firstRow;
+}
+
+// Only whole rows are in view, as DrawTile draws them: those between the title and the toolbar.
+void FavoritesScreen::ScrollToTheRowOf(std::size_t index, const PageFrame& frame)
+{
+    float heightOfTheRows = frame.height - PageToolbar::Height - TreeTop;
+    int rowsInView = std::max(1, static_cast<int>(heightOfTheRows / TileHeight));
+    int row = static_cast<int>(index / TilesPerRow);
+    if (row < firstRow)
+        firstRow = row;
+    if (row >= firstRow + rowsInView)
+        firstRow = row - rowsInView + 1;
 }
 
 void FavoritesScreen::Draw(PagePainter& painter, const PageFrame& frame, const std::vector<Favorite>& favorites,

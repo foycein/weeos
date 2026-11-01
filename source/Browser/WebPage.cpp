@@ -43,6 +43,11 @@ void WebPage::ServeFiles(const std::string& hostName, std::map<std::string, std:
     thread->Send([hostName, sharedFiles](PageEngine& engine) { engine.ServeFiles(hostName, std::move(*sharedFiles)); });
 }
 
+void WebPage::AddPageScript(const std::u16string& script)
+{
+    thread->Send([script](PageEngine& engine) { engine.AddPageScript(script); });
+}
+
 void WebPage::Open(const std::string& address)
 {
     thread->Send([address](PageEngine& engine) { engine.Open(address); });

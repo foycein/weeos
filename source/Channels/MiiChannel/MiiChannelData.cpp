@@ -20,8 +20,11 @@ constexpr Ios::EntryPermissions EverybodyReadsAndWrites = {
     Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite};
 constexpr std::uint8_t NoAttributeFlags = 0;
 
-// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps nothing else in it.
+// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps only the flags word in it.
 constexpr std::size_t MiiChannelSaveSize = 0x60;
+constexpr std::size_t FlagsOffset = 0x40;
+constexpr std::size_t FlagsSize = 4;
+constexpr int BitsPerByte = 8;
 
 }
 
@@ -32,7 +35,11 @@ MiiChannelData::MiiChannelData(Ios::FileSystemService& fileSystemService, Ios::C
     , systemId(consoleSystemId)
     , database(Mii::MiiDatabase::MakeEmpty())
 {
-    isFirstStart = !files->ReadFile(MiiChannelSavePath).has_value();
+    std::optional<Formats::Bytes> save = files->ReadFile(MiiChannelSavePath);
+    isFirstStart = !save.has_value();
+    channelSave = save.value_or(Formats::Bytes(MiiChannelSaveSize, 0));
+    if (channelSave.size() < MiiChannelSaveSize)
+        channelSave.resize(MiiChannelSaveSize, 0);
 
     std::optional<Formats::Bytes> stored = files->ReadFile(MiiDatabasePath);
     if (!stored)
@@ -159,9 +166,38 @@ bool MiiChannelData::IsFirstStart() const
 
 void MiiChannelData::RememberStarted()
 {
-    Formats::Bytes save(MiiChannelSaveSize, 0);
-    files->WriteFile(MiiChannelSavePath, save);
+    channelSave.assign(MiiChannelSaveSize, 0);
+    files->WriteFile(MiiChannelSavePath, channelSave);
     isFirstStart = false;
+}
+
+std::uint32_t MiiChannelData::Flags() const
+{
+    std::uint32_t flags = 0;
+    for (std::size_t byte = 0; byte < FlagsSize; ++byte)
+        flags = (flags << BitsPerByte) | channelSave[FlagsOffset + byte];
+    return flags;
+}
+
+bool MiiChannelData::HasFlag(ChannelFlag flag) const
+{
+    return (Flags() & static_cast<std::uint32_t>(flag)) != 0;
+}
+
+void MiiChannelData::SetFlag(ChannelFlag flag, bool isSet)
+{
+    std::uint32_t flags = Flags();
+    if (isSet)
+        flags |= static_cast<std::uint32_t>(flag);
+    else
+        flags &= ~static_cast<std::uint32_t>(flag);
+
+    for (std::size_t byte = 0; byte < FlagsSize; ++byte)
+    {
+        int shift = static_cast<int>(FlagsSize - 1 - byte) * BitsPerByte;
+        channelSave[FlagsOffset + byte] = static_cast<Formats::Byte>(flags >> shift);
+    }
+    files->WriteFile(MiiChannelSavePath, channelSave);
 }
 
 void MiiChannelData::CreateDatabaseFolders()

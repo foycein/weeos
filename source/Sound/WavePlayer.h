@@ -46,6 +46,9 @@ public:
     // True from Play until the wave has played to its end or was stopped.
     bool IsPlaying(WaveHandle handle);
 
+    // How many waves play now.
+    std::size_t PlayingWaveCount();
+
     // How much of the wave has been played, in seconds of the wave.
     double PlayedSeconds(WaveHandle handle);
 

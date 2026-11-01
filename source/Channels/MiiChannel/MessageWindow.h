@@ -8,9 +8,11 @@
 #include "Layout/LayoutArchive.h"
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace Channels
 {
@@ -37,6 +39,17 @@ constexpr std::uint32_t ThereIsYourMii = 42;
 constexpr std::uint32_t CannotEditOthersMiis = 46;
 constexpr std::uint32_t WelcomeToTheParade = 51;
 constexpr std::uint32_t ParadeExplained = 52;
+constexpr std::uint32_t ParadeMiisCome = 83;
+constexpr std::uint32_t Next = 82;
+
+// The announcements of the Mii Parade on the plaza (0x80043920), the introduction of the parade scene (0x8005950C, 0x80059640) and
+// the warning of a parade that is almost full (0x80042B54).
+constexpr std::uint32_t ParadeAnnouncementTitle = 600000;
+constexpr std::uint32_t ParadeAnnouncementFirst = 600001;
+constexpr std::uint32_t ParadeAnnouncementLast = 600005;
+constexpr std::uint32_t ParadeStoresMiisFirst = 600300;
+constexpr std::uint32_t ParadeStoresMiisLast = 600302;
+constexpr std::uint32_t ParadeAlmostFull = 600400;
 constexpr std::uint32_t NobodyIsHere = 53;
 constexpr std::uint32_t SendToParadeQuestion = 600200;
 constexpr std::uint32_t SpecialMiisCannotJoinParade = 600500;
@@ -64,8 +77,17 @@ enum class MessageAnswer
     ThirdChoice,
 };
 
-// The message window of the Mii Channel (MsgNigaoe_00): a text over the dimmed picture with Yes and No (msgBg_00) or OK (msgBg_01).
-// A press of a button closes it with the answer.
+// A page of a notice: its text, the word of its button (OK, or Next while pages follow) and, for the window that has one (msgBg_03),
+// its title.
+struct NoticePage
+{
+    std::uint32_t textNumber;
+    std::uint32_t buttonNumber = MiiMessage::Ok;
+    std::optional<std::uint32_t> titleNumber;
+};
+
+// The message window of the Mii Channel (MsgNigaoe_00): a text over the dimmed picture with Yes and No (msgBg_00), OK (msgBg_01), or a
+// title, a text and OK (msgBg_03). A press of a button closes it with the answer.
 class MessageWindow
 {
 public:
@@ -77,6 +99,9 @@ public:
 
     // A message with one button.
     void ShowNotice(std::uint32_t messageNumber, std::uint32_t okNumber = MiiMessage::Ok);
+
+    // Pages one after the other: the button of a page opens the next one, and the answer comes after the last.
+    void ShowNoticePages(std::vector<NoticePage> pages);
 
     // Three buttons and no text, as "Quit" of the editor offers them: Save & quit, Quit without saving, Cancel.
     void OfferThreeChoices(std::uint32_t firstNumber, std::uint32_t secondNumber, std::uint32_t thirdNumber);
@@ -97,6 +122,7 @@ public:
 
 private:
     void Open(int windowNumber, std::uint32_t messageNumber);
+    void ShowPage(const NoticePage& page);
     void Close(MessageAnswer answer, std::string_view soundName);
     bool IsPressed(std::string_view buttonPane);
 
@@ -106,6 +132,7 @@ private:
     std::optional<std::uint32_t> shownMessage;
     std::optional<MessageAnswer> answer;
     int shownWindow = 0;
+    std::deque<NoticePage> waitingPages;
 };
 
 }

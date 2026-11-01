@@ -2,10 +2,12 @@
 
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
+#include "Channels/WiiSpeak/WiiSpeakWater.h"
 
 #include "Mii/MiiRecord.h"
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -45,7 +47,8 @@ private:
     std::size_t page = 0;
 };
 
-// Choose Miis of the chat room: the chooser of six, whose choice is saved in the save file.
+// Choose Miis of the chat room: the chooser of six, whose choice is saved in the save file. It lies on the chat room's water, whose
+// waves go on and whose drops wait until the chat room comes back (CHN-95).
 class ChooseMiisScreen : public WiiSpeakScreen
 {
 public:
@@ -59,6 +62,7 @@ public:
 
 private:
     WiiSpeakSession& session;
+    std::unique_ptr<WiiSpeakWater> water;
     MiiChooser chooser;
 };
 

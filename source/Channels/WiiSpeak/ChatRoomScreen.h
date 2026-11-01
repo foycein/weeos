@@ -4,6 +4,7 @@
 #include "SystemMenu/OwnServer.h"
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
+#include "Channels/WiiSpeak/WiiSpeakWater.h"
 
 #include <ctime>
 #include <memory>
@@ -43,7 +44,6 @@ private:
     void ShowTexts();
     void ShowClock();
     void StartClockRipples(const std::tm& calendar);
-    void LetDropsFall();
     void ShowMute();
     std::optional<WiiSpeakScreenName> Press(const std::string& button);
     void StartConnecting();
@@ -55,14 +55,13 @@ private:
     void ShowWiiNumber();
 
     WiiSpeakSession& session;
-    SceneLayout background;
+    std::unique_ptr<WiiSpeakWater> water;
     SceneLayout buttons;
     SceneLayout clock;
     SceneLayout muteSign;
     SceneLayout circle;
     std::unique_ptr<SceneLayout> miisInCircle;
     int lastShownSecond = -1;
-    int stepsSinceTheLastDrop = 0;
     std::unique_ptr<SceneLayout> photo;
     Waiting waiting = Waiting::Nothing;
     SystemMenu::NetworkStart networkStart;

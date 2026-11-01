@@ -44,6 +44,18 @@ enum class PlazaActivity
     AfterSneeze,
     Slipping,
     GettingUp,
+
+    // A Mii that the hand lets go gets down onto the ground (bodyGetDown).
+    GettingDown,
+
+    // A Mii that comes into the plaza from the editor falls in from the sky and bounces on the ground: bodySlap_00, or bodySlap_03 when
+    // the camera is high (zoom level 2 or 3). Then it gets up in one of the ways of bodySlap_01, _02 (a woman), _04 (a man) or _05.
+    Landing,
+    LandingFromHigh,
+    GettingUpFromLanding01,
+    GettingUpFromLanding02,
+    GettingUpFromLanding04,
+    GettingUpFromLanding05,
 };
 
 // The ground the Miis walk on: the plaza, where they wander, or the road of the Mii Parade, where they walk from the far end toward the
@@ -89,6 +101,9 @@ struct PlazaMii
     // While a whistle has called the Mii to its place in a line: it walks there and stays.
     bool staysAtTarget = false;
 
+    // A Mii that found a Mii to talk to further away walks to it, and they talk when it is near.
+    std::optional<std::size_t> talkPartner;
+
     // The steps since the last balloon of a talk, and since the Mii began to run (for its dust).
     int stepsSinceTalkBalloon = 0;
     int stepsRunning = 0;
@@ -111,6 +126,15 @@ enum class PlazaMoment
 
     // A Mii falls asleep; its Zzz rise above it while it naps.
     FallsAsleep,
+
+    // A Mii that falls in or gets down hits the ground: a puff of smoke (Nc_slapsmoke01), and at its last bounce a larger one
+    // (Nc_slapsmoke02).
+    RaisesSlapSmoke,
+    RaisesLastSlapSmoke,
+
+    // A falling Mii hits the ground the first time (SEQ_DOOL_THROW_GND1), and then bounces (SEQ_DOOL_THROW_GND2).
+    HitsTheGround,
+    BouncesOnTheGround,
 };
 
 struct PlazaMomentOfMii
@@ -172,10 +196,13 @@ public:
     // The moments of the Miis since the last call, for their effects.
     std::vector<PlazaMomentOfMii> TakeMoments();
 
-    // The hand picks the Mii up and carries it until it lets go.
+    // The hand picks the Mii up and carries it until it lets go; then it gets down.
     void Grab(std::size_t slot);
     void MoveHeldMii(Formats::Vector2 groundPosition);
     void Drop();
+
+    // A Mii that the editor saved falls into the middle of the plaza (0x8002AC54, 0x8001F4D4).
+    void DropIn(std::size_t slot);
     std::optional<std::size_t> HeldMii() const;
 
     // The camera.
@@ -217,6 +244,9 @@ private:
     void FinishActivity(PlazaMii& plazaMii);
     void ChooseIdleMoment(PlazaMii& plazaMii);
     void StartTalk(PlazaMii& talker);
+    void BeginTalk(PlazaMii& talker, PlazaMii& listener);
+    void WalkToTheTalkPartner(PlazaMii& talker);
+    PlazaMii* FindMiiInSlot(std::size_t slot);
     void CountTalkBalloon(PlazaMii& plazaMii);
     void CountRunningDust(PlazaMii& plazaMii);
     void NoteFrameMoment(const PlazaMii& plazaMii, float frameBefore, float momentFrame, PlazaMoment moment);
@@ -227,6 +257,8 @@ private:
     Formats::Vector2 RandomPlace();
     void WalkAlongTheParade(PlazaMii& plazaMii);
     void ReturnToTheFarEnd(PlazaMii& plazaMii);
+    void Land(PlazaMii& plazaMii);
+    void GetUpFromLanding(PlazaMii& plazaMii);
     int RandomWait();
     void LimitCameraDestination();
 
@@ -241,6 +273,9 @@ private:
     PlazaCamera camera;
     int slipsInLastStep = 0;
     std::vector<PlazaMomentOfMii> moments;
+
+    // The way the last Mii got up after its landing; the next one gets up another way.
+    std::optional<int> lastWayUp;
 };
 
 // The speed at which the walk animation plays for a Mii at a walking speed: a longer body takes longer steps (80022BD0).

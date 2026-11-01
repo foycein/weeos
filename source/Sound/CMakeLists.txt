@@ -7,6 +7,7 @@ add_library(Sound STATIC
     Envelope.cpp
     LoadedFiles.cpp
     LowPassFilter.cpp
+    MidiFile.cpp
     Mixer.cpp
     Modulation.cpp
     MonoStreamConverter.cpp
@@ -34,6 +35,8 @@ add_library(Sound STATIC
     WaveInfo.cpp
     WavePlayer.cpp
     WaveSoundFile.cpp
+    WaveTable.cpp
+    WaveTableSynth.cpp
 )
 target_link_libraries(Sound PUBLIC Formats)
 target_link_libraries(Sound PRIVATE ole32)
@@ -43,6 +46,6 @@ target_link_libraries(Sound PRIVATE ole32)
 if(MSVC)
     string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set_source_files_properties(Envelope.cpp LowPassFilter.cpp Mixer.cpp MonoStreamConverter.cpp Resampler.cpp Reverb.cpp Voice.cpp
-        WaveDecoder.cpp WavePlayer.cpp
+        WaveDecoder.cpp WavePlayer.cpp WaveTableSynth.cpp
         PROPERTIES COMPILE_OPTIONS "/O2")
 endif()

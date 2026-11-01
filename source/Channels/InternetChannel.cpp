@@ -37,6 +37,20 @@ constexpr std::string_view ManualFolder = "./help_A/";
 constexpr std::string_view ManualHost = "operations-guide.invalid";
 constexpr std::string_view ManualStartPage = "start_ukv.html";
 
+// The Opera logo of the start page opens opera:about (startpage.js): about.html of the pages with the style sheets of styles/, served
+// the same way.
+constexpr std::string_view ContentRoot = "./";
+constexpr std::string_view AboutPagePath = "./about.html";
+constexpr std::string_view StylesFolder = "./styles/";
+constexpr std::string_view AboutHost = "opera-about.invalid";
+constexpr std::string_view AboutPage = "about.html";
+
+// about.html asks the channel's Opera for its version, its build and its build date (the host function 0x800361D4 gives "9.30",
+// "3642" and "109-6-5", the year counted from 1900).
+constexpr std::u16string_view OperaVersionScript =
+    u"window.opera = window.opera || {};"
+    u" window.opera.getoperaversion = function(part) { return ['9.30', '3642', '109-6-5'][part]; };";
+
 // The widescreen styles lay the page out 450 pixels high (the background of startpage.css is 450 high), so one pixel of the page is
 // 456 / 450 layout units and the page is as wide as the picture.
 constexpr float WidePageHeight = 450;
@@ -46,6 +60,12 @@ constexpr float WidePageHeight = 450;
 constexpr float ContainerWidth = 547;
 constexpr PageRectangle LogoPlace = {436, 13, 117, 18};
 constexpr PageRectangle LogoPart = {0, 0, 117, 18};
+
+// The logo's box of startpage.css (#opera-logo, 117 by 27 from 4 pixels down); with the focus its picture moves up to show the larger
+// logo below (.focusLogo).
+constexpr PageRectangle LogoBox = {436, 4, 117, 27};
+constexpr PageRectangle FocusedLogoPlace = {436, 4, 117, 25};
+constexpr PageRectangle FocusedLogoPart = {0, 20, 117, 25};
 constexpr float HomeIconLeft = 4;
 constexpr float HomeIconTop = 1;
 constexpr PageRectangle TitleBox = {37, 4, 300, 26};
@@ -207,18 +227,34 @@ bool HasButton(Input::ButtonMask buttons, Input::ButtonMask button)
     return (buttons & button) != 0;
 }
 
-// The files of the manual, help_A of the pages, by their path below it.
-std::map<std::string, std::vector<std::uint8_t>> ManualFiles(const Formats::U8Archive& pages)
+using ServedFiles = std::map<std::string, std::vector<std::uint8_t>>;
+
+// The files of the pages whose path starts with the folder, by their path below the served root.
+void AddFilesOfFolder(ServedFiles& files, const Formats::U8Archive& pages, std::string_view folder, std::string_view servedRoot)
 {
-    std::map<std::string, std::vector<std::uint8_t>> files;
     for (const Formats::U8Entry& entry : pages.entries)
     {
-        if (entry.isDirectory || !entry.path.starts_with(ManualFolder))
+        if (entry.isDirectory || !entry.path.starts_with(folder))
             continue;
 
         Formats::ByteView bytes = pages.FileData(entry);
-        files[entry.path.substr(ManualFolder.size())] = std::vector<std::uint8_t>(bytes.begin(), bytes.end());
+        files[entry.path.substr(servedRoot.size())] = std::vector<std::uint8_t>(bytes.begin(), bytes.end());
     }
+}
+
+// The files of the manual, help_A of the pages, by their path below it.
+ServedFiles ManualFiles(const Formats::U8Archive& pages)
+{
+    ServedFiles files;
+    AddFilesOfFolder(files, pages, ManualFolder, ManualFolder);
+    return files;
+}
+
+ServedFiles AboutFiles(const Formats::U8Archive& pages)
+{
+    ServedFiles files;
+    AddFilesOfFolder(files, pages, AboutPagePath, ContentRoot);
+    AddFilesOfFolder(files, pages, StylesFolder, ContentRoot);
     return files;
 }
 
@@ -434,6 +470,9 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfStartPagePlace(Place pla
 {
     if (view != View::StartPage)
         return std::nullopt;
+
+    if (place == Place::OperaLogo)
+        return PageToPicture({containerLeft + LogoBox.left + LogoBox.width / 2, LogoBox.top + LogoBox.height / 2}, frame);
 
     if (place == Place::Controls)
         return PageToPicture({containerLeft + ControllerPlace.left + ControllerPlace.width / 2, ControllerPlace.top + ControllerPlace.height / 2}, frame);
@@ -757,7 +796,7 @@ void InternetChannel::UpdateMovingFavorite(const Input::RemoteState& state)
     if (newIndex != index)
     {
         data->MoveFavorite(data->Favorites()[index].number, newIndex);
-        favoritesScreen->SetMovingFavorite(newIndex);
+        favoritesScreen->SetMovingFavorite(newIndex, flatFrame);
         PlaySound(OperaSound::Rollover);
     }
 
@@ -885,6 +924,9 @@ void InternetChannel::PressStartPagePlace(Place place)
         return;
     case Place::Controls:
         Ask(Question::Controls, ControlsText());
+        return;
+    case Place::OperaLogo:
+        OpenOperaAbout();
         return;
     }
 }
@@ -1097,6 +1139,18 @@ void InternetChannel::OpenOperationsGuide()
     PageView& manual = EnsurePageView();
     manual.Page().ServeFiles(std::string(ManualHost), ManualFiles(pages));
     OpenAddress(std::format("https://{}/{}", ManualHost, ManualStartPage));
+}
+
+void InternetChannel::OpenOperaAbout()
+{
+    PageView& aboutView = EnsurePageView();
+    if (!isAboutServed)
+    {
+        aboutView.Page().ServeFiles(std::string(AboutHost), AboutFiles(pages));
+        aboutView.Page().AddPageScript(std::u16string(OperaVersionScript));
+        isAboutServed = true;
+    }
+    OpenAddress(std::format("https://{}/{}", AboutHost, AboutPage));
 }
 
 void InternetChannel::OpenFavorites()
@@ -1363,6 +1417,9 @@ std::optional<InternetChannel::Place> InternetChannel::PointedPlace() const
         ControlsTextBox.top + ControlsTextBox.height - ControllerPlace.top};
     if (controlsPlace.Contains(*pointer))
         return Place::Controls;
+
+    if (Shifted(LogoBox, containerLeft, 0).Contains(*pointer))
+        return Place::OperaLogo;
     return std::nullopt;
 }
 
@@ -1443,7 +1500,10 @@ void InternetChannel::DrawStartPage()
     painter->FillRectangle({0, 0, frame.width, frame.height}, White);
     painter->DrawPicture(*background, {0, BackgroundTop, frame.width, WidePageHeight});
 
-    painter->DrawPicturePart(*logo, Shifted(LogoPlace, containerLeft, 0), LogoPart);
+    if (focusedPlace == Place::OperaLogo)
+        painter->DrawPicturePart(*logo, Shifted(FocusedLogoPlace, containerLeft, 0), FocusedLogoPart);
+    else
+        painter->DrawPicturePart(*logo, Shifted(LogoPlace, containerLeft, 0), LogoPart);
     painter->DrawPicture(*homeIcon, {containerLeft + HomeIconLeft, HomeIconTop, homeIcon->Width(), homeIcon->Height()});
     painter->DrawText(Text("S_START"), TitleStyle, Shifted(TitleBox, containerLeft, 0));
 

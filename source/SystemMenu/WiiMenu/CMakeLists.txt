@@ -1,5 +1,6 @@
 target_sources(SystemMenu PRIVATE
     Balloon.cpp
+    BarHousings.cpp
     BottomBarScreen.cpp
     ChannelGridScreen.cpp
     ChannelLaunch.cpp

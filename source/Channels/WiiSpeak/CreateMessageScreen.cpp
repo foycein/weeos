@@ -74,6 +74,7 @@ constexpr SystemMenu::ButtonSet ChangeVoiceButtons = {Input::RemoteButtons::One,
 
 CreateMessageScreen::CreateMessageScreen(WiiSpeakSession& messageSession)
     : session(messageSession)
+    , water(WiiSpeakWater::OfTheMenus(messageSession, WiiSpeakWater::MenuColor::Letter))
     , letter(session.services.display, session.files.SceneLayouts("letter", "13100_letter.arc"), "13100_letter")
     , comment(session.services.display, session.files.SceneLayouts("letter", "16000_comment.arc"), "16000_comment")
 {
@@ -109,6 +110,7 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::Update()
         return std::nullopt;
     }
 
+    water->Update();
     std::optional<WiiSpeakScreenName> nextScreen;
     if (phase == Phase::Letter)
         nextScreen = UpdateLetter();
@@ -120,14 +122,17 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::Update()
     return nextScreen;
 }
 
+// The lineup of Add Mii lies on the letter's water, which stands still under it.
 void CreateMessageScreen::Draw()
 {
+    water->Draw();
     if (miiChooser)
     {
         miiChooser->Draw();
         return;
     }
 
+    session.ripples.Draw();
     letter.Draw();
     if (phase != Phase::Letter)
         comment.Draw();

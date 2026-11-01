@@ -149,6 +149,10 @@ public:
     // An address https://<hostName>/<path> shows them.
     void ServeFiles(const std::string& hostName, std::map<std::string, std::vector<std::uint8_t>> files);
 
+    // A script that runs in every page that opens from now on, before the page's own scripts: the functions that a channel's
+    // browser gives its pages.
+    void AddPageScript(const std::u16string& script);
+
     void Open(const std::string& address);
     void GoBack();
     void GoForward();

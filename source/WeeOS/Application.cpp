@@ -1,6 +1,7 @@
 #include "WeeOS/Application.h"
 
 #include "Channels/ChannelSystem.h"
+#include "Channels/HomeMenuWaveSounds.h"
 #include "Channels/NativeChannels.h"
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
@@ -231,6 +232,7 @@ private:
 
         if (!channelSounds.empty())
             channelSound.emplace(channelSounds);
+        channelWaveSounds = Channels::RenderHomeMenuSounds(runningTitle, titleContents);
     }
 
     // A channel asks for its sounds by name, as the menu does; each one plays from the first of the channel's archives that has it.
@@ -239,6 +241,21 @@ private:
         sound.SetSoundMode(wiiSettings.SoundMode());
         if (channelSound)
             channelSound->PlayRequests(channel->Services().sounds);
+        PlayWaveSoundsOfTheStep();
+    }
+
+    // The sounds that the channel keeps as MIDI files (the Internet Channel's HOME menu) play as the waves rendered at its start.
+    void PlayWaveSoundsOfTheStep()
+    {
+        for (const SystemMenu::SoundRequest& request : channel->Services().sounds.AllRequestsInThisStep())
+        {
+            if (request.action != SystemMenu::SoundAction::PlayEffect)
+                continue;
+
+            auto rendered = channelWaveSounds.find(request.effectName);
+            if (rendered != channelWaveSounds.end())
+                sound.Waves().Play(rendered->second);
+        }
     }
 
     Platform::Window& window;
@@ -262,6 +279,7 @@ private:
     Input::VirtualRemote& virtualRemote;
     std::optional<SystemMenu::MenuSound> menuSound;
     std::optional<SystemMenu::MenuSound> channelSound;
+    Channels::RenderedSounds channelWaveSounds;
 };
 
 Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)

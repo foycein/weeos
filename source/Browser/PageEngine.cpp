@@ -604,6 +604,11 @@ void PageEngine::ServeFiles(const std::string& hostName, std::map<std::string, s
     webView->AddWebResourceRequestedFilter(filter.c_str(), COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
 }
 
+void PageEngine::AddPageScript(const std::u16string& script)
+{
+    webView->AddScriptToExecuteOnDocumentCreated(WideTextOf(script).c_str(), nullptr);
+}
+
 void PageEngine::Open(const std::string& address)
 {
     webView->Navigate(WideTextOf(address).c_str());

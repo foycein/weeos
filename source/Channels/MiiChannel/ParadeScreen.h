@@ -20,8 +20,8 @@ namespace Channels
 
 // The Mii Parade (uraNigaoe_00 over the road, the table at 80241FC4): the Miis of other consoles, and the Miis this plaza sent, walking
 // along the road toward the camera. A Mii dropped on "Send to Mii Plaza" goes back to the plaza, one dropped on "Erase" leaves the
-// parade; "Speed" makes them run; "Travel Settings" needs WiiConnect24; "Mii Plaza" goes back; + and - zoom as on the plaza. An empty
-// parade says that nobody is here.
+// parade; "Speed" makes them run; "Travel Settings" needs WiiConnect24; "Mii Plaza" goes back; + and - zoom as on the plaza. The first
+// visit introduces the parade (51 to 600302, 0x8005950C, 0x80059640); an empty parade says that nobody is here.
 class ParadeScreen
 {
 public:
@@ -72,6 +72,7 @@ private:
 
     std::optional<std::size_t> miiToErase;
     bool isWayBackAsked = false;
+    bool isIntroducing = false;
 };
 
 }
