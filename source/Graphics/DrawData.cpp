@@ -50,6 +50,26 @@ std::array<float, 6> FlattenTextureMatrix(const TextureMatrix& matrix)
 
 }
 
+std::uint32_t PackAlphaTest(const std::optional<AlphaTest>& test)
+{
+    constexpr int SecondComparisonShift = 3;
+    constexpr int JoinShift = 6;
+    constexpr int FirstReferenceShift = 8;
+    constexpr int SecondReferenceShift = 16;
+    constexpr std::uint32_t TestIsOn = 0x80000000;
+
+    if (!test)
+        return 0;
+
+    std::uint32_t packed = TestIsOn;
+    packed |= ToNumber(test->firstComparison);
+    packed |= ToNumber(test->secondComparison) << SecondComparisonShift;
+    packed |= ToNumber(test->join) << JoinShift;
+    packed |= static_cast<std::uint32_t>(test->firstReference) << FirstReferenceShift;
+    packed |= static_cast<std::uint32_t>(test->secondReference) << SecondReferenceShift;
+    return packed;
+}
+
 ShaderStage PackStage(const TevStage& stage)
 {
     ShaderStage packed = {};
@@ -115,6 +135,7 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
     record.firstStage = firstStage;
     record.stageCount = stageCount;
     record.skipsTransparentPixels = material.skipsTransparentPixels ? 1 : 0;
+    record.alphaTest = PackAlphaTest(material.alphaTest);
 
     if (material.indirectTexture)
     {

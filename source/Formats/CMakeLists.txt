@@ -14,6 +14,7 @@ add_library(Formats STATIC
     ConsoleKeys.cpp
     DeviceCertificate.cpp
     DolExecutable.cpp
+    EffectFile.cpp
     EllipticCurve.cpp
     FileBytes.cpp
     Font.cpp

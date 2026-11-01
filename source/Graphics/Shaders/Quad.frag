@@ -359,6 +359,66 @@ void RunStage(Stage stage)
     registers[stage.alphaOutput].a = alpha;
 }
 
+// The alpha test of the material (PackAlphaTest in DrawData.cpp).
+const uint AlphaTestIsOn = 0x80000000u;
+const uint ComparisonMask = 7u;
+const uint JoinMask = 3u;
+const uint ByteMask = 255u;
+const uint SecondComparisonShift = 3u;
+const uint JoinShift = 6u;
+const uint FirstReferenceShift = 8u;
+const uint SecondReferenceShift = 16u;
+
+const uint CompareNever = 0u;
+const uint CompareLess = 1u;
+const uint CompareEqual = 2u;
+const uint CompareLessOrEqual = 3u;
+const uint CompareGreater = 4u;
+const uint CompareNotEqual = 5u;
+const uint CompareGreaterOrEqual = 6u;
+
+const uint JoinAnd = 0u;
+const uint JoinOr = 1u;
+const uint JoinExclusiveOr = 2u;
+
+bool PassesComparison(uint alpha, uint comparison, uint reference)
+{
+    if (comparison == CompareNever)
+        return false;
+    if (comparison == CompareLess)
+        return alpha < reference;
+    if (comparison == CompareEqual)
+        return alpha == reference;
+    if (comparison == CompareLessOrEqual)
+        return alpha <= reference;
+    if (comparison == CompareGreater)
+        return alpha > reference;
+    if (comparison == CompareNotEqual)
+        return alpha != reference;
+    if (comparison == CompareGreaterOrEqual)
+        return alpha >= reference;
+    return true;
+}
+
+bool PassesAlphaTest(float alphaValue, uint test)
+{
+    if ((test & AlphaTestIsOn) == 0u)
+        return true;
+
+    uint alpha = uint(round(alphaValue * MaximumByteValue));
+    bool first = PassesComparison(alpha, test & ComparisonMask, (test >> FirstReferenceShift) & ByteMask);
+    bool second = PassesComparison(alpha, (test >> SecondComparisonShift) & ComparisonMask, (test >> SecondReferenceShift) & ByteMask);
+
+    uint join = (test >> JoinShift) & JoinMask;
+    if (join == JoinAnd)
+        return first && second;
+    if (join == JoinOr)
+        return first || second;
+    if (join == JoinExclusiveOr)
+        return first != second;
+    return first == second;
+}
+
 void main()
 {
     registers[0] = vec4(0.0);
@@ -374,5 +434,8 @@ void main()
 
     bool isTransparent = pictureColor.a < LargestZeroAlpha;
     if (drawRecords[drawIndex].skipsTransparentPixels != 0u && isTransparent)
+        discard;
+
+    if (!PassesAlphaTest(pictureColor.a, drawRecords[drawIndex].alphaTest))
         discard;
 }
