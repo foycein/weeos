@@ -1,0 +1,2 @@
+// The icon of WeeOS.exe: the WeeOS logo (tools/Release/MakeIcon.py). Platform::Window gives it to the window as well.
+1 ICON "WeeOS.ico"
