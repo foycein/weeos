@@ -20,10 +20,30 @@ constexpr float WideHalfWidth = 3050.0f;
 constexpr float FrontLimit = 2050.0f;
 constexpr float BackLimit = -1850.0f;
 
-// The Mii Parade: its Miis walk on the road within 1200 units to each side of its middle and stand for up to a second at the far end
-// before they set out again (Assumed, CHN-84).
-constexpr float ParadeHalfWidth = 1200.0f;
-constexpr int LongestParadeWaitSteps = 60;
+// The Mii Parade (800258d4, 800260b4, 8002548c; CHN-84): at most 100 Miis walk at a time (75 in 4:3). Each comes in behind the last one,
+// at least at z -700 (just above the picture), from 1 unit nearer to 9 units farther, at a random place within 720 units of the middle of
+// the road (540 in 4:3), and walks to z 700 (below the picture); a place within 90 units of a Mii less than 120 in front of it is tried
+// again, up to 20 times. One in a hundred walks up to 100 units to the side on its way. At the start the Miis come in one at a time,
+// every 7 steps (4 when they run); once every Mii of the parade has walked, the road stays empty for 240 steps and the parade starts again.
+constexpr std::size_t ParadeBodies = 100;
+constexpr float ParadeHalfWidth = 720.0f;
+constexpr float ParadeStartZ = -700.0f;
+constexpr float ParadeEndZ = 700.0f;
+constexpr float ParadeNearestGap = -1.0f;
+constexpr float ParadeFarthestGap = 9.0f;
+constexpr float ParadeCrowdDepth = 120.0f;
+constexpr float ParadeCrowdDistance = 90.0f;
+constexpr int ParadePlaceTries = 20;
+constexpr int ParadeSwerveChances = 100;
+constexpr float ParadeSwerveDistance = 100.0f;
+constexpr int StepsBetweenWalkingArrivals = 7;
+constexpr int StepsBetweenRunningArrivals = 4;
+constexpr int StepsOfTheEmptyRoad = 240;
+
+// The parade walks a little slower than the plaza and runs far slower: its speed grows by 0.095 a step walking (1.9 at most) and 0.375
+// running (3.75 at most), in the states 1 and 2 of 8001f7a8 for a Mii of the parade.
+constexpr float ParadeSpeedAddedPerStep = 0.095f;
+constexpr float ParadeRunSpeedAddedPerStep = 0.375f;
 
 // Two Miis closer than this push each other apart (the 120 x 120 of 803BE5DC).
 constexpr float PersonalDistance = 120.0f;
@@ -232,6 +252,12 @@ void MiiPlaza::SetMiis(const std::vector<StoredMii>& storedMiis)
 {
     miis.clear();
     heldSlot.reset();
+    if (kind == PlazaKind::Parade)
+    {
+        StartParade(storedMiis);
+        return;
+    }
+
     for (const StoredMii& stored : storedMiis)
     {
         PlazaMii plazaMii;
@@ -286,10 +312,14 @@ const PlazaMii* MiiPlaza::FindMii(std::size_t slot) const
 void MiiPlaza::Update()
 {
     slipsInLastStep = 0;
+    if (kind == PlazaKind::Parade)
+        KeepTheParadeComing();
+
     for (PlazaMii& plazaMii : miis)
         ++plazaMii.stepsInActivity;
     for (PlazaMii& plazaMii : miis)
         MoveMii(plazaMii);
+    std::erase_if(miis, [](const PlazaMii& plazaMii) { return plazaMii.leavesTheRoad; });
 
     PushApart();
     for (PlazaMii& plazaMii : miis)
@@ -597,7 +627,7 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
         plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, WaitAnimationFrames);
         --plazaMii.stepsToWait;
         if (kind == PlazaKind::Parade && plazaMii.stepsToWait <= 0)
-            WalkAlongTheParade(plazaMii);
+            WalkAlongTheParade(plazaMii, plazaMii.position.x);
         else if (!plazaMii.staysAtTarget && plazaMii.stepsToWait <= 0)
             StartWalking(plazaMii, RandomPlace());
         else
@@ -769,7 +799,8 @@ void MiiPlaza::Walk(PlazaMii& plazaMii)
         return;
     }
 
-    TurnAndStep(plazaMii, SpeedKeptPerStep, SpeedAddedPerStep, remaining);
+    float speedAdded = kind == PlazaKind::Parade ? ParadeSpeedAddedPerStep : SpeedAddedPerStep;
+    TurnAndStep(plazaMii, SpeedKeptPerStep, speedAdded, remaining);
     float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
     plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, WalkAnimationFrames);
 }
@@ -797,7 +828,8 @@ void MiiPlaza::Run(PlazaMii& plazaMii)
         return;
     }
 
-    TurnAndStep(plazaMii, RunSpeedKeptPerStep, RunSpeedAddedPerStep, remaining);
+    float speedAdded = kind == PlazaKind::Parade ? ParadeRunSpeedAddedPerStep : RunSpeedAddedPerStep;
+    TurnAndStep(plazaMii, RunSpeedKeptPerStep, speedAdded, remaining);
     float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
     plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, RunAnimationFrames);
 }
@@ -1057,22 +1089,131 @@ void MiiPlaza::KeepInside(PlazaMii& plazaMii)
     plazaMii.position.y = std::clamp(plazaMii.position.y, BackLimit, FrontLimit);
 }
 
-// A Mii of the parade walks (or runs, in fast forward) straight toward the camera, to the near end of the road.
-void MiiPlaza::WalkAlongTheParade(PlazaMii& plazaMii)
+// A Mii of the parade walks (or runs, in fast forward) toward the camera, to the near end of the road.
+void MiiPlaza::WalkAlongTheParade(PlazaMii& plazaMii, float targetX)
 {
-    Formats::Vector2 nearEnd = {plazaMii.position.x, FrontLimit};
+    Formats::Vector2 nearEnd = {targetX, ParadeEndZ};
     if (isParadeRunning)
         StartRunning(plazaMii, nearEnd);
     else
         StartWalking(plazaMii, nearEnd);
 }
 
-// At the near end a Mii of the parade leaves the picture and comes again from the far end.
+// The Miis of the parade walk in the order of the list, shuffled within each hundred (8002e43c), and come onto the road one at a time.
+void MiiPlaza::StartParade(const std::vector<StoredMii>& paradeMiis)
+{
+    paradeOrder = paradeMiis;
+    for (std::size_t blockStart = 0; blockStart < paradeOrder.size(); blockStart += ParadeBodies)
+        ShuffleParadeBlock(blockStart);
+
+    nextInParade = 0;
+    miisStillComingIn = static_cast<int>(std::min(paradeOrder.size(), ParadeBodies));
+    stepsSinceLastArrival = 0;
+    stepsOfEmptyRoad = 0;
+}
+
+// A full hundred swaps two of its Miis a hundred times, the last smaller block as many times as it has Miis.
+void MiiPlaza::ShuffleParadeBlock(std::size_t blockStart)
+{
+    std::size_t blockSize = std::min(ParadeBodies, paradeOrder.size() - blockStart);
+    std::uniform_int_distribution<std::size_t> placeInBlock(0, blockSize - 1);
+    for (std::size_t swap = 0; swap < blockSize; ++swap)
+    {
+        std::size_t first = blockStart + placeInBlock(random);
+        std::size_t second = blockStart + placeInBlock(random);
+        std::swap(paradeOrder[first], paradeOrder[second]);
+    }
+}
+
+void MiiPlaza::KeepTheParadeComing()
+{
+    if (miisStillComingIn > 0)
+    {
+        LetTheNextMiiComeIn();
+        return;
+    }
+
+    bool isTheParadeOver = miis.empty() && !paradeOrder.empty() && nextInParade >= paradeOrder.size();
+    if (!isTheParadeOver)
+        return;
+
+    ++stepsOfEmptyRoad;
+    if (stepsOfEmptyRoad >= StepsOfTheEmptyRoad)
+        StartParade(paradeOrder);
+}
+
+void MiiPlaza::LetTheNextMiiComeIn()
+{
+    ++stepsSinceLastArrival;
+    int stepsBetweenArrivals = isParadeRunning ? StepsBetweenRunningArrivals : StepsBetweenWalkingArrivals;
+    if (stepsSinceLastArrival < stepsBetweenArrivals)
+        return;
+
+    stepsSinceLastArrival = 0;
+    --miisStillComingIn;
+    PlazaMii plazaMii;
+    if (TakeTheNextParadeMii(plazaMii))
+        miis.push_back(plazaMii);
+}
+
+// At the near end a Mii of the parade leaves the picture and the next Mii of the parade comes in at the back; when every Mii has walked,
+// it leaves the road.
 void MiiPlaza::ReturnToTheFarEnd(PlazaMii& plazaMii)
 {
-    plazaMii.position = {plazaMii.position.x, BackLimit};
+    if (!TakeTheNextParadeMii(plazaMii))
+        plazaMii.leavesTheRoad = true;
+}
+
+bool MiiPlaza::TakeTheNextParadeMii(PlazaMii& plazaMii)
+{
+    if (nextInParade >= paradeOrder.size())
+        return false;
+
+    plazaMii.mii = paradeOrder[nextInParade];
+    ++nextInParade;
+    PlaceAtTheBackOfTheParade(plazaMii);
+    return true;
+}
+
+void MiiPlaza::PlaceAtTheBackOfTheParade(PlazaMii& plazaMii)
+{
+    float lastZ = ParadeStartZ;
+    for (const PlazaMii& other : miis)
+    {
+        if (&other != &plazaMii)
+            lastZ = std::min(lastZ, other.position.y);
+    }
+
+    std::uniform_real_distribution<float> across(-ParadeHalfWidth, ParadeHalfWidth);
+    std::uniform_real_distribution<float> gap(ParadeNearestGap, ParadeFarthestGap);
+    Formats::Vector2 place = {across(random), lastZ - gap(random)};
+    for (int tries = 1; tries < ParadePlaceTries; ++tries)
+    {
+        if (!IsCrowded(place, plazaMii))
+            break;
+        place = {across(random), lastZ - gap(random)};
+    }
+
+    plazaMii.position = place;
     plazaMii.facingDegrees = 0;
-    StartWaiting(plazaMii);
+
+    float targetX = place.x;
+    bool swerves = std::uniform_int_distribution<int>(0, ParadeSwerveChances - 1)(random) == 0;
+    if (swerves)
+        targetX += std::uniform_real_distribution<float>(-ParadeSwerveDistance, ParadeSwerveDistance)(random);
+    WalkAlongTheParade(plazaMii, targetX);
+}
+
+// A place is crowded when it lies within reach of a Mii that walks less than a little way in front of it.
+bool MiiPlaza::IsCrowded(Formats::Vector2 place, const PlazaMii& newcomer) const
+{
+    for (const PlazaMii& other : miis)
+    {
+        bool isClose = other.position.y < place.y + ParadeCrowdDepth && Distance(other.position, place) < ParadeCrowdDistance;
+        if (&other != &newcomer && isClose)
+            return true;
+    }
+    return false;
 }
 
 Formats::Vector2 MiiPlaza::RandomPlace()
@@ -1084,8 +1225,9 @@ Formats::Vector2 MiiPlaza::RandomPlace()
 
 int MiiPlaza::RandomWait()
 {
+    // A Mii of the parade that stands walks on at once (800258d4).
     if (kind == PlazaKind::Parade)
-        return std::uniform_int_distribution<int>(0, LongestParadeWaitSteps)(random);
+        return 0;
 
     return std::uniform_int_distribution<int>(ShortestWaitSteps, LongestWaitSteps)(random);
 }

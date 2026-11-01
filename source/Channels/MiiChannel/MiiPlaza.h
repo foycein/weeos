@@ -107,6 +107,9 @@ struct PlazaMii
     // The steps since the last balloon of a talk, and since the Mii began to run (for its dust).
     int stepsSinceTalkBalloon = 0;
     int stepsRunning = 0;
+
+    // A Mii of the parade that walked to the near end when no Mii of the parade was left to come.
+    bool leavesTheRoad = false;
 };
 
 // A moment of a plaza Mii that an effect shows (EffectManager.cpp of the original, CHN-94).
@@ -143,7 +146,9 @@ struct PlazaMomentOfMii
     std::size_t slot;
 };
 
-// The camera of the plaza (8001295C, 80014DA4): it looks down along a fixed direction, and its height is one of four zoom levels.
+// The camera of the plaza (8001295C, 80014DA4): it looks down along a fixed direction, and its height is one of four zoom levels. The
+// parade has a camera of its own (the third of 800143FC, set up by 80014BE4 with mode 2) that stands where the plaza's starts and never
+// moves: the parade neither zooms nor scrolls.
 struct PlazaCamera
 {
     Formats::Vector3 eye;
@@ -170,7 +175,8 @@ public:
     void SetParadeRunning(bool isRunning);
     bool IsParadeRunning() const;
 
-    // The Miis come onto the plaza at random places, each standing for a while before it walks.
+    // The Miis come onto the plaza at random places, each standing for a while before it walks. The Miis of the parade come onto the road
+    // one at a time, at most a hundred at once, and the others follow as those walk out of the picture.
     void SetMiis(const std::vector<StoredMii>& miis);
 
     // A Mii that was edited keeps its place; a new one comes in at the middle of the plaza.
@@ -255,8 +261,15 @@ private:
     void WakeWhenBumped(PlazaMii& plazaMii);
     void KeepInside(PlazaMii& plazaMii);
     Formats::Vector2 RandomPlace();
-    void WalkAlongTheParade(PlazaMii& plazaMii);
+    void WalkAlongTheParade(PlazaMii& plazaMii, float targetX);
+    void StartParade(const std::vector<StoredMii>& paradeMiis);
+    void ShuffleParadeBlock(std::size_t blockStart);
+    void KeepTheParadeComing();
+    void LetTheNextMiiComeIn();
     void ReturnToTheFarEnd(PlazaMii& plazaMii);
+    bool TakeTheNextParadeMii(PlazaMii& plazaMii);
+    void PlaceAtTheBackOfTheParade(PlazaMii& plazaMii);
+    bool IsCrowded(Formats::Vector2 place, const PlazaMii& newcomer) const;
     void Land(PlazaMii& plazaMii);
     void GetUpFromLanding(PlazaMii& plazaMii);
     int RandomWait();
@@ -264,6 +277,14 @@ private:
 
     PlazaKind kind;
     bool isParadeRunning = false;
+
+    // The Miis of the parade in the order they walk, the next of them to come, how many more come in one at a time at the start, and
+    // the steps since the last came in and since the road is empty.
+    std::vector<StoredMii> paradeOrder;
+    std::size_t nextInParade = 0;
+    int miisStillComingIn = 0;
+    int stepsSinceLastArrival = 0;
+    int stepsOfEmptyRoad = 0;
     std::mt19937 random;
 
     // The chances of the effects' moments have their own numbers, so that the effects do not change what the Miis do.
