@@ -71,7 +71,9 @@ void SdChannelWindowScreen::Load()
 
     try
     {
-        name = Formats::ReadChannelNames(channel->header.bannerHeader)[Formats::EnglishLanguageNumber].firstLine;
+        std::array<Formats::ChannelName, Formats::BannerLanguageCount> names =
+            Formats::ReadChannelNames(channel->header.bannerHeader);
+        name = names[Formats::EnglishLanguageNumber].firstLine;
     }
     catch (const Formats::FormatError&)
     {
@@ -91,7 +93,8 @@ void SdChannelWindowScreen::Build()
     focusOnOfStart = frame->BindAnimation(std::string(FocusOnAnimation), "G_FocusBtnB", Layout::PlaybackMode::PlayOnce);
     pressOfWiiMenu = frame->BindAnimation(std::string(PressAnimation), "G_SelectBtnA", Layout::PlaybackMode::PlayOnce);
     pressOfStart = frame->BindAnimation(std::string(PressAnimation), "G_SelectBtnB", Layout::PlaybackMode::PlayOnce);
-    buttons = std::make_unique<ButtonController>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
+    std::vector<std::string> buttonPanes = {"B_BtnA", "B_BtnB"};
+    buttons = std::make_unique<ButtonController>(*frame, services.display, buttonPanes);
 
     background = std::make_unique<MenuLayout>(services.display, *archive, std::string(BackgroundLayout));
     background->SetText("T_title", name);
@@ -222,7 +225,8 @@ void SdChannelWindowScreen::Draw(DrawPass pass)
 
     bool isZooming = state == SdWindowState::ZoomingIn || state == SdWindowState::ZoomingOut;
     SdChannelListScreen* list = List();
-    if (isZooming && list != nullptr && list->Zoom() != nullptr)
+    bool isPictureInTheTelevision = isZooming && list != nullptr && list->Zoom() != nullptr;
+    if (isPictureInTheTelevision)
     {
         if (pass == DrawPass::Underlay)
             zoomedWindow.DrawPicture([this] { DrawTheWindow(); });

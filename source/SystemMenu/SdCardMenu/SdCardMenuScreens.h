@@ -123,6 +123,8 @@ private:
     std::unique_ptr<Balloon> MakeBalloon(const ChannelOnCard& channel);
     void FollowThePointerWithTheBalloons();
     void PlaceTiles();
+    void PlaceHeldChannel();
+    void PlaceCursor();
     void FollowThePointer();
     void PressChannel(std::size_t tileIndex);
     void PickUpChannel(int playerIndex, std::size_t tileIndex);

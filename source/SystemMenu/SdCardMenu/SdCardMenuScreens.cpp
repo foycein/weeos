@@ -71,11 +71,11 @@ constexpr float BalloonMarginFromTheEdges = 120;
 constexpr ButtonSet NextPageButtons = {Input::RemoteButtons::Plus, Input::ClassicButtons::Plus};
 constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus};
 
-// A tile of the list is as big as the icon of a channel.
 // While the window of a channel covers the picture, the list paints it black.
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
 constexpr std::uint8_t FullyShown = 255;
 
+// A tile of the list is as big as the icon of a channel.
 constexpr float TileWidth = 128;
 constexpr float TileHeight = 96;
 
@@ -113,19 +113,23 @@ constexpr std::uint16_t NextMessage = 0xA3;
 constexpr std::uint16_t CloseMessage = 0xA4;
 constexpr std::uint16_t BackMessage = 0xA5;
 
+// How far above the middle of the dialog the pictures of the pages lie.
+constexpr float WaitIconHeight = 74;
+constexpr float HelpButtonHeight = 108;
+
 // "Welcome to the SD Card Menu!", "About Save Data", "Caution!" with the turning icon, the help button.
 constexpr std::array<ExplanationPage, 4> IntroPages = {{
     {0x9D, NextMessage, false, PictureOfAPage::None, 0},
     {0x9E, NextMessage, true, PictureOfAPage::None, 0},
-    {0x9F, NextMessage, true, PictureOfAPage::WaitIcon, 74},
-    {0xCA, CloseMessage, true, PictureOfAPage::HelpButton, 108},
+    {0x9F, NextMessage, true, PictureOfAPage::WaitIcon, WaitIconHeight},
+    {0xCA, CloseMessage, true, PictureOfAPage::HelpButton, HelpButtonHeight},
 }};
 
 // "About the SD Card Menu", "About Save Data", "Caution!" with the turning icon.
 constexpr std::array<ExplanationPage, 3> HelpPages = {{
     {0xC9, NextMessage, false, PictureOfAPage::None, 0},
     {0x9E, NextMessage, true, PictureOfAPage::None, 0},
-    {0x9F, CloseMessage, true, PictureOfAPage::WaitIcon, 74},
+    {0x9F, CloseMessage, true, PictureOfAPage::WaitIcon, WaitIconHeight},
 }};
 
 namespace
@@ -169,7 +173,8 @@ void SdCardMenuBarScreen::Build()
     layout = std::make_unique<MenuLayout>(services.display, *archive, "mn_SdcardMenu_b");
     layout->SetText("T_page", services.messages.Find(SdCardMenuMessage));
     layout->Calculate();
-    buttons = std::make_unique<ButtonController>(*layout, services.display, std::vector<std::string>{"B_Wiimenu", "B_Help", "B_ArwR", "B_ArwL"});
+    std::vector<std::string> buttonPanes = {"B_Wiimenu", "B_Help", "B_ArwR", "B_ArwL"};
+    buttons = std::make_unique<ButtonController>(*layout, services.display, buttonPanes);
 
     wiiMenuBalloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABarBalloonAppears);
     wiiMenuBalloon->SetText(services.messages.Find(WiiMenuBalloonMessage));
@@ -462,7 +467,9 @@ void SdChannelListScreen::ShowPage()
 // The balloon holds the first line of the English name of the channel; a channel without a name has none.
 std::unique_ptr<Balloon> SdChannelListScreen::MakeBalloon(const ChannelOnCard& channel)
 {
-    std::u16string name = Formats::ReadChannelNames(channel.header.bannerHeader)[Formats::EnglishLanguageNumber].firstLine;
+    std::array<Formats::ChannelName, Formats::BannerLanguageCount> names =
+        Formats::ReadChannelNames(channel.header.bannerHeader);
+    std::u16string name = names[Formats::EnglishLanguageNumber].firstLine;
     if (name.empty())
         return nullptr;
 
@@ -499,15 +506,15 @@ void SdChannelListScreen::OpenExplanation(std::span<const ExplanationPage> expla
     DialogRequest request;
     for (const ExplanationPage& explanationPage : explanationPages)
     {
-        DialogPage page;
-        page.message = services.messages.Find(explanationPage.message);
-        page.nextText = services.messages.Find(explanationPage.nextButtonMessage);
-        page.backText = services.messages.Find(BackMessage);
-        page.hasBackButton = explanationPage.hasBackButton;
-        page.picture = PictureLayout(explanationPage.picture);
-        page.pictureHeight = explanationPage.pictureHeight;
-        page.playsPictureAnimation = explanationPage.picture == PictureOfAPage::WaitIcon;
-        request.pages.push_back(page);
+        DialogPage dialogPage;
+        dialogPage.message = services.messages.Find(explanationPage.message);
+        dialogPage.nextText = services.messages.Find(explanationPage.nextButtonMessage);
+        dialogPage.backText = services.messages.Find(BackMessage);
+        dialogPage.hasBackButton = explanationPage.hasBackButton;
+        dialogPage.picture = PictureLayout(explanationPage.picture);
+        dialogPage.pictureHeight = explanationPage.pictureHeight;
+        dialogPage.playsPictureAnimation = explanationPage.picture == PictureOfAPage::WaitIcon;
+        request.pages.push_back(dialogPage);
     }
     services.dialogs.Open(request);
 }
@@ -691,7 +698,9 @@ void SdChannelListScreen::RunHolding()
 
     std::optional<Formats::Vector2> place = PointerPlaceOf(heldChannel->playerIndex);
     auto* bar = dynamic_cast<SdCardMenuBarScreen*>(services.screens.FindScreen(ScreenId::SdCardMenuBar));
-    int arrow = place && bar ? bar->PageArrowAt(*place) : 0;
+    int arrow = 0;
+    if (place && bar)
+        arrow = bar->PageArrowAt(*place);
     if (arrow != arrowUnderTheHand)
         stepsOnAnArrow = 0;
 
@@ -749,7 +758,8 @@ void SdChannelListScreen::ZoomIntoPressedChannel()
         return;
 
     Formats::Vector2 stretch = services.display.LayoutStretch();
-    std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(TilePaneName(tiles[*pressedTile].placeOfPage), {0, 0});
+    std::string tilePane = TilePaneName(tiles[*pressedTile].placeOfPage);
+    std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(tilePane, {0, 0});
     Formats::Vector2 place = middle.value_or(Formats::Vector2{0, 0});
     float halfWidth = TileWidth * stretch.x / 2;
     float halfHeight = TileHeight / 2;
@@ -834,8 +844,12 @@ std::optional<std::size_t> SdChannelListScreen::PlaceOfPageAt(Formats::Vector2 p
     for (std::size_t placeOfPage = 0; placeOfPage < Formats::ChannelPlacesPerPage; ++placeOfPage)
     {
         std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(TilePaneName(placeOfPage), {0, 0});
-        bool isInside = middle && std::abs(point.x - middle->x) <= TileWidth * stretch.x / 2 && std::abs(point.y - middle->y) <= TileHeight / 2;
-        if (isInside)
+        if (!middle)
+            continue;
+
+        bool isInsideSideways = std::abs(point.x - middle->x) <= TileWidth * stretch.x / 2;
+        bool isInsideUpAndDown = std::abs(point.y - middle->y) <= TileHeight / 2;
+        if (isInsideSideways && isInsideUpAndDown)
             return placeOfPage;
     }
     return std::nullopt;
@@ -871,19 +885,32 @@ void SdChannelListScreen::PlaceTiles()
             services.sounds.Request(BalloonSound);
     }
 
-    std::optional<Formats::Vector2> handPlace = heldChannel ? PointerPlaceOf(heldChannel->playerIndex) : std::nullopt;
-    if (handPlace && heldChannel->icon)
-    {
-        heldChannel->icon->Place(*handPlace, stretch, {TileWidth, TileHeight});
-        heldChannel->icon->Calculate();
-    }
+    PlaceHeldChannel();
+    PlaceCursor();
+}
 
+void SdChannelListScreen::PlaceHeldChannel()
+{
+    if (!heldChannel || !heldChannel->icon)
+        return;
+
+    std::optional<Formats::Vector2> handPlace = PointerPlaceOf(heldChannel->playerIndex);
+    if (!handPlace)
+        return;
+
+    heldChannel->icon->Place(*handPlace, services.display.LayoutStretch(), {TileWidth, TileHeight});
+    heldChannel->icon->Calculate();
+}
+
+void SdChannelListScreen::PlaceCursor()
+{
     Formats::Pane& cursor = cursorLayout->PaneNamed("Cursur_a");
     cursor.isVisible = focusedTile.has_value();
     if (!focusedTile)
         return;
 
-    std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(TilePaneName(tiles[*focusedTile].placeOfPage), {0, 0});
+    std::string tilePane = TilePaneName(tiles[*focusedTile].placeOfPage);
+    std::optional<Formats::Vector2> middle = gridLayout->PointOfPaneInPicture(tilePane, {0, 0});
     if (middle)
     {
         Formats::Vector2 placeBelowRoot = services.display.CanvasToRootPaneSpace(*middle);
