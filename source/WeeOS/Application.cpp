@@ -1,6 +1,7 @@
 #include "WeeOS/Application.h"
 
 #include "Platform/MessagePump.h"
+#include "SystemMenu/BackgroundServices/StartServices.h"
 #include "SystemMenu/ScreenManager.h"
 
 #include <format>
@@ -28,6 +29,7 @@ Application::Application(const Ios::IosFolders& folders)
     , menu(device, titleContents, console.Services().GetRemote(), PictureShape)
     , pacer(timer.ElapsedSeconds())
 {
+    SystemMenu::RunStartServices(console.Services().GetFileSystem(), console.Services().GetTitles());
     GetVirtualRemote().SetScreenShape(PictureShape);
     window.SetListener(&keyboard);
 }

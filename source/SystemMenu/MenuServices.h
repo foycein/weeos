@@ -11,6 +11,7 @@ namespace SystemMenu
 class CursorManager;
 class Display;
 class Fader;
+class HomeButton;
 class InputManager;
 class MenuClock;
 class MenuFiles;
@@ -28,6 +29,7 @@ struct MenuServices
     InputManager& input;
     CursorManager& cursors;
     ScreenManager& screens;
+    HomeButton& homeButton;
 };
 
 }

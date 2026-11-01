@@ -3,6 +3,7 @@
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/Display.h"
 #include "SystemMenu/Fader.h"
+#include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
@@ -45,6 +46,7 @@ private:
     Fader fader;
     InputManager input;
     CursorManager cursors;
+    HomeButton homeButton;
     ScreenManager screens;
     MenuServices services;
 };

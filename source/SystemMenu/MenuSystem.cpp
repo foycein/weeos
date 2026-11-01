@@ -14,8 +14,9 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
+    , homeButton(display, files, input, remoteService, cursors, fader)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
-    , services{display, files, messages, clock, fader, input, cursors, screens}
+    , services{display, files, messages, clock, fader, input, cursors, screens, homeButton}
 {
     FirstScreen firstScreen = ChooseFirstScreen();
     screens.Start(firstScreen.screen, firstScreen.argument);
@@ -25,7 +26,9 @@ void MenuSystem::Update()
 {
     clock.Advance();
     input.Poll();
-    screens.Update();
+    if (!homeButton.IsOpen())
+        screens.Update();
+    homeButton.Update();
     cursors.Update(input);
     fader.Calculate();
 }
@@ -39,7 +42,7 @@ void MenuSystem::Draw()
 void MenuSystem::DrawScene()
 {
     screens.Draw();
-    cursors.Draw();
+    homeButton.Draw();
     fader.Draw();
 }
 

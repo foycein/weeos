@@ -19,3 +19,4 @@ add_library(SystemMenu STATIC
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios)
 
 add_subdirectory(BackgroundServices)
+add_subdirectory(HomeMenu)
