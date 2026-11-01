@@ -12,6 +12,7 @@ constexpr int PartCount = 4;
 constexpr std::size_t MaximumDigitsPerPart = 3;
 constexpr unsigned int LargestPart = 255;
 constexpr char PartSeparator = '.';
+constexpr unsigned int DecimalBase = 10;
 
 bool IsDigit(char character)
 {
@@ -38,7 +39,7 @@ std::optional<Ipv4Address> ParseIpv4Address(std::string_view text)
         unsigned int part = 0;
         while (position < text.size() && IsDigit(text[position]) && digitCount <= MaximumDigitsPerPart)
         {
-            part = part * 10 + static_cast<unsigned int>(text[position] - '0');
+            part = part * DecimalBase + static_cast<unsigned int>(text[position] - '0');
             ++position;
             ++digitCount;
         }

@@ -3,13 +3,6 @@
 namespace Ios
 {
 
-namespace
-{
-
-constexpr std::uint8_t NoFlags = 0;
-
-}
-
 KernelFiles::KernelFiles(FileSystemService& fileSystemToUse)
     : fileSystem(fileSystemToUse)
 {
@@ -39,7 +32,7 @@ Result<void> KernelFiles::WriteFile(const NandPath& path, Formats::ByteView byte
     if (removed.Failed())
         return removed;
 
-    Result<void> created = fileSystem.CreateFile(path, SystemEntryPermissions, NoFlags, SuperUserCaller);
+    Result<void> created = fileSystem.CreateFile(path, SystemEntryPermissions, NoEntryFlags, SuperUserCaller);
     if (created.Failed())
         return created;
 
@@ -68,7 +61,7 @@ Result<std::vector<std::string>> KernelFiles::ListNames(const NandPath& director
 
 Result<void> KernelFiles::EnsureDirectory(const NandPath& path, const EntryPermissions& permissions)
 {
-    Result<void> created = fileSystem.CreateDirectory(path, permissions, NoFlags, SuperUserCaller);
+    Result<void> created = fileSystem.CreateDirectory(path, permissions, NoEntryFlags, SuperUserCaller);
     if (created.Failed() && created.Error() != IosError::AlreadyExists)
         return created;
 

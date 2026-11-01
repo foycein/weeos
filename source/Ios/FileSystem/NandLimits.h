@@ -1,7 +1,10 @@
 #pragma once
 
+#include "Formats/Alignment.h"
+
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace Ios
 {
@@ -19,13 +22,16 @@ constexpr std::size_t MaximumDirectoryDepth = 8;
 // The console has 16 handles for all programs together, and the control handle of the program takes one.
 constexpr std::size_t MaximumOpenFiles = 15;
 
+// A file length is stored in 32 bits.
+constexpr std::uint64_t LargestFileLength = std::numeric_limits<std::uint32_t>::max();
+
 // Space is counted in whole clusters.
 constexpr std::uint32_t ClusterSize = 0x4000;
 
 // The number of clusters that hold a file of this length. An empty file holds none.
 constexpr std::uint64_t ClustersForLength(std::uint64_t length)
 {
-    return (length + ClusterSize - 1) / ClusterSize;
+    return Formats::DivideRoundingUp(length, ClusterSize);
 }
 
 // How much a NAND can hold. Every file and every directory, the root included, takes one inode.

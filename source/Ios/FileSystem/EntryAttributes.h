@@ -27,6 +27,9 @@ struct EntryAttributes
     bool operator==(const EntryAttributes&) const = default;
 };
 
+// The flags byte of the entries that the services make.
+constexpr std::uint8_t NoEntryFlags = 0;
+
 // True when the caller has all the required rights on an entry with these attributes.
 // The owner gets the owner permissions. If the caller is not the owner, a member of the group gets the group permissions.
 // Everybody else gets the other permissions. The super user always has all rights.

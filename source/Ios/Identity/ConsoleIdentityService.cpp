@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <optional>
 #include <random>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -22,11 +23,13 @@ namespace Ios
 namespace
 {
 
-
 constexpr std::size_t DeviceCertificateSize = 0x180;
 
 // The signature needs a number that nobody can guess, from 40 bytes up. See SignHash.
 constexpr std::size_t NonceSize = 48;
+
+// A certificate names its issuer by the chain above it: the issuer of the issuer, a dash, the name of the issuer ("Root-WeeOS").
+constexpr char IssuerSeparator = '-';
 
 Result<Formats::Bytes> ReadIdentityFile(const std::filesystem::path& path)
 {
@@ -76,6 +79,11 @@ bool IsZero(Formats::Byte byte)
     return byte == 0;
 }
 
+std::string NameAsIssuer(const Formats::Certificate& certificate)
+{
+    return certificate.issuer + IssuerSeparator + certificate.name;
+}
+
 // A console that WeeOS made has the certificate of its own authority. A real console has none.
 Result<std::optional<Formats::Certificate>> ReadAuthorityCertificate(const std::filesystem::path& identityFolder)
 {
@@ -88,7 +96,8 @@ Result<std::optional<Formats::Certificate>> ReadAuthorityCertificate(const std::
         return bytes.Error();
 
     std::vector<Formats::Certificate> certificates = Formats::ReadCertificateChain(bytes.Value());
-    if (certificates.size() != 1 || certificates.front().keyType != Formats::PublicKeyType::EllipticCurve)
+    bool isOneCertificate = certificates.size() == 1;
+    if (!isOneCertificate || certificates.front().keyType != Formats::PublicKeyType::EllipticCurve)
         return IosError::ShortRead;
 
     return std::optional<Formats::Certificate>(certificates.front());
@@ -204,7 +213,7 @@ Result<void> ConsoleIdentityService::VerifySignature(Formats::ByteView data, For
 Formats::SignatureCheck ConsoleIdentityService::CheckCertificate(const Formats::Certificate& certificate,
     std::span<const Formats::Certificate> certificates) const
 {
-    bool isIssuedByOwnAuthority = authority && certificate.issuer == authority->issuer + "-" + authority->name;
+    bool isIssuedByOwnAuthority = authority && certificate.issuer == NameAsIssuer(*authority);
     if (!isIssuedByOwnAuthority)
         return Formats::VerifyCertificate(certificate, certificates);
 

@@ -23,8 +23,6 @@ namespace
 // A ticket with the console id 0 may be used on every console.
 constexpr std::uint32_t EveryConsoleId = 0;
 
-constexpr std::string_view ContentFileExtension = ".app";
-
 // The content id in a file name such as "00000011.app", or nothing for another name such as "title.tmd".
 std::optional<std::uint32_t> ReadContentIdFromFileName(std::string_view name)
 {

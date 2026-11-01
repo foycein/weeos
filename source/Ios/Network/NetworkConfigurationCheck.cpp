@@ -65,13 +65,13 @@ std::optional<std::string_view> FindAddressProblem(Ipv4Address address, Ipv4Addr
     if (!IsNetmask(netmask))
         return "the netmask is not a netmask";
 
-    if (address == 0)
+    if (address == NoIpv4Address)
         return "the address is 0.0.0.0";
 
     if (IsAddressOfTheNetworkOrBroadcast(netmask, address))
         return "the address is the address of the network or its broadcast address";
 
-    if (gateway == 0)
+    if (gateway == NoIpv4Address)
         return std::nullopt;
 
     if (IsAddressOfTheNetworkOrBroadcast(netmask, gateway))

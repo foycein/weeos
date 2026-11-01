@@ -42,6 +42,12 @@ SecureSocketService::Context* SecureSocketService::FindOpenContext(SecureContext
     return contexts[context - FirstContextId].get();
 }
 
+SecureSocketService::Context* SecureSocketService::LockAndFindOpenContext(SecureContextId context)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    return FindOpenContext(context);
+}
+
 Result<SecureContextId> SecureSocketService::NewContext(std::uint32_t verifyFlags, std::string_view commonName)
 {
     if (commonName.size() > MaximumCommonNameLength)
@@ -124,11 +130,7 @@ Result<void> SecureSocketService::SetTheConnectionUp(Context& context)
 // The network calls run without the lock, so that the other contexts are not held up.
 Result<void> SecureSocketService::Handshake(SecureContextId contextId)
 {
-    Context* context = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        context = FindOpenContext(contextId);
-    }
+    Context* context = LockAndFindOpenContext(contextId);
     if (context == nullptr)
         return IosError::InvalidSecureContext;
 
@@ -137,11 +139,7 @@ Result<void> SecureSocketService::Handshake(SecureContextId contextId)
 
 Result<Formats::Bytes> SecureSocketService::Read(SecureContextId contextId, std::size_t maximumLength)
 {
-    Context* context = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        context = FindOpenContext(contextId);
-    }
+    Context* context = LockAndFindOpenContext(contextId);
     if (context == nullptr)
         return IosError::InvalidSecureContext;
 
@@ -158,11 +156,7 @@ Result<Formats::Bytes> SecureSocketService::Read(SecureContextId contextId, std:
 
 Result<std::size_t> SecureSocketService::Write(SecureContextId contextId, Formats::ByteView data)
 {
-    Context* context = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        context = FindOpenContext(contextId);
-    }
+    Context* context = LockAndFindOpenContext(contextId);
     if (context == nullptr)
         return IosError::InvalidSecureContext;
 

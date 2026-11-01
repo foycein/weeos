@@ -52,7 +52,8 @@ IosError ErrorFromHost(const std::error_code& error)
     if (error == std::errc::permission_denied)
         return IosError::AccessDenied;
 
-    if (error == std::errc::invalid_argument || error == std::errc::not_a_directory || error == std::errc::is_a_directory)
+    bool isWrongKindOfEntry = error == std::errc::not_a_directory || error == std::errc::is_a_directory;
+    if (error == std::errc::invalid_argument || isWrongKindOfEntry)
         return IosError::InvalidArgument;
 
     return IosError::StorageFailure;

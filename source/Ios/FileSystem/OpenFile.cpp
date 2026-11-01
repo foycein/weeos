@@ -4,7 +4,6 @@
 #include "Ios/FileSystem/NandLimits.h"
 
 #include <algorithm>
-#include <limits>
 #include <mutex>
 #include <utility>
 
@@ -13,8 +12,6 @@ namespace Ios
 
 namespace
 {
-
-constexpr std::uint64_t LargestFileLength = std::numeric_limits<std::uint32_t>::max();
 
 // The console writes a changed block to a new cluster before it lets go of the old one, so even a write that adds no length needs a free cluster.
 constexpr std::uint64_t ClustersEveryWriteNeeds = 1;
