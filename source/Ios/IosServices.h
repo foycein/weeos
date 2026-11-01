@@ -6,6 +6,7 @@
 #include "Ios/IosFolders.h"
 #include "Ios/Keyboard/KeyboardService.h"
 #include "Ios/Network/NetworkConfigService.h"
+#include "Ios/Network/PcConnection.h"
 #include "Ios/Network/WirelessService.h"
 #include "Ios/Power/PowerService.h"
 #include "Ios/Profile/ProfileChoice.h"
@@ -29,6 +30,9 @@ namespace Ios
 class IosServices
 {
 public:
+    // The check tells the network services whether the PC is connected. WeeOS asks Windows; a test gives a connection of its own.
+    explicit IosServices(PcConnectionCheck pcConnectionCheck = IsWindowsConnected);
+
     // Brings IOS up. First the identity of the console is read, then the NAND folder is made ready, as the console does every time IOS starts,
     // then the services start. Gives back NoFileSystem when the NAND folder cannot be used and AlreadyExists when the services are running already.
     // The files of the identity folder can be missing (NotFound), unreadable (StorageFailure) or wrong (ShortRead).
@@ -66,6 +70,7 @@ private:
     void RequireRunning() const;
     void DestroyServices();
 
+    PcConnectionCheck isPcConnected;
     bool isRunning = false;
     IosProfile profile = SystemMenuProfile();
     std::unique_ptr<ConsoleIdentityService> identity;

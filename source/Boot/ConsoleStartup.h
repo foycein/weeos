@@ -31,7 +31,8 @@ class ConsoleStartup
 {
 public:
     // The NAND folder and the folder with the identity of the console (keys.txt, device.cert and seeprom.bin of a console dump).
-    explicit ConsoleStartup(Ios::IosFolders iosFolders);
+    // The check tells the network services of IOS whether the PC is connected.
+    explicit ConsoleStartup(Ios::IosFolders iosFolders, Ios::PcConnectionCheck pcConnectionCheck = Ios::IsWindowsConnected);
 
     // Powers the console off.
     ~ConsoleStartup();

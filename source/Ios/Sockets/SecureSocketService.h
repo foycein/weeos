@@ -2,12 +2,16 @@
 
 #include "Formats/Bytes.h"
 #include "Ios/Result.h"
+#include "Ios/Sockets/SocketService.h"
 #include "Ios/Sockets/SocketTypes.h"
+#include "Ios/Sockets/TlsConnection.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <string_view>
 
 namespace Ios
@@ -28,22 +32,34 @@ constexpr std::size_t MaximumPrivateKeySize = 0x400;
 constexpr std::uint32_t BuiltinRootCertificateCount = 4;
 constexpr std::uint32_t BuiltinClientCertificateCount = 1;
 
+// The checks of the server's certificate that a program asks for when it opens a context (the verify flags of the SDK's SSLNew).
+constexpr std::uint32_t VerifyCommonName = 0x01;
+constexpr std::uint32_t VerifyRootCa = 0x02;
+constexpr std::uint32_t VerifyChain = 0x04;
+constexpr std::uint32_t VerifyDate = 0x08;
+
 // The secure sockets (SSL) of IOS, in place of /dev/net/ssl.
 //
 // The module makes TLS connections over sockets of the socket stack. A connection starts with a context (NewContext), takes a
-// socket (Connect), and is then set up (Handshake) before it reads and writes. Here the socket stack never runs, so no socket
-// exists and the handshake can only fail, the way the module fails when the socket under it fails (docs/audit/Ios.md).
-// Everything that is only a setting of a context works.
+// socket (Connect), and is then set up (Handshake) before it reads and writes. The TLS is the one of Windows (Schannel, TlsConnection);
+// the checks of the server's certificate are the console's, with its error numbers (docs/audit/Ios.md).
+//
+// The root certificates built into the module are Nintendo's; WeeOS reaches no Nintendo server, so it does not carry them, and a
+// context that trusts only a built-in root trusts no server. A client certificate is kept but not shown to a server.
 //
 // The calls that no program of the System Menu or the channels makes are not rebuilt: the default and removal of certificates,
 // the handshake with a certificate in the answer, switching the verification off, and the debug calls.
 //
-// All calls are thread safe.
+// All calls are thread safe; one context is used by one program at a time.
 class SecureSocketService
 {
 public:
-    // Opens a context. verifyFlags says which checks of the certificate of the server the module makes; a handshake never gets
-    // as far here, so they change nothing. The common name is the name that the certificate of the server has to carry.
+    // The connections run over the sockets of the socket service, which must outlive this object.
+    explicit SecureSocketService(SocketService& socketService);
+    ~SecureSocketService();
+
+    // Opens a context. verifyFlags says which checks of the certificate of the server the handshake makes (the Verify constants).
+    // The common name is the name that the certificate of the server has to carry.
     // SecureLibraryFailure when all four contexts are in use, or the name is longer than MaximumCommonNameLength.
     Result<SecureContextId> NewContext(std::uint32_t verifyFlags, std::string_view commonName);
 
@@ -51,20 +67,20 @@ public:
     // InvalidSecureContext when the number is not an open context.
     Result<void> Connect(SecureContextId context, SocketId socket);
 
-    // Sets the connection up. The socket under it fails, so it fails: SecureConnectionFailed.
-    // SecureLibraryFailure when the context has no socket yet.
+    // Sets the connection up and checks the server's certificate. SecureConnectionFailed when the socket fails or the server does not
+    // set up TLS; CommonNameMismatch, RootCertificateNotTrusted, CertificateChainBroken or CertificateOutOfDate when a check fails.
+    // SecureLibraryFailure when the context has no socket yet. A context whose handshake failed fails every later call.
     Result<void> Handshake(SecureContextId context);
 
-    // Both fail like Handshake, because they start the handshake when it has not been done.
+    // Both set the connection up first when that has not been done. An empty read means that the server closed the connection.
     Result<Formats::Bytes> Read(SecureContextId context, std::size_t maximumLength);
     Result<std::size_t> Write(SecureContextId context, Formats::ByteView data);
 
-    // Closes the context, which is free to be opened again. Success when no handshake was tried, SecureLibraryFailure
-    // when it was (the goodbye cannot be sent) and when the context has no socket.
+    // Says goodbye to the server and closes the context, which is free to be opened again. Success when no handshake was tried or
+    // the connection was set up; SecureLibraryFailure when the handshake failed and when the context has no socket.
     Result<void> Shutdown(SecureContextId context);
 
-    // The settings of a context. The certificates are only kept for the handshake and are not looked at here.
-    // SecureLibraryFailure when a certificate or a key is bigger than the module takes.
+    // The settings of a context. SecureLibraryFailure when a certificate or a key is bigger than the module takes.
     Result<void> SetRootCa(SecureContextId context, Formats::ByteView certificate);
     Result<void> SetClientCertificate(SecureContextId context, Formats::ByteView certificate, Formats::ByteView privateKey);
 
@@ -75,26 +91,38 @@ public:
 private:
     enum class ContextState
     {
-        Free,
-
         // Opened, but it has no socket yet.
         New,
 
         // It has a socket and no handshake was tried.
         Connected,
 
-        // A handshake, a read or a write was tried and failed.
+        // The connection is set up.
+        Established,
+
+        // A handshake was tried and failed.
         Failed,
     };
 
-    // The state of the context with the number, or nothing when the number is not an open context. The lock has to be held.
-    ContextState* FindOpenContext(SecureContextId context);
+    struct Context
+    {
+        ContextState state = ContextState::New;
+        std::uint32_t verifyFlags = 0;
+        std::string commonName;
+        Formats::Bytes rootCertificate;
+        std::unique_ptr<TlsConnection> connection;
+    };
 
-    // A handshake, a read and a write all start by setting the connection up, and the socket under it fails.
-    IosError TryToSetTheConnectionUp(SecureContextId context);
+    // The context with the number, or nothing when the number is not an open context.
+    Context* FindOpenContext(SecureContextId context);
 
+    // A handshake, a read and a write all start by setting the connection up.
+    Result<void> SetTheConnectionUp(Context& context);
+    Result<void> CheckServerCertificates(const Context& context) const;
+
+    SocketService& sockets;
     mutable std::mutex mutex;
-    std::array<ContextState, SecureContextCount> states{};
+    std::array<std::unique_ptr<Context>, SecureContextCount> contexts;
 };
 
 }

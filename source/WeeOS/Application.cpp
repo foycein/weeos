@@ -195,7 +195,7 @@ private:
 Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)
     : folders(iosFolders)
     , host(std::move(hostEnvironment))
-    , console(iosFolders)
+    , console(iosFolders, host.isPcConnected)
     , window(WindowTitle)
     , device(window)
     , sound(isSilent)

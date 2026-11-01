@@ -23,12 +23,13 @@ class ChannelSystem;
 namespace WeeOS
 {
 
-// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock of Windows and the file
-// WeeOS.settings.txt beside the program; a test gives a clock of its own and a file of its own.
+// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock of Windows, the file
+// WeeOS.settings.txt beside the program and the connection of Windows; a test gives a clock, a file and a connection of its own.
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
     std::filesystem::path pcSettingsFile = Platform::ExecutableFolder() / "WeeOS.settings.txt";
+    Ios::PcConnectionCheck isPcConnected = Ios::IsWindowsConnected;
 };
 
 // WeeOS.exe: the console starts, a window opens and the System Menu runs in it. When the menu starts a channel, IOS restarts with the IOS

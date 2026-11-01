@@ -27,6 +27,11 @@ void PutCardIntoSlot(SdCardService& sdCard, const IosFolders& folders)
 
 }
 
+IosServices::IosServices(PcConnectionCheck pcConnectionCheck)
+    : isPcConnected(std::move(pcConnectionCheck))
+{
+}
+
 Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& startProfile)
 {
     if (isRunning)
@@ -61,11 +66,11 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     sdCard = std::make_unique<SdCardService>(startProfile);
     PutCardIntoSlot(*sdCard, folders);
     wireless = std::make_unique<WirelessService>(wirelessMacAddress.Value());
-    networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value(), startProfile);
+    networkConfig = std::make_unique<NetworkConfigService>(*fileSystem, wirelessMacAddress.Value(), isPcConnected, startProfile);
     sockets = std::make_unique<SocketService>(*networkConfig);
     power = std::make_unique<PowerService>();
     keyboard = std::make_unique<KeyboardService>(startProfile);
-    secureSockets = std::make_unique<SecureSocketService>();
+    secureSockets = std::make_unique<SecureSocketService>(*sockets);
     profile = startProfile;
     isRunning = true;
     return Result<void>();
@@ -78,6 +83,7 @@ void IosServices::Stop()
 
     keyboard->Close();
     power->Close();
+    sockets->Cleanup();
     remote->Close();
     sdCard->Close();
     fileSystem->Shutdown();
