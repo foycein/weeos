@@ -42,6 +42,16 @@ int MonthFolderNumber(int month)
     return month - 1;
 }
 
+std::optional<int> NumberOfFolder(const Formats::VolumeEntry& entry)
+{
+    int number = 0;
+    std::from_chars_result read = std::from_chars(entry.name.data(), entry.name.data() + entry.name.size(), number);
+    bool isWholeNumber = read.ec == std::errc() && read.ptr == entry.name.data() + entry.name.size();
+    if (!entry.isFolder || !isWholeNumber)
+        return std::nullopt;
+    return number;
+}
+
 std::string DayFolderOf(BoardDay day)
 {
     return std::format("{:04}/{:02}/{:02}", day.year, MonthFolderNumber(day.month), day.day);
@@ -182,6 +192,35 @@ std::vector<std::string> MessageStore::RecordPathsOfDay(BoardDay day)
         }
     }
     return paths;
+}
+
+// The folders "<year>/<month from 00>/<day>" at the top of the volume; names that are not numbers are passed over.
+std::vector<BoardDay> MessageStore::DaysWithRecords()
+{
+    Formats::VirtualFatVolume& board = Volume();
+    std::vector<BoardDay> days;
+    for (const Formats::VolumeEntry& year : board.ListFolder(""))
+    {
+        std::optional<int> yearNumber = NumberOfFolder(year);
+        if (!yearNumber)
+            continue;
+
+        for (const Formats::VolumeEntry& month : board.ListFolder(year.name))
+        {
+            std::optional<int> monthNumber = NumberOfFolder(month);
+            if (!monthNumber)
+                continue;
+
+            for (const Formats::VolumeEntry& day : board.ListFolder(year.name + "/" + month.name))
+            {
+                std::optional<int> dayNumber = NumberOfFolder(day);
+                if (dayNumber)
+                    days.push_back(BoardDay{*yearNumber, *monthNumber + 1, *dayNumber});
+            }
+        }
+    }
+    std::sort(days.begin(), days.end());
+    return days;
 }
 
 std::vector<StoredMessage> MessageStore::MessagesOfDay(BoardDay day)
