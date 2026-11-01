@@ -24,6 +24,9 @@ struct WiiMenuData
     // The clock shows the words "Wii Menu" for a few seconds the first time the Wii Menu appears, and the time from then on.
     bool hasClockShownTheLabel = false;
 
+    // The music of the menu starts once, when the grid appears for the first time.
+    bool hasMusicStarted = false;
+
     // The channel that was pressed last. The channel start window shows it.
     std::optional<SlotPosition> pressedChannel;
 };

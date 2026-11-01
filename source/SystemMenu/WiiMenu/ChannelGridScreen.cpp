@@ -5,6 +5,7 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
@@ -70,6 +71,18 @@ constexpr ButtonSet PickUpHoldButtons = {Input::RemoteButtons::B, Input::Classic
 constexpr ButtonSet NextPageButtons = {Input::RemoteButtons::Plus, Input::ClassicButtons::Plus | Input::ClassicButtons::RightTrigger};
 constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus | Input::ClassicButtons::LeftTrigger};
 
+// The sounds of the grid, by their names in the sound archive (docs/research/SystemMenuStructure.md 4.3).
+constexpr std::string_view TargetingSound = "WIPL_SE_CH_TARGETTING";
+constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
+constexpr std::string_view PageSound = "WSD_SELECT";
+constexpr std::string_view PressSound = "WIPL_SE_BT_PUSH";
+constexpr std::string_view HoldSound = "WIPL_SE_CH_HOLD";
+constexpr std::string_view SetSound = "WIPL_SE_CH_SET";
+constexpr std::string_view NotMovedSound = "WIPL_SE_CH_NOT_MOVE";
+constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
+constexpr std::string_view StartSound = "WIPL_SE_WII_START";
+constexpr std::string_view MenuMusic = "WIPL_BGM_MENU";
+
 // A screen that is built is in the tree two steps after the request. A request for a screen that is not built is dropped instead,
 // and the grid goes on after this many steps.
 constexpr int StepsToWaitForTheStartWindow = 3;
@@ -101,10 +114,9 @@ std::unique_ptr<Layout::LayoutArchive> OpenArchiveOfFile(const MenuFiles& files,
 
 }
 
-ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices, int argumentOfTheScreen)
+ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices)
     : Screen(ScreenId::ChannelGrid)
     , services(menuServices)
-    , argument(argumentOfTheScreen)
 {
 }
 
@@ -214,9 +226,16 @@ Formats::Vector2 ChannelGridScreen::PlaceOfSlot(int slotIndex)
     return placedPanes.PlaceOf(paneName).value_or(Formats::Vector2{0, 0});
 }
 
+// The first time the grid appears in the run of the program, the menu greets with a sound and starts its music.
 void ChannelGridScreen::OnStart()
 {
     ShowTheArrowsOfThePage();
+    if (services.wiiMenu.hasMusicStarted)
+        return;
+
+    services.sounds.Request(StartSound);
+    services.sounds.Request(MenuMusic);
+    services.wiiMenu.hasMusicStarted = true;
 }
 
 bool ChannelGridScreen::RunMain()
@@ -256,7 +275,11 @@ void ChannelGridScreen::CalculateEverything()
     strip->Calculate();
     clock->Calculate();
     for (std::unique_ptr<ChannelTile>& tile : tiles)
-        tile->Calculate();
+    {
+        bool hasBalloonAppeared = tile->Calculate();
+        if (hasBalloonAppeared)
+            services.sounds.Request(BalloonSound);
+    }
 
     emptyPlace->Calculate();
 }
@@ -290,13 +313,23 @@ void ChannelGridScreen::FocusTheTilesUnderThePointers()
             isPointedAt[*slotIndex] = true;
     }
 
-    int page = CurrentPage();
-    for (int index = 0; index < SlotsPerPage; ++index)
+    for (int page = 0; page < PageCount; ++page)
     {
-        ChannelTile& tile = Tile({page, index});
-        bool canBeFocused = tile.Kind() != TileKind::EmptySlot;
-        tile.SetFocused(canBeFocused && isPointedAt[index]);
+        for (int index = 0; index < SlotsPerPage; ++index)
+            FocusTile({page, index}, page == CurrentPage() && isPointedAt[index]);
     }
+}
+
+// Only a place that holds something takes the focus.
+void ChannelGridScreen::FocusTile(SlotPosition position, bool isPointedAt)
+{
+    ChannelTile& tile = Tile(position);
+    bool canBeFocused = tile.Kind() != TileKind::EmptySlot;
+    bool shouldBeFocused = canBeFocused && isPointedAt;
+    if (shouldBeFocused && !tile.IsFocused())
+        services.sounds.Request(TargetingSound);
+
+    tile.SetFocused(shouldBeFocused);
 }
 
 bool ChannelGridScreen::HandlePageButtons()
@@ -367,6 +400,7 @@ void ChannelGridScreen::HandleBarButton(BarButton button)
         break;
 
     case BarButton::WiiButton:
+        services.sounds.Request(DecideSound);
         services.fader.StartFadeOut();
         state = GridState::LeavingForWiiOptions;
         break;
@@ -379,6 +413,7 @@ void ChannelGridScreen::HandleBarButton(BarButton button)
 void ChannelGridScreen::TurnToPreviousPage()
 {
     stateAfterTurning = state == GridState::HoldingChannel ? GridState::HoldingChannel : GridState::Idle;
+    services.sounds.Request(PageSound);
     stripSlide->PlayOnce(FirstFrameToPreviousPage, LastFrameToPreviousPage);
     state = GridState::TurningToPreviousPage;
 }
@@ -386,6 +421,7 @@ void ChannelGridScreen::TurnToPreviousPage()
 void ChannelGridScreen::TurnToNextPage()
 {
     stateAfterTurning = state == GridState::HoldingChannel ? GridState::HoldingChannel : GridState::Idle;
+    services.sounds.Request(PageSound);
     stripSlide->PlayOnce(FirstFrameToNextPage, LastFrameToNextPage);
     state = GridState::TurningToNextPage;
 }
@@ -409,6 +445,7 @@ void ChannelGridScreen::PickUpChannel(int playerIndex, SlotPosition position)
     heldChannel = position;
     Tile(position).SetFocused(false);
     services.cursors.SetHandGrabbing(playerIndex, true);
+    services.sounds.Request(HoldSound);
     state = GridState::HoldingChannel;
 }
 
@@ -438,15 +475,22 @@ void ChannelGridScreen::DropChannel()
     std::optional<int> slotIndex = place ? SlotIndexAt(*place) : std::nullopt;
     services.cursors.SetHandGrabbing(holdingPlayer, false);
     state = GridState::Idle;
-    if (!slotIndex)
+    std::optional<SlotPosition> target;
+    if (slotIndex)
+        target = SlotPosition{CurrentPage(), *slotIndex};
+
+    if (!target || !services.wiiMenu.channels.CanMove(heldChannel, *target))
+    {
+        services.sounds.Request(NotMovedSound);
+        return;
+    }
+
+    services.sounds.Request(SetSound);
+    if (*target == heldChannel)
         return;
 
-    SlotPosition target = {CurrentPage(), *slotIndex};
-    if (!services.wiiMenu.channels.CanMove(heldChannel, target) || target == heldChannel)
-        return;
-
-    services.wiiMenu.channels.MoveChannel(heldChannel, target);
-    std::swap(tiles[TileNumber(heldChannel)], tiles[TileNumber(target)]);
+    services.wiiMenu.channels.MoveChannel(heldChannel, *target);
+    std::swap(tiles[TileNumber(heldChannel)], tiles[TileNumber(*target)]);
 }
 
 // The original zooms the television of the channel to the whole picture and then opens the channel start window (screen 0x03).
@@ -454,6 +498,7 @@ void ChannelGridScreen::DropChannel()
 void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
+    services.sounds.Request(PressSound);
     services.screens.OpenChild(ScreenId::ChannelStartWindow, ScreenId::ChannelGrid, 0);
     stepsWaited = 0;
     state = GridState::WaitingForStartWindow;

@@ -64,7 +64,8 @@ public:
 
     const Balloon* NameBalloon() const;
 
-    void Calculate();
+    // Gives back true when the balloon has begun to grow into view in this step.
+    bool Calculate();
 
     // Draws the picture and the frame with their middle at a place of the picture.
     void DrawAt(Formats::Vector2 place);

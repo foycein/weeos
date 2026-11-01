@@ -26,7 +26,7 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
         return std::make_unique<BarOverlayScreen>(services);
 
     if (screen == ScreenId::ChannelGrid)
-        return std::make_unique<ChannelGridScreen>(services, argument);
+        return std::make_unique<ChannelGridScreen>(services);
 
     if (screen == ScreenId::WiiOptionsBackground)
         return std::make_unique<WiiOptionsBackgroundScreen>(services, argument);

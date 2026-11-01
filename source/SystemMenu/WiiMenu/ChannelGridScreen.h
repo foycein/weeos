@@ -52,7 +52,8 @@ enum class GridState
 class ChannelGridScreen : public Screen
 {
 public:
-    ChannelGridScreen(MenuServices& menuServices, int argument);
+    // The original also knows the arguments 1 and 2, with which the Message Board opens the grid; they are not built.
+    explicit ChannelGridScreen(MenuServices& menuServices);
 
     void Load() override;
     void Build() override;
@@ -93,6 +94,7 @@ private:
     bool RunLeaving();
 
     void FocusTheTilesUnderThePointers();
+    void FocusTile(SlotPosition position, bool isPointedAt);
     bool HandlePageButtons();
     bool HandlePressOfPlayer(int playerIndex, Formats::Vector2 place);
     void HandleBarButton(BarButton button);
@@ -113,7 +115,6 @@ private:
     Graphics::ScissorRectangle AreaOfTheTelevisionAt(Formats::Vector2 place) const;
 
     MenuServices& services;
-    int argument;
     std::unique_ptr<Layout::LayoutArchive> selectionArchive;
     std::unique_ptr<Layout::LayoutArchive> discArchive;
     std::unique_ptr<Layout::LayoutArchive> damagedIconArchive;

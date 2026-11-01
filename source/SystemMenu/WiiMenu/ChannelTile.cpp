@@ -124,14 +124,18 @@ const Balloon* ChannelTile::NameBalloon() const
     return balloon.get();
 }
 
-void ChannelTile::Calculate()
+bool ChannelTile::Calculate()
 {
     picture->Calculate();
     focusOn->Step();
     focusOff->Step();
     focusFrame->Calculate();
-    if (balloon)
-        balloon->Calculate();
+    if (!balloon)
+        return false;
+
+    bool wasBalloonShown = balloon->IsShown();
+    balloon->Calculate();
+    return !wasBalloonShown && balloon->IsShown();
 }
 
 void ChannelTile::DrawAt(Formats::Vector2 place)
