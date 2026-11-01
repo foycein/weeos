@@ -40,6 +40,7 @@ NandPath SharedContentPath(std::string_view name);
 NandPath UserIdFilePath();
 NandPath CertificateFilePath();
 
+NandPath ImportsPath();
 NandPath ImportFamilyPath(std::uint32_t highPart);
 NandPath ImportTitlePath(TitleId titleId);
 NandPath ImportContentFolderPath(TitleId titleId);
