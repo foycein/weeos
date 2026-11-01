@@ -61,11 +61,14 @@ constexpr std::string_view FontFile = "wbf1.brfna";
 // How long the start-up picture shows before the pages begin (CHN-28, Assumed).
 constexpr double StartupPictureSeconds = 2;
 
-// The places and the styles of error.css and of the pages internet.html and error.html, in pixels of the page.
+// The places and the styles of error.css and of the pages internet.html and error.html, in pixels of the page. On a 16:9 screen the
+// wallpaper fills the room beside the page.
+constexpr float WidePictureWidth = 832;
+constexpr float WallpaperWidth = (WidePictureWidth - PageWidth) / 2;
 constexpr PageRectangle WholePage = {0, 0, PageWidth, PageHeight};
-constexpr PageRectangle LeftWallpaper = {-112, 0, 112, PageHeight};
-constexpr PageRectangle RightWallpaper = {PageWidth, 0, 112, PageHeight};
-constexpr PageRectangle WholeWidePicture = {-112, 0, 832, PageHeight};
+constexpr PageRectangle LeftWallpaper = {-WallpaperWidth, 0, WallpaperWidth, PageHeight};
+constexpr PageRectangle RightWallpaper = {PageWidth, 0, WallpaperWidth, PageHeight};
+constexpr PageRectangle WholeWidePicture = {-WallpaperWidth, 0, WidePictureWidth, PageHeight};
 constexpr PageRectangle TitleBox = {29, 28, 554, 28};
 constexpr PageRectangle UpperDots = {4, 59, 600, 16};
 constexpr PageRectangle LowerDots = {4, 363, 600, 16};
@@ -191,8 +194,6 @@ ShopChannel::ShopChannel(ChannelServices& channelServices)
 
     Formats::U8Archive handFiles = Formats::ReadU8Archive(Formats::DecompressAsh0(FindFileOrFail(resources, CursorArchivePath)));
     cursors = std::make_unique<SystemMenu::CursorManager>(services.display, std::make_unique<Layout::LayoutArchive>(std::move(handFiles)));
-
-    failure = TryToConnect(services.network);
 }
 
 void ShopChannel::Update()

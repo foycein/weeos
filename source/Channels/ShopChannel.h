@@ -93,7 +93,7 @@ private:
     std::unique_ptr<SystemMenu::CursorManager> cursors;
 
     Stage stage = Stage::StartUp;
-    ConnectionFailure failure;
+    ConnectionFailure failure{};
     double connectingStartSeconds = 0;
     std::optional<std::uint16_t> focusedButtonMessage;
 };
