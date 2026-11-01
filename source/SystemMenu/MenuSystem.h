@@ -7,6 +7,7 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/FatalError.h"
 #include "SystemMenu/FrontPanel.h"
+#include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
@@ -68,6 +69,7 @@ public:
 
 private:
     void RunStep();
+    HomeButtonConnections ConnectHomeButton();
 
     Display display;
     MenuFiles files;
@@ -85,6 +87,7 @@ private:
     DialogManager dialogs;
     ErrorScreen errorScreen;
     FrontPanel frontPanel;
+    HomeButton homeButton;
     NandFiles& nand;
     ParentalAnswer parentalAnswer = ParentalAnswer::None;
     MenuServices services;
