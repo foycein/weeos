@@ -1,4 +1,5 @@
 add_library(Platform STATIC
+    ErrorMessage.cpp
     FileLocations.cpp
     FilePicker.cpp
     FitPicture.cpp
