@@ -1,6 +1,7 @@
 #include "SystemMenu/WiiMenu/MainFrameScreen.h"
 
 #include "SystemMenu/Fader.h"
+#include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/ClockFace.h"
@@ -65,9 +66,10 @@ bool MainFrameScreen::DrawsWithChildren() const
 }
 
 // The original opens the bar, the grid and the bar overlay in this order, once the channels of the pages around the page
-// that shows are loaded. WeeOS reads the channels when the grid is built.
+// that shows are loaded, and from then on HOME opens the HOME menu (0x813902F4). WeeOS reads the channels when the grid is built.
 void MainFrameScreen::OnStart()
 {
+    services.homeButton.Start();
     services.screens.OpenChild(ScreenId::BottomBar, ScreenId::MainFrame, 0);
     services.screens.OpenChild(ScreenId::ChannelGrid, ScreenId::MainFrame, 0);
     services.screens.OpenChild(ScreenId::BarOverlay, ScreenId::MainFrame, 0);

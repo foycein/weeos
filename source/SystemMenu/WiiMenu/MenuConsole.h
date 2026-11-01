@@ -59,6 +59,10 @@ public:
     virtual void WriteNandFile(std::string_view path, Formats::ByteView bytes) = 0;
 
     virtual LocalTime GetLocalTime() = 0;
+
+    // Brings /shared2/sys/flags.dat up to date with the settings, as the channel grid of the original does when it is built
+    // (CSFlags::UpdateFlagsFile, 0x81368650).
+    virtual void UpdateSharedFlags() = 0;
 };
 
 }

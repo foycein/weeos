@@ -1,5 +1,6 @@
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
 
+#include "SystemMenu/BackgroundServices/SharedFlagsFile.h"
 #include "SystemMenu/MenuError.h"
 
 #include "Ios/Title/ContentTypes.h"
@@ -176,6 +177,12 @@ LocalTime IosMenuConsole::GetLocalTime()
     time.minute = calendar.tm_min;
     time.second = calendar.tm_sec;
     return time;
+}
+
+void IosMenuConsole::UpdateSharedFlags()
+{
+    NandFileAccess files(fileSystem, titles);
+    UpdateSharedFlagsFile(files);
 }
 
 }

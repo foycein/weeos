@@ -139,6 +139,7 @@ void ChannelGridScreen::Build()
     MakeTheTiles();
     clock = std::make_unique<ClockDisplay>(services, *selectionArchive);
     CalculateEverything();
+    services.wiiMenu.console.UpdateSharedFlags();
 }
 
 void ChannelGridScreen::ListTheSlotsOfTheStrip()

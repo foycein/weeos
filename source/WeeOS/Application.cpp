@@ -3,6 +3,7 @@
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
+#include "SystemMenu/BackgroundServices/StartServices.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
@@ -42,6 +43,7 @@ public:
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
     {
+        SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         wiiSettings.UseDisplay(menu.Services().display);
         menu.UsePhysicalKeyboard(iosServices.GetKeyboard());
         window.SetListener(&hostKeys);

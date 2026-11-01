@@ -26,9 +26,10 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , dialogs(display, files)
     , errorScreen(display, program, fonts, fader)
     , frontPanel(display, powerService, screens, nandFiles)
+    , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices, wiiMenu}
+          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -70,12 +71,20 @@ void MenuSystem::Update()
 void MenuSystem::RunStep()
 {
     input.Poll();
-    screens.Update();
+    bool isHomeMenuOpen = homeButton.IsOpen();
+    if (!isHomeMenuOpen)
+        screens.Update();
 
-    if (!frontPanel.IsWorking())
+    if (!frontPanel.IsWorking() && !isHomeMenuOpen)
         keyboard.Update();
 
-    dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
+    if (!isHomeMenuOpen)
+        dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
+
+    if (frontPanel.IsWorking())
+        homeButton.HoldForFrontPanel();
+
+    homeButton.Update();
     cursors.Update(input);
     fader.Calculate();
 }
@@ -93,7 +102,7 @@ void MenuSystem::DrawScene()
         screens.Draw();
         keyboard.Draw();
         dialogs.Draw();
-        cursors.Draw();
+        homeButton.Draw();
     }
 
     errorScreen.Draw();
@@ -123,6 +132,17 @@ const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
 void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
 {
     keyboard.UsePhysicalKeyboard(keyboardService);
+}
+
+// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. SYSCONF is not written yet:
+// the settings of the remotes that it changes last until the program ends.
+HomeButtonConnections MenuSystem::ConnectHomeButton()
+{
+    HomeButtonConnections connections;
+    connections.playSound = [this](HomeMenuSound sound) { sounds.Request(NameOfHomeMenuSound(sound)); };
+    connections.textFonts = &fonts.Fonts();
+    connections.startReset = [this]() { frontPanel.PressReset(); };
+    return connections;
 }
 
 MenuServices& MenuSystem::Services()

@@ -15,6 +15,7 @@ class DialogManager;
 class Display;
 class Fader;
 class FrontPanel;
+class HomeButton;
 class InputManager;
 class MenuClock;
 class MenuFiles;
@@ -54,6 +55,9 @@ struct MenuServices
 
     // What Wii Settings works with. Nothing when the menu runs without it (the tests of the other screens).
     SettingsFlowServices* wiiSettings;
+
+    // The HOME button: the Wii Menu starts it, a screen that must not be interrupted disables it.
+    HomeButton& homeButton;
     WiiMenuData& wiiMenu;
 };
 

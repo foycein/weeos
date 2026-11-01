@@ -22,6 +22,7 @@ public:
     // The files of the menu have a fixed size: the new bytes must be as long as the file that is there. A file that is not there is made.
     void WriteNandFile(std::string_view path, Formats::ByteView bytes) override;
     LocalTime GetLocalTime() override;
+    void UpdateSharedFlags() override;
 
 private:
     InstalledTitle DescribeTitle(Ios::TitleId titleId);
