@@ -125,9 +125,13 @@ bool WelcomeScreen::DrawsWithChildren() const
 int WelcomeScreen::WelcomeOpacity() const
 {
     if (isFadingOut)
-        return Opaque * std::max(StepsOfFade - stepsOfFadeOut, 0) / StepsOfFade;
+    {
+        int stepsLeft = std::max(StepsOfFade - stepsOfFadeOut, 0);
+        return Opaque * stepsLeft / StepsOfFade;
+    }
 
-    return Opaque * std::min(stepsOfFadeIn, StepsOfFade) / StepsOfFade;
+    int stepsDone = std::min(stepsOfFadeIn, StepsOfFade);
+    return Opaque * stepsDone / StepsOfFade;
 }
 
 std::optional<int> WelcomeScreen::NoticeOpacity() const
