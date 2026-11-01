@@ -51,6 +51,9 @@ struct ChannelStorage
 {
     Ios::SdCardService& sdCard;
     Ios::FileSystemService& fileSystem;
+
+    // Who the channel is to the file system: the user and the group of its title.
+    Ios::Caller fileSystemCaller;
 };
 
 // Everything a channel gets from the channel system: the same engines that the menu uses, the contents of its own title, the network

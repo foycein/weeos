@@ -32,6 +32,16 @@ constexpr std::array<std::string_view, 3> LanguagesInTheOrderOfTheUsa = {"ENG", 
 constexpr float HalfHeightOfAPlace = 48;
 constexpr int StepsBeforeTheBalloonAppears = 20;
 
+void SetPanesVisible(Layout::LiveLayout& layout, const std::vector<std::string>& paneNames, bool isVisible)
+{
+    for (const std::string& paneName : paneNames)
+    {
+        Formats::Pane* pane = layout.FindPane(paneName);
+        if (pane != nullptr)
+            pane->isVisible = isVisible;
+    }
+}
+
 // The groups Rso0 to Rso15 belong to the animations of a script.
 bool IsGroupOfAScript(std::string_view groupName)
 {
@@ -64,7 +74,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const Ti
     const Layout::LayoutArchive& icon = *channel.icon;
     auto picture = std::make_unique<MenuLayout>(display, icon, std::string(IconLayout));
     std::unique_ptr<ChannelTile> tile(new ChannelTile(display, TileKind::Channel, std::move(picture), archives));
-    ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
+    ShowOnlyTheEnglishPanes(tile->picture->Live(), icon.ReadLayout(std::string(IconLayout)));
 
     std::uint32_t randomNumberOfTheIcon = channel.isIconDrivenByCode ? NoRandomNumber : randomNumber;
     if (channel.iconAnimation)
@@ -206,9 +216,8 @@ void ChannelTile::PlayAnimation(const Layout::LayoutArchive& archive, const std:
 // The menu hides the panes of every group except the groups of the script, Rso0 to Rso15, and then shows the panes of the group of
 // its language again, so a pane that two languages share stays shown. Without an English group the first of French and Spanish
 // shows, the order of a console of the USA (0x813B24C0 with the table 0x8164E368).
-void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName)
+void ShowOnlyTheEnglishPanes(Layout::LiveLayout& layout, const Formats::Layout& file)
 {
-    Formats::Layout file = archive.ReadLayout(layoutName);
     if (!file.rootGroup)
         return;
 
@@ -217,8 +226,7 @@ void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& ar
         if (IsGroupOfAScript(group.name))
             continue;
 
-        for (const std::string& paneName : group.paneNames)
-            layout.PaneNamed(paneName).isVisible = false;
+        SetPanesVisible(layout, group.paneNames, false);
     }
 
     for (std::string_view languageName : LanguagesInTheOrderOfTheUsa)
@@ -227,8 +235,7 @@ void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& ar
         if (!languageGroup)
             continue;
 
-        for (const std::string& paneName : languageGroup->paneNames)
-            layout.PaneNamed(paneName).isVisible = true;
+        SetPanesVisible(layout, languageGroup->paneNames, true);
         return;
     }
 }

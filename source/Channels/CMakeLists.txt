@@ -2,6 +2,18 @@ add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelSystem.cpp
     InternetChannel.cpp
+    MiiChannel/EditorScreen.cpp
+    MiiChannel/LookAlikeScreen.cpp
+    MiiChannel/MessageWindow.cpp
+    MiiChannel/MiiChannel.cpp
+    MiiChannel/MiiChannelData.cpp
+    MiiChannel/MiiChannelFiles.cpp
+    MiiChannel/MiiEditor.cpp
+    MiiChannel/MiiFigures.cpp
+    MiiChannel/MiiPlaza.cpp
+    MiiChannel/PlazaGround.cpp
+    MiiChannel/PlazaScreen.cpp
+    MiiChannel/ProfileDialog.cpp
     NativeChannels.cpp
     OperaLanguageFile.cpp
     PagePainter.cpp
@@ -18,4 +30,4 @@ add_library(Channels STATIC
     WiiConnect24Channel.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Media)
+target_link_libraries(Channels PUBLIC SystemMenu Mii Media)

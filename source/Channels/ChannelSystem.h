@@ -12,6 +12,7 @@
 #include "Ios/Power/PowerService.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Ios/Title/TitleId.h"
+#include "Ios/Title/TitleService.h"
 #include "Platform/ScreenShape.h"
 
 #include <cstddef>
@@ -32,9 +33,10 @@ class ChannelSystem
 {
 public:
     // Throws a ChannelError when WeeOS has no program for the title. The device, the contents and the services must outlive the channel system.
+    // A channel that brings no fonts of its own draws its texts with the console's fonts, when they are given (ReadConsoleFontArchive).
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
         const ChannelNetwork& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-        Ios::TitleId titleId);
+        Ios::TitleId titleId, std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
 
     // One step of the console's picture, 1001/60000 of a second.
     void Update();
@@ -53,7 +55,7 @@ public:
     bool IsHomeMenuOpen() const;
 
 private:
-    void LoadSystemFonts(SystemMenu::TitleContents& contents);
+    void LoadSystemFonts(SystemMenu::TitleContents& contents, std::optional<Formats::Bytes> consoleFontArchive);
     SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
     SystemMenu::HomeButtonConnections ConnectHomeButton();
     void LeaveThroughHomeMenu(std::size_t bigButton);
@@ -77,5 +79,8 @@ private:
     SystemMenu::TitleLaunchRequest titleLaunch;
     bool hasAskedForMenu = false;
 };
+
+// The archive of the console's two bitmap fonts: content 5 of the System Menu, which titles share (CHN-77). Nothing when it is not there.
+std::optional<Formats::Bytes> ReadConsoleFontArchive(const Ios::TitleService& titles);
 
 }
