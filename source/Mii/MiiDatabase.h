@@ -49,6 +49,14 @@ public:
     // The hidden Miis, oldest first. They have no creator name and no birthday.
     std::vector<MiiRecord> HiddenMiis() const;
 
+    // A Mii joins the Mii Parade: it becomes the newest hidden Mii, without its creator name, birthday and favorite mark. The same Mii
+    // leaves its older place in the list; when all 10,000 places are used, the oldest Mii gives its place. The Miis that other consoles
+    // send come into the parade the same way.
+    void AddHiddenMii(MiiRecord record);
+
+    // Takes the hidden Mii at this place of HiddenMiis() out of the Mii Parade.
+    void RemoveHiddenMii(std::size_t place);
+
     // The repair the Mii Channel runs at start: every Mii that has a create id but is invalid or temporary is removed,
     // from the slots and from the hidden list. Gives the number of Miis removed.
     std::size_t RemoveBrokenMiis();
@@ -69,6 +77,8 @@ private:
     MiiRecord ReadSlot(std::size_t slot) const;
 
     std::uint16_t OldestHiddenEntry() const;
+    std::uint16_t NewestHiddenEntry() const;
+    std::optional<std::uint16_t> FreeHiddenEntry() const;
     HiddenEntry ReadHiddenEntry(std::uint16_t entryNumber) const;
     void WriteHiddenEntry(std::uint16_t entryNumber, const HiddenEntry& entry);
     MiiRecord ReadHiddenMii(std::uint16_t entryNumber) const;

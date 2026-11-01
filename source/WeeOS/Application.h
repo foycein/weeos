@@ -6,6 +6,7 @@
 #include "Platform/FileLocations.h"
 #include "Platform/HostKeys.h"
 #include "Platform/PreciseTimer.h"
+#include "Platform/RegionalSettings.h"
 #include "Platform/Window.h"
 #include "Settings/ConsoleClock.h"
 #include "SystemMenu/MenuSystem.h"
@@ -27,11 +28,12 @@ namespace WeeOS
 // The file picker of Windows, for nand.bin of a BootMii backup.
 std::optional<std::filesystem::path> PickNandWithWindows();
 
-// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock of Windows, the file
-// WeeOS.settings.txt and the Wii files beside the program, the file picker and the connection of Windows; a test gives its own.
+// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows,
+// the file WeeOS.settings.txt and the Wii files beside the program, the file picker and the connection of Windows; a test gives its own.
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
+    Platform::RegionalSettings regionalSettings = Platform::ReadRegionalSettings();
     std::filesystem::path pcSettingsFile = Platform::ExecutableFolder() / "WeeOS.settings.txt";
 
     // The Wii files from which the first start makes a new console (tools/PrepareWiiFiles).

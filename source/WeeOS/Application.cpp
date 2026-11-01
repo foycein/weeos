@@ -12,6 +12,8 @@
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
 #include "SystemMenu/MenuStateFile.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
+#include "SystemMenu/MessageBoard/PlayLog.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -33,6 +35,14 @@ namespace
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 constexpr std::wstring_view NandPickerTitle = L"Import your Wii: choose nand.bin of its BootMii backup";
 constexpr std::wstring_view NandImageFileName = L"nand.bin";
+
+SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
+{
+    SystemMenu::ClockFormat format;
+    format.usesTwentyFourHours = regionalSettings.usesTwentyFourHourClock;
+    format.showsLeadingZeroOfHours = regionalSettings.showsLeadingZeroOfHours;
+    return format;
+}
 
 }
 
@@ -75,8 +85,8 @@ public:
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
-        , wiiMenuConsole(iosServices, host.clock)
+        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock, ClockFormatOf(host.regionalSettings))
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -84,7 +94,7 @@ public:
         if (runningTitle == Ios::SystemMenuTitleId)
             StartMenu(iosServices, graphicsDevice);
         else
-            StartChannel(iosServices, graphicsDevice, runningTitle);
+            StartChannel(iosServices, graphicsDevice, runningTitle, host.clock);
 
         window.SetListener(&hostKeys);
     }
@@ -156,7 +166,6 @@ private:
         menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
             iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices(), &consoleImport);
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
-        wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
         Ios::TitleService& titles = iosServices.GetTitles();
         menu->Services().titleLaunch.SetProgramCheck([&titles](Ios::TitleId titleId) { return CanStart(titles, titleId); });
@@ -165,6 +174,12 @@ private:
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
             SystemMenu::ReadMenuCertificates(menu->Services().program)});
         menu->Services().dataManagement = dataManagement.get();
+
+        Ios::MacAddress wirelessAddress = iosServices.GetNetworkConfig().GetWirelessMacAddress();
+        messageBoard = std::make_unique<SystemMenu::MessageBoardData>(nandFiles, wirelessAddress, graphicsDevice, menu->Services().files);
+        menu->Services().messageBoard = messageBoard.get();
+        SystemMenu::NandFileAccess menuFiles(iosServices.GetFileSystem(), iosServices.GetTitles());
+        SystemMenu::PutTheLastPlayOnTheBoard(menuFiles, messageBoard->store, menu->Services().messages, wiiMenuConsole.GetLocalTime());
 
         Sound::SoundSystem* soundSystem = sound.Start(menu->Services().files.ReadFile(SystemMenu::MenuSoundArchivePath));
         if (soundSystem != nullptr)
@@ -180,13 +195,14 @@ private:
             menuSound->PlayRequests(menu->Services().sounds);
     }
 
-    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle)
+    void StartChannel(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice, Ios::TitleId runningTitle,
+        const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
         std::string serverAddress = wiiSettings.FlowServices().pcSettings.Values().serverAddress;
         Channels::ChannelNetwork network{iosServices.GetNetworkConfig(), iosServices.GetSockets(), serverAddress};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            network, storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle,
+            network, storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -219,6 +235,9 @@ private:
 
     // Declared before the menu, which keeps a pointer to it, so that the menu goes first.
     std::unique_ptr<SystemMenu::DataManagementServices> dataManagement;
+
+    // The board keeps the faces of its Miis on the graphics device; it reads the files of the menu only while the menu is there.
+    std::unique_ptr<SystemMenu::MessageBoardData> messageBoard;
     std::unique_ptr<SystemMenu::MenuSystem> menu;
     std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;

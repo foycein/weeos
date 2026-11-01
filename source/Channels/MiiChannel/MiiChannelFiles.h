@@ -35,6 +35,7 @@ struct MiiChannelFiles
     Formats::Font nameFont;
     Mii::MiiBodyFiles bodies;
     PlazaGroundModel ground;
+    PlazaGroundModel road;
     std::unique_ptr<Mii::MiiResources> faceParts;
     Formats::Bytes keyboardArchive;
     Formats::Bytes handArchive;

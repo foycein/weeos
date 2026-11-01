@@ -12,6 +12,7 @@
 #include "Ios/SdCard/SdCardService.h"
 #include "Ios/Sockets/SocketService.h"
 #include "Layout/TextFonts.h"
+#include "Settings/ConsoleClock.h"
 
 #include <string>
 
@@ -73,6 +74,9 @@ struct ChannelServices
     const Layout::TextFonts& systemFonts;
 
     ChannelStorage storage;
+
+    // The time of the console's clock as the PC gives it: what a channel seeds its chances with and the time a Mii is made.
+    Settings::PcClock consoleTime;
 };
 
 }

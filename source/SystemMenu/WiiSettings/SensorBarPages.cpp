@@ -93,7 +93,7 @@ void SensorBarPages::BuildSensorBarIndex(Page& content)
         .sound = PageSound::Decide;
     builder.AddChoice(1, ChoiceCount, u"Sensitivity", false, [this] { navigator.GoTo(PageId::SensitivityIntroduction); })
         .sound = PageSound::Decide;
-    builder.AddBackButton([this] { navigator.GoTo(PageId::SecondIndex); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
 }
 
 void SensorBarPages::BuildPositionSet(Page& content)

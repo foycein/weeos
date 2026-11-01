@@ -60,6 +60,19 @@ public:
     void ReplaceMii(std::size_t slot, const Mii::MiiRecord& record);
     void DeleteMii(std::size_t slot);
 
+    // The Miis of the Mii Parade, the hidden Miis of the database, oldest first. Today they come only from this plaza ("Send to Mii
+    // Parade"); the Miis of other consoles will come into the same list (Mii::MiiDatabase::AddHiddenMii).
+    std::vector<Mii::MiiRecord> ParadeMiis() const;
+
+    // "Send to Mii Parade": the Mii leaves its slot and joins the parade without its birthday and creator.
+    void SendToParade(std::size_t slot);
+
+    // A Mii of the parade (by its place in ParadeMiis) comes back to the plaza, into the first free slot, and leaves the parade.
+    // Gives the slot, or nothing when the plaza is full.
+    std::optional<std::size_t> BringBackFromParade(std::size_t place);
+
+    void RemoveFromParade(std::size_t place);
+
     // The first start of the channel: there is no NigaoeCh.dat yet. The welcome then takes the user to the first Mii.
     bool IsFirstStart() const;
 

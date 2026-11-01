@@ -26,6 +26,20 @@ struct PictureRectangle
 // A projection that draws into a rectangle of the picture what the projection would draw into the whole picture.
 Graphics::Matrix4 ProjectIntoRectangle(const Graphics::Matrix4& projection, const PictureRectangle& rectangle, Graphics::Canvas canvas);
 
+// A head to keep: the Mii under a key of the caller's choice, with a face.
+struct ShownHead
+{
+    std::size_t key = 0;
+    Mii::MiiRecord record;
+    Mii::MiiExpression expression = Mii::MiiExpression::Normal;
+};
+
+// The key of the head of a plaza Mii with a face: one key for every slot and face.
+std::size_t PlazaHeadKey(std::size_t slot, Mii::MiiExpression expression);
+
+// The heads that the Miis of a plaza or a parade need now.
+std::vector<ShownHead> HeadsOfMiis(const MiiPlaza& plaza);
+
 // The heads of the Miis, made once for every Mii and made again when the Mii changes. Making a head draws its face texture, so the heads
 // are made in a step and never while a picture is drawn.
 class MiiHeads
@@ -34,7 +48,7 @@ public:
     MiiHeads(Graphics::GraphicsDevice& graphicsDevice, const Mii::MiiResources& faceParts);
 
     // Makes the head of every Mii that has none or whose record changed, and forgets the heads of the keys that are not there.
-    void Prepare(const std::vector<std::pair<std::size_t, Mii::MiiRecord>>& miis);
+    void Prepare(const std::vector<ShownHead>& miis);
 
     // Nothing for a key that Prepare did not see.
     const Mii::MiiHead* Find(std::size_t key) const;

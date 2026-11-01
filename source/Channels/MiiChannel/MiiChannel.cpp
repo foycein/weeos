@@ -16,6 +16,11 @@ namespace
 // channel ends.
 constexpr std::string_view Music = "SEQ_TMP_BGM";
 
+// The channel's archive has two sounds for its keyboard: the focus of a key, and a press for everything else the keyboard does
+// (Assumed, CHN-75).
+constexpr std::string_view KeyboardFocusSound = "SEQ_KEYBOARD_FORCUS";
+constexpr std::string_view KeyboardPushSound = "SEQ_KEYBOARD_PUSH";
+
 // The words of the keyboard's buttons: Cancel and OK of the channel's messages, Back on the symbol window; the others keep the
 // English words of sofkeybdkr.szs.
 constexpr std::uint32_t BackWord = 301200;
@@ -39,9 +44,10 @@ std::unique_ptr<Layout::LayoutArchive> ArchiveOf(const Formats::Bytes& bytes)
     return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(bytes));
 }
 
-std::uint32_t SeedFromClock()
+// The original seeds its chances with the console's clock, so a console whose clock stands still always shows the same plaza.
+std::uint32_t SeedFromClock(const ChannelServices& services)
 {
-    return static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    return static_cast<std::uint32_t>(services.consoleTime().time_since_epoch().count());
 }
 
 }
@@ -52,12 +58,14 @@ MiiChannel::MiiChannel(ChannelServices& channelServices)
     , data(channelServices.storage.fileSystem, channelServices.storage.fileSystemCaller, SystemIdOf(channelServices.network.configuration))
     , figures(channelServices.display.Device(), files.bodies, data.ConsoleSystemId())
     , ground(channelServices.display.Device(), files.ground)
+    , road(channelServices.display.Device(), files.road)
     , message(channelServices, *files.layouts, files.messages)
     , profile(channelServices, *files.layouts, files.messages)
     , keyboard(channelServices.display, ArchiveOf(files.keyboardArchive), KeyboardTextsOf(files.messages), channelServices.clock,
-          channelServices.input, channelServices.sounds)
-    , plaza(channelServices, *files.layouts, files.messages, figures, ground, *files.faceParts, message, data, SeedFromClock())
-    , lookAlike(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, SeedFromClock())
+          channelServices.input, keyboardSounds)
+    , plaza(channelServices, *files.layouts, files.messages, figures, ground, *files.faceParts, message, data, SeedFromClock(channelServices))
+    , parade(channelServices, *files.layouts, files.messages, figures, road, *files.faceParts, message, data, SeedFromClock(channelServices))
+    , lookAlike(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, SeedFromClock(channelServices))
     , editor(channelServices, *files.layouts, files.messages, figures, *files.faceParts, message, profile, keyboard, data)
     , hands(std::make_unique<SystemMenu::CursorManager>(channelServices.display, ArchiveOf(files.handArchive)))
 {
@@ -84,6 +92,20 @@ void MiiChannel::Update()
         profile.Update();
 
     UpdateScene(acceptsInput);
+    PlayKeyboardSounds();
+}
+
+// The keyboard asks for the menu's sounds by their names; the channel plays its own two instead.
+void MiiChannel::PlayKeyboardSounds()
+{
+    for (const std::string& soundName : keyboardSounds.RequestedInThisStep())
+    {
+        if (soundName == SystemMenu::KeyboardSoundName::KeyFocused)
+            services.sounds.Request(KeyboardFocusSound);
+        else
+            services.sounds.Request(KeyboardPushSound);
+    }
+    keyboardSounds.StartNextStep();
 }
 
 void MiiChannel::Draw()
@@ -100,6 +122,9 @@ void MiiChannel::Draw()
         break;
     case Scene::Editor:
         editor.Draw();
+        break;
+    case Scene::Parade:
+        parade.Draw();
         break;
     }
 
@@ -120,6 +145,11 @@ MiiChannel::Scene MiiChannel::CurrentScene() const
 PlazaScreen& MiiChannel::Plaza()
 {
     return plaza;
+}
+
+ParadeScreen& MiiChannel::Parade()
+{
+    return parade;
 }
 
 EditorScreen& MiiChannel::Editor()
@@ -194,6 +224,10 @@ void MiiChannel::UpdateScene(bool acceptsInput)
         editor.Update(acceptsInput);
         FollowEditor();
         return;
+    case Scene::Parade:
+        parade.Update(acceptsInput);
+        FollowParade();
+        return;
     }
 }
 
@@ -258,6 +292,13 @@ void MiiChannel::FollowPlaza()
         return;
     }
 
+    if (*request == PlazaRequest::ShowParade)
+    {
+        parade.Start();
+        scene = Scene::Parade;
+        return;
+    }
+
     std::optional<std::size_t> slot = plaza.MiiToEdit();
     std::optional<Mii::MiiRecord> record = slot ? data.FindMii(*slot) : std::nullopt;
     if (!record)
@@ -265,6 +306,16 @@ void MiiChannel::FollowPlaza()
 
     editor.Open(*record, slot);
     scene = Scene::Editor;
+}
+
+// "Mii Plaza" takes the user back; the Miis brought back from the parade are on the plaza then.
+void MiiChannel::FollowParade()
+{
+    if (!parade.TakeWayBackToThePlaza())
+        return;
+
+    plaza.Start();
+    scene = Scene::Plaza;
 }
 
 // Gender first, then the way to start; Cancel leaves the questions, Back goes back to the gender.
@@ -355,7 +406,7 @@ void MiiChannel::FollowEditor()
 // so the editor shows it with the gray pants of an own Mii.
 Mii::MiiRecord MiiChannel::AsNewMiiOfThisConsole(Mii::MiiRecord record) const
 {
-    auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    std::chrono::sys_seconds now(services.consoleTime().time_since_epoch());
     record.miiId = Mii::MakeMiiId(now);
     record.systemId = data.ConsoleSystemId();
     return record;

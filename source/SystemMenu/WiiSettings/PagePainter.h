@@ -24,7 +24,6 @@ public:
 private:
     void DrawBackground(const Graphics::Canvas& canvas);
     void DrawTabs(const Page& page);
-    void DrawPageNumbers(const Page& page);
     void DrawButton(const PageButton& button, bool isPointed);
     void DrawTexts(const Page& page);
 
