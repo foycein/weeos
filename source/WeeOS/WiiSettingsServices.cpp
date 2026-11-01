@@ -1,16 +1,15 @@
 #include "WeeOS/WiiSettingsServices.h"
 
 #include "Ios/FileSystem/NandPreparation.h"
-#include "Platform/FileLocations.h"
 #include "Sound/PlaybackDevices.h"
+
+#include <utility>
 
 namespace WeeOS
 {
 
 namespace
 {
-
-constexpr std::string_view PcSettingsFileName = "WeeOS.settings.txt";
 
 // The System Menu reads and writes the settings of the console as its own user.
 constexpr Ios::Caller SystemMenuCaller = {Ios::SystemMenuUserId, Ios::SystemMenuGroupId};
@@ -25,13 +24,14 @@ Platform::ScreenShape ShapeOf(Settings::AspectRatio aspectRatio)
 
 }
 
-WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote)
+WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
+    Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile)
     : window(programWindow)
     , remote(virtualRemote)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
-    , clock([this] { return systemSettings.GetClockBias(); })
+    , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
     , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
-    , pcSettings(Platform::ExecutableFolder() / PcSettingsFileName)
+    , pcSettings(pcSettingsFile)
     , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
           pcSettings, *this}
 {

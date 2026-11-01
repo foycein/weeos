@@ -15,6 +15,7 @@
 #include <format>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace WeeOS
@@ -33,12 +34,12 @@ class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Platform::Window& programWindow, Graphics::GraphicsDevice& graphicsDevice,
-        Platform::HostCommandListener& commandListener)
+        Platform::HostCommandListener& commandListener, const HostEnvironment& host)
         : window(programWindow)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote())
-        , wiiMenuConsole(iosServices)
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), host.clock, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock)
         , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), wiiSettings.PictureShape(),
               wiiMenuConsole, &wiiSettings.FlowServices())
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
@@ -85,8 +86,9 @@ private:
     SystemMenu::DataManagementServices dataManagement;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders)
+Application::Application(const Ios::IosFolders& iosFolders, HostEnvironment hostEnvironment)
     : folders(iosFolders)
+    , host(std::move(hostEnvironment))
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
@@ -101,7 +103,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), window, device, commandListener);
+    session = std::make_unique<Session>(console.GetServices(), window, device, commandListener, host);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -136,8 +138,26 @@ void Application::ShowNextPicture()
     RunDueSteps();
     CarryOutRequestsOfTheMenu();
     ReportProblems();
+    ShowPicture();
+}
+
+void Application::RunOneStep()
+{
+    Platform::ProcessPendingMessages();
+    ReportCloseOfTheWindowAsPowerButton();
 
     if (isPoweredOff)
+        return;
+
+    session->VirtualRemote().SetWindowSize(window.ClientSize());
+    session->Menu().Update();
+    CarryOutRequestsOfTheMenu();
+    ReportProblems();
+}
+
+void Application::ShowPicture()
+{
+    if (isPoweredOff || window.IsMinimized())
         return;
 
     session->Menu().Draw();

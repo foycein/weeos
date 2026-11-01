@@ -97,6 +97,7 @@ void MenuSystem::Draw()
 
 void MenuSystem::DrawScene()
 {
+    display.ForgetDrawnLayouts();
     if (!errorScreen.IsShown())
     {
         screens.Draw();

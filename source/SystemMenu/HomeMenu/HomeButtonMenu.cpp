@@ -170,6 +170,7 @@ void HomeButtonMenu::Update()
 void HomeButtonMenu::Draw()
 {
     Layout::DrawLayout(display.Device(), layout, placementSettings, fonts);
+    display.NoteDrawnLayout(layout, placementSettings);
     cursors.Draw();
 
     if (fadeSteps == 0)
