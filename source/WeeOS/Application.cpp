@@ -1,4 +1,4 @@
-﻿#include "WeeOS/Application.h"
+#include "WeeOS/Application.h"
 
 #include "Channels/ChannelSystem.h"
 #include "Channels/NativeChannels.h"
@@ -105,6 +105,7 @@ private:
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
+        menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
 
         dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),

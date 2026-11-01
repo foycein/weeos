@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SystemMenu/ZoomedDevice.h"
+
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
 #include "Layout/TextFonts.h"
@@ -19,7 +21,13 @@ class Display
 public:
     Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape);
 
+    // The device to draw with. While a zoom is looked through, the device draws as the camera of the zoom sees the picture.
     Graphics::GraphicsDevice& Device();
+
+    // Everything that is drawn from now on is seen through the camera of the zoom, until StopLookingThroughZoom.
+    // The zoom must stay alive until then.
+    void LookThroughZoom(const TelevisionZoom& zoom);
+    void StopLookingThroughZoom();
 
     // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
     // The fonts must stay alive as long as the display draws.
@@ -31,6 +39,12 @@ public:
 
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
+
+    // The whole picture, in layout units.
+    PictureArea WholePicture() const;
+
+    // Paints a rectangle of the picture in one color.
+    void FillArea(const PictureArea& area, Formats::Rgba8Color color);
 
     // Starts a new picture of the screen. The program shows it with Present when everything is drawn.
     void BeginPicture();
@@ -49,6 +63,8 @@ public:
 
 private:
     Graphics::GraphicsDevice& device;
+    ZoomedDevice zoomedDevice;
+    bool isLookingThroughZoom = false;
     const Layout::TextFonts* textFonts = nullptr;
     Platform::ScreenShape screenShape;
 };

@@ -33,11 +33,14 @@ add_library(SystemMenu STATIC
     ScreenManager.cpp
     SoftKeyboard.cpp
     StartupRouterScreen.cpp
+    TelevisionZoom.cpp
     TextField.cpp
     UsKeyboardLayout.cpp
     WiiOptionsBackgroundScreen.cpp
     WiiOptionsBarScreen.cpp
     WiiOptionsChoicesScreen.cpp
+    ZoomedDevice.cpp
+    ZoomedWindow.cpp
 )
 
 target_link_libraries(SystemMenu PUBLIC Formats Text Layout Input Ios Settings)

@@ -76,6 +76,7 @@ constexpr std::string_view TargetingSound = "WIPL_SE_CH_TARGETTING";
 constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
 constexpr std::string_view PageSound = "WSD_SELECT";
 constexpr std::string_view PressSound = "WIPL_SE_BT_PUSH";
+constexpr std::string_view ZoomSound = "WIPL_SE_CH_SELECT";
 constexpr std::string_view HoldSound = "WIPL_SE_CH_HOLD";
 constexpr std::string_view SetSound = "WIPL_SE_CH_SET";
 constexpr std::string_view NotMovedSound = "WIPL_SE_CH_NOT_MOVE";
@@ -83,9 +84,8 @@ constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 constexpr std::string_view StartSound = "WIPL_SE_WII_START";
 constexpr std::string_view MenuMusic = "WIPL_BGM_MENU";
 
-// A screen that is built is in the tree two steps after the request. A request for a screen that is not built is dropped instead,
-// and the grid goes on after this many steps.
-constexpr int StepsToWaitForTheStartWindow = 3;
+// While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
+constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
 
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
 {
@@ -256,8 +256,12 @@ bool ChannelGridScreen::RunMain()
         RunHolding();
         break;
 
-    case GridState::WaitingForStartWindow:
-        RunWaitingForStartWindow();
+    case GridState::ZoomingIntoChannel:
+    case GridState::ZoomingOutOfChannel:
+        RunZoom();
+        break;
+
+    case GridState::ShowingChannel:
         break;
 
     case GridState::LeavingForWiiOptions:
@@ -494,22 +498,73 @@ void ChannelGridScreen::DropChannel()
     std::swap(tiles[TileNumber(heldChannel)], tiles[TileNumber(*target)]);
 }
 
-// The original zooms the television of the channel to the whole picture and then opens the channel start window (screen 0x03).
-// The window is the next work item; until it is built the request is dropped and the grid goes on.
+// The channel start window (screen 0x03) opens as a child of the grid; the arrows of the bar slide away (0x813ADA94). The original waits
+// until the icons of the pages around are loaded, which they always are in WeeOS.
 void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
     services.sounds.Request(PressSound);
+    Tile(position).SetFocused(false);
+    BottomBarScreen* bar = Bar();
+    if (bar != nullptr)
+        bar->ShowPageArrows(false, false);
+
     services.screens.OpenChild(ScreenId::ChannelStartWindow, ScreenId::ChannelGrid, 0);
-    stepsWaited = 0;
-    state = GridState::WaitingForStartWindow;
+    state = GridState::ZoomingIntoChannel;
 }
 
-void ChannelGridScreen::RunWaitingForStartWindow()
+void ChannelGridScreen::ZoomIntoPressedChannel()
 {
-    ++stepsWaited;
-    if (stepsWaited >= StepsToWaitForTheStartWindow)
-        state = GridState::Idle;
+    int slotIndex = services.wiiMenu.pressedChannel.value_or(SlotPosition{}).index;
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), AreaOfTheTelevisionAt(PlaceOfSlot(slotIndex)));
+    zoom->StartZoomingIn();
+    services.sounds.Request(ZoomSound);
+}
+
+void ChannelGridScreen::ZoomOutOfPressedChannel()
+{
+    if (!zoom)
+        return;
+
+    zoom->StartZoomingOut();
+    state = GridState::ZoomingOutOfChannel;
+}
+
+const TelevisionZoom* ChannelGridScreen::Zoom() const
+{
+    return zoom.get();
+}
+
+bool ChannelGridScreen::UpdatesWithChildren() const
+{
+    return true;
+}
+
+bool ChannelGridScreen::DrawsWithChildren() const
+{
+    return true;
+}
+
+// When the grid has zoomed out again, it is as it was before the press, and the music of the menu starts again (0x813AC7D8).
+void ChannelGridScreen::RunZoom()
+{
+    if (!zoom)
+        return;
+
+    zoom->Step();
+    if (zoom->IsMoving())
+        return;
+
+    if (state == GridState::ZoomingIntoChannel)
+    {
+        state = GridState::ShowingChannel;
+        return;
+    }
+
+    zoom.reset();
+    state = GridState::Idle;
+    ShowTheArrowsOfThePage();
+    services.sounds.Request(MenuMusic);
 }
 
 bool ChannelGridScreen::RunLeaving()
@@ -569,6 +624,21 @@ void ChannelGridScreen::Draw(DrawPass pass)
     if (pass != DrawPass::Main || !strip)
         return;
 
+    if (state == GridState::ShowingChannel)
+    {
+        services.display.FillArea(services.display.WholePicture(), Black);
+        return;
+    }
+
+    if (zoom)
+        services.display.LookThroughZoom(*zoom);
+
+    DrawTheGrid();
+    services.display.StopLookingThroughZoom();
+}
+
+void ChannelGridScreen::DrawTheGrid()
+{
     PlacedPanes placedPanes(*strip);
     auto isBackPane = [](const Formats::Pane& pane) { return std::find(BackPanes.begin(), BackPanes.end(), pane.name) != BackPanes.end(); };
     auto isFrontMask = [](const Formats::Pane& pane) { return pane.name == FrontMaskPane; };

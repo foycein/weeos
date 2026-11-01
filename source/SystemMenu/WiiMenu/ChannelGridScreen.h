@@ -3,6 +3,7 @@
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/TelevisionZoom.h"
 #include "SystemMenu/WiiMenu/ChannelManager.h"
 #include "SystemMenu/WiiMenu/ChannelTile.h"
 #include "SystemMenu/WiiMenu/ClockDisplay.h"
@@ -36,8 +37,15 @@ enum class GridState
     // A channel hangs at the hand of a player, who moves it to an empty place.
     HoldingChannel,
 
-    // A channel was pressed, and the grid has asked for the channel start window.
-    WaitingForStartWindow,
+    // A channel was pressed: the channel start window opens as a child of the grid, and the grid zooms into the television of the
+    // channel once the window is ready for it.
+    ZoomingIntoChannel,
+
+    // The window of the channel covers the picture. The grid paints black under it.
+    ShowingChannel,
+
+    // The window closes, and the grid zooms out of the television.
+    ZoomingOutOfChannel,
 
     // The Wii button was pressed: the picture fades out, then the menu goes to Wii Options.
     LeavingForWiiOptions,
@@ -66,6 +74,18 @@ public:
     // The place of the picture where the middle of a television of the page that shows lies, in layout units.
     Formats::Vector2 PlaceOfSlot(int slotIndex);
 
+    // The channel start window asks for the zoom into the television of the pressed channel when it is ready (0x813ADC08), and for the
+    // zoom back out when it closes (0x813ADCE8).
+    void ZoomIntoPressedChannel();
+    void ZoomOutOfPressedChannel();
+
+    // The zoom while a window of a channel is open. Nothing at other times.
+    const TelevisionZoom* Zoom() const;
+
+    // The grid zooms and paints while the window of a channel is its child.
+    bool UpdatesWithChildren() const override;
+    bool DrawsWithChildren() const override;
+
 protected:
     void OnStart() override;
     bool RunMain() override;
@@ -90,7 +110,8 @@ private:
     void RunIdle();
     void RunTurningOfThePage();
     void RunHolding();
-    void RunWaitingForStartWindow();
+    void RunZoom();
+    void DrawTheGrid();
     bool RunLeaving();
 
     void FocusTheTilesUnderThePointers();
@@ -127,9 +148,10 @@ private:
     // What the place of a channel that hangs at the hand shows meanwhile.
     std::unique_ptr<ChannelTile> emptyPlace;
 
+    std::unique_ptr<TelevisionZoom> zoom;
+
     GridState state = GridState::Idle;
     GridState stateAfterTurning = GridState::Idle;
-    int stepsWaited = 0;
     int holdingPlayer = 0;
     SlotPosition heldChannel;
 };

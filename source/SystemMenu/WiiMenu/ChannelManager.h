@@ -90,6 +90,10 @@ public:
     // Moves the channel to an empty place and saves the file. Throws a MenuError when the move is not allowed.
     void MoveChannel(SlotPosition from, SlotPosition to);
 
+    // The channel at the place starts now (0x813B97FC): the menu opens on its page when it comes back, and a downloaded channel goes to the
+    // front of the list of started titles. Saves the file.
+    void RememberChannelThatStarts(SlotPosition position);
+
     // The files of the title at the place, read the first time they are asked for. Throws a MenuError for a place without a title.
     const LoadedChannel& LoadChannel(SlotPosition position);
 

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Formats/Bytes.h"
+
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,13 +37,41 @@ public:
         return names;
     }
 
+    // The sound of a channel's banner, its file meta/sound.bin, which the channel start window plays while it shows the banner
+    // (0x8136C198). The player decodes it with Sound::ReadBannerSound. It replaces a banner sound that still plays.
+    void StartBannerSound(Formats::ByteView soundFile)
+    {
+        bannerSoundToStart = Formats::Bytes(soundFile.begin(), soundFile.end());
+    }
+
+    // The banner sound fades out (0x8136BA68).
+    void StopBannerSound()
+    {
+        bannerSoundToStart.reset();
+        isBannerSoundToStop = true;
+    }
+
+    const std::optional<Formats::Bytes>& BannerSoundToStart() const
+    {
+        return bannerSoundToStart;
+    }
+
+    bool IsBannerSoundToStop() const
+    {
+        return isBannerSoundToStop;
+    }
+
     void StartNextStep()
     {
         names.clear();
+        bannerSoundToStart.reset();
+        isBannerSoundToStop = false;
     }
 
 private:
     std::vector<std::string> names;
+    std::optional<Formats::Bytes> bannerSoundToStart;
+    bool isBannerSoundToStop = false;
 };
 
 }
