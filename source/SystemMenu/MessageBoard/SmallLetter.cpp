@@ -14,6 +14,7 @@ constexpr std::string_view LetterButton = "B_Letter";
 constexpr std::string_view LetterText = "T_Letter";
 constexpr std::string_view MiiPicture = "Nigaoe";
 constexpr std::string_view PictureFrame = "N_Pic";
+constexpr std::string_view PictureOfTheLetter = "LetterPic";
 constexpr std::string_view PinGroup = "G_New";
 
 // A letter of the board shows six characters of its text, and "..." when the line is longer (0x813956FC).
@@ -60,8 +61,7 @@ SmallLetter::SmallLetter(Display& display, const Layout::LayoutArchive& boardArc
     }
 
     layout->SetText(LetterText, ShortTextOf(stored.message));
-    if (Formats::Pane* pictureFrame = layout->FindPane(PictureFrame))
-        pictureFrame->isVisible = false;
+    ShowThePicture(display.Device());
     ShowTheMii(portraits);
     Calculate();
 }
@@ -79,6 +79,24 @@ void SmallLetter::ShowTheMii(MiiPortraits& portraits)
 
     layout->ShowTexture(MiiPicture, *face);
     miiPicture.isVisible = true;
+}
+
+// A letter with a picture shows it small beside its Mii; every other letter hides the frame of the picture (0x813944D4).
+void SmallLetter::ShowThePicture(Graphics::GraphicsDevice& device)
+{
+    Formats::Pane* pictureFrame = layout->FindPane(PictureFrame);
+    if (pictureFrame == nullptr)
+        return;
+
+    picture = LetterPicture::Of(device, stored.message);
+    pictureFrame->isVisible = picture != nullptr;
+    if (picture)
+        layout->ShowTexture(PictureOfTheLetter, picture->Texture());
+}
+
+bool SmallLetter::ShowsAPicture() const
+{
+    return picture != nullptr;
 }
 
 StoredMessage& SmallLetter::Message()

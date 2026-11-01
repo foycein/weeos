@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SystemMenu/MenuLayout.h"
+#include "SystemMenu/MessageBoard/LetterPicture.h"
 #include "SystemMenu/MessageBoard/MessageStore.h"
 #include "SystemMenu/MessageBoard/MiiPortraits.h"
 
@@ -38,6 +39,7 @@ public:
     void PutDayAt(Formats::Vector2 dayPlace);
 
     bool IsPointedAt(Formats::Vector2 place);
+    bool ShowsAPicture() const;
 
     // The letter lands on the board, rises under a pointer and sinks again, is picked to be opened, or goes away.
     void Paste();
@@ -56,9 +58,11 @@ public:
 
 private:
     void ShowTheMii(MiiPortraits& portraits);
+    void ShowThePicture(Graphics::GraphicsDevice& device);
 
     StoredMessage stored;
     std::unique_ptr<MenuLayout> layout;
+    std::unique_ptr<LetterPicture> picture;
     Formats::Vector2 dayPlace{0, 0};
     std::size_t pasteAnimation = 0;
     std::size_t focusInAnimation = 0;

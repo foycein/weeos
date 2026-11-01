@@ -37,6 +37,14 @@ constexpr std::uint16_t QuitMessage = 37;
 constexpr std::string_view UnselectSound = "WIPL_SE_BOARD_UNSELECT";
 constexpr std::string_view ThrowSound = "WIPL_SE_BOARD_DUMP";
 constexpr std::string_view ScrollSound = "WIPL_SE_MESSAGE_SCROLL";
+constexpr std::string_view ZoomInSound = "WIPL_SE_PIC_ZOOM_IN";
+constexpr std::string_view ZoomOutSound = "WIPL_SE_PIC_ZOOM_OUT";
+
+// The picture of a letter: its frame, the pane that shows it, the button that zooms it and the group of its animations (0x81399E3C).
+constexpr std::string_view PictureFrame = "N_Pic";
+constexpr std::string_view PicturePane = "Pic";
+constexpr std::string_view PictureButton = "B_Pic";
+constexpr std::string_view PictureGroup = "G_Pic";
 
 // The paper slides from the small letter to the middle of the picture while it opens (0x81397374: 17 steps).
 constexpr int StepsOfTheOpening = 17;
@@ -81,6 +89,7 @@ LetterView::LetterView(MenuServices& menuServices, const Layout::LayoutArchive& 
     downArrowGoes = layout.BindAnimation(layoutName + "_Lost", "G_ArwL_End", Layout::PlaybackMode::PlayOnce);
 
     FillThePaper(message, portraits);
+    ShowThePicture(message);
     paper.MeasureTheText();
     layout.StartAnimation(openAnimation);
     layout.StartAnimation(arrowLoopAnimation);
@@ -118,6 +127,33 @@ void LetterView::FillThePaper(const StoredMessage& message, MiiPortraits& portra
     miiPicture.isVisible = true;
 }
 
+// The picture fills the pane Pic and keeps its shape (0x81399FEC). Pressing it zooms it (SelectPic), Back puts it back (ExitPic).
+void LetterView::ShowThePicture(const StoredMessage& message)
+{
+    Formats::Pane* frame = layout.FindPane(PictureFrame);
+    if (frame == nullptr)
+        return;
+
+    picture = LetterPicture::Of(services.display.Device(), message.message);
+    frame->isVisible = picture != nullptr;
+    if (Formats::Pane* button = layout.FindPane(PictureButton))
+        button->isVisible = picture != nullptr;
+    if (!picture)
+        return;
+
+    Formats::Pane& pane = layout.PaneNamed(PicturePane);
+    float paneAspect = pane.width / pane.height;
+    if (picture->Aspect() > paneAspect)
+        pane.height = pane.width / picture->Aspect();
+    else
+        pane.width = pane.height * picture->Aspect();
+    layout.ShowTexture(PicturePane, picture->Texture());
+
+    std::string layoutName = "my_LetterL";
+    zoomInAnimation = layout.BindAnimation(layoutName + "_SelectPic", PictureGroup, Layout::PlaybackMode::PlayOnce);
+    zoomOutAnimation = layout.BindAnimation(layoutName + "_ExitPic", PictureGroup, Layout::PlaybackMode::PlayOnce);
+}
+
 void LetterView::PutTheRootAtTheOpeningPlace()
 {
     float progress = std::min(1.0f, static_cast<float>(stepsSinceOpening) / StepsOfTheOpening);
@@ -128,6 +164,16 @@ void LetterView::PutTheRootAtTheOpeningPlace()
 LetterPaper& LetterView::Paper()
 {
     return paper;
+}
+
+bool LetterView::ShowsAPicture() const
+{
+    return picture != nullptr;
+}
+
+bool LetterView::IsPictureZoomed() const
+{
+    return state == ViewState::ViewingThePicture;
 }
 
 float LetterView::ScrollPosition() const
@@ -156,6 +202,10 @@ LetterViewResult LetterView::Run()
 
     case ViewState::Scrolling:
         RunScrolling();
+        break;
+
+    case ViewState::ViewingThePicture:
+        RunViewingThePicture();
         break;
 
     case ViewState::AskingToThrow:
@@ -237,8 +287,48 @@ void LetterView::HandleThePresses()
         if (!player || !place || !HasGoneDown(*player, BoardPressButtons))
             continue;
 
-        if (HandleArrowPress(*place) || HandleBarPress(*place))
+        if (HandlePicturePress(*place) || HandleArrowPress(*place) || HandleBarPress(*place))
             return;
+    }
+}
+
+bool LetterView::HandlePicturePress(Formats::Vector2 place)
+{
+    if (!picture || !zoomInAnimation)
+        return false;
+
+    for (const Formats::Pane* button : layout.BoundingPanesAt(place))
+    {
+        if (button->name != PictureButton)
+            continue;
+
+        services.sounds.Request(ZoomInSound);
+        layout.StartAnimation(*zoomInAnimation);
+        state = ViewState::ViewingThePicture;
+        return true;
+    }
+    return false;
+}
+
+// The zoomed picture goes back with Back, or with A anywhere.
+void LetterView::RunViewingThePicture()
+{
+    if (layout.IsAnimationPlaying(*zoomInAnimation))
+        return;
+
+    for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
+    {
+        const std::optional<PlayerInput>& player = services.input.Player(playerIndex);
+        if (!player || !HasGoneDown(*player, BoardPressButtons))
+            continue;
+
+        std::optional<Formats::Vector2> place = PointerPlaceOf(services.input, services.display, playerIndex);
+        if (place && bar.ButtonAt(*place) == BarButton::BackButton)
+            bar.FlashButton(BarButton::BackButton);
+        services.sounds.Request(ZoomOutSound);
+        layout.StartAnimation(*zoomOutAnimation);
+        state = ViewState::Reading;
+        return;
     }
 }
 

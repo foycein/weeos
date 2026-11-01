@@ -2,6 +2,7 @@
 
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/MessageBoard/LetterPaper.h"
+#include "SystemMenu/MessageBoard/LetterPicture.h"
 #include "SystemMenu/MessageBoard/MessageStore.h"
 #include "SystemMenu/MessageBoard/MiiPortraits.h"
 
@@ -39,6 +40,8 @@ public:
     // For the checks of the tests.
     LetterPaper& Paper();
     float ScrollPosition() const;
+    bool ShowsAPicture() const;
+    bool IsPictureZoomed() const;
 
 private:
     enum class ViewState
@@ -46,12 +49,16 @@ private:
         Opening,
         Reading,
         Scrolling,
+        ViewingThePicture,
         AskingToThrow,
         Closing,
         Throwing,
     };
 
     void FillThePaper(const StoredMessage& message, MiiPortraits& portraits);
+    void ShowThePicture(const StoredMessage& message);
+    void RunViewingThePicture();
+    bool HandlePicturePress(Formats::Vector2 place);
     void RunScrolling();
     void RunAskingToThrow();
     void RunReading();
@@ -67,6 +74,7 @@ private:
     BottomBarScreen& bar;
     LetterPaper paper;
     MenuLayout& layout;
+    std::unique_ptr<LetterPicture> picture;
     Formats::Vector2 openingPlace;
     ViewState state = ViewState::Opening;
     int stepsSinceOpening = 0;
@@ -74,6 +82,8 @@ private:
     std::size_t openAnimation = 0;
     std::size_t closeAnimation = 0;
     std::size_t arrowLoopAnimation = 0;
+    std::optional<std::size_t> zoomInAnimation;
+    std::optional<std::size_t> zoomOutAnimation;
     std::size_t upArrowAppears = 0;
     std::size_t upArrowGoes = 0;
     std::size_t downArrowAppears = 0;

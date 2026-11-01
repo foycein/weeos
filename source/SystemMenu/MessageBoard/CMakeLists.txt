@@ -4,6 +4,7 @@ target_sources(SystemMenu PRIVATE
     BoardView.cpp
     CalendarScreen.cpp
     LetterPaper.cpp
+    LetterPicture.cpp
     LetterView.cpp
     MemoWriterScreen.cpp
     MessageStore.cpp
