@@ -9,6 +9,7 @@ target_link_libraries(WeeOSApplication PUBLIC Boot Channels Graphics Input Ios N
 
 add_executable(WeeOS main.cpp)
 target_link_libraries(WeeOS PRIVATE WeeOSApplication)
+CopyWebViewLoader(WeeOS)
 CompileGraphicsShaders(WeeOS)
 
 # The Wii files beside WeeOS.exe, from which the first start makes a new console (tools/PrepareWiiFiles).

@@ -209,6 +209,12 @@ LayoutAnimation ReadLayoutAnimation(ByteView bytes)
     }
 
     SectionCursor cursor(file.sections, DataDescription);
+
+    // The animations of the Internet Channel's soft keyboard start with pat1: the name, the frames and the groups that the library's
+    // animation tags use. WeeOS binds every animation to its panes itself, so the section is passed over.
+    if (cursor.NextIs("pat1"))
+        cursor.Take();
+
     LayoutAnimation animation = ReadAnimationSection(cursor.Take("pai1"));
 
     if (!cursor.IsAtEnd())

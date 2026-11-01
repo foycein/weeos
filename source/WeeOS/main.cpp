@@ -15,6 +15,7 @@
 //   SDCard               the SD card, always in its slot; files copied into it or out of it show up at once
 //   WeeOS.settings.txt   the settings of the PC: window, sound, keys
 //   WiiFiles             the Wii files that a new console is made from
+//   Browser              the cache and the cookies of the browser engine of the Internet Channel
 // Folders on the command line are for tests and development; the SD card is then the folder SDCard beside the NAND folder.
 // --silent opens the sound output with nothing but silence, for the runs of development. Without it WeeOS plays its sound.
 

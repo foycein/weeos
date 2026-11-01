@@ -1,6 +1,12 @@
 add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelSystem.cpp
+    Internet/FavoritesScreen.cpp
+    Internet/OperaData.cpp
+    Internet/PageToolbar.cpp
+    Internet/PageView.cpp
+    Internet/SettingsScreen.cpp
+    Internet/TypedAddresses.cpp
     InternetChannel.cpp
     MiiChannel/ButtonFocus.cpp
     MiiChannel/EditorScreen.cpp
@@ -33,4 +39,4 @@ add_library(Channels STATIC
     WiiConnect24Channel.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Mii Media)
+target_link_libraries(Channels PUBLIC SystemMenu Mii Media Browser)

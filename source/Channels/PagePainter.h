@@ -82,6 +82,9 @@ public:
     // The text is broken into lines at the line breaks and at the right edge of the box.
     void DrawText(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box);
 
+    // One line that ends with "..." where it would go beyond the box, as text-overflow: ellipsis of a style sheet.
+    void DrawTextLine(std::u16string_view text, const PageTextStyle& style, const PageRectangle& box);
+
     // A point of the picture, in layout units, as a point of the page.
     Formats::Vector2 PictureToPage(Formats::Vector2 picturePoint) const;
 
@@ -90,6 +93,9 @@ private:
     static constexpr float UnlimitedWidth = 100000;
 
     std::u16string WrapAtSpaces(std::u16string_view text, const Text::TextStyle& style, float width) const;
+    std::u16string CutWithEllipsis(std::u16string_view text, const Text::TextStyle& style, float width) const;
+    Text::TextStyle TextStyleOf(const PageTextStyle& style) const;
+    Text::TextArea TextAreaOf(const PageRectangle& box) const;
     Formats::Vector2 PageToPicture(float pageX, float pageY) const;
     Graphics::Quad QuadOf(const PageRectangle& place, Formats::Rgba8Color color) const;
 

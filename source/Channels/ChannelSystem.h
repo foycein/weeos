@@ -37,7 +37,7 @@ public:
     ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
         Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
         Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
-        std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
+        std::optional<Formats::Bytes> consoleFontArchive = std::nullopt, const ChannelPc& pc = {});
 
     // One step of the console's picture, 1001/60000 of a second.
     void Update();

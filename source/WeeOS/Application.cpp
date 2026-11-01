@@ -44,6 +44,9 @@ SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regional
     return format;
 }
 
+// The browser engine of the Internet Channel keeps its cache and its cookies in this folder beside the NAND folder.
+constexpr std::string_view BrowserFolderName = "Browser";
+
 }
 
 namespace
@@ -79,9 +82,10 @@ class Application::Session
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
         Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
-        const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii)
+        const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii, const std::filesystem::path& browserEngineFolder)
         : window(programWindow)
         , consoleImport(importOfAWii)
+        , browserFolder(browserEngineFolder)
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
@@ -199,9 +203,10 @@ private:
         const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
+        Channels::ChannelPc pc{&iosServices.GetKeyboard(), {browserFolder, sound.IsSilent()}};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
             iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle, consoleTime,
-            Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
+            Channels::ReadConsoleFontArchive(iosServices.GetTitles()), pc);
 
         std::vector<Sound::SoundSystem*> channelSounds;
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
@@ -225,6 +230,7 @@ private:
 
     Platform::Window& window;
     SystemMenu::ConsoleImport& consoleImport;
+    std::filesystem::path browserFolder;
     ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
@@ -280,7 +286,9 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer);
+    std::filesystem::path browserFolder = folders.nandFolder.parent_path() / BrowserFolderName;
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer,
+        browserFolder);
     StopOnTheKeyOfKoreanConsoles();
 }
 

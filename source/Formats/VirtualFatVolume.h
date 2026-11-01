@@ -30,8 +30,8 @@ struct VolumeEntry
     std::uint32_t size = 0;
 };
 
-// A VFF file: a FAT16 file system kept inside one file of the NAND, as the VF library of the System Menu keeps the Message Board
-// in /title/00000001/00000002/data/cdb.vff. A header of 0x20 bytes ("VFF ", the byte order mark, the version, the size of the
+// A VFF file: a FAT file system kept inside one file of the NAND, as the VF library of the System Menu keeps the Message Board
+// in /title/00000001/00000002/data/cdb.vff (FAT16) and the Internet Channel its favorites and settings in opera.vff (FAT12). A header of 0x20 bytes ("VFF ", the byte order mark, the version, the size of the
 // file, the cluster size in units of 16 bytes), two equal copies of the FAT, a root folder of 128 entries and clusters of 0x200 bytes.
 // Names longer than 8.3 or with small letters get long name entries, as on any FAT volume.
 // Paths are relative to the root and use '/', for example "2023/10/12/00/06/HAEA_01/txt/2CE2D3A2.000". Names are compared
@@ -39,7 +39,7 @@ struct VolumeEntry
 class VirtualFatVolume
 {
 public:
-    // A new empty volume of this many bytes. Throws a FormatError for a size that does not give a FAT16 volume.
+    // A new empty volume of this many bytes: FAT12 below 4085 clusters, FAT16 above. Throws a FormatError for a size too large for FAT16.
     static VirtualFatVolume MakeEmpty(std::uint32_t volumeSize);
 
     // Throws a FormatError when the header or the size is wrong.
@@ -113,6 +113,7 @@ private:
     std::size_t OffsetOfCluster(std::uint16_t cluster) const;
 
     Bytes bytes;
+    bool isFat12 = false;
     std::size_t fatSize = 0;
     std::size_t firstFatOffset = 0;
     std::size_t rootFolderOffset = 0;
