@@ -284,4 +284,9 @@ SystemMenu::MenuSystem& Application::GetMenu()
     return session->Menu();
 }
 
+Input::VirtualRemote& Application::GetVirtualRemote()
+{
+    return session->VirtualRemote();
+}
+
 }
