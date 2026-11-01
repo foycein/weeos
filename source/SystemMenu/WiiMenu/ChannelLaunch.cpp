@@ -2,6 +2,7 @@
 
 #include "SystemMenu/WiiMenu/ChannelTitleIds.h"
 
+#include <algorithm>
 #include <chrono>
 
 namespace SystemMenu
@@ -17,7 +18,8 @@ constexpr std::string_view LoopAnimation = "banner_Loop";
 constexpr std::string_view WholeAnimation = "banner";
 constexpr std::string_view FirstScriptAnimation = "banner_Rso0";
 
-constexpr std::uint64_t TimerTicksPerSecond = 243000000 / 4;
+constexpr std::uint64_t BusClockHertz = 243'000'000;
+constexpr std::uint64_t TimerTicksPerSecond = BusClockHertz / 4;
 constexpr std::int64_t SecondsPerMinute = 60;
 constexpr std::int64_t SecondsPerHour = 3600;
 constexpr std::int64_t SecondsPerDay = 86400;
@@ -31,7 +33,8 @@ bool HasAnimation(const Formats::U8Archive& files, std::string_view animationNam
 
 void CopyLine(const std::u16string& line, Formats::PlayRecord& record, std::size_t firstCharacter)
 {
-    for (std::size_t index = 0; index < line.size() && index < Formats::PlayRecordNameLineLength; ++index)
+    std::size_t copiedCharacters = std::min(line.size(), Formats::PlayRecordNameLineLength);
+    for (std::size_t index = 0; index < copiedCharacters; ++index)
         record.name[firstCharacter + index] = line[index];
 }
 
@@ -88,11 +91,11 @@ Formats::PlayRecord MakePlayRecord(const Formats::ChannelName& name, Ios::TitleI
 
     for (std::size_t index = 0; index < Formats::PlayRecordGameCodeSize; ++index)
     {
-        std::size_t shift = 8 * (Formats::PlayRecordGameCodeSize - 1 - index);
+        std::size_t shift = Formats::BitsPerByte * (Formats::PlayRecordGameCodeSize - 1 - index);
         record.gameCode[index] = static_cast<Formats::Byte>(titleId.lowPart >> shift);
     }
 
-    record.makerCode[0] = static_cast<Formats::Byte>(makerCode >> 8);
+    record.makerCode[0] = static_cast<Formats::Byte>(makerCode >> Formats::BitsPerByte);
     record.makerCode[1] = static_cast<Formats::Byte>(makerCode);
     return record;
 }

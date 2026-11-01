@@ -148,8 +148,10 @@ void IosMenuConsole::WriteNandFile(std::string_view path, Formats::ByteView byte
     if (statistics.Failed())
         FailWith(std::format("The size of the file {} cannot be read", path), statistics.Error());
 
-    if (statistics.Value().length != 0 && statistics.Value().length != bytes.size())
-        throw MenuError(std::format("The file {} has {} bytes and cannot be replaced by {} bytes", path, statistics.Value().length, bytes.size()));
+    std::uint32_t fileLength = statistics.Value().length;
+    bool isNewFile = fileLength == 0;
+    if (!isNewFile && fileLength != bytes.size())
+        throw MenuError(std::format("The file {} has {} bytes and cannot be replaced by {} bytes", path, fileLength, bytes.size()));
 
     Ios::Result<std::size_t> written = opened.Value().Write(bytes);
     if (written.Failed())

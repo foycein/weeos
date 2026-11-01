@@ -38,7 +38,8 @@ constexpr std::uint32_t FirstPhotoChannelFamily = 0x48414100;
 constexpr std::uint32_t PhotoChannel11Family = 0x48415900;
 constexpr std::uint32_t PhotoChannelSaveFamily = 0x48415A00;
 
-// The first three letters of the Wii Shop Channel (HAB), the Forecast Channel (HAF) and the News Channel (HAG).
+// The first three letters of the Mii Channel (HAC), the Wii Shop Channel (HAB), the Forecast Channel (HAF) and the News Channel (HAG).
+constexpr std::uint32_t MiiChannelFamily = 0x48414300;
 constexpr std::uint32_t ShopChannelFamily = 0x48414200;
 constexpr std::uint32_t ForecastChannelFamily = 0x48414600;
 constexpr std::uint32_t NewsChannelFamily = 0x48414700;

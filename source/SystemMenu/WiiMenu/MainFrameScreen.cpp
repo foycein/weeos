@@ -2,11 +2,11 @@
 
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/HomeMenu/HomeButton.h"
-#include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MessageBoard/FullBoard.h"
 #include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/ClockFace.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
