@@ -287,7 +287,10 @@ void DrawFramePiece(Graphics::GraphicsDevice& device, LiveLayout& layout, const 
         return;
 
     if (frame.textureFlip >= CoordinatesOfTurnedTextures.size())
-        throw LayoutError(std::format("The window {} turns a frame texture in the way {}, which is not known", placement.pane->name, frame.textureFlip));
+    {
+        throw LayoutError(std::format("The window {} turns a frame texture in the way {}, which is not known",
+            placement.pane->name, frame.textureFlip));
+    }
 
     std::array<Formats::TextureCoordinateSet, 1> coordinateSets = {
         MakePieceCoordinates(CoordinatesOfTurnedTextures[frame.textureFlip], piece, *textureSize),
@@ -329,8 +332,10 @@ void DrawContent(Graphics::GraphicsDevice& device, LiveLayout& layout, const Pan
     PaneRectangle contentRectangle;
     contentRectangle.left = windowRectangle.left + thickness.left - window.magnificationLeft;
     contentRectangle.top = windowRectangle.top - thickness.top + window.magnificationUp;
-    contentRectangle.width = windowRectangle.width - thickness.left - thickness.right + window.magnificationLeft + window.magnificationRight;
-    contentRectangle.height = windowRectangle.height - thickness.top - thickness.bottom + window.magnificationUp + window.magnificationDown;
+    float widthInsideFrame = windowRectangle.width - thickness.left - thickness.right;
+    float heightInsideFrame = windowRectangle.height - thickness.top - thickness.bottom;
+    contentRectangle.width = widthInsideFrame + window.magnificationLeft + window.magnificationRight;
+    contentRectangle.height = heightInsideFrame + window.magnificationUp + window.magnificationDown;
 
     RectangleAppearance appearance;
     appearance.materialIndex = window.content.materialIndex;

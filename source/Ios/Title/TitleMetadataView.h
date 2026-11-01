@@ -33,8 +33,8 @@ struct TitleMetadataView
     std::uint32_t titleType;
     std::uint16_t groupId;
     Formats::Region region;
-    std::array<Formats::Byte, 16> ratings;
-    std::array<Formats::Byte, 12> inputOutputMask;
+    std::array<Formats::Byte, Formats::TitleRatingsSize> ratings;
+    std::array<Formats::Byte, Formats::TitleInputOutputMaskSize> inputOutputMask;
     std::uint16_t titleVersion;
     std::vector<ContentView> contents;
 

@@ -21,6 +21,12 @@ constexpr int MaximumPredictor = 7;
 constexpr int ScaleMask = 0x0F;
 constexpr int NibbleSignBit = 8;
 constexpr int NibbleMask = 0x0F;
+constexpr int BitsPerNibble = 4;
+constexpr std::uint32_t NibblesPerByte = 2;
+constexpr std::size_t FrameHeaderSize = 1;
+
+// Each predictor has two coefficients, one for each of the two samples before the new one.
+constexpr int CoefficientsPerPredictor = 2;
 
 // The corrections are fixed point numbers with 11 fractional bits. Half of the last bit is added before it is cut off, to round.
 constexpr int FractionBitCount = 11;
@@ -58,8 +64,9 @@ FrameHeader ReadFrameHeader(Formats::Byte headerByte, const AdpcmParameters& par
         throw Formats::FormatError(std::format("Wave: the predictor {} of an ADPCM frame does not exist", predictor));
 
     FrameHeader header;
-    header.coefficient1 = parameters.coefficients[2 * predictor];
-    header.coefficient2 = parameters.coefficients[2 * predictor + 1];
+    int firstCoefficient = CoefficientsPerPredictor * predictor;
+    header.coefficient1 = parameters.coefficients[firstCoefficient];
+    header.coefficient2 = parameters.coefficients[firstCoefficient + 1];
     header.scale = headerByte & ScaleMask;
     return header;
 }
@@ -75,7 +82,9 @@ void CheckSize(Formats::ByteView bytes, std::uint32_t neededSize, std::string_vi
 // The new sample is the prediction from the two samples before it, plus the correction that the frame holds.
 std::int32_t DecodeSample(const FrameHeader& header, int nibble, std::int32_t newerSample, std::int32_t olderSample)
 {
-    std::int64_t correction = (std::int64_t(SignedNibble(nibble)) * (std::int64_t(1) << header.scale)) << FractionBitCount;
+    std::int64_t scaleFactor = std::int64_t(1) << header.scale;
+    std::int64_t scaledNibble = std::int64_t(SignedNibble(nibble)) * scaleFactor;
+    std::int64_t correction = scaledNibble << FractionBitCount;
     std::int64_t prediction = std::int64_t(header.coefficient1) * newerSample + std::int64_t(header.coefficient2) * olderSample;
     return LimitTo16Bit((correction + prediction + Rounding) >> FractionBitCount);
 }
@@ -104,8 +113,10 @@ std::vector<float> DecodeAdpcm(Formats::ByteView frames, const AdpcmParameters& 
 
         for (std::uint32_t sampleInFrame = 0; sampleInFrame < AdpcmSamplesPerFrame && samples.size() < sampleCount; ++sampleInFrame)
         {
-            Formats::Byte pairOfNibbles = frames[frameStart + 1 + sampleInFrame / 2];
-            int nibble = (sampleInFrame % 2 == 0) ? (pairOfNibbles >> 4) : (pairOfNibbles & NibbleMask);
+            std::size_t byteInFrame = FrameHeaderSize + sampleInFrame / NibblesPerByte;
+            Formats::Byte pairOfNibbles = frames[frameStart + byteInFrame];
+            bool isHighNibble = sampleInFrame % NibblesPerByte == 0;
+            int nibble = isHighNibble ? (pairOfNibbles >> BitsPerNibble) : (pairOfNibbles & NibbleMask);
 
             std::int32_t sample = DecodeSample(header, nibble, newerSample, olderSample);
             olderSample = newerSample;

@@ -82,7 +82,8 @@ SettingTextFile ReadSettingTextFile(ByteView encryptedBytes)
     }
 
     SettingTextFile file;
-    for (const std::string& line : SplitIntoLines(DecryptText(WithoutTrailingZeros(encryptedBytes))))
+    std::string text = DecryptText(WithoutTrailingZeros(encryptedBytes));
+    for (const std::string& line : SplitIntoLines(text))
         file.entries.push_back(ParseLine(line));
 
     return file;

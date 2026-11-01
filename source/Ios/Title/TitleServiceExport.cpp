@@ -2,10 +2,9 @@
 
 #include "Formats/FormatError.h"
 #include "Formats/TitleEncryption.h"
+#include "Ios/Title/ContentTypes.h"
 #include "Ios/Title/StoredFiles.h"
 #include "Ios/Title/TitlePaths.h"
-
-#include <algorithm>
 
 namespace Ios
 {
@@ -35,9 +34,8 @@ Result<Formats::Bytes> TitleService::ExportContent(TitleId titleId, std::uint32_
     if (metadata.Failed())
         return metadata.Error();
 
-    auto record = std::find_if(metadata.Value().contents.begin(), metadata.Value().contents.end(),
-        [contentId](const Formats::ContentRecord& candidate) { return candidate.id == contentId; });
-    if (record == metadata.Value().contents.end())
+    const Formats::ContentRecord* record = FindContentById(metadata.Value(), contentId);
+    if (record == nullptr)
         return IosError::TitleInvalidArgument;
 
     Result<Formats::AesKey> titleKey = ReadTitleKey(titleId);

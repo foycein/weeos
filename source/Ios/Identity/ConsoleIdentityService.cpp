@@ -73,13 +73,19 @@ bool IsWholeBlocks(Formats::ByteView data)
     return data.size() % Formats::AesBlockSize == 0;
 }
 
+bool IsZero(Formats::Byte byte)
+{
+    return byte == 0;
 }
 
-ConsoleIdentityService::ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate, std::uint8_t bootTwoVersion, bool hasKoreanKey)
+}
+
+ConsoleIdentityService::ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate,
+    std::uint8_t consoleBootTwoVersion, bool consoleHasKoreanKey)
     : keys(consoleKeys)
     , deviceCertificate(std::move(certificate))
-    , bootTwoVersion(bootTwoVersion)
-    , hasKoreanKey(hasKoreanKey)
+    , bootTwoVersion(consoleBootTwoVersion)
+    , hasKoreanKey(consoleHasKoreanKey)
 {
 }
 
@@ -103,12 +109,12 @@ Result<ConsoleIdentityService> ConsoleIdentityService::Open(const std::filesyste
         Formats::DeviceCertificate certificate = Formats::ReadDeviceCertificate(certificateBytes.Value());
         Formats::SerialEeprom serialEeprom = Formats::ReadSerialEeprom(serialEepromBytes.Value());
 
-        bool certificateBelongsToTheKeys = certificate.consoleId == keys.consoleId && certificateBytes.Value().size() == DeviceCertificateSize;
-        if (!certificateBelongsToTheKeys)
+        bool certificateBelongsToTheKeys = certificate.consoleId == keys.consoleId;
+        bool hasCertificateSize = certificateBytes.Value().size() == DeviceCertificateSize;
+        if (!certificateBelongsToTheKeys || !hasCertificateSize)
             return IosError::ShortRead;
 
-        auto isZero = [](Formats::Byte byte) { return byte == 0; };
-        bool hasKoreanKey = !std::all_of(serialEeprom.koreanKey.begin(), serialEeprom.koreanKey.end(), isZero);
+        bool hasKoreanKey = !std::all_of(serialEeprom.koreanKey.begin(), serialEeprom.koreanKey.end(), IsZero);
         return ConsoleIdentityService(keys, certificateBytes.Value(), serialEeprom.bootTwoVersion, hasKoreanKey);
     }
     catch (const Formats::FormatError&)
@@ -133,7 +139,8 @@ SignedData ConsoleIdentityService::Sign(Formats::ByteView data) const
 
     while (true)
     {
-        std::optional<Formats::Bytes> signature = Formats::SignHash(keys.ellipticCurvePrivateKey, hash, MakeRandomBytes(NonceSize));
+        Formats::Bytes nonce = MakeRandomBytes(NonceSize);
+        std::optional<Formats::Bytes> signature = Formats::SignHash(keys.ellipticCurvePrivateKey, hash, nonce);
         if (signature)
             return SignedData{*signature, deviceCertificate};
     }

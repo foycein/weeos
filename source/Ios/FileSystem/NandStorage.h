@@ -72,6 +72,7 @@ private:
     void DropEntriesMissingOnHost();
     bool IsPresentOnHost(const NandPath& path, EntryRecord& record) const;
     std::vector<std::pair<NandPath, EntryRecord>> EraseSubtree(const NandPath& path);
+    void RenameSubtree(const NandPath& from, const NandPath& to, const std::string& newHostName);
     std::vector<std::string> HostNamesInside(const NandPath& directory, const NandPath& ignoredEntry) const;
     Result<void> SaveIndex() const;
 

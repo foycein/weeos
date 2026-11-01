@@ -5,7 +5,6 @@
 #include "Ios/Title/StoredFiles.h"
 #include "Ios/Title/TitlePaths.h"
 
-#include <algorithm>
 #include <string_view>
 
 namespace Ios
@@ -82,10 +81,8 @@ Result<void> TitleService::DeleteContent(TitleId titleId, std::uint32_t contentI
     if (metadata.Failed())
         return metadata.Error();
 
-    auto record = std::find_if(metadata.Value().contents.begin(), metadata.Value().contents.end(),
-        [contentId](const Formats::ContentRecord& candidate) { return candidate.id == contentId; });
-
-    bool canBeDeleted = record != metadata.Value().contents.end() && !IsSharedContent(*record);
+    const Formats::ContentRecord* record = FindContentById(metadata.Value(), contentId);
+    bool canBeDeleted = record != nullptr && !IsSharedContent(*record);
     if (!canBeDeleted)
         return IosError::TitleInvalidArgument;
 

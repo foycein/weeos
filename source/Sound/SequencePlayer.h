@@ -22,7 +22,7 @@ struct SequenceGlobals
 
     SequenceGlobals()
     {
-        variables.fill(-1);
+        variables.fill(StartVariableValue);
     }
 
     // The next random number, from 0 to 65535. The original takes one in every sound frame, also when no sequence asks for it.

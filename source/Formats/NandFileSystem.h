@@ -33,6 +33,9 @@ enum class NandRights : std::uint8_t
 // Two letters like "rw", "r-", "-w" or "--", as a list of files shows rights.
 std::string_view RightsText(NandRights rights);
 
+// The last four bytes of a tree record are not known. They only go into the HMAC of the clusters.
+constexpr std::size_t NandUnknownFieldSize = 4;
+
 // The directory that holds an entry, for example "/title" for "/title/00000001". The parent of the root is the root.
 std::string_view ParentPathOf(std::string_view path);
 
@@ -63,7 +66,7 @@ struct NandEntry
     // The number of the record of the tree that describes the entry, and the four bytes at the end of that record, whose meaning
     // nobody knows. Both go into the HMAC of the clusters of a file (see CountClustersWithWrongHmac).
     std::uint16_t recordNumber;
-    std::array<Byte, 4> unknownField;
+    std::array<Byte, NandUnknownFieldSize> unknownField;
 };
 
 // The file system of the NAND (SFFS), read from its newest superblock.

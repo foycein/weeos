@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <format>
+#include <iterator>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -41,6 +42,9 @@ constexpr BOOL EventResetsByItself = FALSE;
 constexpr BOOL EventNeedsAReset = TRUE;
 constexpr BOOL EventStartsNotSignaled = FALSE;
 constexpr int MuteNotAsked = -1;
+constexpr int MuteAskedOff = 0;
+constexpr int MuteAskedOn = 1;
+constexpr BOOL WaitForAnyEvent = FALSE;
 
 // The sub format of an extensible format that stands for floating point numbers (KSDATAFORMAT_SUBTYPE_IEEE_FLOAT in the Windows headers).
 const GUID FloatSubFormat = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}};
@@ -293,7 +297,7 @@ struct AudioOutput::Implementation
         std::lock_guard lock(streamMutex);
         stream = std::move(openedStream);
         if (mutedAsked != MuteNotAsked)
-            stream.sessionVolume->SetMute(mutedAsked != 0 ? TRUE : FALSE, nullptr);
+            stream.sessionVolume->SetMute(mutedAsked == MuteAskedOn ? TRUE : FALSE, nullptr);
     }
 
     // Stops the device and lets go of it.
@@ -406,7 +410,7 @@ struct AudioOutput::Implementation
 
     void SetSessionMuted(bool muted)
     {
-        mutedAsked = muted ? 1 : 0;
+        mutedAsked = muted ? MuteAskedOn : MuteAskedOff;
 
         std::lock_guard lock(streamMutex);
         if (stream.sessionVolume)
@@ -417,7 +421,7 @@ struct AudioOutput::Implementation
     {
         std::lock_guard lock(streamMutex);
         if (!stream.sessionVolume)
-            return mutedAsked == 1;
+            return mutedAsked == MuteAskedOn;
 
         BOOL muted = FALSE;
         ThrowIfFailed(stream.sessionVolume->GetMute(&muted), "asking if the session is muted");
@@ -458,8 +462,9 @@ struct AudioOutput::Implementation
             }
 
             HANDLE events[] = {bufferReadyEvent, wakeEvent};
-            DWORD waitResult = WaitForMultipleObjects(2, events, FALSE, EventWaitMilliseconds);
-            if (waitResult == WAIT_OBJECT_0 + 1)
+            constexpr DWORD WakeEventResult = WAIT_OBJECT_0 + 1;
+            DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(std::size(events)), events, WaitForAnyEvent, EventWaitMilliseconds);
+            if (waitResult == WakeEventResult)
                 ResetEvent(wakeEvent);
             else if (waitResult == WAIT_FAILED || !FillFreeFrames())
                 deviceIsOpen = false;
@@ -500,7 +505,8 @@ struct AudioOutput::Implementation
     void CountUnderrun(UINT32 framesLeft, std::chrono::steady_clock::duration timeToMakeTheSound)
     {
         double secondsLeft = double(framesLeft) / double(sampleRate);
-        bool ranDry = framesLeft == 0 || std::chrono::duration<double>(timeToMakeTheSound).count() > secondsLeft;
+        double secondsToMakeTheSound = std::chrono::duration<double>(timeToMakeTheSound).count();
+        bool ranDry = framesLeft == 0 || secondsToMakeTheSound > secondsLeft;
         if (ranDry)
             ++underrunCount;
     }

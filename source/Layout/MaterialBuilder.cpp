@@ -22,15 +22,18 @@ bool IsOpaqueWhite(const Formats::Rgba8Color& color)
         && color.blue == OpaqueWhite.blue && color.alpha == OpaqueWhite.alpha;
 }
 
-bool IsRegisterColor(const Formats::SignedColor& color, std::int16_t red, std::int16_t green, std::int16_t blue, std::int16_t alpha)
+constexpr Formats::SignedColor TransparentBlackRegister = {0, 0, 0, 0};
+constexpr Formats::SignedColor OpaqueWhiteRegister = {255, 255, 255, 255};
+
+bool IsSameColor(const Formats::SignedColor& color, const Formats::SignedColor& expected)
 {
-    return color.red == red && color.green == green && color.blue == blue && color.alpha == alpha;
+    return color.red == expected.red && color.green == expected.green && color.blue == expected.blue && color.alpha == expected.alpha;
 }
 
 // The usual tint of a texture goes from transparent black in register 0 to opaque white in register 1.
 bool HasUsualTintRegisters(const Formats::Material& description)
 {
-    return IsRegisterColor(description.foreColor, 0, 0, 0, 0) && IsRegisterColor(description.backColor, 255, 255, 255, 255);
+    return IsSameColor(description.foreColor, TransparentBlackRegister) && IsSameColor(description.backColor, OpaqueWhiteRegister);
 }
 
 Graphics::WrapMode ToWrapMode(Formats::TextureWrap wrap)
@@ -144,7 +147,9 @@ Graphics::MaterialTexture MakeMaterialTexture(LiveLayout& layout, const LiveMate
 LoadedTexture ObtainTextureOfMap(LiveLayout& layout, const LiveMaterial& liveMaterial, std::size_t textureMapIndex)
 {
     const Formats::MaterialTexture& fileTexture = liveMaterial.description.textures[textureMapIndex];
-    return layout.ObtainTexture(liveMaterial.textureNames[textureMapIndex], ToWrapMode(fileTexture.horizontalWrap), ToWrapMode(fileTexture.verticalWrap));
+    Graphics::WrapMode horizontalWrap = ToWrapMode(fileTexture.horizontalWrap);
+    Graphics::WrapMode verticalWrap = ToWrapMode(fileTexture.verticalWrap);
+    return layout.ObtainTexture(liveMaterial.textureNames[textureMapIndex], horizontalWrap, verticalWrap);
 }
 
 DrawableMaterial BuildDrawableMaterial(LiveLayout& layout, const LiveMaterial& liveMaterial, std::uint8_t paneAlpha, const VertexColors& vertexColors)
@@ -160,7 +165,11 @@ DrawableMaterial BuildDrawableMaterial(LiveLayout& layout, const LiveMaterial& l
     for (std::size_t textureMapIndex = 0; textureMapIndex < description.textures.size(); ++textureMapIndex)
         material.textures.push_back(MakeMaterialTexture(layout, liveMaterial, textureMapIndex));
 
-    material.colorRegisters = {ToRegisterColor(description.foreColor), ToRegisterColor(description.backColor), ToRegisterColor(description.colorRegister3)};
+    material.colorRegisters = {
+        ToRegisterColor(description.foreColor),
+        ToRegisterColor(description.backColor),
+        ToRegisterColor(description.colorRegister3),
+    };
     material.constantColors = description.constantColors;
     material.stages = ChooseStages(liveMaterial, channel, materialColor, paneAlpha, vertexColors);
     material.blendMode = liveMaterial.blendMode;

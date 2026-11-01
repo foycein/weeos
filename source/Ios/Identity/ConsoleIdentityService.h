@@ -71,7 +71,8 @@ public:
     bool IsKoreanConsole() const;
 
 private:
-    ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate, std::uint8_t bootTwoVersion, bool hasKoreanKey);
+    ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate, std::uint8_t consoleBootTwoVersion,
+        bool consoleHasKoreanKey);
 
     Formats::ConsoleKeys keys;
     Formats::Bytes deviceCertificate;

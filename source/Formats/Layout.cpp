@@ -149,7 +149,8 @@ std::u16string ReadText(const Section& section, std::uint32_t textOffset, std::u
     reader.MoveTo(textOffset);
 
     std::u16string text;
-    for (std::uint16_t charNumber = 0; charNumber < textSize / sizeof(char16_t); ++charNumber)
+    std::size_t characterCount = textSize / sizeof(char16_t);
+    for (std::size_t characterNumber = 0; characterNumber < characterCount; ++characterNumber)
     {
         char16_t character = reader.ReadUint16();
         if (character == 0)
