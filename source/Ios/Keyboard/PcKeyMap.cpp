@@ -2,6 +2,8 @@
 
 #include "Ios/Keyboard/UsbKeyCodes.h"
 
+#include "Platform/KeyCodes.h"
+
 namespace Ios
 {
 
@@ -126,6 +128,7 @@ constexpr KeyPair KeyPairs[] =
     {WindowsKey::NumpadMultiply, UsbKey::KeypadMultiply},
     {WindowsKey::NumpadSubtract, UsbKey::KeypadSubtract},
     {WindowsKey::NumpadAdd, UsbKey::KeypadAdd},
+    {Platform::KeyCode::KeypadEnter, UsbKey::KeypadEnter},
     {WindowsKey::Numpad0, UsbKey::Keypad0},
     {WindowsKey::NumpadDecimal, UsbKey::KeypadDecimal},
     {WindowsKey::IsoBackslash, UsbKey::IsoBackslash},

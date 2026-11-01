@@ -1,6 +1,7 @@
 #include "Ios/Title/TitleService.h"
 
 #include "Ios/Title/ContentTypes.h"
+#include "Ios/Title/EsCommands.h"
 #include "Ios/Title/SharedContentMap.h"
 #include "Ios/Title/StoredFiles.h"
 #include "Ios/Title/TitlePaths.h"
@@ -18,14 +19,18 @@ namespace
 {
 
 constexpr std::string_view TicketFileExtension = ".tik";
+constexpr std::string_view VersionOneTicketFileExtension = ".tv1";
 
 // The number in the name of a ticket file such as "48414341.tik".
-std::optional<std::uint32_t> ParseTicketFileName(std::string_view name)
+std::optional<std::uint32_t> ParseTicketFileName(std::string_view name, bool countsVersionOneTickets)
 {
-    if (!name.ends_with(TicketFileExtension))
+    if (name.ends_with(TicketFileExtension))
+        name.remove_suffix(TicketFileExtension.size());
+    else if (countsVersionOneTickets && name.ends_with(VersionOneTicketFileExtension))
+        name.remove_suffix(VersionOneTicketFileExtension.size());
+    else
         return std::nullopt;
 
-    name.remove_suffix(TicketFileExtension.size());
     return ParseNameNumber(name);
 }
 
@@ -51,10 +56,19 @@ const Formats::ContentRecord* FindContentByIndex(const Formats::TitleMetadata& m
 
 }
 
-TitleService::TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity)
+TitleService::TitleService(FileSystemService& fileSystem, const ConsoleIdentityService& consoleIdentity, const IosProfile& iosProfile)
     : files(fileSystem)
     , identity(consoleIdentity)
+    , profile(iosProfile)
 {
+}
+
+Result<void> TitleService::RequireCommand(int command) const
+{
+    if (!profile.EsCommands().Includes(command))
+        return IosError::TitleInvalidArgument;
+
+    return Result<void>();
 }
 
 Result<std::vector<TitleId>> TitleService::ListInstalledTitles() const
@@ -104,7 +118,7 @@ Result<std::vector<TitleId>> TitleService::ListTitlesWithTickets() const
 
         for (const std::string& fileName : fileNames.Value())
         {
-            std::optional<std::uint32_t> lowPart = ParseTicketFileName(fileName);
+            std::optional<std::uint32_t> lowPart = ParseTicketFileName(fileName, profile.esReadsVersionOneTickets);
             if (lowPart)
                 titleIds.push_back({*highPart, *lowPart});
         }
@@ -119,10 +133,19 @@ Result<std::vector<std::uint32_t>> TitleService::ListPresentContentIds(TitleId t
     if (metadata.Failed())
         return metadata.Error();
 
-    return ListPresentContentIds(metadata.Value());
+    return FindPresentContentIds(metadata.Value());
 }
 
 Result<std::vector<std::uint32_t>> TitleService::ListPresentContentIds(const Formats::TitleMetadata& metadata) const
+{
+    Result<void> commandExists = RequireCommand(GetStoredContentsCommand);
+    if (commandExists.Failed())
+        return commandExists.Error();
+
+    return FindPresentContentIds(metadata);
+}
+
+Result<std::vector<std::uint32_t>> TitleService::FindPresentContentIds(const Formats::TitleMetadata& metadata) const
 {
     Result<SharedContentMap> sharedContents = SharedContentMap::Read(files);
     if (sharedContents.Failed())
@@ -144,6 +167,10 @@ Result<std::vector<std::uint32_t>> TitleService::ListPresentContentIds(const For
 
 Result<std::vector<Formats::Sha1Digest>> TitleService::ListSharedContentHashes() const
 {
+    Result<void> commandExists = RequireCommand(GetSharedContentsCommand);
+    if (commandExists.Failed())
+        return commandExists.Error();
+
     Result<SharedContentMap> sharedContents = SharedContentMap::Read(files);
     if (sharedContents.Failed())
         return sharedContents.Error();
@@ -157,12 +184,16 @@ Result<std::vector<Formats::Sha1Digest>> TitleService::ListSharedContentHashes()
 
 Result<Formats::Bytes> TitleService::ReadTitleMetadataBytes(TitleId titleId) const
 {
+    Result<void> commandExists = RequireCommand(GetStoredTitleMetadataCommand);
+    if (commandExists.Failed())
+        return commandExists.Error();
+
     return files.ReadFile(TitleMetadataPath(titleId));
 }
 
 Result<Formats::TitleMetadata> TitleService::ReadTitleMetadata(TitleId titleId) const
 {
-    Result<Formats::Bytes> bytes = ReadTitleMetadataBytes(titleId);
+    Result<Formats::Bytes> bytes = files.ReadFile(TitleMetadataPath(titleId));
     if (bytes.Failed())
         return bytes.Error();
 
@@ -176,6 +207,15 @@ Result<TitleMetadataView> TitleService::ReadTitleMetadataView(TitleId titleId) c
         return metadata.Error();
 
     return MakeTitleMetadataView(metadata.Value());
+}
+
+Result<bool> TitleService::CheckHasKoreanKey() const
+{
+    Result<void> commandExists = RequireCommand(CheckHasKoreanKeyCommand);
+    if (commandExists.Failed())
+        return commandExists.Error();
+
+    return identity.IsKoreanConsole();
 }
 
 Result<std::vector<Formats::Ticket>> TitleService::ReadTickets(TitleId titleId) const

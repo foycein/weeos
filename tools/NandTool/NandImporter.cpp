@@ -1,5 +1,6 @@
 #include "NandImporter.h"
 
+#include "FolderFiles.h"
 #include "NandFolderLayout.h"
 #include "PersonalSettings.h"
 #include "WindowsNames.h"
@@ -123,26 +124,6 @@ std::string BuildIndexText(const Formats::NandEntry& root, const std::vector<con
     return text;
 }
 
-void PrepareTargetFolder(const std::filesystem::path& targetFolder)
-{
-    if (std::filesystem::exists(targetFolder))
-    {
-        if (!std::filesystem::is_directory(targetFolder) || !std::filesystem::is_empty(targetFolder))
-            throw std::runtime_error(std::format("The folder {} is not empty", targetFolder.string()));
-    }
-
-    std::filesystem::create_directories(targetFolder);
-}
-
-void WriteBytesToFile(const std::filesystem::path& filePath, const Formats::Bytes& bytes)
-{
-    std::ofstream file(filePath, std::ios::binary);
-    file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-    file.close();
-    if (!file)
-        throw std::runtime_error(std::format("Cannot write the file {}", filePath.string()));
-}
-
 // What is written for a file: the bytes the NAND holds, except for a system configuration, which loses the settings of the owner.
 Formats::Bytes ContentToImport(Formats::NandFileSystem& source, const ImportPlan& plan, const Formats::NandEntry& file)
 {
@@ -187,7 +168,7 @@ ImportPlan PlanSystemImport(Formats::NandFileSystem& source)
 
 void WriteImport(Formats::NandFileSystem& source, const ImportPlan& plan, const std::filesystem::path& targetFolder)
 {
-    PrepareTargetFolder(targetFolder);
+    PrepareEmptyFolder(targetFolder);
 
     for (const Formats::NandEntry* entry : plan.importedEntries)
     {

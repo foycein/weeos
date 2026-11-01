@@ -32,11 +32,12 @@ public:
     virtual DeviceKind Probe() const = 0;
 
     // The state of the device now. Nothing while the device is not connected or when it has sent no new data
-    // since the last read. The menu disconnects a device that sends nothing for 60 reads in a row.
+    // since the last read. The menu forgets a device that sends nothing for 60 reads in a row and stops its motor.
     // The pressed and released buttons are the ones that changed since the state that the last read returned.
     virtual std::optional<RemoteState> ReadNewState() = 0;
 
-    // Ends the connection. The device connects again when its user presses a button.
+    // Ends the connection. The HOME menu does this for the reconnect of its controller window ("Disconnecting...").
+    // The device connects again when its user presses a button.
     virtual void Disconnect() = 0;
 
     virtual void SetSensorBarPosition(SensorBarPosition position) = 0;

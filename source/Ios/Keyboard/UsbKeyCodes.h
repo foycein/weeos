@@ -59,6 +59,7 @@ constexpr std::uint8_t KeypadDivide = 0x54;
 constexpr std::uint8_t KeypadMultiply = 0x55;
 constexpr std::uint8_t KeypadSubtract = 0x56;
 constexpr std::uint8_t KeypadAdd = 0x57;
+constexpr std::uint8_t KeypadEnter = 0x58;
 
 // The keypad digits 1 to 9 have the codes Keypad1 to Keypad1 + 8, and the digit 0 comes after them.
 constexpr std::uint8_t Keypad1 = 0x59;
