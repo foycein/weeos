@@ -10,6 +10,7 @@
 #include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
+#include "SystemMenu/MenuStateFile.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -18,6 +19,7 @@
 #include <format>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace WeeOS
@@ -37,13 +39,14 @@ class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
-        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound)
+        Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
+        const HostEnvironment& host)
         : window(programWindow)
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound)
-        , wiiMenuConsole(iosServices)
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock)
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -70,6 +73,12 @@ public:
     SystemMenu::MenuSystem* Menu()
     {
         return menu.get();
+    }
+
+    // Nothing while the menu runs.
+    Channels::ChannelSystem* Channel()
+    {
+        return channel.get();
     }
 
     // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
@@ -118,6 +127,7 @@ private:
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
+        menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
 
         dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
@@ -191,8 +201,9 @@ private:
     std::vector<Sound::SoundSystem*> channelSounds;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)
+Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)
     : folders(iosFolders)
+    , host(std::move(hostEnvironment))
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
@@ -208,7 +219,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -243,8 +254,26 @@ void Application::ShowNextPicture()
     RunDueSteps();
     CarryOutRequestsOfTheMenu();
     ReportProblems();
+    ShowPicture();
+}
+
+void Application::RunOneStep()
+{
+    Platform::ProcessPendingMessages();
+    ReportCloseOfTheWindowAsPowerButton();
 
     if (isPoweredOff)
+        return;
+
+    session->VirtualRemote().SetWindowSize(window.ClientSize());
+    session->Update();
+    CarryOutRequestsOfTheMenu();
+    ReportProblems();
+}
+
+void Application::ShowPicture()
+{
+    if (isPoweredOff || window.IsMinimized())
         return;
 
     session->Draw();
@@ -320,10 +349,24 @@ void Application::LaunchTitle(Ios::TitleId titleId)
         throw std::runtime_error(std::format("The title {} has no ticket and cannot start", titleId.ToString()));
 
     Ios::TicketView ticketView = ticketViews.Value().front();
+    bool isChannelReturning = session->Menu() == nullptr && titleId == Ios::SystemMenuTitleId;
     session.reset();
     console.LaunchTitle(titleId, ticketView);
+    if (isChannelReturning)
+        RecordReturnToTheMenu();
+
     StartSession();
     ForgetReportedProblems();
+}
+
+// A channel that goes back to the menu leaves the state of a return in the menu's state.dat, as the operating system of a title does
+// (OSReturnToMenu writes the type 3), so that the menu shows Back to Wii Menu and not Health and Safety. WeeOS writes it as the menu,
+// right after IOS has started the menu again.
+void Application::RecordReturnToTheMenu()
+{
+    Ios::IosServices& services = console.GetServices();
+    SystemMenu::IosNandFiles nandFiles(services.GetFileSystem(), services.GetTitles());
+    SystemMenu::RecordMenuLeft(nandFiles, Formats::StateTypeReturnToMenu);
 }
 
 void Application::ForgetReportedProblems()
@@ -411,6 +454,11 @@ SystemMenu::MenuSystem& Application::GetMenu()
         throw std::logic_error("The menu was asked for while a channel runs");
 
     return *session->Menu();
+}
+
+Channels::ChannelSystem* Application::GetChannel()
+{
+    return session->Channel();
 }
 
 Ios::TitleId Application::RunningTitle() const

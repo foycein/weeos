@@ -2,7 +2,9 @@
 
 #include "Ios/Title/TitleId.h"
 
+#include <functional>
 #include <optional>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -26,8 +28,24 @@ public:
         return titleToLaunch;
     }
 
+    // The program tells which titles WeeOS has a program for (Channels::HasNativeProgram). Until it does, every title has one.
+    void SetProgramCheck(std::function<bool(Ios::TitleId)> hasProgramForTitle)
+    {
+        hasProgram = std::move(hasProgramForTitle);
+    }
+
+    // The channel start window asks before it starts a title, and shows the menu's message for a channel that cannot be used when not.
+    bool HasProgram(Ios::TitleId titleId) const
+    {
+        if (!hasProgram)
+            return true;
+
+        return hasProgram(titleId);
+    }
+
 private:
     std::optional<Ios::TitleId> requestedTitle;
+    std::function<bool(Ios::TitleId)> hasProgram;
 };
 
 }

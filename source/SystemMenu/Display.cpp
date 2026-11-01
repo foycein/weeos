@@ -12,13 +12,24 @@ constexpr float Half = 0.5f;
 
 Display::Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape)
     : device(graphicsDevice)
+    , zoomedDevice(graphicsDevice)
     , screenShape(initialScreenShape)
 {
 }
 
 Graphics::GraphicsDevice& Display::Device()
 {
-    return device;
+    return zoomedDevice;
+}
+
+void Display::MoveArea(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha)
+{
+    zoomedDevice.Show(seenArea, shownArea, alpha);
+}
+
+void Display::StopMovingAreas()
+{
+    zoomedDevice.StopMoving();
 }
 
 void Display::SetTextFonts(const Layout::TextFonts& fonts)
@@ -49,6 +60,25 @@ Graphics::Canvas Display::GetCanvas() const
     return StandardCanvas;
 }
 
+PictureArea Display::WholePicture() const
+{
+    Graphics::Canvas canvas = GetCanvas();
+    PictureArea area;
+    area.left = -canvas.width * Half;
+    area.right = canvas.width * Half;
+    area.bottom = -canvas.height * Half;
+    area.top = canvas.height * Half;
+    return area;
+}
+
+void Display::FillArea(const PictureArea& area, Formats::Rgba8Color color)
+{
+    Graphics::Quad quad = {};
+    quad.positions = {{{area.left, area.top}, {area.right, area.top}, {area.right, area.bottom}, {area.left, area.bottom}}};
+    quad.colors = {{color, color, color, color}};
+    Device().DrawQuad(quad, Graphics::Material());
+}
+
 void Display::BeginPicture()
 {
     device.BeginFrame(GetCanvas(), screenShape);
@@ -70,6 +100,21 @@ Formats::Vector2 Display::CanvasToRootPaneSpace(Formats::Vector2 canvasPoint) co
 {
     Formats::Vector2 stretch = LayoutStretch();
     return {canvasPoint.x / stretch.x, canvasPoint.y / stretch.y};
+}
+
+void Display::NoteDrawnLayout(const Layout::LiveLayout& layout, const Layout::PlacementSettings& placement)
+{
+    drawnLayouts.push_back({&layout, placement});
+}
+
+void Display::ForgetDrawnLayouts()
+{
+    drawnLayouts.clear();
+}
+
+const std::vector<DrawnLayout>& Display::DrawnLayouts() const
+{
+    return drawnLayouts;
 }
 
 }

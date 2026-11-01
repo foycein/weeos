@@ -3,6 +3,7 @@
 #include "Channels/ChannelFiles.h"
 #include "Channels/InternetChannel.h"
 #include "Channels/MiiChannel/MiiChannel.h"
+#include "Channels/Photo/PhotoChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
 
@@ -35,6 +36,9 @@ constexpr ChannelSharedFiles ShopSharedFiles = {std::uint16_t{9}, 7, "./HomeButt
 // The Mii Channel 6 has no content of the system fonts; its content 4 is the shared HomeButton2 (the strings of 8001C330 of its program).
 constexpr ChannelSharedFiles MiiSharedFiles = {std::nullopt, 4, "./HomeButton2", true, WiiMenuAndReset};
 
+// The Photo Channel 1.1 has no content of the system fonts; its content 3 is the shared HomeButton2 (0x80011824 of its program).
+constexpr ChannelSharedFiles PhotoSharedFiles = {std::nullopt, 3, "./HomeButton2", true, WiiMenuAndReset};
+
 // The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
 constexpr ChannelSharedFiles InternetSharedFiles = {std::uint16_t{8}, 5, "homebutton", false, WiiMenuAndReset};
 
@@ -57,6 +61,9 @@ constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSo
 constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/NigaoeSound.brsar", false},
     {4, "./HomeButton2/Huf8_HomeButtonSe.brsar", true}}};
 
+// The Photo Channel's music and effects are in content 2. Its HOME menu sounds (HomeButtonSe/Huf8_HomeButtonSe.arc) are not a sound archive.
+constexpr std::array<ChannelSoundArchive, 1> PhotoSounds = {{{2, "./rev_photo.brsar", false}}};
+
 std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 {
     if (titleId == ForecastChannelTitleId)
@@ -70,6 +77,9 @@ std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
 
     if (titleId == MiiChannelTitleId)
         return MiiSounds;
+
+    if (titleId == PhotoChannelTitleId)
+        return PhotoSounds;
 
     return {};
 }
@@ -108,6 +118,9 @@ std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)
     if (titleId == MiiChannelTitleId)
         return MiiSharedFiles;
 
+    if (titleId == PhotoChannelTitleId)
+        return PhotoSharedFiles;
+
     return std::nullopt;
 }
 
@@ -132,6 +145,9 @@ std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& serv
 
     if (titleId == MiiChannelTitleId)
         return std::make_unique<MiiChannel>(services);
+
+    if (titleId == PhotoChannelTitleId)
+        return std::make_unique<PhotoChannel>(services);
 
     return nullptr;
 }

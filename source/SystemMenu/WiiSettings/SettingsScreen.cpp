@@ -206,6 +206,10 @@ bool SettingsScreen::IsWaitingForAnswer()
 {
     if (isParentalDialogOpen)
     {
+        // The dialog is made in the step of the request and comes into the tree in the next one. Until then there is no answer.
+        if (services.screens.IsLoadingScreen())
+            return true;
+
         TakeAnswerOfParentalDialog();
         return false;
     }

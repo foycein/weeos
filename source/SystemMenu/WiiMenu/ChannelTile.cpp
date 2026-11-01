@@ -57,7 +57,7 @@ std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const Ti
         tile->PlayAnimation(icon, *channel.iconAnimation);
 
     if (channel.isIconDrivenByCode)
-        tile->ShowOnlyTheEnglishPanes(icon);
+        ShowOnlyTheEnglishPanes(*tile->picture, icon, std::string(IconLayout));
 
     if (channel.scriptAnimation)
         tile->PlayScriptAnimation(icon, *channel.scriptAnimation);
@@ -173,11 +173,20 @@ void ChannelTile::PlayScriptAnimation(const Layout::LayoutArchive& archive, cons
     picture->StartAnimation(slot);
 }
 
-// An icon holds its words in every language, each language in a group named after it. The panes of the other languages are hidden,
-// except those that English uses as well.
-void ChannelTile::ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive)
+void ChannelTile::AddBalloon(const TileArchives& archives, const std::u16string& name)
 {
-    Formats::Layout file = archive.ReadLayout(std::string(IconLayout));
+    if (name.empty())
+        return;
+
+    balloon = std::make_unique<Balloon>(display, archives.channelSelection);
+    balloon->SetText(name);
+}
+
+// A layout of a channel holds its words in every language, each language in a group named after it. The panes of the other languages
+// are hidden, except those that English uses as well.
+void ShowOnlyTheEnglishPanes(MenuLayout& layout, const Layout::LayoutArchive& archive, const std::string& layoutName)
+{
+    Formats::Layout file = archive.ReadLayout(layoutName);
     if (!file.rootGroup)
         return;
 
@@ -198,18 +207,9 @@ void ChannelTile::ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive)
         {
             bool isEnglishToo = std::find(englishPanes.begin(), englishPanes.end(), paneName) != englishPanes.end();
             if (!isEnglishToo)
-                picture->PaneNamed(paneName).isVisible = false;
+                layout.PaneNamed(paneName).isVisible = false;
         }
     }
-}
-
-void ChannelTile::AddBalloon(const TileArchives& archives, const std::u16string& name)
-{
-    if (name.empty())
-        return;
-
-    balloon = std::make_unique<Balloon>(display, archives.channelSelection);
-    balloon->SetText(name);
 }
 
 }

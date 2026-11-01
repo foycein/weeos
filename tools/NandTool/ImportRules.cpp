@@ -65,6 +65,10 @@ std::vector<ImportRule> FixedImportRules()
     return {
         SkipEverythingInside("/shared2/menu", "Miis (FaceLib) and the settings of Virtual Console games: personal data"),
         SkipEverythingInside("/shared2/wc24", "Message Board mail and WiiConnect24 data: personal data"),
+        ImportOnlyThisEntry("/shared2/sys/net", "the folder of the network configuration"),
+        ImportOnlyThisEntry("/shared2/sys/net/02", "the folder of the network configuration of the IOS of today"),
+        {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
+            "the network configuration: WeeOS's wired connection with automatic settings instead of the owner's networks"},
         SkipEverythingInside("/shared2/sys/net", "network configuration: the names, passwords and addresses of the owner's networks"),
         SkipEverythingInside("/title/00010000", "save data of disc games: personal data"),
 
