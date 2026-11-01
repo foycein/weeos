@@ -56,6 +56,11 @@ void AddSpan(std::vector<float>& rowCoverage, float spanStart, float spanEnd, fl
 // Paints the source color over the color that is there, with the source alpha times the coverage.
 Formats::Rgba8Pixel PaintOver(Formats::Rgba8Pixel below, Color source, float coverage)
 {
+    constexpr float FullCoverage = 0.999f;
+    bool coversItAll = coverage >= FullCoverage && source.alpha == FullByte;
+    if (coversItAll)
+        return source;
+
     float sourceAlpha = ByteToShare(source.alpha) * coverage;
     float belowAlpha = ByteToShare(below.alpha);
     float resultAlpha = sourceAlpha + belowAlpha * (1 - sourceAlpha);
@@ -105,7 +110,11 @@ void VectorCanvas::Fill(const VectorPath& path, const Paint& paint)
 {
     std::vector<Edge> edges = EdgesInPixels(path);
     for (std::uint32_t row = 0; row < picture.height; ++row)
-        FillRow(edges, row, paint);
+    {
+        std::vector<Edge> edgesOfTheRow = EdgesTouchingRow(edges, row);
+        if (!edgesOfTheRow.empty())
+            FillRow(edgesOfTheRow, row, paint);
+    }
 }
 
 const Formats::RgbaImage& VectorCanvas::Picture() const
@@ -136,11 +145,30 @@ std::vector<VectorCanvas::Edge> VectorCanvas::EdgesInPixels(const VectorPath& pa
     return edges;
 }
 
-// Measures how much of every pixel of the row the shape covers, then paints the pixels it touches.
+// The edges that reach into the row of pixels; the others cannot cross it.
+std::vector<VectorCanvas::Edge> VectorCanvas::EdgesTouchingRow(const std::vector<Edge>& edges, std::uint32_t row)
+{
+    float rowTop = static_cast<float>(row);
+    float rowBottom = rowTop + 1;
+
+    std::vector<Edge> edgesOfTheRow;
+    for (const Edge& edge : edges)
+    {
+        float upper = std::min(edge.from.y, edge.to.y);
+        float lower = std::max(edge.from.y, edge.to.y);
+        if (upper < rowBottom && lower > rowTop)
+            edgesOfTheRow.push_back(edge);
+    }
+    return edgesOfTheRow;
+}
+
+// Measures how much of every pixel of the row the shape covers, then paints the pixels it touches. Only the part of the row between the
+// leftmost and the rightmost crossing is looked at, and it is cleared again for the next row.
 void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint)
 {
-    std::fill(rowCoverage.begin(), rowCoverage.end(), 0.0f);
     float rowWidth = static_cast<float>(picture.width);
+    float leftmost = rowWidth;
+    float rightmost = 0;
     constexpr float sampleWeight = 1.0f / SamplesPerRow;
     std::vector<float> crossings;
 
@@ -156,6 +184,11 @@ void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, co
                 crossings.push_back(crossingX);
         }
         std::sort(crossings.begin(), crossings.end());
+        if (!crossings.empty())
+        {
+            leftmost = std::min(leftmost, crossings.front());
+            rightmost = std::max(rightmost, crossings.back());
+        }
 
         // Between the first and the second crossing the line is inside, between the second and the third outside, and so on.
         for (std::size_t index = 0; index + 1 < crossings.size(); index += 2)
@@ -166,10 +199,13 @@ void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, co
         }
     }
 
-    for (std::uint32_t column = 0; column < picture.width; ++column)
+    auto firstColumn = static_cast<std::uint32_t>(std::clamp(std::floor(leftmost), 0.0f, rowWidth));
+    auto endColumn = static_cast<std::uint32_t>(std::clamp(std::ceil(rightmost), 0.0f, rowWidth));
+    for (std::uint32_t column = firstColumn; column < endColumn; ++column)
     {
         if (rowCoverage[column] > 0)
             PaintPixel(column, row, rowCoverage[column], paint);
+        rowCoverage[column] = 0;
     }
 }
 

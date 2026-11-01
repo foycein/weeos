@@ -36,6 +36,7 @@ private:
     };
 
     std::vector<Edge> EdgesInPixels(const VectorPath& path) const;
+    static std::vector<Edge> EdgesTouchingRow(const std::vector<Edge>& edges, std::uint32_t row);
     void FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint);
     void PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint);
 
