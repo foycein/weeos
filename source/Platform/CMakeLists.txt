@@ -1,4 +1,5 @@
 add_library(Platform STATIC
+    ErrorMessage.cpp
     FileLocations.cpp
     AspectLock.cpp
     FilePicker.cpp

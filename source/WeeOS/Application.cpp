@@ -214,9 +214,11 @@ private:
         const Settings::PcClock& consoleTime)
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
+        std::string serverAddress = wiiSettings.FlowServices().pcSettings.Values().serverAddress;
+        Channels::ChannelNetwork network{iosServices.GetNetworkConfig(), iosServices.GetSockets(), serverAddress};
         Channels::ChannelAudio audio{iosServices.GetMicrophone(), sound.Waves()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, systemMenuContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, audio, iosServices.GetPower(), runningTitle, consoleTime,
+            network, storage, audio, iosServices.GetPower(), runningTitle, consoleTime,
             Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         std::vector<Sound::SoundSystem*> channelSounds;
@@ -265,7 +267,7 @@ Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostE
     : folders(iosFolders)
     , host(std::move(hostEnvironment))
     , importer(iosFolders, host.pickNand)
-    , console(iosFolders)
+    , console(iosFolders, host.isPcConnected)
     , pcSettings(host.pcSettingsFile)
     , window(WindowTitle, Platform::DefaultClientSize, host.windowVisibility)
     , device(window)

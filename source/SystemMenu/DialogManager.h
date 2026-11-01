@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/ButtonGroup.h"
+#include "SystemMenu/ButtonController.h"
 #include "SystemMenu/Display.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MenuLayout.h"
@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace SystemMenu
 {
@@ -47,6 +48,25 @@ enum class DialogAnswer
     ClosedByProgram,
 };
 
+// One page of a dialog with pages.
+struct DialogPage
+{
+    std::u16string message;
+
+    // Button B turns to the next page, or closes the dialog on the last one. Button A turns back; a page without it hides it.
+    std::u16string nextText;
+    std::u16string backText;
+    bool hasBackButton = false;
+
+    // A layout of the screen that opened the dialog, shown this far above the middle of the dialog (0x81345EE8). The dialog places,
+    // fades and calculates it while the page is shown; the screen must keep it alive and leave it alone meanwhile.
+    MenuLayout* picture = nullptr;
+    float pictureHeight = 0;
+
+    // The animation in the first slot of the picture plays while the page is shown.
+    bool playsPictureAnimation = false;
+};
+
 struct DialogRequest
 {
     DialogLayout layout = DialogLayout::Message;
@@ -69,6 +89,11 @@ struct DialogRequest
     // The button that sounds WIPL_SE_CANCEL when it is pressed; the others sound WIPL_SE_DECIDE. In the original the second button of a
     // window with two buttons cancels, and C of a window with three, unless the screen turns the two round (0x8134753C).
     DialogAnswer cancelButton = DialogAnswer::ButtonA;
+
+    // A dialog of pages in the window with two buttons (0x81346C14): B turns to the next page and A back, the words fade out and the
+    // next ones fade in. It closes with ButtonB after the last page and with ButtonA before the first. Layout, message and the button
+    // texts above are not used.
+    std::vector<DialogPage> pages;
 };
 
 // The dialog windows of the menu (the DialogManager of the original, docs/audit/SystemMenu.md). One dialog is open at a time: it opens
@@ -109,13 +134,14 @@ private:
         Opening,
         Waiting,
         ShowingChoice,
+        TurningPage,
         Closing,
     };
 
     struct DialogWindow
     {
         std::unique_ptr<MenuLayout> layout;
-        std::unique_ptr<ButtonGroup> buttons;
+        std::unique_ptr<ButtonController> buttons;
         std::size_t buttonCount = 0;
     };
 
@@ -124,8 +150,16 @@ private:
     void ShowMessageExtras(const DialogRequest& request);
     void UpdateWaiting(const InputManager& input, bool isActive);
     void UpdateMessageWindow();
-    void ReactToButton(const ButtonGroupEvent& event);
+    void ReactToButton(const ButtonEvent& event);
     void StartClosing(DialogAnswer reason);
+    void OpenPage(std::size_t pageIndex);
+    void ShowPageTexts(const DialogPage& page);
+    void EndTheChoice();
+    void UpdateTurningPage();
+    void FadePage(const DialogPage& page, const DialogPage& otherPage, std::uint8_t alpha);
+    void ShowBackButton(bool isShown);
+    void UpdatePicture();
+    const DialogPage* PageOfPicture() const;
     std::string_view SoundOfPress(DialogAnswer pressed) const;
 
     Display& display;
@@ -146,6 +180,16 @@ private:
     DialogAnswer cancelButton = DialogAnswer::ButtonA;
     int targetPercentage = 0;
     int shownPercentage = 0;
+
+    // The buttons that a pointer is on.
+    std::array<bool, 3> isButtonFocused = {};
+
+    // A dialog with pages: the pages, the one shown, the one it turns from, and how far its words have faded in.
+    std::vector<DialogPage> pages;
+    std::size_t shownPage = 0;
+    std::size_t previousPage = 0;
+    bool isFadingOut = false;
+    int pageAlpha = 0;
 };
 
 }

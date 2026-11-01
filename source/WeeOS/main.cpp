@@ -1,10 +1,12 @@
 #include "WeeOS/Application.h"
 
+#include "Platform/ErrorMessage.h"
 #include "Platform/FileLocations.h"
 
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -18,6 +20,8 @@
 // Folders on the command line are for tests and development; the SD card is then the folder SDCard beside the NAND folder.
 // --silent opens the sound output with nothing but silence, and --hidden draws into a window that is never shown, for the runs of
 // development (docs/HelperRules.md). Without them WeeOS plays its sound and shows its window.
+// When WeeOS cannot start it says why in a message box, except with --silent, where nobody may be asked anything: there the reason
+// only goes to the error output.
 
 namespace
 {
@@ -28,6 +32,13 @@ constexpr std::string_view NandFolderName = "NAND";
 constexpr std::string_view IdentityFolderName = "Identity";
 constexpr std::string_view SdCardFolderName = "SDCard";
 
+constexpr std::string_view CannotStartTitle = "WeeOS cannot start";
+constexpr std::string_view WhatToDo =
+    "What you can do:\n"
+    "- Update the driver of your graphics card. WeeOS needs Vulkan 1.3.\n"
+    "- Check that the WeeOS folder is complete: WeeOS.exe, the three .spv files and the folder WiiFiles beside it.\n"
+    "- Unpack or install WeeOS again if something is missing. Your NAND, Identity and SDCard folders stay as they are.";
+
 Ios::IosFolders ChooseFolders(const std::vector<std::string_view>& folderArguments)
 {
     std::filesystem::path programFolder = Platform::ExecutableFolder();
@@ -37,6 +48,16 @@ Ios::IosFolders ChooseFolders(const std::vector<std::string_view>& folderArgumen
     folders.identityFolder = folderArguments.size() > 1 ? std::filesystem::path(folderArguments[1]) : programFolder / IdentityFolderName;
     folders.sdCardFolder = folders.nandFolder.parent_path() / SdCardFolderName;
     return folders;
+}
+
+void ReportWhyWeeOSCannotStart(const std::exception& error, bool isSilent)
+{
+    std::cerr << "WeeOS cannot run: " << error.what() << "\n";
+    if (isSilent)
+        return;
+
+    std::string message = std::string(error.what()) + "\n\n" + std::string(WhatToDo);
+    Platform::ShowErrorMessage(CannotStartTitle, message);
 }
 
 }
@@ -67,7 +88,7 @@ int main(int argumentCount, char** arguments)
     }
     catch (const std::exception& error)
     {
-        std::cerr << "WeeOS cannot run: " << error.what() << "\n";
+        ReportWhyWeeOSCannotStart(error, isSilent);
         return 1;
     }
 }

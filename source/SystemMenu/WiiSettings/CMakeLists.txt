@@ -8,6 +8,7 @@ target_sources(SystemMenu PRIVATE
     PageImages.cpp
     PageLooks.cpp
     PagePainter.cpp
+    PcConnectionTest.cpp
     PcPages.cpp
     SensorBarPages.cpp
     SettingsScreen.cpp

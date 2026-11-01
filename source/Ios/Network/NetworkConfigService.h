@@ -4,6 +4,7 @@
 #include "Ios/FileSystem/FileSystemService.h"
 #include "Ios/Network/MacAddress.h"
 #include "Ios/Network/NetworkConfiguration.h"
+#include "Ios/Network/PcConnection.h"
 #include "Ios/Profile/ProfileChoice.h"
 #include "Ios/Result.h"
 
@@ -28,7 +29,7 @@ enum class LinkStatus : std::uint8_t
     // No connection of the chosen kind is enabled. The network cannot be used.
     NoInterface = 2,
 
-    // A wired connection is chosen and its interface is ready. The module waits for a cable, which is never plugged in here.
+    // A wired connection is chosen and its interface is ready, but no cable is plugged in.
     WiredInterfaceReady = 3,
 
     // An interface is chosen but the link is not up: the module is connecting, or the link went down.
@@ -48,10 +49,10 @@ enum class NetworkInterface
 
 // The network configuration module (NCD) of IOS, in place of /dev/net/ncd/manage.
 //
-// It keeps the three connections of the console in the file /shared2/sys/net/02/config.dat and connects with the one that
-// a program chose. The console here has no radio that finds an access point and no network adapter, so no connection is ever
-// made. A program that chooses a wireless connection is told to wait for ever (Busy), a program that chooses a wired connection
-// gets a wired interface without a link, and with no connection that can be used the module says so (NoInterface).
+// The console is online through the PC's connection, with nothing to choose (docs/DECISIONS.md, Online). The PC's connection is the
+// console's one wired connection: when a program asks the module to connect, the link is up while the PC is connected, and while
+// it is not the wired interface waits for a cable that is not plugged in. The three connections of the file
+// /shared2/sys/net/02/config.dat are still read and written as the original does, but they decide nothing.
 //
 // The module of IOS9 is older: it keeps the file in /shared2/sys/net/config.dat and does not check the proxy settings.
 //
@@ -59,9 +60,10 @@ enum class NetworkInterface
 class NetworkConfigService
 {
 public:
-    // Reads the stored configuration, the one the module works with, when it starts.
+    // Reads the stored configuration, the one the module works with, when it starts. The check tells whether the PC is connected.
     // Without a profile this is the module of IOS80.
-    NetworkConfigService(FileSystemService& fileSystem, const MacAddress& wirelessMacAddress, const IosProfile& iosProfile = SystemMenuProfile());
+    NetworkConfigService(FileSystemService& fileSystem, const MacAddress& wirelessMacAddress, PcConnectionCheck isPcConnected,
+        const IosProfile& iosProfile = SystemMenuProfile());
 
     // The configuration file. An older console kept it in /shared2/sys/net/config.dat: that file is moved to the new place first
     // (not by IOS9, which keeps it there). NotFound when there is no file, StorageFailure when it is not a configuration file.
@@ -74,12 +76,15 @@ public:
     // The configuration the module works with at the moment. At first it is the stored one, or an empty one when none is stored.
     NetworkConfiguration GetCurrentConfiguration() const;
 
-    // A program chooses the connection: the configuration becomes the one the module works with, and the module sets about
-    // connecting with it. InvalidArgument when FindConfigurationProblems finds something. The stored file is not changed.
+    // A program asks the module to connect with the configuration, which becomes the one the module works with. The module connects
+    // through the PC whatever the configuration says. InvalidArgument when FindConfigurationProblems finds something.
+    // The stored file is not changed.
     Result<void> ApplyConfiguration(const NetworkConfiguration& configuration);
 
+    // Busy until a program asked the module to connect; then LinkUp while the PC is connected and WiredInterfaceReady while it is not.
     LinkStatus GetLinkStatus() const;
 
+    // Nothing until a program asked the module to connect, then the wired interface: the PC's connection.
     NetworkInterface GetChosenInterface() const;
 
     MacAddress GetWirelessMacAddress() const;
@@ -92,12 +97,12 @@ public:
     Result<void> UnlockWirelessDriver(std::uint32_t lockNumber);
 
 private:
-    NetworkInterface ChooseInterface() const;
     NandPath FindConfigurationFile();
     std::vector<std::string> FindProblems(const NetworkConfiguration& configuration) const;
 
     FileSystemService& fileSystem;
     MacAddress wirelessMacAddress;
+    PcConnectionCheck isPcConnected;
     const IosProfile profile;
 
     mutable std::mutex mutex;

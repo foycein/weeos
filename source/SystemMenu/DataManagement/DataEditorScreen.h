@@ -1,12 +1,13 @@
 #pragma once
 
-#include "SystemMenu/ButtonGroup.h"
+#include "SystemMenu/ButtonController.h"
 #include "SystemMenu/DataManagement/ChannelIconLayout.h"
 #include "SystemMenu/DataManagement/DataActions.h"
 #include "SystemMenu/DataManagement/DataItems.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
+#include "SystemMenu/WiiMenu/Balloon.h"
 
 #include "Layout/LayoutArchive.h"
 
@@ -60,8 +61,9 @@ private:
         std::size_t itemIndex = 0;
         std::unique_ptr<SaveIconPictures> pictures;
         std::unique_ptr<MenuLayout> layout;
-        std::unique_ptr<ButtonGroup> buttons;
+        std::unique_ptr<ButtonController> buttons;
         std::unique_ptr<ChannelIconLayout> icon;
+        std::unique_ptr<Balloon> balloon;
         std::size_t focusInSlot = 0;
         std::size_t focusOutSlot = 0;
     };
@@ -85,6 +87,7 @@ private:
     void ShowPage();
     void MakeSlot(std::size_t itemIndex);
     void PlaceSlots();
+    void PlaceBalloon(Balloon& balloon, std::size_t slotIndex);
     std::unique_ptr<ChannelIconLayout> MakeIcon(Formats::ByteView iconFile);
     void PlaceIcon(ChannelIconLayout& icon, MenuLayout& layout, std::string_view placePane);
     void ShowFreeBlocks();
@@ -92,7 +95,7 @@ private:
     void ShowArrows();
 
     void RunList();
-    void HandleListButtons(const std::vector<ButtonGroupEvent>& events);
+    void HandleListButtons(const std::vector<ButtonEvent>& events);
     void HandleSlotButtons();
     void TurnPage(int direction);
     void FinishTurningPage();
@@ -114,12 +117,13 @@ private:
     Phase phase = Phase::List;
 
     std::unique_ptr<Layout::LayoutArchive> archive;
+    std::unique_ptr<Layout::LayoutArchive> balloonArchive;
     std::unique_ptr<MenuLayout> listLayout;
     std::unique_ptr<SaveIconPictures> windowPictures;
     std::unique_ptr<MenuLayout> windowLayout;
     std::unique_ptr<ChannelIconLayout> windowIcon;
-    std::unique_ptr<ButtonGroup> listButtons;
-    std::unique_ptr<ButtonGroup> windowButtons;
+    std::unique_ptr<ButtonController> listButtons;
+    std::unique_ptr<ButtonController> windowButtons;
 
     std::size_t dataInSlot = 0;
     std::size_t dataOutSlot = 0;

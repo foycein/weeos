@@ -30,12 +30,12 @@ static_assert(OtherDataOffset + OtherDataSize == DigestOffset, "the other data f
 constexpr std::size_t SmallestFileSize = 0x20;
 
 // Inside the other data. The menu writes the same numbers into a new file and clears the same parts when it converts an older file.
-// What these numbers mean was not found out, so they are kept as they were read. The list holds the titles that were started,
-// the last one first (0x813596B8).
+// What the block and the second number mean was not found out, so they are kept as they were read. The first number is 1 until the
+// SD Card Menu has explained itself (0x813DDE90, 0x813DDCD8). The list holds the titles that were started, the last one first (0x813596B8).
 constexpr std::size_t UnknownBlockOffset = 0;
 constexpr std::array<Formats::Byte, 8> UnknownBlock = {0x11, 0xFA, 0x00, 0x00, 0x90, 0x10, 0x00, 0x00};
-constexpr std::size_t FirstNumberOffset = 0x0C;
-constexpr Formats::Byte FirstNumberAtStart = 1;
+constexpr std::size_t SdCardMenuIntroOffset = 0x0C;
+constexpr Formats::Byte SdCardMenuIntroIsPending = 1;
 constexpr std::size_t TitleListOffset = 0x10;
 constexpr std::size_t TitleListSize = 0x180;
 constexpr std::size_t TitleIdSize = sizeof(std::uint64_t);
@@ -86,8 +86,8 @@ void WriteUnknownBlock(std::array<Formats::Byte, OtherDataSize>& otherData)
 
 void ClearTitleList(std::array<Formats::Byte, OtherDataSize>& otherData)
 {
-    std::fill_n(otherData.begin() + FirstNumberOffset, NumberSize, Formats::Byte(0));
-    otherData[FirstNumberOffset + NumberSize - 1] = FirstNumberAtStart;
+    std::fill_n(otherData.begin() + SdCardMenuIntroOffset, NumberSize, Formats::Byte(0));
+    otherData[SdCardMenuIntroOffset + NumberSize - 1] = SdCardMenuIntroIsPending;
 
     std::fill_n(otherData.begin() + TitleListOffset, TitleListSize, Formats::Byte(0));
     std::fill_n(otherData.begin() + SecondNumberOffset, NumberSize, Formats::Byte(0));
@@ -246,6 +246,17 @@ void PutFirstInTheListOfStartedTitles(SaveData& saveData, Ios::TitleId titleId)
         WriteListedTitle(saveData.otherData, place, ReadListedTitle(saveData.otherData, place - 1));
 
     WriteListedTitle(saveData.otherData, 0, titleId.ToValue());
+}
+
+bool IsSdCardMenuIntroPending(const SaveData& saveData)
+{
+    auto number = saveData.otherData.begin() + SdCardMenuIntroOffset;
+    return std::any_of(number, number + NumberSize, [](Formats::Byte byte) { return byte != 0; });
+}
+
+void MarkSdCardMenuIntroSeen(SaveData& saveData)
+{
+    std::fill_n(saveData.otherData.begin() + SdCardMenuIntroOffset, NumberSize, Formats::Byte(0));
 }
 
 }

@@ -148,7 +148,7 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
     okButton = ReadPicture(dialogPictures + "btnCheck.png");
     cancelButton = ReadPicture(dialogPictures + "btnCancel.png");
 
-    failure = TryToConnect(services.network);
+    networkStart = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
 }
 
 void InternetChannel::Update()
@@ -187,7 +187,7 @@ std::u16string InternetChannel::DialogText() const
     if (screen == Screen::ReturnQuestion)
         return Text(ReturnQuestionText);
 
-    return ReplaceCodeMark(texts.FindById(NetworkErrorTextId), failure.supportCode);
+    return ReplaceCodeMark(texts.FindById(NetworkErrorTextId), networkStart.supportCode);
 }
 
 const std::u16string& InternetChannel::Text(std::string_view name) const
@@ -198,7 +198,7 @@ const std::u16string& InternetChannel::Text(std::string_view name) const
 // The join of the network ends while the start page shows, and the channel tells it once (0x800320CC, 0x800338B0).
 void InternetChannel::UpdateStartPage()
 {
-    bool hasJoinFailed = services.clock.Seconds() >= failure.secondsUntilFailure;
+    bool hasJoinFailed = !networkStart.isOnline && services.clock.Seconds() >= networkStart.secondsUntilFailure;
     if (hasJoinFailed && !hasShownNetworkError)
     {
         hasShownNetworkError = true;

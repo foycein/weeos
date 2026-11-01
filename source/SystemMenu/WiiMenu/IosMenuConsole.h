@@ -26,7 +26,6 @@ public:
     void WriteNandFile(std::string_view path, Formats::ByteView bytes) override;
     LocalTime GetLocalTime() override;
     ClockFormat GetClockFormat() override;
-    bool HasTestedInternetConnection() override;
     void WritePlayRecord(const Formats::PlayRecord& record) override;
     void UpdateSharedFlags() override;
 
@@ -38,7 +37,6 @@ private:
     Ios::FileSystemService& fileSystem;
     Settings::PcClock pcClock;
     ClockFormat clockFormat;
-    Ios::NetworkConfigService& networkConfig;
 };
 
 }

@@ -11,5 +11,6 @@ target_sources(SystemMenu PRIVATE
     MenuCertificates.cpp
     NandRoom.cpp
     SaveBackup.cpp
+    StartCleanup.cpp
     TitleKinds.cpp
 )

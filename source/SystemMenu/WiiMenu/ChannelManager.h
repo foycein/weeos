@@ -97,6 +97,10 @@ public:
     // front of the list of started titles. Saves the file.
     void RememberChannelThatStarts(SlotPosition position);
 
+    // Whether the SD Card Menu has still to explain itself. Marking it seen saves the file (0x813DDCD8).
+    bool IsSdCardMenuIntroPending() const;
+    void MarkSdCardMenuIntroSeen();
+
     // The files of the title at the place, read the first time they are asked for. Throws a MenuError for a place without a title.
     const LoadedChannel& LoadChannel(SlotPosition position);
 

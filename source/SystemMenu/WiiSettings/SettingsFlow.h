@@ -7,6 +7,7 @@
 #include "SystemMenu/WiiSettings/PageNavigator.h"
 
 #include "Ios/Network/NetworkConfigService.h"
+#include "Ios/Sockets/SocketService.h"
 #include "Settings/PcSettings.h"
 #include "Settings/SystemSettings.h"
 
@@ -24,6 +25,7 @@ struct SettingsFlowServices
 {
     Settings::SystemSettings& settings;
     Ios::NetworkConfigService& networkConfig;
+    Ios::SocketService& sockets;
 
     // The settings of WeeOS on the PC (window, sound, keys), and the program that makes them come true at once.
     Settings::PcSettingsStore& pcSettings;
