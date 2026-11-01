@@ -2,6 +2,7 @@
 
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Layout/TextFonts.h"
 #include "Platform/ScreenShape.h"
 
 namespace SystemMenu
@@ -26,6 +27,10 @@ public:
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
 
+    // The fonts that text boxes are drawn with. A layout draws no text while there are none. The fonts must outlive the display.
+    void SetTextFonts(const Layout::TextFonts* fonts);
+    const Layout::TextFonts* TextFonts() const;
+
     // Starts a new picture of the screen. The program shows it with Present when everything is drawn.
     void BeginPicture();
 
@@ -44,6 +49,7 @@ public:
 private:
     Graphics::GraphicsDevice& device;
     Platform::ScreenShape screenShape;
+    const Layout::TextFonts* textFonts = nullptr;
 };
 
 }

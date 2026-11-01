@@ -20,8 +20,15 @@ public:
     // The animation is bound to the given panes and the panes below them. The layout and the panes must outlive this object.
     MenuAnimation(Layout::LiveLayout& layout, Formats::LayoutAnimation animation, Layout::PlaybackMode mode, std::vector<Formats::Pane*> panes);
 
-    // Plays from the first frame. An animation that plays already starts again.
+    // Plays from the first frame to the last. An animation that plays already starts again.
     void Start();
+
+    // Plays the frames from the first to the last given one, as a screen plays a part of an animation file that holds many animations
+    // one after the other. A loop starts again at the first of the two frames. The panes of the group show the first frame at once.
+    void StartBetween(float firstFrame, float lastFrame);
+
+    // Shows one frame and does not play.
+    void ShowFrame(float frame);
 
     bool IsPlaying() const;
 
@@ -29,11 +36,23 @@ public:
     void Step();
 
 private:
+    struct FrameRange
+    {
+        float first;
+        float last;
+    };
+
+    void ShowFrameWithNewPlayer(float frame);
+    void StepWholeAnimation();
+    void StepFrameRange();
+
     Layout::LiveLayout& layout;
     Formats::LayoutAnimation animation;
     Layout::PlaybackMode mode;
     std::vector<Formats::Pane*> panes;
     std::optional<Layout::AnimationPlayer> player;
+    std::optional<FrameRange> range;
+    float frame = 0;
     bool isPlaying = false;
 };
 

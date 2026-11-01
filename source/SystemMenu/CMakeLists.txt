@@ -5,9 +5,11 @@ add_library(SystemMenu STATIC
     FirstScreen.cpp
     HealthAndSafetyScreen.cpp
     InputManager.cpp
+    IosMenuConsole.cpp
     LauncherScreen.cpp
     MenuAnimation.cpp
     MenuFiles.cpp
+    MenuFonts.cpp
     MenuLayout.cpp
     MenuSystem.cpp
     OwnTitleContents.cpp

@@ -39,6 +39,16 @@ Graphics::Canvas Display::GetCanvas() const
     return StandardCanvas;
 }
 
+void Display::SetTextFonts(const Layout::TextFonts* fonts)
+{
+    textFonts = fonts;
+}
+
+const Layout::TextFonts* Display::TextFonts() const
+{
+    return textFonts;
+}
+
 void Display::BeginPicture()
 {
     device.BeginFrame(GetCanvas(), screenShape);
