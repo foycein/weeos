@@ -18,6 +18,7 @@
 #include <chrono>
 #include <format>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -197,7 +198,8 @@ UINT32 ChoosePeriod(IAudioClient3& client, const WAVEFORMATEX& mixFormat, AudioL
 }
 
 // Opens the default playback device and prepares a stream on it that wakes the thread through the event.
-Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency)
+// Gives nothing when another program holds the mixer of Windows at another short period, so that this period cannot be had.
+std::optional<Stream> TryToOpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency)
 {
     Stream stream;
     ComPtr<IMMDevice> device = FindDefaultDevice(enumerator);
@@ -210,12 +212,28 @@ Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, Audi
 
     HRESULT result =
         stream.client->InitializeSharedAudioStream(AUDCLNT_STREAMFLAGS_EVENTCALLBACK, stream.periodFrames, mixFormat.get(), nullptr);
+    if (result == AUDCLNT_E_ENGINE_PERIODICITY_LOCKED)
+        return std::nullopt;
+
     ThrowIfFailed(result, "starting the shared stream");
     ThrowIfFailed(stream.client->GetBufferSize(&stream.bufferFrameCount), "asking for the buffer size");
     ThrowIfFailed(stream.client->SetEventHandle(bufferReadyEvent), "giving the event to the device");
     ThrowIfFailed(stream.client->GetService(IID_PPV_ARGS(&stream.renderClient)), "asking for the render client");
     ThrowIfFailed(stream.client->GetService(IID_PPV_ARGS(&stream.sessionVolume)), "asking for the volume of the session");
     return stream;
+}
+
+// The normal period is the one that every other program plays at, so an output that cannot have the shortest period
+// plays at the normal one instead of waiting for a device that it can never open.
+Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency)
+{
+    std::optional<Stream> stream = TryToOpenStream(enumerator, bufferReadyEvent, latency);
+    if (!stream)
+        stream = TryToOpenStream(enumerator, bufferReadyEvent, AudioLatency::Normal);
+    if (!stream)
+        throw AudioOutputError("Audio output: another program holds the mixer of Windows at another period");
+
+    return std::move(*stream);
 }
 
 }
