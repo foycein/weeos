@@ -14,7 +14,7 @@ constexpr int GreenShift = 1 * Formats::BitsPerByte;
 constexpr int BlueShift = 2 * Formats::BitsPerByte;
 constexpr int AlphaShift = 3 * Formats::BitsPerByte;
 
-constexpr std::array<float, 6> IdentityTextureMatrix = {1, 0, 0, 0, 1, 0};
+constexpr std::array<float, NumbersPerTextureMatrix> IdentityTextureMatrix = {1, 0, 0, 0, 1, 0};
 
 template <typename Enumeration>
 std::uint32_t ToNumber(Enumeration enumeration)
@@ -41,10 +41,10 @@ std::uint32_t PackColor(const Formats::Rgba8Color& color)
     return red | (green << GreenShift) | (blue << BlueShift) | (alpha << AlphaShift);
 }
 
-std::array<float, 6> FlattenTextureMatrix(const TextureMatrix& matrix)
+std::array<float, NumbersPerTextureMatrix> FlattenRows(const std::array<std::array<float, 3>, 2>& rows)
 {
-    const auto& firstRow = matrix.rows[0];
-    const auto& secondRow = matrix.rows[1];
+    const auto& firstRow = rows[0];
+    const auto& secondRow = rows[1];
     return {firstRow[0], firstRow[1], firstRow[2], secondRow[0], secondRow[1], secondRow[2]};
 }
 
@@ -127,7 +127,7 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
 
     record.textureMatrices.fill(IdentityTextureMatrix);
     for (std::size_t textureNumber = 0; textureNumber < material.textures.size(); ++textureNumber)
-        record.textureMatrices[textureNumber] = FlattenTextureMatrix(material.textures[textureNumber].matrix);
+        record.textureMatrices[textureNumber] = FlattenRows(material.textures[textureNumber].matrix.rows);
 
     for (std::size_t corner = 0; corner < QuadCornerCount; ++corner)
         record.cornerColors[corner] = PackColor(quad.colors[corner]);
@@ -140,8 +140,7 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
     if (material.indirectTexture)
     {
         record.indirectTextureIndex = material.indirectTexture->textureIndex;
-        const auto& rows = material.indirectTexture->matrix;
-        record.indirectMatrix = {rows[0][0], rows[0][1], rows[0][2], rows[1][0], rows[1][1], rows[1][2]};
+        record.indirectMatrix = FlattenRows(material.indirectTexture->matrix);
     }
     return record;
 }
@@ -174,8 +173,14 @@ ShaderMeshRecord MakeMeshRecord(const MeshPlacement& placement)
 
 ShaderMeshCorner MakeMeshCorner(const MeshVertex& vertex)
 {
-    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y, vertex.boneNumber, PackColor(vertex.color),
-        {}};
+    ShaderMeshCorner corner = {};
+    corner.position = vertex.position;
+    corner.s = vertex.textureCoordinate.x;
+    corner.normal = vertex.normal;
+    corner.t = vertex.textureCoordinate.y;
+    corner.boneNumber = vertex.boneNumber;
+    corner.color = PackColor(vertex.color);
+    return corner;
 }
 
 ShaderBone MakeBone(const Matrix4& boneMatrix)

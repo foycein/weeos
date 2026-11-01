@@ -5,6 +5,7 @@
 #include "Graphics/VulkanSupport.h"
 #include "Platform/FileLocations.h"
 
+#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -126,13 +127,14 @@ DrawPipelines::DrawPipelines(const VulkanContext& graphicsContext)
     drawDataSetLayout = MakeDrawDataSetLayout(context);
     textureSetLayout = MakeTextureSetLayout(context);
 
-    VkDescriptorSetLayout setLayouts[] = {drawDataSetLayout, textureSetLayout, textureSetLayout, textureSetLayout};
+    std::array<VkDescriptorSetLayout, DescriptorSetCount> setLayouts = {
+        drawDataSetLayout, textureSetLayout, textureSetLayout, textureSetLayout};
     VkPushConstantRange canvasRange = {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, .offset = 0, .size = sizeof(CanvasConstants)};
 
     VkPipelineLayoutCreateInfo layoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 4,
-        .pSetLayouts = setLayouts,
+        .setLayoutCount = DescriptorSetCount,
+        .pSetLayouts = setLayouts.data(),
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &canvasRange,
     };

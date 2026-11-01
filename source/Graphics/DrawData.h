@@ -17,6 +17,9 @@ constexpr std::size_t MaximumMeshesPerPicture = 8192;
 constexpr std::size_t MaximumMeshCornersPerPicture = 131072;
 constexpr std::size_t MaximumBonesPerPicture = 16384;
 
+// The two rows of a TextureMatrix or of the matrix of an IndirectTexture, one after the other.
+constexpr std::size_t NumbersPerTextureMatrix = 6;
+
 // The data of a draw as the shaders read it. The structures in this file have exactly the layout of the structures in
 // Shaders/DrawData.glsl: when one changes, the other has to change the same way.
 
@@ -73,7 +76,7 @@ struct ShaderDrawRecord
     std::array<std::array<Formats::Vector2, QuadCornerCount>, MaximumTextureCount> textureCoordinates;
 
     // Per texture the six numbers of the two rows of its TextureMatrix.
-    std::array<std::array<float, 6>, MaximumTextureCount> textureMatrices;
+    std::array<std::array<float, NumbersPerTextureMatrix>, MaximumTextureCount> textureMatrices;
 
     // Red in the lowest byte, then green, blue and alpha in the highest byte.
     std::array<std::uint32_t, QuadCornerCount> cornerColors;
@@ -91,7 +94,7 @@ struct ShaderDrawRecord
 
     // Material::alphaTest, packed by PackAlphaTest, or 0 without a test.
     std::uint32_t alphaTest;
-    std::array<float, 6> indirectMatrix;
+    std::array<float, NumbersPerTextureMatrix> indirectMatrix;
     std::array<std::uint32_t, 2> unusedAtTheEnd;
 };
 

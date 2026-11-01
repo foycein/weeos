@@ -11,8 +11,9 @@ namespace Graphics
 // The descriptor sets of the pipelines: set 0 holds the buffers with the draw data, and sets 1 to 3 hold the textures 0 to 2.
 constexpr std::uint32_t DrawDataSetNumber = 0;
 constexpr std::uint32_t FirstTextureSetNumber = 1;
+constexpr std::uint32_t DescriptorSetCount = FirstTextureSetNumber + static_cast<std::uint32_t>(MaximumTextureCount);
 
-// The bindings of set 0: draw records, stages, meshes and the corners of the meshes.
+// The bindings of set 0: draw records, stages, meshes, the corners of the meshes, the corners of the stored meshes and the bones.
 constexpr std::uint32_t DrawDataBindingCount = 6;
 
 // Pushed to the vertex shaders before the draws. The picture is the whole target, which can be larger than the canvas in its middle:
