@@ -8,9 +8,31 @@ ZoomedDevice::ZoomedDevice(Graphics::GraphicsDevice& targetDevice)
 {
 }
 
-void ZoomedDevice::LookThrough(const TelevisionZoom& televisionZoom)
+namespace
 {
-    zoom = &televisionZoom;
+
+constexpr int FullAlpha = 255;
+
+}
+
+void ZoomedDevice::Show(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t shownAlpha)
+{
+    seen = seenArea;
+    shown = shownArea;
+    alpha = shownAlpha;
+    isMoving = true;
+}
+
+void ZoomedDevice::StopMoving()
+{
+    isMoving = false;
+}
+
+Formats::Vector2 ZoomedDevice::Moved(Formats::Vector2 point) const
+{
+    float scaleX = (shown.right - shown.left) / (seen.right - seen.left);
+    float scaleY = (shown.top - shown.bottom) / (seen.top - seen.bottom);
+    return {shown.left + (point.x - seen.left) * scaleX, shown.bottom + (point.y - seen.bottom) * scaleY};
 }
 
 Graphics::TextureHandle ZoomedDevice::CreateTexture(const Graphics::TextureDescription& description)
@@ -30,8 +52,14 @@ void ZoomedDevice::BeginFrame(const Graphics::Canvas& canvas, Platform::ScreenSh
 
 void ZoomedDevice::SetScissor(const Graphics::ScissorRectangle& scissor)
 {
-    Formats::Vector2 bottomLeft = zoom->PointInPicture({scissor.left, scissor.bottom});
-    Formats::Vector2 topRight = zoom->PointInPicture({scissor.right, scissor.top});
+    if (!isMoving)
+    {
+        target.SetScissor(scissor);
+        return;
+    }
+
+    Formats::Vector2 bottomLeft = Moved({scissor.left, scissor.bottom});
+    Formats::Vector2 topRight = Moved({scissor.right, scissor.top});
 
     Graphics::ScissorRectangle zoomedScissor;
     zoomedScissor.left = bottomLeft.x;
@@ -48,9 +76,18 @@ void ZoomedDevice::ClearScissor()
 
 void ZoomedDevice::DrawQuad(const Graphics::Quad& quad, const Graphics::Material& material)
 {
+    if (!isMoving)
+    {
+        target.DrawQuad(quad, material);
+        return;
+    }
+
     Graphics::Quad zoomedQuad = quad;
     for (Formats::Vector2& position : zoomedQuad.positions)
-        position = zoom->PointInPicture(position);
+        position = Moved(position);
+
+    for (Formats::Rgba8Color& color : zoomedQuad.colors)
+        color.alpha = static_cast<std::uint8_t>(color.alpha * alpha / FullAlpha);
 
     target.DrawQuad(zoomedQuad, material);
 }

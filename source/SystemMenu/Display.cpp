@@ -19,21 +19,17 @@ Display::Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape
 
 Graphics::GraphicsDevice& Display::Device()
 {
-    if (isLookingThroughZoom)
-        return zoomedDevice;
-
-    return device;
+    return zoomedDevice;
 }
 
-void Display::LookThroughZoom(const TelevisionZoom& zoom)
+void Display::MoveArea(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha)
 {
-    zoomedDevice.LookThrough(zoom);
-    isLookingThroughZoom = true;
+    zoomedDevice.Show(seenArea, shownArea, alpha);
 }
 
-void Display::StopLookingThroughZoom()
+void Display::StopMovingAreas()
 {
-    isLookingThroughZoom = false;
+    zoomedDevice.StopMoving();
 }
 
 void Display::SetTextFonts(const Layout::TextFonts& fonts)

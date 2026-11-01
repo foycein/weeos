@@ -7,17 +7,21 @@
 namespace SystemMenu
 {
 
-// Draws through another device as the camera of a zoom sees the picture: every quad and every scissor is moved and scaled so that
-// the part of the picture that the zoom looks at fills the whole picture. The original sets the camera of the layouts while the
-// channel grid zooms into a television (0x813AB0E8).
+// Draws through another device with every quad and every scissor moved and scaled so that one area of the picture lands on another,
+// and with the alpha of every quad scaled. The channel grid is drawn so that the part that its zoom looks at fills the picture (the
+// camera of the layouts that 0x813AB0E8 sets), and the window of a channel so that the whole picture fits into the television and
+// shows as much as the zoom has come.
 class ZoomedDevice : public Graphics::GraphicsDevice
 {
 public:
     // The device must outlive this object.
     explicit ZoomedDevice(Graphics::GraphicsDevice& targetDevice);
 
-    // The zoom must stay alive as long as the device draws through it.
-    void LookThrough(const TelevisionZoom& zoom);
+    // What is drawn into seenArea lands in shownArea, with its alpha scaled by alpha / 255, until StopMoving.
+    void Show(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha);
+
+    // Everything is drawn as it is.
+    void StopMoving();
 
     Graphics::TextureHandle CreateTexture(const Graphics::TextureDescription& description) override;
     void DestroyTexture(Graphics::TextureHandle texture) override;
@@ -34,8 +38,13 @@ public:
     void Present() override;
 
 private:
+    Formats::Vector2 Moved(Formats::Vector2 point) const;
+
     Graphics::GraphicsDevice& target;
-    const TelevisionZoom* zoom = nullptr;
+    PictureArea seen;
+    PictureArea shown;
+    std::uint8_t alpha = 255;
+    bool isMoving = false;
 };
 
 }

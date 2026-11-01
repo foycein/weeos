@@ -85,6 +85,7 @@ constexpr std::string_view StartSound = "WIPL_SE_WII_START";
 
 // While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
+constexpr std::uint8_t FullyShown = 255;
 
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
 {
@@ -631,10 +632,10 @@ void ChannelGridScreen::Draw(DrawPass pass)
     }
 
     if (zoom)
-        services.display.LookThroughZoom(*zoom);
+        services.display.MoveArea(zoom->VisibleArea(), services.display.WholePicture(), FullyShown);
 
     DrawTheGrid();
-    services.display.StopLookingThroughZoom();
+    services.display.StopMovingAreas();
 }
 
 void ChannelGridScreen::DrawTheGrid()

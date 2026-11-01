@@ -21,13 +21,13 @@ class Display
 public:
     Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape);
 
-    // The device to draw with. While a zoom is looked through, the device draws as the camera of the zoom sees the picture.
+    // The device to draw with. While an area is moved, the device moves what is drawn. Whatever draws for the display keeps this
+    // device, also the text of the layouts, so that it is moved too.
     Graphics::GraphicsDevice& Device();
 
-    // Everything that is drawn from now on is seen through the camera of the zoom, until StopLookingThroughZoom.
-    // The zoom must stay alive until then.
-    void LookThroughZoom(const TelevisionZoom& zoom);
-    void StopLookingThroughZoom();
+    // Everything that is drawn from now on into seenArea lands in shownArea, with its alpha scaled by alpha / 255, until StopMovingAreas.
+    void MoveArea(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha);
+    void StopMovingAreas();
 
     // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
     // The fonts must stay alive as long as the display draws.
@@ -64,7 +64,6 @@ public:
 private:
     Graphics::GraphicsDevice& device;
     ZoomedDevice zoomedDevice;
-    bool isLookingThroughZoom = false;
     const Layout::TextFonts* textFonts = nullptr;
     Platform::ScreenShape screenShape;
 };

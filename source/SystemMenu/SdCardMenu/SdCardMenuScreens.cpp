@@ -50,6 +50,7 @@ constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::C
 // A tile of the list is as big as the icon of a channel.
 // While the window of a channel covers the picture, the list paints it black.
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
+constexpr std::uint8_t FullyShown = 255;
 
 constexpr float TileWidth = 128;
 constexpr float TileHeight = 96;
@@ -484,10 +485,10 @@ void SdChannelListScreen::Draw(DrawPass pass)
     }
 
     if (zoom)
-        services.display.LookThroughZoom(*zoom);
+        services.display.MoveArea(zoom->VisibleArea(), services.display.WholePicture(), FullyShown);
 
     DrawTheList();
-    services.display.StopLookingThroughZoom();
+    services.display.StopMovingAreas();
 }
 
 void SdChannelListScreen::DrawTheList()

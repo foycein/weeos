@@ -10,6 +10,7 @@
 #include "SystemMenu/DataManagement/MenuCertificates.h"
 #include "SystemMenu/IosNandFiles.h"
 #include "SystemMenu/MenuSound.h"
+#include "SystemMenu/MenuStateFile.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
@@ -70,6 +71,7 @@ public:
     {
         return menu.get();
     }
+
 
     // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
     void Update()
@@ -289,10 +291,24 @@ void Application::LaunchTitle(Ios::TitleId titleId)
         throw std::runtime_error(std::format("The title {} has no ticket and cannot start", titleId.ToString()));
 
     Ios::TicketView ticketView = ticketViews.Value().front();
+    bool isChannelReturning = session->Menu() == nullptr && titleId == Ios::SystemMenuTitleId;
     session.reset();
     console.LaunchTitle(titleId, ticketView);
+    if (isChannelReturning)
+        RecordReturnToTheMenu();
+
     StartSession();
     ForgetReportedProblems();
+}
+
+// A channel that goes back to the menu leaves the state of a return in the menu's state.dat, as the operating system of a title does
+// (OSReturnToMenu writes the type 3), so that the menu shows Back to Wii Menu and not Health and Safety. WeeOS writes it as the menu,
+// right after IOS has started the menu again.
+void Application::RecordReturnToTheMenu()
+{
+    Ios::IosServices& services = console.GetServices();
+    SystemMenu::IosNandFiles nandFiles(services.GetFileSystem(), services.GetTitles());
+    SystemMenu::RecordMenuLeft(nandFiles, Formats::StateTypeReturnToMenu);
 }
 
 void Application::ForgetReportedProblems()
