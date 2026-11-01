@@ -40,6 +40,8 @@ constexpr float BoardBottom = -150;
 constexpr std::string_view PickSound = "SE_PUZZULE_GET";
 constexpr std::string_view PutSound = "SE_PUZZULE_PUT";
 constexpr std::string_view ShiftSound = "SE_PUZZULE_SHIFT";
+constexpr std::string_view ShuffleSound = "SE_PUZZ_SHUFFLE_PIECE6";
+constexpr std::string_view CheatSound = "SE_KIMAGURE_HINT";
 constexpr std::string_view SolvedMusic = "BGM_PUZZULE_FANFARE";
 constexpr std::string_view PuzzleMusic = "BGM_PUZZULE";
 constexpr std::string_view NewRecordMessage = "textTUS1A";
@@ -215,7 +217,7 @@ private:
         {
             if (session.IsButtonPressed(*sizeChoice, PuzzleSizes[index].button))
             {
-                services.sounds.Request("SE_PUZZ_SHUFFLE_PIECE6");
+                services.sounds.Request(ShuffleSound);
                 StartPuzzle(index);
                 return;
             }
@@ -247,7 +249,7 @@ private:
 
         if (session.IsButtonPressed(*board, "hint"))
         {
-            services.sounds.Request("SE_KIMAGURE_HINT");
+            services.sounds.Request(CheatSound);
             ++cheats;
             stage = Stage::Cheating;
             return;

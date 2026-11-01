@@ -28,6 +28,10 @@ constexpr std::string_view EraserSound = "SE_RAKU_ERASER_SEL";
 constexpr std::string_view PickerSound = "SE_RAKU_SPUIT_SEL";
 constexpr std::string_view ScissorsSound = "SE_RAKU_HASAMI_SELECT";
 constexpr std::string_view UndoAllSound = "SE_RAKU_ALL_CLEAR";
+constexpr std::string_view PickedColorSound = "SE_RAKU_SPUIT_ON";
+constexpr std::string_view StampPutSound = "SE_RAKU_STAMP_KISS";
+constexpr std::string_view CutSound = "SE_RAKU_HASAMI_START";
+constexpr std::string_view PasteSound = "SE_RAKU_HASAMI_END";
 
 // The texts of the steps of Brighten and Hard-boiled: filter_aTUS0 is the name alone, filter_aTUS1 to 8 the name with the step.
 constexpr std::string_view BrightenStepText = "filter_aTUS";
@@ -434,14 +438,14 @@ private:
 
     void PickColor(Formats::Vector2 pixel)
     {
-        session.Services().sounds.Request("SE_RAKU_SPUIT_ON");
+        session.Services().sounds.Request(PickedColorSound);
         penColor = current.pixels[static_cast<std::size_t>(pixel.y) * current.width + static_cast<std::size_t>(pixel.x)];
         tool = DoodleTool::Pen;
     }
 
     void PutStamp(Formats::Vector2 pixel)
     {
-        session.Services().sounds.Request("SE_RAKU_STAMP_KISS");
+        session.Services().sounds.Request(StampPutSound);
         const Formats::RgbaImage& stamp = session.ChannelTexture(stampTexture);
         float scale = PixelsPerScreenUnit();
         PastePicture(stamp, pixel, scale);
@@ -453,12 +457,12 @@ private:
     {
         if (!cutPiece)
         {
-            session.Services().sounds.Request("SE_RAKU_HASAMI_START");
+            session.Services().sounds.Request(CutSound);
             cutPiece = CutSquare(pixel, CutPieceSideOnScreen * PixelsPerScreenUnit());
             return;
         }
 
-        session.Services().sounds.Request("SE_RAKU_HASAMI_END");
+        session.Services().sounds.Request(PasteSound);
         PastePicture(*cutPiece, pixel, 1);
         Changed();
     }
