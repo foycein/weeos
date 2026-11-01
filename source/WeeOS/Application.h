@@ -4,11 +4,11 @@
 #include "Graphics/FramePacer.h"
 #include "Graphics/VulkanGraphicsDevice.h"
 #include "Platform/FileLocations.h"
-#include "Platform/HostKeys.h"
 #include "Platform/PreciseTimer.h"
 #include "Platform/RegionalSettings.h"
 #include "Platform/Window.h"
 #include "Settings/ConsoleClock.h"
+#include "Settings/PcSettings.h"
 #include "SystemMenu/MenuSystem.h"
 #include "WeeOS/PcMicrophone.h"
 #include "WeeOS/ConsoleImporter.h"
@@ -30,7 +30,8 @@ namespace WeeOS
 std::optional<std::filesystem::path> PickNandWithWindows();
 
 // What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows,
-// the file WeeOS.settings.txt and the Wii files beside the program, and the file picker of Windows; a test gives its own.
+// the file WeeOS.settings.txt and the Wii files beside the program, the file picker and the connection of Windows, and shows its window; a test gives
+// its own, and its window is never shown (docs/HelperRules.md).
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
@@ -42,14 +43,19 @@ struct HostEnvironment
 
     // Who picks the NAND of a Wii to import.
     NandPicker pickNand = PickNandWithWindows;
+
+    // Whether the PC is connected: the console is online through it (docs/DECISIONS.md, Online).
+    Ios::PcConnectionCheck isPcConnected = Ios::IsWindowsConnected;
+    Platform::WindowVisibility windowVisibility = Platform::WindowVisibility::Hidden;
 };
 
 // WeeOS.exe: the console starts, a window opens and the System Menu runs in it. A NAND folder without a console gets a new console
 // first, made from the Wii files (NewConsole.h), and its first start offers the import of the person's own Wii. When the menu starts a channel, IOS restarts with the IOS
 // of the channel and the channel's program runs in the window, until it asks for the Wii Menu (Boot::ConsoleStartup::LaunchTitle).
-// The mouse over the window is the hand of remote 1, the left mouse button is A and the right one is B.
-// Ctrl+Q is the POWER button (and so is closing the window), Ctrl+R is the RESET button and Ctrl+S puts the SD card in or takes it out.
-class Application : private Platform::HostCommandListener
+// The mouse over the window is the hand of remote 1: the left button is A, the right one B, the wheel Plus and Minus; the keys of the
+// PC press the other buttons (docs/DECISIONS.md, PC controls). Closing the window asks "Turn off WeeOS?" and Yes is the POWER button.
+// The window starts where the settings of the PC say, in fullscreen unless they say otherwise, and they remember where the user puts it.
+class Application
 {
 public:
     // Makes the folder of the SD card and, when there is none, a new console; then powers the console on.
@@ -64,7 +70,8 @@ public:
     // Shows pictures until the console is powered off.
     void Run();
 
-    // One picture: handles the events of the window, runs the steps of the menu that are due and shows the newest state.
+    // One picture: handles the events of the window, runs the steps of the menu that are due and shows the newest state. It waits for
+    // the display of a shown window, or one step of the console for a hidden one.
     void ShowNextPicture();
 
     // Exactly one step of the menu or the channel, whatever the clock says, with the events of the window before it and what the program
@@ -73,6 +80,10 @@ public:
     void ShowPicture();
 
     bool IsPoweredOff() const;
+
+    // The buttons on the front of the console, which the PC has no keys for. A test presses them here.
+    void PressPowerButton();
+    void PressResetButton();
 
     Platform::Window& GetWindow();
     Graphics::VulkanGraphicsDevice& GetDevice();
@@ -88,6 +99,8 @@ public:
     // The title whose program runs: the System Menu, or a channel that the menu started.
     Ios::TitleId RunningTitle() const;
 
+    // The services of the IOS that runs. A test takes the SD card out of the slot here.
+    Ios::IosServices& GetServices();
     // The Wii Speak accessory is the default microphone of Windows, when the PC has one. A test gives its own source instead, from the
     // session that runs on; the source must outlive the application.
     void UseMicrophoneSource(Ios::MicrophoneSource& source);
@@ -97,21 +110,22 @@ private:
     // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
     class Session;
 
-    void OnHostCommand(Platform::HostCommand command) override;
-
     void PrepareConsoleFolders();
     void StartSession();
     void AttachMicrophone();
     void StartImportedConsole();
     void StopOnTheKeyOfKoreanConsoles();
-    void ReportCloseOfTheWindowAsPowerButton();
+    void PlaceWindow();
+    void HandleTheWindow();
+    void AskBeforeClosing();
+    void RememberWindowPlace();
+    void WaitForTheNextStepOfAHiddenWindow();
     void RunDueSteps();
     void CarryOutRequestsOfTheMenu();
     void ResetConsole();
     void LaunchTitle(Ios::TitleId titleId);
     void RecordReturnToTheMenu();
     void ForgetReportedProblems();
-    void ToggleSdCard();
     void ReportProblems();
 
     Ios::IosFolders folders;
@@ -123,6 +137,7 @@ private:
 
     ConsoleImporter importer;
     Boot::ConsoleStartup console;
+    Settings::PcSettingsStore pcSettings;
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;
     ProgramSound sound;
@@ -131,7 +146,6 @@ private:
     Graphics::FramePacer pacer;
 
     bool isPoweredOff = false;
-    bool hasReportedClose = false;
     bool hasReportedFatalError = false;
     std::optional<SystemMenu::ScreenId> reportedUnbuiltScreen;
 };

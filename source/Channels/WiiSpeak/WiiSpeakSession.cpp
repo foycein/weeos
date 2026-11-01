@@ -1,7 +1,8 @@
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
 
 #include "Channels/ChannelText.h"
-#include "Channels/OfflineConnection.h"
+#include "Channels/WiiConnect24Channel.h"
+#include "SystemMenu/NetworkStart.h"
 #include "Channels/WiiSpeak/WiiSpeakMessageIds.h"
 
 #include <string>
@@ -72,10 +73,24 @@ std::u16string WiiSpeakSession::Text(std::uint32_t messageId, std::u16string_vie
     return messages.Text(messageId, argument);
 }
 
+// WeeOS has no WiiConnect24 (docs/DECISIONS.md): the message comes at once, without a try. Without an address the name of the server is not
+// found; with one, the service is not there to answer.
+SystemMenu::ServerAnswer WiiSpeakSession::WiiConnect24ServerAnswerOf(const std::string& serverAddress)
+{
+    if (serverAddress.empty())
+        return SystemMenu::ServerAnswer::NameNotFound;
+
+    return SystemMenu::ServerAnswer::NoAnswer;
+}
+
 void WiiSpeakSession::ShowWiiConnect24Unreachable()
 {
-    ConnectionFailure failure = TryToConnect(services.network);
-    std::u16string code = AsciiToText(std::to_string(DownloadErrorCodeOf(failure.startupError)));
+    SystemMenu::NetworkStart start = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
+    std::uint32_t errorCode = DownloadErrorCodeOfStart(start.startupError);
+    if (start.isOnline)
+        errorCode = DownloadErrorCodeOfServer(WiiConnect24ServerAnswerOf(services.network.serverAddress));
+
+    std::u16string code = AsciiToText(std::to_string(errorCode));
     dialog.Show(Text(WiiSpeakText::WiiConnect24CannotReachTheInternet, code), {Text(WiiSpeakText::Ok)});
 }
 

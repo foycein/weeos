@@ -13,6 +13,7 @@ namespace Input
 namespace VirtualKey
 {
 
+constexpr int Escape = 0x1B;
 constexpr int Home = 0x24;
 constexpr int LeftArrow = 0x25;
 constexpr int UpArrow = 0x26;
@@ -57,7 +58,12 @@ inline constexpr auto DefaultKeyMap = std::to_array<KeyBinding>({
     {VirtualKey::MinusSign, RemoteButtons::Minus},
     {VirtualKey::NumpadSubtract, RemoteButtons::Minus},
     {VirtualKey::Home, RemoteButtons::Home},
+    {VirtualKey::Escape, RemoteButtons::B},
 });
+
+// A notch of the mouse wheel away from the user presses Plus, a notch towards the user presses Minus (docs/DECISIONS.md, PC controls).
+constexpr ButtonMask WheelAwayButton = RemoteButtons::Plus;
+constexpr ButtonMask WheelTowardsButton = RemoteButtons::Minus;
 
 inline constexpr auto DefaultMouseMap = std::to_array<MouseBinding>({
     {Platform::MouseButton::Left, RemoteButtons::A},

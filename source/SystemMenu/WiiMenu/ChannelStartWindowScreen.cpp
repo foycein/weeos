@@ -88,10 +88,7 @@ constexpr std::uint16_t StartMessage = 2;
 constexpr std::uint16_t InsertDiscMessage = 4;
 constexpr std::uint16_t CannotReadDiscMessage = 6;
 constexpr std::uint16_t CannotBeUsedMessage = 19;
-constexpr std::uint16_t QuitMessage = 37;
 constexpr std::uint16_t OkMessage = 46;
-constexpr std::uint16_t InternetRequiredMessage = 323;
-constexpr std::uint16_t EnterSettingsMessage = 326;
 
 // The banner of a channel and of the Disc Channel.
 constexpr std::string_view BannerFilePath = "meta/banner.bin";
@@ -111,8 +108,6 @@ constexpr std::string_view GraySound = "WIPL_SE_GRAY_BUTTON";
 constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 constexpr std::string_view ChangeSound = "WSD_SELECT";
 
-// The page of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): Internet.
-constexpr int InternetSettingsPage = 1;
 
 // The original waits 100 ms after Start before it fades out (0x813B9AC0: more than 100 / 16.68 steps).
 constexpr int StepsBeforeTheFadeToStart = 6;
@@ -263,8 +258,7 @@ void ChannelStartWindowScreen::BuildTheFrame()
     changeIn = frame->BindAnimationToPane(std::string(ChangeInAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
     changeOut = frame->BindAnimationToPane(std::string(ChangeOutAnimation), ChangePane, Layout::PlaybackMode::PlayOnce);
 
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        UseTheWideFrame();
+    UseTheWideFrame();
 
     buttons = std::make_unique<ButtonGroup>(*frame, services.display, std::vector<std::string>{"B_BtnA", "B_BtnB"});
 }
@@ -416,24 +410,12 @@ bool ChannelStartWindowScreen::RunMain()
         ReadAnswerOfCannotBeUsed();
         break;
 
-    case StartWindowState::AskingForInternetSettings:
-        ReadAnswerOfInternetQuestion();
-        break;
-
     case StartWindowState::Starting:
         RunStarting();
         break;
 
     case StartWindowState::FadingOutToStart:
         RunFadingOutToStart();
-        break;
-
-    case StartWindowState::LeavingForSettings:
-        if (services.fader.GetStatus() == FaderStatus::Covered)
-        {
-            GoToRoot(ScreenId::WiiSettings, settingsPageToOpen);
-            return true;
-        }
         break;
 
     default:
@@ -578,9 +560,10 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonGroupEvent& event)
     }
 }
 
-// What Start does depends on the channel (0x813B9488 and 0x813B6F10): a channel that needs the Internet asks for the Internet settings
-// while no connection has passed its test. WeeOS has no system update and no parental controls (docs/DECISIONS.md, Settings), so the
-// original's Update button of an old channel and its PIN dialog are not there.
+// What Start does (0x813B9488 and 0x813B6F10). WeeOS has no system update and no parental controls (docs/DECISIONS.md, Settings), so the
+// original's Update button of an old channel and its PIN dialog are not there. The original asks a channel that needs the Internet whether
+// to set the Internet up first while no connection has passed its test; the PC's connection counts as set up, so that question never
+// comes either (SYS-93).
 void ChannelStartWindowScreen::PressStart()
 {
     if (!CanStart())
@@ -595,12 +578,6 @@ void ChannelStartWindowScreen::PressStart()
     if (!services.titleLaunch.HasProgram(titleId))
     {
         ShowMessage(CannotBeUsedMessage);
-        return;
-    }
-
-    if (banner->needsInternetConnection && !services.wiiMenu.console.HasTestedInternetConnection())
-    {
-        AskForInternetSettings();
         return;
     }
 
@@ -619,32 +596,9 @@ void ChannelStartWindowScreen::ShowMessage(std::uint16_t messageNumber)
     state = StartWindowState::ShowingCannotBeUsed;
 }
 
-void ChannelStartWindowScreen::AskForInternetSettings()
-{
-    DialogRequest request;
-    request.layout = DialogLayout::TwoButtons;
-    request.message = services.messages.Find(InternetRequiredMessage);
-    request.buttonAText = services.messages.Find(EnterSettingsMessage);
-    request.buttonBText = services.messages.Find(QuitMessage);
-    services.dialogs.Open(request);
-    state = StartWindowState::AskingForInternetSettings;
-}
-
 void ChannelStartWindowScreen::ReadAnswerOfCannotBeUsed()
 {
     if (services.dialogs.TakeAnswer())
-        state = StartWindowState::ShowingChannel;
-}
-
-void ChannelStartWindowScreen::ReadAnswerOfInternetQuestion()
-{
-    std::optional<DialogAnswer> answer = services.dialogs.TakeAnswer();
-    if (!answer)
-        return;
-
-    if (answer == DialogAnswer::ButtonA)
-        LeaveForSettings(InternetSettingsPage);
-    else
         state = StartWindowState::ShowingChannel;
 }
 
@@ -680,15 +634,6 @@ void ChannelStartWindowScreen::RunFadingOutToStart()
     services.wiiMenu.console.WritePlayRecord(MakePlayRecord(name, titleId, makerCode, now));
     services.titleLaunch.Request(titleId);
     state = StartWindowState::Started;
-}
-
-void ChannelStartWindowScreen::LeaveForSettings(int settingsPage)
-{
-    settingsPageToOpen = settingsPage;
-    services.fader.StartFadeOut();
-    services.sounds.StopBannerSound();
-    services.sounds.StopAllSounds(LeavingStopFadeSteps);
-    state = StartWindowState::LeavingForSettings;
 }
 
 // Wii Menu: the button flashes, the grid zooms out and the window fades away inside the television (0x813BAC50, 0x813B76D8).

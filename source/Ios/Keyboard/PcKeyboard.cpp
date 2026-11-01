@@ -34,6 +34,11 @@ void PcKeyboard::OnMouseButton(Platform::MouseButton button, bool isPressed)
     nextListener.OnMouseButton(button, isPressed);
 }
 
+void PcKeyboard::OnMouseWheel(int notches)
+{
+    nextListener.OnMouseWheel(notches);
+}
+
 void PcKeyboard::OnKey(int virtualKeyCode, bool isPressed)
 {
     nextListener.OnKey(virtualKeyCode, isPressed);

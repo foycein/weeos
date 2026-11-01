@@ -1,5 +1,6 @@
 #include "Platform/Window.h"
 
+#include "Platform/AspectLock.h"
 #include "Platform/KeyCodes.h"
 #include "Platform/PlatformError.h"
 
@@ -27,6 +28,9 @@ constexpr WPARAM SystemCommandMask = 0xFFF0;
 // A key message has this bit set when the key was already down, which means the key is repeating.
 constexpr LPARAM KeyWasDownBit = 1 << 30;
 
+// A system key message has this bit set when the Alt key is down.
+constexpr LPARAM AltIsDownBit = 1 << 29;
+
 // A key message holds the scan code of the key in its bits 16 to 23, and bit 24 says that the key is an extended key.
 constexpr int ScanCodeShift = 16;
 constexpr LPARAM ScanCodeMask = 0xFF;
@@ -48,6 +52,10 @@ public:
     {
     }
 
+    void OnMouseWheel(int) override
+    {
+    }
+
     void OnKey(int, bool) override
     {
     }
@@ -63,18 +71,47 @@ WindowListener* NobodyListening()
     return &ignoringListener;
 }
 
+DraggedEdge DraggedEdgeOf(WPARAM sizingEdge)
+{
+    switch (sizingEdge)
+    {
+    case WMSZ_LEFT:
+        return DraggedEdge::Left;
+    case WMSZ_RIGHT:
+        return DraggedEdge::Right;
+    case WMSZ_TOP:
+        return DraggedEdge::Top;
+    case WMSZ_BOTTOM:
+        return DraggedEdge::Bottom;
+    case WMSZ_TOPLEFT:
+        return DraggedEdge::TopLeft;
+    case WMSZ_TOPRIGHT:
+        return DraggedEdge::TopRight;
+    case WMSZ_BOTTOMLEFT:
+        return DraggedEdge::BottomLeft;
+    }
+    return DraggedEdge::BottomRight;
 }
 
-Window::Window(std::wstring_view title, WindowSize clientSize)
+RECT FrameAround(WindowSize clientSize, UINT dotsPerInch)
+{
+    RECT frame = {0, 0, static_cast<LONG>(clientSize.width), static_cast<LONG>(clientSize.height)};
+    AdjustWindowRectExForDpi(&frame, WindowedStyle, FALSE, 0, dotsPerInch);
+    return frame;
+}
+
+}
+
+Window::Window(std::wstring_view title, WindowSize clientSize, WindowVisibility visibility)
     : listener(NobodyListening())
+    , isShown(visibility == WindowVisibility::Shown)
 {
     // Without this Windows stretches the picture of a window on a scaled monitor, so the client area would not have
     // the pixels asked for. It fails harmlessly when the program has already chosen.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     RegisterWindowClass();
 
-    RECT frame = {0, 0, static_cast<LONG>(clientSize.width), static_cast<LONG>(clientSize.height)};
-    AdjustWindowRectExForDpi(&frame, WindowedStyle, FALSE, 0, GetDpiForSystem());
+    RECT frame = FrameAround(clientSize, GetDpiForSystem());
 
     std::wstring titleText(title);
     handle = CreateWindowExW(0, WindowClassName, titleText.c_str(), WindowedStyle, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -82,7 +119,8 @@ Window::Window(std::wstring_view title, WindowSize clientSize)
     if (handle == nullptr)
         throw PlatformError(std::format("The window could not be created (Windows error {})", GetLastError()));
 
-    ShowWindow(handle, SW_SHOW);
+    if (isShown)
+        ShowWindow(handle, SW_SHOW);
 }
 
 Window::~Window()
@@ -95,6 +133,11 @@ Window::~Window()
 void Window::SetListener(WindowListener* newListener)
 {
     listener = newListener != nullptr ? newListener : NobodyListening();
+}
+
+bool Window::IsShown() const
+{
+    return isShown;
 }
 
 WindowSize Window::ClientSize() const
@@ -115,12 +158,51 @@ bool Window::IsMinimized() const
 
 void Window::SetClientSize(WindowSize clientSize)
 {
-    if (isFullscreen)
+    WindowPlace place = WindowedPlace();
+    place.clientSize = clientSize;
+    SetWindowedPlace(place);
+}
+
+// The place is the one Windows keeps for the window when it is neither minimized nor maximized, in the coordinates of the work area.
+WindowPlace Window::WindowedPlace() const
+{
+    WINDOWPLACEMENT placement = windowedPlacement;
+    if (!isFullscreen)
+    {
+        placement.length = sizeof(placement);
+        GetWindowPlacement(handle, &placement);
+    }
+
+    const RECT& normal = placement.rcNormalPosition;
+    WindowSize frame = FrameSize();
+
+    WindowPlace place;
+    place.left = normal.left;
+    place.top = normal.top;
+    place.clientSize.width = static_cast<std::uint32_t>(normal.right - normal.left) - frame.width;
+    place.clientSize.height = static_cast<std::uint32_t>(normal.bottom - normal.top) - frame.height;
+    return place;
+}
+
+void Window::SetWindowedPlace(const WindowPlace& place)
+{
+    RECT frame = FrameAround(place.clientSize, GetDpiForWindow(handle));
+    RECT normal = {place.left, place.top, place.left + frame.right - frame.left, place.top + frame.bottom - frame.top};
+    if (MonitorFromRect(&normal, MONITOR_DEFAULTTONULL) == nullptr)
         return;
 
-    RECT frame = {0, 0, static_cast<LONG>(clientSize.width), static_cast<LONG>(clientSize.height)};
-    AdjustWindowRectExForDpi(&frame, WindowedStyle, FALSE, 0, GetDpiForWindow(handle));
-    SetWindowPos(handle, nullptr, 0, 0, frame.right - frame.left, frame.bottom - frame.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+    if (isFullscreen)
+    {
+        windowedPlacement.rcNormalPosition = normal;
+        return;
+    }
+
+    WINDOWPLACEMENT placement = {};
+    placement.length = sizeof(placement);
+    GetWindowPlacement(handle, &placement);
+    placement.rcNormalPosition = normal;
+    placement.showCmd = isShown ? SW_SHOWNORMAL : SW_HIDE;
+    SetWindowPlacement(handle, &placement);
 }
 
 bool Window::IsFullscreen() const
@@ -138,9 +220,18 @@ void Window::ToggleFullscreen()
     isFullscreen = !isFullscreen;
 }
 
-bool Window::IsCloseRequested() const
+bool Window::TakePlaceChange()
 {
-    return closeWasRequested;
+    bool hasChanged = placeHasChanged;
+    placeHasChanged = false;
+    return hasChanged;
+}
+
+bool Window::TakeCloseRequest()
+{
+    bool wasRequested = closeWasRequested;
+    closeWasRequested = false;
+    return wasRequested;
 }
 
 HWND Window::NativeHandle() const
@@ -150,10 +241,12 @@ HWND Window::NativeHandle() const
 
 void Window::RegisterWindowClass()
 {
+    HINSTANCE program = GetModuleHandleW(nullptr);
+
     WNDCLASSEXW windowClass = {};
     windowClass.cbSize = sizeof(windowClass);
     windowClass.lpfnWndProc = WindowProcedure;
-    windowClass.hInstance = GetModuleHandleW(nullptr);
+    windowClass.hInstance = program;
     windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     windowClass.hIcon = LoadIconW(windowClass.hInstance, MAKEINTRESOURCEW(ProgramIconNumber));
     windowClass.lpszClassName = WindowClassName;
@@ -183,6 +276,13 @@ LRESULT CALLBACK Window::WindowProcedure(HWND windowHandle, UINT message, WPARAM
 
 LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM secondParameter)
 {
+    if (IsFullscreenKey(message, firstParameter, secondParameter))
+    {
+        ToggleFullscreen();
+        placeHasChanged = true;
+        return 0;
+    }
+
     switch (message)
     {
     case WM_CLOSE:
@@ -198,9 +298,27 @@ LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM second
     case WM_ERASEBKGND:
         return TRUE;
 
+    case WM_SIZING:
+        KeepSixteenByNine(firstParameter, *reinterpret_cast<RECT*>(secondParameter));
+        return TRUE;
+
+    case WM_GETMINMAXINFO:
+        SetSmallestSize(*reinterpret_cast<MINMAXINFO*>(secondParameter));
+        return 0;
+
+    case WM_EXITSIZEMOVE:
+        placeHasChanged = true;
+        return 0;
+
     // The Alt key alone would open the window menu and stop the program until the menu is closed.
     case WM_SYSCOMMAND:
         if ((firstParameter & SystemCommandMask) == SC_KEYMENU)
+            return 0;
+        break;
+
+    // Alt+Enter would make Windows ring its bell.
+    case WM_SYSCHAR:
+        if (firstParameter == VK_RETURN)
             return 0;
         break;
 
@@ -211,6 +329,10 @@ LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM second
     case WM_MOUSELEAVE:
         isWaitingForMouseLeave = false;
         listener->OnMouseLeft();
+        return 0;
+
+    case WM_MOUSEWHEEL:
+        HandleMouseWheel(firstParameter);
         return 0;
 
     case WM_LBUTTONDOWN:
@@ -262,6 +384,39 @@ LRESULT Window::HandleMessage(UINT message, WPARAM firstParameter, LPARAM second
     return DefWindowProcW(handle, message, firstParameter, secondParameter);
 }
 
+// F11, or Enter while Alt is down. Holding the key down switches only once.
+bool Window::IsFullscreenKey(UINT message, WPARAM virtualKeyCode, LPARAM keyInformation) const
+{
+    bool isRepeating = (keyInformation & KeyWasDownBit) != 0;
+    if (isRepeating)
+        return false;
+
+    bool isFullscreenKey = message == WM_KEYDOWN && virtualKeyCode == VK_F11;
+    bool isAltEnter = message == WM_SYSKEYDOWN && virtualKeyCode == VK_RETURN && (keyInformation & AltIsDownBit) != 0;
+    return isFullscreenKey || isAltEnter;
+}
+
+void Window::KeepSixteenByNine(WPARAM draggedEdge, RECT& edges) const
+{
+    WindowEdges dragged = {edges.left, edges.top, edges.right, edges.bottom};
+    WindowEdges kept = KeepInsideSixteenByNine(dragged, DraggedEdgeOf(draggedEdge), FrameSize());
+    edges = {kept.left, kept.top, kept.right, kept.bottom};
+}
+
+void Window::SetSmallestSize(MINMAXINFO& limits) const
+{
+    WindowSize frame = FrameSize();
+    limits.ptMinTrackSize.x = static_cast<LONG>(SmallestClientSize.width + frame.width);
+    limits.ptMinTrackSize.y = static_cast<LONG>(SmallestClientSize.height + frame.height);
+}
+
+// How much wider and taller the window with its frame is than the area inside, at the scale of the monitor it is on.
+WindowSize Window::FrameSize() const
+{
+    RECT frame = FrameAround({0, 0}, GetDpiForWindow(handle));
+    return {static_cast<std::uint32_t>(frame.right - frame.left), static_cast<std::uint32_t>(frame.bottom - frame.top)};
+}
+
 void Window::HandleMouseMove(LPARAM mousePosition)
 {
     if (!isWaitingForMouseLeave)
@@ -280,6 +435,19 @@ void Window::HandleMouseMove(LPARAM mousePosition)
     listener->OnMouseMoved(x, y);
 }
 
+// A wheel with fine steps reports parts of a notch; they are added up until they make whole notches.
+void Window::HandleMouseWheel(WPARAM wheelInformation)
+{
+    wheelTurnSinceLastNotch += GET_WHEEL_DELTA_WPARAM(wheelInformation);
+
+    int notches = wheelTurnSinceLastNotch / WHEEL_DELTA;
+    if (notches == 0)
+        return;
+
+    wheelTurnSinceLastNotch -= notches * WHEEL_DELTA;
+    listener->OnMouseWheel(notches);
+}
+
 void Window::HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPressed)
 {
     bool isRepeating = isPressed && (keyInformation & KeyWasDownBit) != 0;
@@ -292,6 +460,15 @@ void Window::HandleKey(WPARAM virtualKeyCode, LPARAM keyInformation, bool isPres
     listener->OnKey(keyCode, isPressed);
 }
 
+// A window that is never shown stays hidden in every style it gets.
+DWORD Window::StyleWithVisibility(DWORD style) const
+{
+    if (isShown)
+        return style | WS_VISIBLE;
+
+    return style;
+}
+
 void Window::EnterFullscreen()
 {
     windowedPlacement.length = sizeof(windowedPlacement);
@@ -302,16 +479,18 @@ void Window::EnterFullscreen()
     GetMonitorInfoW(MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST), &monitorInfo);
     const RECT& monitor = monitorInfo.rcMonitor;
 
-    SetWindowLongPtrW(handle, GWL_STYLE, FullscreenStyle | WS_VISIBLE);
+    SetWindowLongPtrW(handle, GWL_STYLE, StyleWithVisibility(FullscreenStyle));
     SetWindowPos(handle, HWND_TOP, monitor.left, monitor.top, monitor.right - monitor.left, monitor.bottom - monitor.top,
-        SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+        SWP_FRAMECHANGED | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 }
 
 void Window::LeaveFullscreen()
 {
-    SetWindowLongPtrW(handle, GWL_STYLE, WindowedStyle | WS_VISIBLE);
+    SetWindowLongPtrW(handle, GWL_STYLE, StyleWithVisibility(WindowedStyle));
+    if (!isShown)
+        windowedPlacement.showCmd = SW_HIDE;
     SetWindowPlacement(handle, &windowedPlacement);
-    SetWindowPos(handle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    SetWindowPos(handle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
 }
 
 }

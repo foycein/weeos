@@ -255,7 +255,7 @@ InternetChannel::InternetChannel(ChannelServices& channelServices)
     yahooButton = ReadPicture(dialogPictures + "yahoo.png");
 
     ShowToolbarButtons();
-    failure = TryToConnect(services.network);
+    networkStart = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
 }
 
 InternetChannel::~InternetChannel() = default;
@@ -471,13 +471,13 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogOk() const
 // The join of the network ends while the start page shows, and the channel tells it once (0x800320CC, 0x800338B0).
 bool InternetChannel::ShowNetworkErrorWhenDue()
 {
-    bool hasJoinFailed = services.clock.Seconds() >= failure.secondsUntilFailure;
+    bool hasJoinFailed = !networkStart.isOnline && services.clock.Seconds() >= networkStart.secondsUntilFailure;
     if (!hasJoinFailed || hasShownNetworkError || view != View::StartPage)
         return false;
 
     hasShownNetworkError = true;
     focusedPlace.reset();
-    Ask(Question::NetworkError, ReplaceCodeMark(texts.FindById(NetworkErrorTextId), failure.supportCode));
+    Ask(Question::NetworkError, ReplaceCodeMark(texts.FindById(NetworkErrorTextId), networkStart.supportCode));
     return true;
 }
 
@@ -976,7 +976,7 @@ PageView& InternetChannel::EnsurePageView()
 {
     if (!pageView)
     {
-        Browser::AddressRedirect redirect{WiiServiceHosts(), {}};
+        Browser::AddressRedirect redirect{WiiServiceHosts(), services.network.serverAddress};
         pageView = std::make_unique<PageView>(services.display.Device(), services.pc.browser, redirect);
         pageView->SetArea(flatFrame.width, PageAreaHeight());
     }
@@ -1076,7 +1076,7 @@ std::u16string InternetChannel::LoadFailureText(Browser::LoadError error) const
     case Browser::LoadError::CertificateError:
         return texts.FindById(SecureConnectionFailedTextId);
     case Browser::LoadError::NoInternet:
-        return ReplaceCodeMark(texts.FindById(NetworkErrorTextId), failure.supportCode);
+        return ReplaceCodeMark(texts.FindById(NetworkErrorTextId), networkStart.supportCode);
     default:
         return texts.FindById(LoadFailedTextId);
     }

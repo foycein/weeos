@@ -7,11 +7,11 @@
 #include "Channels/Internet/PageToolbar.h"
 #include "Channels/Internet/PageView.h"
 #include "Channels/Internet/SettingsScreen.h"
-#include "Channels/OfflineConnection.h"
 #include "Channels/OperaLanguageFile.h"
 #include "Channels/PagePainter.h"
 
 #include "SystemMenu/CursorManager.h"
+#include "SystemMenu/NetworkStart.h"
 #include "SystemMenu/SoftKeyboard.h"
 
 #include "Formats/U8Archive.h"
@@ -26,7 +26,8 @@ namespace Channels
 {
 
 // The Internet Channel (docs/research/Channels.md 7, docs/audit/Browser.md). The channel shows its start page at once and joins the
-// network in the background (0x800320CC); when the join fails while the start page is on screen it shows its dialog
+// network in the background (0x800320CC). The console is online through the PC (docs/DECISIONS.md, Online): while the PC is connected
+// the join succeeds; while it is not, the join fails after the time-out, and while the start page is on screen it shows its dialog
 // "%06d: Unable to connect to the internet. ..." with OK (0x800338B0). The start page is the browser's local page startpage.html,
 // drawn natively from its widescreen styles, pictures and the texts of english.lng.
 //
@@ -247,7 +248,7 @@ private:
     View viewBeforeList = View::StartPage;
     std::optional<Dialog> dialog;
     Typing typing = Typing::WebAddress;
-    ConnectionFailure failure{};
+    SystemMenu::NetworkStart networkStart;
     bool hasShownNetworkError = false;
     std::optional<Place> focusedPlace;
     std::optional<ToolbarButton> focusedToolbarButton;

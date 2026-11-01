@@ -15,7 +15,7 @@ namespace Graphics
 constexpr std::uint32_t ConsoleFrameWidth = 640;
 constexpr std::uint32_t ConsoleFrameHeight = 456;
 
-// The picture of the video chip. The screen shape decides how wide the part with the menu is.
+// The picture of the video chip.
 constexpr Canvas ConsoleRasterCanvas = {720, 480};
 
 // Assumed (docs/audit/OpenPoints/Graphics.md): how the pixels in between are made when the frame buffer is stretched to the screen.
@@ -23,9 +23,9 @@ constexpr Canvas ConsoleRasterCanvas = {720, 480};
 // What the copy reads beyond the edges of the frame buffer is DrawTargetEdgeWrap in TextureStore.cpp.
 constexpr FilterMode ConsoleScalingFilter = FilterMode::Linear;
 
-// The units of the layouts of the menu: 608 x 456 in 4:3 and 832 x 456 in 16:9. The menu draws one unit as one pixel in the
-// height of its frame buffer, and it stretches the width of the canvas over the 640 pixels.
-Canvas ConsoleCanvas(Platform::ScreenShape screenShape);
+// The units of the 16:9 picture of the menu. The menu draws one unit as one pixel in the height of its frame buffer, and it
+// stretches the width of the canvas over the 640 pixels.
+constexpr Canvas ConsoleCanvas = {832, 456};
 
 // Which way the console sends its picture to the television. The vertical filter of the copy depends on it.
 // The console of the dump has no setting for the progressive mode, so it sends 480i.
@@ -40,7 +40,7 @@ constexpr ConsoleScan ReferenceConsoleScan = ConsoleScan::Interlaced;
 // How the device makes the picture of the screen.
 enum class PictureResolution : std::uint8_t
 {
-    // The picture is drawn with the pixels of the window, so the edges are sharp. It fills the whole area of the screen shape.
+    // The picture is drawn with the pixels of the window, so the edges are sharp. It fills the whole 16:9 area of the window.
     Window,
 
     // The picture is drawn into a frame buffer of 640 x 456 pixels, filtered vertically as the console copies it, and shown
@@ -54,12 +54,12 @@ struct PictureSettings
     ConsoleScan consoleScan = ReferenceConsoleScan;
 };
 
-// The pixels of the window that show the frame buffer of the console, when the screen shape fills screenArea.
+// The pixels of the window that show the frame buffer of the console, when the 16:9 picture fills screenArea.
 // The pointer has to be converted with this area while the picture is made in the console way.
-Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape);
+Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea);
 
 // The corners of the frame buffer in the units of ConsoleRasterCanvas, with the texture coordinates of the whole frame buffer.
-Quad MakeConsolePictureQuad(Platform::ScreenShape screenShape);
+Quad MakeConsolePictureQuad();
 
 // How much of the line above, of the line itself and of the line below make a line of the copy. The numbers are out of 255
 // and add up to exactly 255, as the constants of a stage hold them.

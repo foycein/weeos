@@ -23,7 +23,6 @@ add_library(Channels STATIC
     MiiChannel/PlazaScreen.cpp
     MiiChannel/ProfileDialog.cpp
     NativeChannels.cpp
-    OfflineConnection.cpp
     OperaLanguageFile.cpp
     PagePainter.cpp
     Photo/PhotoChannel.cpp

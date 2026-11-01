@@ -5,6 +5,7 @@ add_library(SystemMenu STATIC
     ContinueWatcher.cpp
     CursorManager.cpp
     DialogManager.cpp
+    EdgeExtension.cpp
     Display.cpp
     ErrorScreen.cpp
     FatalError.cpp
@@ -24,7 +25,10 @@ add_library(SystemMenu STATIC
     MenuSettings.cpp
     MenuSound.cpp
     MenuStateFile.cpp
+    NetworkStart.cpp
     MenuSystem.cpp
+    InstalledTitleContents.cpp
+    OwnServer.cpp
     OwnTitleContents.cpp
     PhysicalKeyboard.cpp
     ProgramImage.cpp
@@ -35,6 +39,7 @@ add_library(SystemMenu STATIC
     StartupRouterScreen.cpp
     TelevisionZoom.cpp
     TextField.cpp
+    TurnOffQuestion.cpp
     UsKeyboardLayout.cpp
     WelcomeScreen.cpp
     WiiOptionsBackgroundScreen.cpp

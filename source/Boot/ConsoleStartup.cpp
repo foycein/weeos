@@ -23,8 +23,9 @@ Ios::IosProfile Boot2SessionProfile()
 
 }
 
-ConsoleStartup::ConsoleStartup(Ios::IosFolders iosFolders)
+ConsoleStartup::ConsoleStartup(Ios::IosFolders iosFolders, Ios::PcConnectionCheck pcConnectionCheck)
     : folders(std::move(iosFolders))
+    , services(std::move(pcConnectionCheck))
 {
 }
 

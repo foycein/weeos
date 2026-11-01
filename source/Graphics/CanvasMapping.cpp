@@ -9,8 +9,14 @@ namespace Graphics
 {
 
 CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const Platform::PixelRectangle& coveredArea)
+    : CanvasMapping(mappedCanvas, coveredArea, coveredArea)
+{
+}
+
+CanvasMapping::CanvasMapping(const Canvas& mappedCanvas, const Platform::PixelRectangle& coveredArea, const Platform::PixelRectangle& wholeTargetArea)
     : canvas(mappedCanvas)
     , pictureArea(coveredArea)
+    , wholeArea(wholeTargetArea)
 {
     if (canvas.width <= 0 || canvas.height <= 0)
         throw GraphicsError("The canvas must have a width and a height");
@@ -24,6 +30,18 @@ const Canvas& CanvasMapping::GetCanvas() const
 const Platform::PixelRectangle& CanvasMapping::PictureArea() const
 {
     return pictureArea;
+}
+
+const Platform::PixelRectangle& CanvasMapping::WholeArea() const
+{
+    return wholeArea;
+}
+
+ScissorRectangle CanvasMapping::WholeCanvasArea() const
+{
+    Formats::Vector2 topLeft = PixelToCanvas({wholeArea.left, wholeArea.top});
+    Formats::Vector2 bottomRight = PixelToCanvas({wholeArea.left + wholeArea.width, wholeArea.top + wholeArea.height});
+    return {topLeft.x, bottomRight.x, bottomRight.y, topLeft.y};
 }
 
 Formats::Vector2 CanvasMapping::CanvasToPixel(Formats::Vector2 canvasPoint) const
@@ -47,15 +65,22 @@ Platform::PixelRectangle CanvasMapping::ScissorToPixels(const ScissorRectangle& 
     Formats::Vector2 topLeft = CanvasToPixel({scissor.left, scissor.top});
     Formats::Vector2 bottomRight = CanvasToPixel({scissor.right, scissor.bottom});
 
-    float left = std::max(std::floor(topLeft.x), pictureArea.left);
-    float top = std::max(std::floor(topLeft.y), pictureArea.top);
-    float right = std::min(std::ceil(bottomRight.x), pictureArea.left + pictureArea.width);
-    float bottom = std::min(std::ceil(bottomRight.y), pictureArea.top + pictureArea.height);
+    float left = std::max(std::floor(topLeft.x), wholeArea.left);
+    float top = std::max(std::floor(topLeft.y), wholeArea.top);
+    float right = std::min(std::ceil(bottomRight.x), wholeArea.left + wholeArea.width);
+    float bottom = std::min(std::ceil(bottomRight.y), wholeArea.top + wholeArea.height);
 
     if (right <= left || bottom <= top)
-        return {pictureArea.left, pictureArea.top, 0, 0};
+        return {wholeArea.left, wholeArea.top, 0, 0};
 
     return {left, top, right - left, bottom - top};
+}
+
+Platform::PixelRectangle CanvasMapping::CanvasPixels() const
+{
+    float halfWidth = canvas.width / 2;
+    float halfHeight = canvas.height / 2;
+    return ScissorToPixels({-halfWidth, halfWidth, -halfHeight, halfHeight});
 }
 
 }

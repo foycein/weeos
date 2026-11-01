@@ -5,7 +5,6 @@
 #include "Input/RemoteSource.h"
 
 #include "Platform/PixelRectangle.h"
-#include "Platform/ScreenShape.h"
 #include "Platform/WindowListener.h"
 #include "Platform/WindowSize.h"
 
@@ -17,9 +16,9 @@ namespace Input
 {
 
 // Says which part of the screen area shows the picture, for the pointer. The rule gets the screen area, which is what
-// Platform::FitPicture gives for the window, and the screen shape, and returns the area in which the pointer is measured.
+// Platform::FitPicture gives for the window, and returns the area in which the pointer is measured.
 // Graphics::ConsolePictureArea is the rule of the picture that is made the way the console makes it.
-using PictureAreaRule = Platform::PixelRectangle (*)(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape);
+using PictureAreaRule = Platform::PixelRectangle (*)(const Platform::PixelRectangle& screenArea);
 
 // Virtual Wii Remote 1. The mouse is the pointer, the mouse buttons and the keys press the buttons of the remote.
 // It is connected from the start and has new data at every read, so the menu never loses it.
@@ -28,8 +27,8 @@ using PictureAreaRule = Platform::PixelRectangle (*)(const Platform::PixelRectan
 class VirtualRemote : public RemoteSource, public Platform::WindowListener
 {
 public:
-    // The window size and the screen shape tell where the picture is in the window, which the pointer needs.
-    VirtualRemote(Platform::WindowSize initialWindowSize, Platform::ScreenShape initialScreenShape);
+    // The window size tells where the 16:9 picture is in the window, which the pointer needs.
+    explicit VirtualRemote(Platform::WindowSize initialWindowSize);
 
     // ---- The events of the window, in the order they happen
 
@@ -41,6 +40,9 @@ public:
 
     void OnMouseButton(Platform::MouseButton button, bool isPressed) override;
 
+    // Every notch presses Plus or Minus once (WheelAwayButton, WheelTowardsButton).
+    void OnMouseWheel(int notches) override;
+
     void OnKey(int virtualKeyCode, bool isPressed) override;
 
     // Every key and every mouse button counts as released.
@@ -48,12 +50,11 @@ public:
 
     // ---- What changes while the program runs
 
-    // The program tells the remote when the window is resized and when the screen shape setting changes.
+    // The program tells the remote when the window is resized.
     void SetWindowSize(Platform::WindowSize newWindowSize);
-    void SetScreenShape(Platform::ScreenShape newScreenShape);
 
     // The pointer is measured in the whole screen area until the program gives a rule, for example when it switches the graphics
-    // to the picture of the console. The rule is used for every read, so it follows the window size and the screen shape.
+    // to the picture of the console. The rule is used for every read, so it follows the window size.
     // A null rule goes back to the whole screen area.
     void SetPictureAreaRule(PictureAreaRule newPictureAreaRule);
 
@@ -102,7 +103,6 @@ private:
     bool mouseIsOverWindow = false;
     Formats::Vector2 mousePixel = {0, 0};
     Platform::WindowSize windowSize;
-    Platform::ScreenShape screenShape;
     PictureAreaRule pictureAreaRule = nullptr;
 
     bool isConnected = true;

@@ -103,6 +103,15 @@ constexpr ButtonPlaces RightButton = {{387, 371, 211, 75}, {399, 379, 187, 55}, 
 constexpr std::string_view FocusSound = "WIPL_SE_BT_TARGETTING";
 constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 
+// The first page of the Shop is on its server. When the browser cannot load it, the browser's error event names the class of the error
+// and its number, and the Shop shows 209511 plus the number for an error of the HTTP class (0x80029460). Which numbers the browser
+// gives for a name that is not found, a server that does not answer and a reply it cannot read was not read: the numbers of the SDK's
+// HTTP library stand for them (CHN-04, Assumed). The codes are on no list of internet.html, so the page is error.html.
+constexpr std::uint32_t BrowserHttpErrorCodeBase = 209511;
+constexpr std::uint32_t BrowserNameNotFoundError = 4;
+constexpr std::uint32_t BrowserConnectError = 5;
+constexpr std::uint32_t BrowserReplyNotUnderstoodError = 7;
+
 // The support codes whose page is internet.html (0x8002F390): the families of a connection to the Internet that cannot be made.
 constexpr std::array<std::uint32_t, 4> InternetPageFamilies = {50200, 50300, 52000, 52100};
 constexpr std::uint32_t FamilySize = 100;
@@ -159,6 +168,18 @@ bool ShowsInternetPage(std::uint32_t supportCode)
             return true;
     }
     return false;
+}
+
+// The pages of the Shop come with the owner's server; a server that answers sends a first page that the Shop cannot read yet.
+std::uint32_t BrowserErrorCodeOf(SystemMenu::ServerAnswer answer)
+{
+    if (answer == SystemMenu::ServerAnswer::NameNotFound)
+        return BrowserHttpErrorCodeBase + BrowserNameNotFoundError;
+
+    if (answer == SystemMenu::ServerAnswer::NoAnswer)
+        return BrowserHttpErrorCodeBase + BrowserConnectError;
+
+    return BrowserHttpErrorCodeBase + BrowserReplyNotUnderstoodError;
 }
 
 std::unique_ptr<PagePicture> ReadGifPicture(Graphics::GraphicsDevice& device, const Formats::U8Archive& resources, std::string_view path)
@@ -227,12 +248,12 @@ ShopChannel::Stage ShopChannel::CurrentStage() const
 
 ShopChannel::ErrorPage ShopChannel::ShownErrorPage() const
 {
-    return ShowsInternetPage(failure.supportCode) ? ErrorPage::Internet : ErrorPage::Server;
+    return ShowsInternetPage(errorCode) ? ErrorPage::Internet : ErrorPage::Server;
 }
 
 std::u16string ShopChannel::ErrorCodeText() const
 {
-    return Message(ErrorCodeLabelMessage) + AsciiToText(std::to_string(failure.supportCode));
+    return Message(ErrorCodeLabelMessage) + AsciiToText(std::to_string(errorCode));
 }
 
 std::u16string ShopChannel::ErrorMessageText() const
@@ -252,8 +273,15 @@ void ShopChannel::UpdateStage()
     if (stage == Stage::StartUp && seconds >= StartupPictureSeconds)
         StartConnecting();
 
-    if (stage == Stage::Connecting && seconds - connectingStartSeconds >= failure.secondsUntilFailure)
-        stage = Stage::ShowingError;
+    if (stage == Stage::Connecting)
+    {
+        std::optional<std::uint32_t> foundCode = FindErrorCode();
+        if (foundCode)
+        {
+            errorCode = *foundCode;
+            stage = Stage::ShowingError;
+        }
+    }
 
     if (stage == Stage::ShowingError && services.fader.GetStatus() == SystemMenu::FaderStatus::Clear)
         UpdateButtons();
@@ -261,10 +289,33 @@ void ShopChannel::UpdateStage()
 
 void ShopChannel::StartConnecting()
 {
-    failure = TryToConnect(services.network);
+    server.reset();
+    networkStart = SystemMenu::StartNetwork(services.network.configuration, services.network.sockets);
+    if (networkStart.isOnline)
+        server = std::make_unique<SystemMenu::ServerContact>(services.network.sockets, services.network.serverAddress);
+
     connectingStartSeconds = services.clock.Seconds();
     focusedButtonMessage.reset();
     stage = Stage::Connecting;
+}
+
+// While the PC is not connected the network does not start and the code of SOStartup comes after the time-out; else the code of the
+// browser comes as soon as the server could not be reached.
+std::optional<std::uint32_t> ShopChannel::FindErrorCode()
+{
+    if (!networkStart.isOnline)
+    {
+        if (services.clock.Seconds() - connectingStartSeconds < networkStart.secondsUntilFailure)
+            return std::nullopt;
+
+        return networkStart.supportCode;
+    }
+
+    std::optional<SystemMenu::ServerAnswer> answer = server->Answer();
+    if (!answer)
+        return std::nullopt;
+
+    return BrowserErrorCodeOf(*answer);
 }
 
 void ShopChannel::UpdateButtons()

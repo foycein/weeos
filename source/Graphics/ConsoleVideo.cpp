@@ -9,12 +9,8 @@ namespace Graphics
 namespace
 {
 
-constexpr Canvas FourByThreeCanvas = {608, 456};
-constexpr Canvas SixteenByNineCanvas = {832, 456};
-
-// How wide the part of the raster with the menu is. The menu picks the width from the screen shape, and the part lies in the middle.
-constexpr float FourByThreePictureWidth = 670;
-constexpr float SixteenByNinePictureWidth = 686;
+// How wide the part of the raster with the menu is in 16:9. The part lies in the middle.
+constexpr float PictureWidth = 686;
 
 // The part starts 12 lines below the top of the raster.
 constexpr float PictureTop = 12;
@@ -33,14 +29,6 @@ constexpr std::size_t CoefficientCountOfOutsideLine = 2;
 
 // The three weights are the red, green and blue number of this constant color of the material.
 constexpr std::size_t WeightColorIndex = 3;
-
-float PictureWidthOf(Platform::ScreenShape screenShape)
-{
-    if (screenShape == Platform::ScreenShape::FourByThree)
-        return FourByThreePictureWidth;
-
-    return SixteenByNinePictureWidth;
-}
 
 int AddCoefficients(const std::array<std::uint8_t, CoefficientCount>& coefficients, std::size_t firstCoefficient, std::size_t count)
 {
@@ -86,29 +74,20 @@ void AddWeightedLine(Material& material, TextureHandle frameBuffer, int lineOffs
 
 }
 
-Canvas ConsoleCanvas(Platform::ScreenShape screenShape)
+Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea)
 {
-    if (screenShape == Platform::ScreenShape::FourByThree)
-        return FourByThreeCanvas;
-
-    return SixteenByNineCanvas;
-}
-
-Platform::PixelRectangle ConsolePictureArea(const Platform::PixelRectangle& screenArea, Platform::ScreenShape screenShape)
-{
-    float pictureWidth = PictureWidthOf(screenShape);
-    float pictureLeft = (ConsoleRasterCanvas.width - pictureWidth) / 2;
+    float pictureLeft = (ConsoleRasterCanvas.width - PictureWidth) / 2;
 
     float pixelsPerRasterColumn = screenArea.width / ConsoleRasterCanvas.width;
     float pixelsPerRasterLine = screenArea.height / ConsoleRasterCanvas.height;
 
     return {screenArea.left + pictureLeft * pixelsPerRasterColumn, screenArea.top + PictureTop * pixelsPerRasterLine,
-        pictureWidth * pixelsPerRasterColumn, ConsoleFrameHeight * pixelsPerRasterLine};
+        PictureWidth * pixelsPerRasterColumn, ConsoleFrameHeight * pixelsPerRasterLine};
 }
 
-Quad MakeConsolePictureQuad(Platform::ScreenShape screenShape)
+Quad MakeConsolePictureQuad()
 {
-    float halfWidth = PictureWidthOf(screenShape) / 2;
+    float halfWidth = PictureWidth / 2;
     float halfHeight = ConsoleFrameHeight / 2.0f;
 
     constexpr Formats::Rgba8Color white = {255, 255, 255, 255};

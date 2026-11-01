@@ -25,18 +25,24 @@ namespace Graphics
 
 // The graphics device on Vulkan 1.3. It draws into the window of the program with dynamic rendering, and into offscreen
 // pictures. Present waits for the refresh of the display (vsync), so the pictures come at the speed of the display.
+// The 16:9 canvas lies in the middle of the window; the rest of the window is the whole area that a scissor can reach.
+//
+// A window that is not shown has no swap chain: its pictures are drawn into a texture as large as the window, which ReadScreenPicture
+// reads back, and Present does not wait for a display. Tests and the runs of helpers draw this way (docs/HelperRules.md).
 //
 // While the window has no area, for example when it is minimized, BeginFrame and Present do nothing and the drawing
 // is skipped. The program should wait for window messages then instead of drawing pictures in a loop.
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
-    explicit VulkanGraphicsDevice(const Platform::Window& window);
+    // The window must outlive the device.
+    explicit VulkanGraphicsDevice(const Platform::Window& programWindow);
     ~VulkanGraphicsDevice() override;
 
     TextureHandle CreateTexture(const TextureDescription& description) override;
     void DestroyTexture(TextureHandle texture) override;
-    void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) override;
+    void BeginFrame(const Canvas& canvas) override;
+    ScissorRectangle WholeArea() const override;
     void SetScissor(const ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Quad& quad, const Material& material) override;
@@ -51,6 +57,10 @@ public:
     // How the pictures of the screen are made from the next BeginFrame on. The default is the resolution of the window. Throws while a
     // picture is being drawn.
     void SetPictureSettings(const PictureSettings& settings);
+
+    // The last picture of the screen of a hidden window, as large as the window. Throws for a window that is shown, and before the
+    // first picture.
+    Formats::RgbaImage ReadScreenPicture();
 
     // Reads the pixels of a texture back from the graphics card, for tests and for screenshots of offscreen pictures.
     // The texture must not be drawn into at that time. An offscreen picture that was drawn between BeginFrame and
@@ -104,7 +114,6 @@ private:
     struct ConsoleFrame
     {
         TextureHandle frameBuffer;
-        Platform::ScreenShape screenShape;
         Material copyMaterial;
         std::uint32_t copyDrawIndex;
     };
@@ -116,12 +125,19 @@ private:
 
     // Gets the resources and the swap chain image of the next picture ready. Present ends with this, and so it waits there.
     void PrepareFrame();
+    void PrepareHiddenScreen();
     void WaitUntilFinished(FrameResources& resources);
 
+    // The image that the picture of the screen goes into: the swap chain image of a shown window, the texture of a hidden one.
+    bool HasScreenImage() const;
+    VkExtent2D ScreenSize() const;
+    VkImage ScreenImage();
+    VkImageView ScreenView();
+
     // Where the canvas of the next picture of the screen lands: in the window, or in the frame buffer of the console.
-    CanvasMapping MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const;
+    CanvasMapping MapScreenPicture(const Canvas& canvas) const;
     void StartWindowPicture(const CanvasMapping& mapping);
-    void StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape);
+    void StartConsolePicture(const CanvasMapping& mapping);
     void StartRecording(std::optional<Recording>& recording, FrameResources& resources);
     void BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor);
     void EndPass();
@@ -132,6 +148,8 @@ private:
     void ResumePass(const Target& target);
     void FinishStandaloneRecording();
     void FinishScreenPicture();
+    void ShowOnTheDisplay(FrameResources& resources);
+    void KeepHiddenPicture(FrameResources& resources);
     void CopyConsoleFrameToScreen();
     void Submit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence fence);
 
@@ -155,8 +173,9 @@ private:
     const GraphicsImage& ScreenDepthBuffer();
     void BindTextures(const Material& material);
 
+    const Platform::Window& window;
     VulkanContext context;
-    Swapchain swapchain;
+    std::optional<Swapchain> swapchain;
     DrawPipelines pipeline;
     TextureStore textures;
     DepthBuffers depthBuffers;
@@ -173,6 +192,7 @@ private:
     std::uint64_t finishedFrameNumber = 0;
 
     PictureSettings pictureSettings;
+    Canvas frameCanvas;
     bool isFrameActive = false;
     std::optional<Recording> frameRecording;
     std::optional<Recording> standaloneRecording;
@@ -181,6 +201,10 @@ private:
     // The offscreen pictures that are being drawn, the innermost last.
     std::vector<OffscreenPicture> offscreenPictures;
     std::optional<ConsoleFrame> consoleFrame;
+
+    TextureHandle hiddenScreen;
+    VkExtent2D hiddenScreenSize = {0, 0};
+    bool hasShownHiddenPicture = false;
 };
 
 }

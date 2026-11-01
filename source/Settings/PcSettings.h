@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,10 +22,18 @@ constexpr int HighestVolume = 100;
 
 // The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device and the keys. They are the pages "PC Settings"
 // of Wii Settings (docs/DECISIONS.md, Settings). The sound mode and the rumble are the console's own settings (SystemSettings).
+// The picture is always 16:9, so its shape is no setting.
 struct PcSettings
 {
+    // The size of the area inside the window when it is not fullscreen.
     std::uint32_t windowWidth = DefaultWindowWidth;
     std::uint32_t windowHeight = DefaultWindowHeight;
+
+    // Where the window was when it was last moved, the top left corner of its frame. Nothing until the window has been moved once.
+    std::optional<int> windowLeft;
+    std::optional<int> windowTop;
+
+    // WeeOS starts in borderless fullscreen unless the settings say otherwise (docs/DECISIONS.md, Start).
     bool isFullscreen = true;
 
     // The name Windows gives the playback device. Empty for the device that Windows uses by default.
@@ -38,6 +47,10 @@ struct PcSettings
 
     // The left mouse button is A and the right one is B, or the other way round.
     bool areMouseButtonsSwapped = false;
+
+    // The owner's own server, which takes the place of every Nintendo service (docs/DECISIONS.md, Online): a host name or an IPv4
+    // address, with ":port" when it is not 80. Empty until the server exists; until then every online channel shows its server error.
+    std::string serverAddress;
 
     bool operator==(const PcSettings& other) const;
 };

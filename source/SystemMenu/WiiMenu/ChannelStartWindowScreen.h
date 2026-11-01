@@ -43,18 +43,12 @@ enum class StartWindowState
     // The menu's message that the channel cannot be used is open, because WeeOS has no program for it yet.
     ShowingCannotBeUsed,
 
-    // The question whether to set up the Internet first is open (0x0C).
-    AskingForInternetSettings,
-
     // Start was pressed and the channel may start: a moment passes, then the picture fades to black (4, 5).
     Starting,
     FadingOutToStart,
 
     // The title was handed to the console, which starts it after this step.
     Started,
-
-    // Wii Settings comes next, for the Internet settings: the picture fades out first (7).
-    LeavingForSettings,
 
     // Wii Menu was pressed: the grid zooms out, the window fades out inside the television (6).
     ZoomingOut,
@@ -116,13 +110,10 @@ private:
     void ReactToButton(const ButtonGroupEvent& event);
     void PressStart();
     void ShowMessage(std::uint16_t messageNumber);
-    void AskForInternetSettings();
     void ReadAnswerOfCannotBeUsed();
-    void ReadAnswerOfInternetQuestion();
     void BeginStart();
     void RunStarting();
     void RunFadingOutToStart();
-    void LeaveForSettings(int settingsPage);
     void CloseTowardsTheGrid();
 
     ChannelGridScreen* Grid();
@@ -175,7 +166,6 @@ private:
 
     StartWindowState state = StartWindowState::WaitingForTheZoom;
     int stepsWaited = 0;
-    int settingsPageToOpen = 0;
 };
 
 }

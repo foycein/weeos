@@ -9,6 +9,7 @@
 #include "Channels/WiiSpeak/WiiSpeakMessages.h"
 #include "Channels/WiiSpeak/WiiSpeakSaveData.h"
 
+#include "SystemMenu/OwnServer.h"
 #include "SystemMenu/SoftKeyboard.h"
 
 #include <cstdint>
@@ -79,6 +80,7 @@ struct WiiSpeakSession
     // "An Internet connection cannot be established, so WiiConnect24 cannot be used." with the code of the failed connection (CHN-04),
     // when the friend server does not answer.
     void ShowWiiConnect24Unreachable();
+    static SystemMenu::ServerAnswer WiiConnect24ServerAnswerOf(const std::string& serverAddress);
 };
 
 // A screen of the channel. Each step it moves on and says which screen comes next, if another one does.
