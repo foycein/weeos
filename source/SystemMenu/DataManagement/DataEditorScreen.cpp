@@ -117,13 +117,9 @@ constexpr std::string_view SaveSlotButton = "B_Data_00";
 
 constexpr std::u16string_view DamagedName = u"???";
 
-// The places of the slots of a page, and the places of their balloons, in the layout of the list.
-std::string SlotPlacePaneName(std::size_t slotIndex)
-{
-    return std::format("N_Data_a_{:02}", slotIndex);
-}
-
-std::string BalloonPlacePaneName(std::size_t slotIndex)
+// The places of the slots of the page that shows, which are also the places of their balloons, in the layout of the list. The original
+// takes N_Data_a_xx, which its slide animation has moved into the middle; WeeOS keeps the list at rest, where N_Data_b_xx is the middle.
+std::string SlotPaneName(std::size_t slotIndex)
 {
     return std::format("N_Data_b_{:02}", slotIndex);
 }
@@ -336,7 +332,7 @@ void DataEditorScreen::PlaceIcon(ChannelIconLayout& icon, MenuLayout& layout, st
 }
 
 // Every slot sits on its place of the middle page of the list, which moves when the pages turn. As in the original (0x813A0C34,
-// 0x813A7568), the place of the list in the picture becomes the place of the slot below its root pane, which the wide screen
+// 0x813A7568), the place in the list becomes the place of the slot below its root pane, which the wide screen
 // stretches once more: on a 16:9 screen the slots spread wider than the places of the list, which keep their 4:3 shape.
 void DataEditorScreen::PlaceSlots()
 {
@@ -349,7 +345,7 @@ void DataEditorScreen::PlaceSlots()
     for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex)
     {
         Slot& slot = slots[slotIndex];
-        std::optional<Formats::Vector2> point = listLayout->PointOfPaneInPicture(SlotPlacePaneName(slotIndex), {0, 0});
+        std::optional<Formats::Vector2> point = listLayout->PointOfPaneInPicture(SlotPaneName(slotIndex), {0, 0});
         if (!point)
             continue;
 
@@ -365,7 +361,7 @@ void DataEditorScreen::PlaceSlots()
 
 void DataEditorScreen::PlaceBalloon(Balloon& balloon, std::size_t slotIndex)
 {
-    std::optional<Formats::Vector2> place = listLayout->PointOfPaneInPicture(BalloonPlacePaneName(slotIndex), {0, 0});
+    std::optional<Formats::Vector2> place = listLayout->PointOfPaneInPicture(SlotPaneName(slotIndex), {0, 0});
     if (!place)
         return;
 
