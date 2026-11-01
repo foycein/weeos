@@ -30,16 +30,8 @@ constexpr int BottomRightLeft = 308;
 constexpr int BottomWidth = 272;
 constexpr int BottomHeight = 72;
 
-// The arrows that turn the pages are 72 points wide and high.
-constexpr int PageArrowSize = 72;
-constexpr int PageArrowLeftLeft = 30;
-constexpr int PageArrowRightLeft = 514;
-constexpr int PageArrowTop = 182;
-
 // A message lies in the middle of the page, between the tabs and the buttons below.
 constexpr PageRectangle MessageBounds = {24, 80, 560, 270};
-
-constexpr int StepArrowSize = 72;
 
 // The names keep the characters of plain ASCII and show every other one as a question mark.
 constexpr char16_t FirstCharacterBeyondAscii = 0x80;
@@ -64,12 +56,6 @@ void PageBuilder::SetTitle(int tabDepth, std::u16string title)
 {
     page.tabDepth = tabDepth;
     page.title = std::move(title);
-}
-
-void PageBuilder::SetPageNumbers(int pageCount, int pageNumber)
-{
-    page.pageCount = pageCount;
-    page.pageNumber = pageNumber;
 }
 
 PageButton& PageBuilder::AddMenuItem(int slot, std::u16string text, std::function<void()> onPress)
@@ -106,28 +92,6 @@ PageButton& PageBuilder::AddBottomRight(std::u16string text, std::function<void(
 {
     PageRectangle bounds = {BottomRightLeft, BottomTop, BottomWidth, BottomHeight};
     return AddButton(ButtonLook::BottomRight, bounds, std::move(text), std::move(onPress));
-}
-
-PageButton& PageBuilder::AddPageArrow(ButtonLook look, std::function<void()> onPress)
-{
-    int left = look == ButtonLook::ArrowLeft ? PageArrowLeftLeft : PageArrowRightLeft;
-    PageRectangle bounds = {left, PageArrowTop, PageArrowSize, PageArrowSize};
-
-    PageButton& button = AddButton(look, bounds, u"", std::move(onPress));
-    button.name = look == ButtonLook::ArrowLeft ? "PreviousPage" : "NextPage";
-    button.sound = PageSound::Scroll;
-    return button;
-}
-
-PageButton& PageBuilder::AddStepArrow(ButtonLook look, int left, int top, std::string name, std::function<void()> onPress)
-{
-    PageRectangle bounds = {left, top, StepArrowSize, StepArrowSize};
-
-    PageButton& button = AddButton(look, bounds, u"", std::move(onPress));
-    button.name = std::move(name);
-    button.repeatsWhenHeld = true;
-    button.sound = PageSound::Choose;
-    return button;
 }
 
 PageButton& PageBuilder::AddPictureButton(ButtonLook look, const PageRectangle& bounds, std::string name, std::function<void()> onPress)

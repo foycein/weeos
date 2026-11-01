@@ -17,14 +17,6 @@ constexpr std::string_view LoopAnimation = "banner_Loop";
 constexpr std::string_view WholeAnimation = "banner";
 constexpr std::string_view FirstScriptAnimation = "banner_Rso0";
 
-// The families of the channels whose old versions must be updated first, with the first version that starts.
-constexpr std::uint32_t ForecastFamily = 0x48414600;
-constexpr std::uint32_t NewsFamily = 0x48414700;
-constexpr std::uint32_t ShopFamily = 0x48414200;
-constexpr std::uint32_t InternetFamily = 0x48414400;
-constexpr std::uint16_t FirstForecastAndNewsVersion = 6;
-constexpr std::uint16_t FirstShopVersion = 3;
-
 constexpr std::uint64_t TimerTicksPerSecond = 243000000 / 4;
 constexpr std::int64_t SecondsPerMinute = 60;
 constexpr std::int64_t SecondsPerHour = 3600;
@@ -35,11 +27,6 @@ bool HasAnimation(const Formats::U8Archive& files, std::string_view animationNam
 {
     std::string path = std::string(AnimationsFolder) + std::string(animationName) + std::string(AnimationExtension);
     return files.FindFile(path).has_value();
-}
-
-std::uint32_t FamilyOf(Ios::TitleId titleId)
-{
-    return titleId.lowPart & FamilyMask;
 }
 
 void CopyLine(const std::u16string& line, Formats::PlayRecord& record, std::size_t firstCharacter)
@@ -58,31 +45,6 @@ std::optional<InstalledTitle> FindInstalledTitle(MenuConsole& console, Ios::Titl
             return title;
     }
     return std::nullopt;
-}
-
-bool IsOldVersion(Ios::TitleId titleId, std::uint16_t version)
-{
-    if (titleId.highPart != SystemChannelKind)
-        return false;
-
-    std::uint32_t family = FamilyOf(titleId);
-    if (family == ForecastFamily || family == NewsFamily)
-        return version < FirstForecastAndNewsVersion;
-
-    if (family == ShopFamily)
-        return version < FirstShopVersion;
-
-    return false;
-}
-
-bool IsNewsChannel(Ios::TitleId titleId)
-{
-    return titleId.highPart == SystemChannelKind && FamilyOf(titleId) == NewsFamily;
-}
-
-bool IsInternetChannel(Ios::TitleId titleId)
-{
-    return FamilyOf(titleId) == InternetFamily;
 }
 
 BannerAnimations ChooseBannerAnimations(const Formats::U8Archive& bannerFiles, bool isBannerDrivenByCode)

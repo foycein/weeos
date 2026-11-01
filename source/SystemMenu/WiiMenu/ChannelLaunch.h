@@ -20,14 +20,6 @@ namespace SystemMenu
 // The title as the title service lists it. Nothing when it is not installed.
 std::optional<InstalledTitle> FindInstalledTitle(MenuConsole& console, Ios::TitleId titleId);
 
-// The Forecast and News Channels below version 6 and the Wii Shop Channel below version 3 are too old to start: their Start button
-// reads "Update" and leads to the system update (0x81338C78, SYS-04).
-bool IsOldVersion(Ios::TitleId titleId, std::uint16_t version);
-
-// The two channels that the parental controls can restrict besides games (0x81338D10, 0x81338D78).
-bool IsNewsChannel(Ios::TitleId titleId);
-bool IsInternetChannel(Ios::TitleId titleId);
-
 // The animations that a banner plays: its start once, and then its loop.
 struct BannerAnimations
 {

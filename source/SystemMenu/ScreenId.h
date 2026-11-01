@@ -36,8 +36,8 @@ enum class ScreenId : int
     WiiOptionsBackground = 0x15,
     WiiOptionsBar = 0x16,
 
+    // Health and Safety on a Wii; WeeOS shows its welcome here (WelcomeScreen).
     HealthAndSafety = 0x1a,
-    ParentalDialog = 0x1b,
 
     // The list of the Miis of the console, from which the memo writer takes the Mii of a memo.
     MiiChooser = 0x1c,

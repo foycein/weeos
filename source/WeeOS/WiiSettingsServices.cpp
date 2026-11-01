@@ -1,9 +1,8 @@
 #include "WeeOS/WiiSettingsServices.h"
 
 #include "Ios/FileSystem/NandPreparation.h"
+#include "Settings/Countries.h"
 #include "Sound/PlaybackDevices.h"
-
-#include <utility>
 
 namespace WeeOS
 {
@@ -24,20 +23,19 @@ Platform::ScreenShape ShapeOf(Settings::AspectRatio aspectRatio)
 
 }
 
-WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
-    ProgramSound& programSound, Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile)
+WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, ProgramSound& programSound,
+    const Platform::RegionalSettings& regionalSettings, const std::filesystem::path& pcSettingsFile)
     : window(programWindow)
-    , remote(virtualRemote)
+    , remotes(iosServices.GetRemote())
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
-    , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
-    , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
     , pcSettings(pcSettingsFile)
-    , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
-          pcSettings, *this}
+    , flowServices{systemSettings, iosServices.GetNetworkConfig(), pcSettings, *this}
 {
+    TakeTheCountryOfThePc(regionalSettings);
     ApplyPcSettings(pcSettings.Values());
-    remote.SetScreenShape(PictureShape());
+    ApplyRumble(systemSettings.IsRumbleOn());
+    remotes.GetVirtualRemote().SetScreenShape(PictureShape());
 }
 
 SystemMenu::SettingsFlowServices& WiiSettingsServices::FlowServices()
@@ -55,11 +53,6 @@ Settings::SoundMode WiiSettingsServices::SoundMode() const
     return systemSettings.GetSoundMode();
 }
 
-void WiiSettingsServices::UseDisplay(SystemMenu::Display& menuDisplay)
-{
-    display = &menuDisplay;
-}
-
 // Fullscreen first, so that a window that leaves fullscreen gets its size.
 void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 {
@@ -68,22 +61,31 @@ void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 
     window.SetClientSize({settings.windowWidth, settings.windowHeight});
 
-    std::vector<Input::MouseBinding> mouseMap = Settings::MouseMapOf(settings);
+    Input::VirtualRemote& remote = remotes.GetVirtualRemote();
     remote.SetKeyMap(settings.keyMap);
-    remote.SetMouseMap(mouseMap);
+    remote.SetMouseMap(Settings::MouseMapOf(settings));
     sound.ApplyPcSettings(settings);
 }
 
-void WiiSettingsServices::ApplyPictureShape(Settings::AspectRatio aspectRatio)
+void WiiSettingsServices::ApplyRumble(bool isRumbleOn)
 {
-    remote.SetScreenShape(ShapeOf(aspectRatio));
-    if (display != nullptr)
-        display->SetScreenShape(ShapeOf(aspectRatio));
+    remotes.SetRumbleEnabled(isRumbleOn);
 }
 
 std::vector<std::u16string> WiiSettingsServices::ListAudioDevices() const
 {
     return Sound::ListPlaybackDeviceNames();
+}
+
+// The console is where the PC is (docs/DECISIONS.md, Settings). The file is written only when the country changed.
+void WiiSettingsServices::TakeTheCountryOfThePc(const Platform::RegionalSettings& regionalSettings)
+{
+    std::uint8_t countryCode = Settings::CountryCodeOfThePc(regionalSettings.countryLetters);
+    if (systemSettings.GetCountryCode() == countryCode)
+        return;
+
+    systemSettings.SetCountryCode(countryCode);
+    systemSettings.Save();
 }
 
 }

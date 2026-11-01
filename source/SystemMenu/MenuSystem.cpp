@@ -5,6 +5,7 @@
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuStateFile.h"
 #include "SystemMenu/ScreenFactory.h"
+#include "SystemMenu/WiiSettings/SettingsFlow.h"
 
 namespace SystemMenu
 {
@@ -30,7 +31,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
+          frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
     services.consoleImport = consoleImport;
@@ -151,8 +152,8 @@ void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
     keyboard.UsePhysicalKeyboard(keyboardService);
 }
 
-// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. SYSCONF is not written yet:
-// the settings of the remotes that it changes last until the program ends.
+// The HOME menu plays its sounds, draws its texts and starts a reset with the parts of the menu. Its rumble choice is the console's
+// setting that PC Settings shows too; the volume of the speakers is not written yet and lasts until the program ends.
 HomeButtonConnections MenuSystem::ConnectHomeButton()
 {
     HomeButtonConnections connections;
@@ -164,7 +165,25 @@ HomeButtonConnections MenuSystem::ConnectHomeButton()
         sounds.StopAllSounds(0);
         frontPanel.PressReset();
     };
+    connections.saveRemoteSettings = [this](std::uint8_t speakerVolumeSetting, bool isRumbleOn)
+    {
+        static_cast<void>(speakerVolumeSetting);
+        SaveRumble(isRumbleOn);
+    };
     return connections;
+}
+
+void MenuSystem::SaveRumble(bool isRumbleOn)
+{
+    if (services.wiiSettings == nullptr)
+        return;
+
+    Settings::SystemSettings& systemSettings = services.wiiSettings->settings;
+    if (systemSettings.IsRumbleOn() == isRumbleOn)
+        return;
+
+    systemSettings.SetRumble(isRumbleOn);
+    systemSettings.Save();
 }
 
 MenuServices& MenuSystem::Services()

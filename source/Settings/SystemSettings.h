@@ -24,6 +24,9 @@ enum class SoundMode : std::uint8_t
     Surround = 2,
 };
 
+// The name of a console that has none, as a fresh WeeOS is (docs/DECISIONS.md, Settings).
+constexpr std::u16string_view FreshConsoleNickname = u"WeeOS";
+
 // Where the sensor bar stands. The remote needs to know to find the screen.
 enum class SensorBarPosition : std::uint8_t
 {
@@ -31,58 +34,12 @@ enum class SensorBarPosition : std::uint8_t
     AboveTelevision = 1,
 };
 
-// The numbers are the ones the console stores.
-enum class Language : std::uint8_t
-{
-    Japanese = 0,
-    English = 1,
-    German = 2,
-    French = 3,
-    Spanish = 4,
-    Italian = 5,
-    Dutch = 6,
-    SimplifiedChinese = 7,
-    TraditionalChinese = 8,
-    Korean = 9,
-};
-
-// The parental controls as the console keeps them in one setting.
-struct ParentalControls
-{
-    bool isOn = false;
-
-    // The organization that rates the games. 1 is the ESRB of the USA.
-    std::uint8_t organization = 1;
-
-    // The highest rating that is allowed, written as the youngest age it is meant for. 20 allows everything.
-    std::uint8_t highestAllowedAge = 20;
-
-    // Four digits, or nothing when no PIN was set.
-    std::string pin;
-
-    // The number of the question that the PIN can be asked back with, and the answer to it.
-    std::uint8_t secretQuestion = 0;
-    std::u16string secretAnswer;
-
-    bool operator==(const ParentalControls&) const = default;
-};
-
-// What the parental controls lock, when they are on. The console keeps three of them in one number and the Internet Channel in a setting of its own.
-struct ParentalRestrictions
-{
-    bool isNewsChannelLocked = false;
-    bool isMessageBoardLocked = false;
-    bool isShoppingLocked = false;
-    bool isInternetChannelLocked = false;
-
-    bool operator==(const ParentalRestrictions&) const = default;
-};
-
 // The settings of the console: the file /shared2/sys/SYSCONF, read through the file system of IOS. The System Menu is the one that
 // changes them. The values are held in memory; Save writes them back to the file, as the Wii Settings pages do when the user confirms.
 //
 // Every value has a default for the case that the file does not have the setting at all, and a value that is outside of
-// what the console accepts is read as the console reads it (a screen saver of 7 is off, an offset of 5 is 4).
+// what the console accepts is read as the console reads it (a sound mode of 7 is stereo, a sensitivity of 9 is 5).
+// Date, time, country and language are not settings of WeeOS: they follow the PC (docs/DECISIONS.md, Settings).
 class SystemSettings
 {
 public:
@@ -95,28 +52,14 @@ public:
 
     bool HasUnsavedChanges() const;
 
-    Language GetLanguage() const;
-    void SetLanguage(Language language);
-
     // The code of the country the console is in (the first number of the location setting). The codes are the console's.
+    // WeeOS sets it to the country of the PC at every start (Settings::CountryCodeOfThePc).
     std::uint8_t GetCountryCode() const;
 
     // Sets the country and clears the rest of the location (region, city and the names).
     void SetCountryCode(std::uint8_t countryCode);
 
     AspectRatio GetAspectRatio() const;
-    void SetAspectRatio(AspectRatio aspectRatio);
-
-    bool IsProgressiveScanOn() const;
-    void SetProgressiveScan(bool isOn);
-
-    bool IsScreenSaverOn() const;
-    void SetScreenSaver(bool isOn);
-
-    // How far the picture is moved sideways, from -32 to 32 in steps of 2.
-    int GetDisplayOffset() const;
-    void SetDisplayOffset(int offset);
-
     SoundMode GetSoundMode() const;
     void SetSoundMode(SoundMode soundMode);
 
@@ -127,19 +70,13 @@ public:
     int GetPointerSensitivity() const;
     void SetPointerSensitivity(int sensitivity);
 
-    // The name of the console, up to ten characters.
+    // The name of the console, up to ten characters. A console without a name is called FreshConsoleNickname.
     std::u16string GetNickname() const;
     void SetNickname(const std::u16string& nickname);
 
-    // The seconds that are added to the clock of the PC to get the time of the console.
-    std::int32_t GetClockBias() const;
-    void SetClockBias(std::int32_t seconds);
-
-    ParentalControls GetParentalControls() const;
-    void SetParentalControls(const ParentalControls& parentalControls);
-
-    ParentalRestrictions GetParentalRestrictions() const;
-    void SetParentalRestrictions(const ParentalRestrictions& restrictions);
+    // Whether the remotes may rumble. The HOME menu and PC Settings change it.
+    bool IsRumbleOn() const;
+    void SetRumble(bool isOn);
 
     // The settings as they are held in memory. For tests and for tools that want to see every setting.
     const Formats::SystemConfiguration& Configuration() const;

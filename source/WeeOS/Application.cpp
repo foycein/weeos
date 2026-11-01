@@ -36,6 +36,14 @@ constexpr std::wstring_view WindowTitle = L"WeeOS";
 constexpr std::wstring_view NandPickerTitle = L"Import your Wii: choose nand.bin of its BootMii backup";
 constexpr std::wstring_view NandImageFileName = L"nand.bin";
 
+SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
+{
+    SystemMenu::ClockFormat format;
+    format.usesTwentyFourHours = regionalSettings.usesTwentyFourHourClock;
+    format.showsLeadingZeroOfHours = regionalSettings.showsLeadingZeroOfHours;
+    return format;
+}
+
 }
 
 namespace
@@ -77,8 +85,8 @@ public:
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound, host.clock, host.pcSettingsFile)
-        , wiiMenuConsole(iosServices, host.clock)
+        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, host.pcSettingsFile)
+        , wiiMenuConsole(iosServices, host.clock, ClockFormatOf(host.regionalSettings))
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
@@ -158,7 +166,6 @@ private:
         menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
             iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices(), &consoleImport);
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
-        wiiSettings.UseDisplay(menu->Services().display);
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
         Ios::TitleService& titles = iosServices.GetTitles();
         menu->Services().titleLaunch.SetProgramCheck([&titles](Ios::TitleId titleId) { return CanStart(titles, titleId); });

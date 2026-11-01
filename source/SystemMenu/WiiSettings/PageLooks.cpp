@@ -50,7 +50,7 @@ LookPictures MakeBottomLook()
     return look;
 }
 
-LookPictures MakeCountryItemLook()
+LookPictures MakeListRowLook()
 {
     LookPictures look;
     look.background = ButtonPicture("Btn_List06.gif");
@@ -70,18 +70,6 @@ LookPictures MakeArrowLook(std::string_view direction)
     return look;
 }
 
-LookPictures MakeTelevisionLook(std::string_view backgroundFile, std::string_view idleFile, std::string_view pointedFile)
-{
-    LookPictures look;
-    look.background = ButtonPicture(backgroundFile);
-    look.idleOverlay = ButtonPicture(idleFile);
-    look.pointedOverlay = ButtonPicture(pointedFile);
-    look.hasChosenFrame = true;
-    look.chosenFrameLeft = {BackgroundPicture("TV_flame_L.gif"), -10, -10};
-    look.chosenFrameRight = {BackgroundPicture("TV_flame_R.gif"), -14, -10};
-    return look;
-}
-
 LookPictures MakeCircleLook(std::string_view fileName)
 {
     LookPictures look;
@@ -97,13 +85,9 @@ const LookPictures& PicturesOfLook(ButtonLook look)
     static const LookPictures menuItem = MakeMenuItemLook();
     static const LookPictures choiceItem = MakeChoiceItemLook();
     static const LookPictures bottom = MakeBottomLook();
-    static const LookPictures countryItem = MakeCountryItemLook();
-    static const LookPictures arrowLeft = MakeArrowLook("L");
-    static const LookPictures arrowRight = MakeArrowLook("R");
+    static const LookPictures listRow = MakeListRowLook();
     static const LookPictures arrowUp = MakeArrowLook("U");
     static const LookPictures arrowDown = MakeArrowLook("D");
-    static const LookPictures standardTelevision = MakeTelevisionLook("4_3_Btn.gif", "4_3_off.png", "4_3_on.png");
-    static const LookPictures wideTelevision = MakeTelevisionLook("16_9_Btn.gif", "16_9_off.png", "16_9_on.png");
     static const LookPictures minusCircle = MakeCircleLook("DPD_Minus_btn.gif");
     static const LookPictures plusCircle = MakeCircleLook("DPD_Plus_btn.gif");
 
@@ -119,26 +103,14 @@ const LookPictures& PicturesOfLook(ButtonLook look)
     case ButtonLook::BottomRight:
         return bottom;
 
-    case ButtonLook::CountryItem:
-        return countryItem;
-
-    case ButtonLook::ArrowLeft:
-        return arrowLeft;
-
-    case ButtonLook::ArrowRight:
-        return arrowRight;
+    case ButtonLook::ListRow:
+        return listRow;
 
     case ButtonLook::ArrowUp:
         return arrowUp;
 
     case ButtonLook::ArrowDown:
         return arrowDown;
-
-    case ButtonLook::TelevisionFourByThree:
-        return standardTelevision;
-
-    case ButtonLook::TelevisionSixteenByNine:
-        return wideTelevision;
 
     case ButtonLook::MinusCircle:
         return minusCircle;

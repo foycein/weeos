@@ -29,7 +29,7 @@ constexpr auto WindowSizes = std::to_array<WindowSizeChoice>({
     {2560, 1440},
 });
 
-// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries.
+// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries of a Wii.
 constexpr int ListLeft = 88;
 constexpr int ListTop = 76;
 constexpr int RowWidth = 432;
@@ -40,12 +40,12 @@ constexpr int ListArrowUpTop = 76;
 constexpr int ListArrowDownTop = 282;
 constexpr int ListArrowSize = 72;
 
-// The volume goes in steps of ten percent, shown in large digits between a minus and a plus button.
+// The volume goes in steps of ten percent, shown in large digits between a minus and a plus button, below the two buttons of the page.
 constexpr int VolumeStep = 10;
-constexpr PageRectangle VolumeLabelBounds = {24, 170, 560, 44};
-constexpr PageRectangle VolumeNumberBounds = {232, 216, 144, 72};
-constexpr PageRectangle VolumeLowerBounds = {180, 236, 32, 32};
-constexpr PageRectangle VolumeHigherBounds = {396, 236, 32, 32};
+constexpr PageRectangle VolumeLabelBounds = {24, 222, 560, 44};
+constexpr PageRectangle VolumeNumberBounds = {232, 262, 144, 72};
+constexpr PageRectangle VolumeLowerBounds = {180, 282, 32, 32};
+constexpr PageRectangle VolumeHigherBounds = {396, 282, 32, 32};
 
 constexpr std::u16string_view DefaultDeviceName = u"Default Device of Windows";
 
@@ -57,6 +57,17 @@ std::u16string SizeText(std::uint32_t width, std::uint32_t height)
 std::u16string OnOffText(bool isOn)
 {
     return isOn ? u"On" : u"Off";
+}
+
+std::u16string SoundModeText(Settings::SoundMode soundMode)
+{
+    if (soundMode == Settings::SoundMode::Mono)
+        return u"Mono";
+
+    if (soundMode == Settings::SoundMode::Surround)
+        return u"Surround";
+
+    return u"Stereo";
 }
 
 std::u16string KeyNameOf(int virtualKeyCode)
@@ -93,11 +104,12 @@ PageRectangle RowBounds(int rowOnPage)
 }
 
 PcPages::PcPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings, Settings::PcSettingsStore& pcSettingsStore,
-    Settings::PcSettingsTarget& pcSettingsTarget)
+    Settings::PcSettingsTarget& pcSettingsTarget, bool canImport)
     : navigator(pageNavigator)
     , settings(systemSettings)
     , pcSettings(pcSettingsStore)
     , pcTarget(pcSettingsTarget)
+    , isImportOffered(canImport)
 {
 }
 
@@ -128,8 +140,8 @@ void PcPages::BuildPage(PageId page, Page& content)
         BuildPcIndex(builder);
         break;
 
-    case PageId::PcScreen:
-        BuildScreen(builder);
+    case PageId::PcWindow:
+        BuildWindow(builder);
         break;
 
     case PageId::PcWindowSize:
@@ -142,6 +154,10 @@ void PcPages::BuildPage(PageId page, Page& content)
 
     case PageId::PcSoundDevice:
         BuildSoundDevice(builder);
+        break;
+
+    case PageId::PcControls:
+        BuildControls(builder);
         break;
 
     case PageId::PcKeys:
@@ -157,25 +173,24 @@ void PcPages::BuildPage(PageId page, Page& content)
 void PcPages::BuildPcIndex(PageBuilder& builder)
 {
     builder.SetTitle(1, std::u16string(Title));
-    builder.AddMenuItem(0, u"Screen", [this] { navigator.GoTo(PageId::PcScreen); });
+    builder.AddMenuItem(0, u"Window", [this] { navigator.GoTo(PageId::PcWindow); });
     builder.AddMenuItem(1, u"Sound", [this] { navigator.GoTo(PageId::PcSound); });
-    builder.AddMenuItem(2, u"Keys", [this] { navigator.GoTo(PageId::PcKeys); });
-    builder.AddMenuItem(3, u"Mouse", [this] { navigator.GoTo(PageId::PcMouse); });
-    builder.AddBackButton([this] { navigator.GoTo(PageId::SecondIndex); });
+    builder.AddMenuItem(2, u"Controls", [this] { navigator.GoTo(PageId::PcControls); });
+    if (isImportOffered)
+        builder.AddMenuItem(3, u"Import a Wii NAND", [this] { navigator.GoTo(PageId::PcImport); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
 }
 
-void PcPages::BuildScreen(PageBuilder& builder)
+void PcPages::BuildWindow(PageBuilder& builder)
 {
     const Settings::PcSettings& values = pcSettings.Values();
-    bool isWide = settings.GetAspectRatio() == Settings::AspectRatio::SixteenByNine;
 
-    builder.SetTitle(2, u"Screen");
+    builder.SetTitle(2, u"Window");
     builder.AddMenuItem(0, u"Window Size: " + SizeText(values.windowWidth, values.windowHeight), [this] { navigator.GoTo(PageId::PcWindowSize); })
         .name = "Window Size";
     builder.AddMenuItem(1, u"Fullscreen: " + OnOffText(values.isFullscreen),
         [this] { Change([](Settings::PcSettings& changed) { changed.isFullscreen = !changed.isFullscreen; }); })
         .name = "Fullscreen";
-    builder.AddMenuItem(2, isWide ? u"Picture Shape: 16:9" : u"Picture Shape: 4:3", [this] { TogglePictureShape(); }).name = "Picture Shape";
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
 }
 
@@ -189,7 +204,7 @@ void PcPages::BuildWindowSize(PageBuilder& builder)
         WindowSizeChoice size = WindowSizes[sizeNumber];
         std::u16string text = SizeText(size.width, size.height);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(static_cast<int>(sizeNumber)), NameOfText(text),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(static_cast<int>(sizeNumber)), NameOfText(text),
             [this, size]
             {
                 Change(
@@ -203,7 +218,7 @@ void PcPages::BuildWindowSize(PageBuilder& builder)
         row.isChosen = values.windowWidth == size.width && values.windowHeight == size.height;
     }
 
-    builder.AddBackButton([this] { navigator.GoTo(PageId::PcScreen); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcWindow); });
 }
 
 void PcPages::BuildSound(PageBuilder& builder)
@@ -213,6 +228,8 @@ void PcPages::BuildSound(PageBuilder& builder)
 
     builder.SetTitle(2, u"Sound");
     builder.AddMenuItem(0, deviceName, [this] { navigator.GoTo(PageId::PcSoundDevice); }).name = "Device";
+    std::u16string soundModeText = u"Sound Mode: " + SoundModeText(settings.GetSoundMode());
+    builder.AddMenuItem(1, soundModeText, [this] { navigator.GoTo(PageId::SoundSet); }).name = "Sound Mode";
 
     builder.AddText(VolumeLabelBounds, TextRole::Message, {u"Volume"});
     builder.AddText(VolumeNumberBounds, TextRole::BigNumber, {NumberText(values.volume)});
@@ -241,7 +258,7 @@ void PcPages::BuildSoundDevice(PageBuilder& builder)
     {
         std::u16string device = rowNumber == 0 ? u"" : rows[rowNumber];
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(rowNumber - firstRow), NameOfText(rows[rowNumber]),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), NameOfText(rows[rowNumber]),
             [this, device] { Change([device](Settings::PcSettings& changed) { changed.audioDevice = device; }); });
         row.text = rows[rowNumber];
         row.isChosen = pcSettings.Values().audioDevice == device;
@@ -251,10 +268,19 @@ void PcPages::BuildSoundDevice(PageBuilder& builder)
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcSound); });
 }
 
+void PcPages::BuildControls(PageBuilder& builder)
+{
+    builder.SetTitle(2, u"Controls");
+    builder.AddMenuItem(0, u"Keys", [this] { navigator.GoTo(PageId::PcKeys); });
+    builder.AddMenuItem(1, u"Mouse", [this] { navigator.GoTo(PageId::PcMouse); });
+    builder.AddMenuItem(2, u"Rumble: " + OnOffText(settings.IsRumbleOn()), [this] { ToggleRumble(); }).name = "Rumble";
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
+}
+
 // One row for each button of the remote with the key that presses it. Pressing a row gives the button the next key of the list.
 void PcPages::BuildKeys(PageBuilder& builder)
 {
-    builder.SetTitle(2, u"Keys");
+    builder.SetTitle(3, u"Keys");
 
     std::span<const Settings::RemoteButtonName> buttons = Settings::AssignableButtons();
     int firstRow = shownKeyPage * RowsOnListPage;
@@ -264,28 +290,28 @@ void PcPages::BuildKeys(PageBuilder& builder)
         const Settings::RemoteButtonName& button = buttons[rowNumber];
         int key = Settings::KeyOfButton(pcSettings.Values(), button.button);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(rowNumber - firstRow), "Key " + NameOfText(button.name),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), "Key " + NameOfText(button.name),
             [this, mask = button.button] { ChangeKey(mask, 1); });
         row.text = std::u16string(button.name) + u":  " + KeyNameOf(key);
         row.repeatsWhenHeld = true;
     }
 
     AddListArrows(builder, shownKeyPage, ListPageCount(static_cast<int>(buttons.size())));
-    builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcControls); });
 }
 
 void PcPages::BuildMouse(PageBuilder& builder)
 {
     bool isSwapped = pcSettings.Values().areMouseButtonsSwapped;
 
-    builder.SetTitle(2, u"Mouse");
+    builder.SetTitle(3, u"Mouse");
     builder.AddChoice(0, 2, u"Left button A, right button B", !isSwapped,
         [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = false; }); })
         .name = "Left Is A";
     builder.AddChoice(1, 2, u"Left button B, right button A", isSwapped,
         [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = true; }); })
         .name = "Left Is B";
-    builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcControls); });
 }
 
 void PcPages::AddListArrows(PageBuilder& builder, int& shownListPage, int listPageCount)
@@ -318,14 +344,12 @@ void PcPages::Change(const std::function<void(Settings::PcSettings&)>& change)
     navigator.Refresh();
 }
 
-void PcPages::TogglePictureShape()
+void PcPages::ToggleRumble()
 {
-    bool isWide = settings.GetAspectRatio() == Settings::AspectRatio::SixteenByNine;
-    Settings::AspectRatio newShape = isWide ? Settings::AspectRatio::FourByThree : Settings::AspectRatio::SixteenByNine;
-
-    settings.SetAspectRatio(newShape);
+    bool isRumbleOn = !settings.IsRumbleOn();
+    settings.SetRumble(isRumbleOn);
     settings.Save();
-    pcTarget.ApplyPictureShape(newShape);
+    pcTarget.ApplyRumble(isRumbleOn);
     navigator.Refresh();
 }
 

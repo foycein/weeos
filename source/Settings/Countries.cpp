@@ -9,71 +9,75 @@ namespace Settings
 namespace
 {
 
-constexpr std::array<Country, 48> Countries = {{
-    {u"Anguilla", 8},
-    {u"Antigua and Barbuda", 9},
-    {u"Argentina", 10},
-    {u"Aruba", 11},
-    {u"Bahamas", 12},
-    {u"Barbados", 13},
-    {u"Belize", 14},
-    {u"Bolivia", 15},
-    {u"Brazil", 16},
-    {u"British Virgin Islands", 17},
-    {u"Canada", 18},
-    {u"Cayman Islands", 19},
-    {u"Chile", 20},
-    {u"Colombia", 21},
-    {u"Costa Rica", 22},
-    {u"Dominica", 23},
-    {u"Dominican Republic", 24},
-    {u"Ecuador", 25},
-    {u"El Salvador", 26},
-    {u"French Guiana", 27},
-    {u"Grenada", 28},
-    {u"Guadeloupe", 29},
-    {u"Guatemala", 30},
-    {u"Guyana", 31},
-    {u"Haiti", 32},
-    {u"Honduras", 33},
-    {u"Jamaica", 34},
-    {u"Martinique", 35},
-    {u"Mexico", 36},
-    {u"Montserrat", 37},
-    {u"Netherlands Antilles", 38},
-    {u"Nicaragua", 39},
-    {u"Panama", 40},
-    {u"Paraguay", 41},
-    {u"Peru", 42},
-    {u"Saudi Arabia", 174},
-    {u"Singapore", 153},
-    {u"St. Kitts and Nevis", 43},
-    {u"St. Lucia", 44},
-    {u"St. Vincent and the Grenadines", 45},
-    {u"Suriname", 46},
-    {u"Trinidad and Tobago", 47},
-    {u"Turks and Caicos Islands", 48},
-    {u"U.A.E", 168},
-    {u"United States", 49},
-    {u"Uruguay", 50},
-    {u"US Virgin Islands", 51},
-    {u"Venezuela", 52},
+// The Netherlands Antilles were split in 2010; their three parts keep the console's code of the Antilles.
+constexpr std::array<Country, 51> Countries = {{
+    {"AE", 168},
+    {"AG", 9},
+    {"AI", 8},
+    {"AN", 38},
+    {"AR", 10},
+    {"AW", 11},
+    {"BB", 13},
+    {"BO", 15},
+    {"BQ", 38},
+    {"BR", 16},
+    {"BS", 12},
+    {"BZ", 14},
+    {"CA", 18},
+    {"CL", 20},
+    {"CO", 21},
+    {"CR", 22},
+    {"CW", 38},
+    {"DM", 23},
+    {"DO", 24},
+    {"EC", 25},
+    {"GD", 28},
+    {"GF", 27},
+    {"GP", 29},
+    {"GT", 30},
+    {"GY", 31},
+    {"HN", 33},
+    {"HT", 32},
+    {"JM", 34},
+    {"KN", 43},
+    {"KY", 19},
+    {"LC", 44},
+    {"MQ", 35},
+    {"MS", 37},
+    {"MX", 36},
+    {"NI", 39},
+    {"PA", 40},
+    {"PE", 42},
+    {"PY", 41},
+    {"SA", 174},
+    {"SG", 153},
+    {"SR", 46},
+    {"SV", 26},
+    {"SX", 38},
+    {"TC", 48},
+    {"TT", 47},
+    {"US", UnitedStatesCode},
+    {"UY", 50},
+    {"VC", 45},
+    {"VE", 52},
+    {"VG", 17},
+    {"VI", 51},
 }};
 
 }
 
-std::span<const Country> SelectableCountries()
+std::span<const Country> ConsoleCountries()
 {
     return Countries;
 }
 
-std::optional<Country> FindCountry(std::uint8_t code)
+std::uint8_t CountryCodeOfThePc(std::string_view letters)
 {
-    auto found = std::find_if(Countries.begin(), Countries.end(), [code](const Country& country) { return country.code == code; });
+    auto found = std::find_if(Countries.begin(), Countries.end(), [letters](const Country& country) { return country.letters == letters; });
     if (found == Countries.end())
-        return std::nullopt;
+        return UnitedStatesCode;
 
-    return *found;
+    return found->code;
 }
 
 }

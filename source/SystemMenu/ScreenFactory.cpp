@@ -5,13 +5,12 @@
 #include "SystemMenu/DataManagement/DataEditorScreen.h"
 #include "SystemMenu/SdCardMenu/SdCardMenuScreens.h"
 #include "SystemMenu/SdCardMenu/SdChannelWindowScreen.h"
-#include "SystemMenu/HealthAndSafetyScreen.h"
 #include "SystemMenu/LimitOverScreen.h"
 #include "SystemMenu/MessageBoard/CalendarScreen.h"
 #include "SystemMenu/MessageBoard/MemoWriterScreen.h"
 #include "SystemMenu/MessageBoard/MiiChooserScreen.h"
-#include "SystemMenu/ParentalDialogScreen.h"
 #include "SystemMenu/StartupRouterScreen.h"
+#include "SystemMenu/WelcomeScreen.h"
 #include "SystemMenu/WiiOptionsBackgroundScreen.h"
 #include "SystemMenu/WiiOptionsBarScreen.h"
 #include "SystemMenu/WiiOptionsChoicesScreen.h"
@@ -43,7 +42,7 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
     switch (screen)
     {
     case ScreenId::HealthAndSafety:
-        return std::make_unique<HealthAndSafetyScreen>(services);
+        return std::make_unique<WelcomeScreen>(services);
 
     case ScreenId::ConsoleImport:
         return std::make_unique<ConsoleImportScreen>(services);
@@ -68,9 +67,6 @@ std::unique_ptr<Screen> MakeScreen(ScreenId screen, int argument, MenuServices& 
 
     case ScreenId::LimitOver:
         return std::make_unique<LimitOverScreen>(services);
-
-    case ScreenId::ParentalDialog:
-        return std::make_unique<ParentalDialogScreen>(services, argument);
 
     case ScreenId::StartupRouter:
         return std::make_unique<StartupRouterScreen>(services, argument);
