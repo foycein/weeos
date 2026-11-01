@@ -27,9 +27,19 @@ constexpr std::size_t ScriptContentsOffset = TagOffset + 0x18;
 constexpr std::size_t NamesOffset = TagOffset + 0x1C;
 
 // Four numbers of four bits each in the word of the scripts, from bit 16 up: banner.cs, icon.cs, banner.rso and icon.rso.
+constexpr int BannerScriptShift = 16;
 constexpr int IconScriptShift = 20;
+constexpr int BannerModuleShift = 24;
 constexpr int IconModuleShift = 28;
 constexpr std::uint32_t ContentNumberMask = 0xF;
+
+// The lower half of the word holds flags. This one marks the channels that need the Internet (0x813B9018): Shop, Forecast, News, Internet.
+constexpr std::uint32_t NeedsInternetConnectionFlag = 0x100;
+
+bool HasContentNumber(std::uint32_t scriptContents, int shift)
+{
+    return ((scriptContents >> shift) & ContentNumberMask) != 0;
+}
 
 // Every language has 42 characters in two lines of 21.
 constexpr std::size_t LineLength = 21;
@@ -81,9 +91,9 @@ BannerContent ReadBannerContent(ByteView content)
     BannerContent banner;
     reader.MoveTo(ScriptContentsOffset);
     std::uint32_t scriptContents = reader.ReadUint32();
-    bool hasIconScript = ((scriptContents >> IconScriptShift) & ContentNumberMask) != 0;
-    bool hasIconModule = ((scriptContents >> IconModuleShift) & ContentNumberMask) != 0;
-    banner.isIconDrivenByCode = hasIconScript || hasIconModule;
+    banner.isIconDrivenByCode = HasContentNumber(scriptContents, IconScriptShift) || HasContentNumber(scriptContents, IconModuleShift);
+    banner.isBannerDrivenByCode = HasContentNumber(scriptContents, BannerScriptShift) || HasContentNumber(scriptContents, BannerModuleShift);
+    banner.needsInternetConnection = (scriptContents & NeedsInternetConnectionFlag) != 0;
 
     reader.MoveTo(NamesOffset);
     for (ChannelName& name : banner.names)
