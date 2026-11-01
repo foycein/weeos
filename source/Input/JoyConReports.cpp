@@ -50,7 +50,6 @@ constexpr std::size_t FlashFirstDataByte = 5;
 constexpr int ByteShift = 8;
 constexpr int NibbleShift = 4;
 constexpr int LowNibble = 0x0F;
-constexpr int HighNibbleOfTwelveBits = 0xF00;
 
 // Assumed (docs/audit/OpenPoints/Controllers.md, CTL-09): a Joy-Con without its calibration has the middle of its 12 bits and
 // reaches 1300 to both sides; a stick within 0.15 of its middle rests.
@@ -74,19 +73,6 @@ RawStick ReadRawStick(std::span<const std::uint8_t> bytes)
     stick.x = bytes[0] | ((bytes[1] & LowNibble) << ByteShift);
     stick.y = (bytes[1] >> NibbleShift) | (bytes[2] << NibbleShift);
     return stick;
-}
-
-// The calibration holds six 12 bit values in nine bytes, packed like the sticks.
-std::array<int, 6> ReadTwelveBitValues(std::span<const std::uint8_t> bytes)
-{
-    std::array<int, 6> values = {};
-    for (std::size_t pair = 0; pair < 3; ++pair)
-    {
-        std::size_t first = pair * 3;
-        values[pair * 2] = ((bytes[first + 1] << ByteShift) & HighNibbleOfTwelveBits) | bytes[first];
-        values[pair * 2 + 1] = (bytes[first + 2] << NibbleShift) | (bytes[first + 1] >> NibbleShift);
-    }
-    return values;
 }
 
 float StickAxis(int raw, int middle, int rangeAbove, int rangeBelow)
@@ -207,10 +193,11 @@ JoyConStickCalibration ReadStickCalibration(std::span<const std::uint8_t> bytes,
     if (bytes.size() < JoyConFlash::StickCalibrationSize)
         return UsualStickCalibration();
 
-    std::array<int, 6> values = ReadTwelveBitValues(bytes);
-    RawStick first = {values[0], values[1]};
-    RawStick second = {values[2], values[3]};
-    RawStick third = {values[4], values[5]};
+    // Nine bytes hold three pairs of 12 bit values, each pair packed like a stick.
+    constexpr std::size_t pairSize = 3;
+    RawStick first = ReadRawStick(bytes.subspan(0));
+    RawStick second = ReadRawStick(bytes.subspan(pairSize));
+    RawStick third = ReadRawStick(bytes.subspan(2 * pairSize));
 
     if (side == JoyConSide::Left)
         return {second, first, third};
