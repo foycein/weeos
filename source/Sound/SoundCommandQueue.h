@@ -11,19 +11,29 @@ namespace Sound
 enum class SoundCommandKind : std::uint8_t
 {
     Play,
+    PlayIfNotPlaying,
     Stop,
     StopAll,
+    ChangeVolume,
+    PauseRunningSounds,
+    ResumePausedSounds,
 };
 
 struct SoundCommand
 {
     SoundCommandKind kind;
 
-    // The number of the handle that the sound is known by. Used by Play and Stop.
+    // The number of the handle that the sound is known by. Used by Play, PlayIfNotPlaying, Stop and ChangeVolume.
     std::uint32_t handleNumber;
 
-    // The number of the sound in the archive. Used by Play.
+    // The number of the sound in the archive. Used by Play and PlayIfNotPlaying.
     std::size_t soundNumber;
+
+    // The new volume of ChangeVolume.
+    float volume = 1.0f;
+
+    // How many sound frames a stop, a change of the volume, a pause or a resume takes. 0 is at once.
+    int fadeFrames = 0;
 };
 
 // Hands commands from the thread of the menu to the audio thread without locks. One thread may push and one may pop.

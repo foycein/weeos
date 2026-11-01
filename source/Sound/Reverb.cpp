@@ -166,6 +166,9 @@ float Reverb::ProcessChannel(Channel& channel, float input)
 
 void Reverb::Clear()
 {
+    if (isCleared)
+        return;
+
     for (Channel& channel : channels)
     {
         channel.preDelay.Clear();
@@ -186,8 +189,7 @@ void Reverb::Process(std::span<float> left, std::span<float> right)
         quietSamples += left.size();
         if (quietSamples > samplesUntilSilent)
         {
-            if (!isCleared)
-                Clear();
+            Clear();
             return;
         }
     }
