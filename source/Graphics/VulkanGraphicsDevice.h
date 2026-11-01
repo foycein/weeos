@@ -88,6 +88,13 @@ private:
         const GraphicsImage* depthBuffer;
     };
 
+    // An offscreen picture that is being drawn, and the texture that holds it when it is finished.
+    struct OffscreenPicture
+    {
+        Target target;
+        TextureHandle texture;
+    };
+
     // The picture that the frame buffer of the console is drawn into. It is copied to the screen when the picture is finished.
     struct ConsoleFrame
     {
@@ -114,8 +121,10 @@ private:
     void BeginPass(const Target& target, VkAttachmentLoadOp loadOp, const VkClearColorValue& clearColor);
     void EndPass();
     void ApplyTargetState(const Target& target);
-    void PauseScreenPass();
-    void ResumeScreenPass();
+
+    // The picture that is drawn into waits while another picture is drawn, and goes on with what it holds.
+    void PausePass(const Target& target);
+    void ResumePass(const Target& target);
     void FinishStandaloneRecording();
     void FinishScreenPicture();
     void CopyConsoleFrameToScreen();
@@ -157,8 +166,9 @@ private:
     std::optional<Recording> frameRecording;
     std::optional<Recording> standaloneRecording;
     std::optional<Target> screenTarget;
-    std::optional<Target> offscreenTarget;
-    TextureHandle offscreenTexture;
+
+    // The offscreen pictures that are being drawn, the innermost last.
+    std::vector<OffscreenPicture> offscreenPictures;
     std::optional<ConsoleFrame> consoleFrame;
 };
 
