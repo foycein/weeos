@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/ButtonGroup.h"
+#include "SystemMenu/ButtonController.h"
 #include "SystemMenu/DataManagement/ChannelIconLayout.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
@@ -57,7 +57,7 @@ protected:
     bool RunMain() override;
 
 private:
-    void ReactToButton(const ButtonGroupEvent& event);
+    void ReactToButton(const ButtonEvent& event);
     void PressStart();
     void CloseTowardsTheList();
     SdChannelListScreen* List();
@@ -68,7 +68,7 @@ private:
     std::unique_ptr<MenuLayout> frame;
     std::unique_ptr<MenuLayout> background;
     std::unique_ptr<ChannelIconLayout> icon;
-    std::unique_ptr<ButtonGroup> buttons;
+    std::unique_ptr<ButtonController> buttons;
 
     // While the list zooms, the window is a picture inside the television.
     ZoomedWindow zoomedWindow;

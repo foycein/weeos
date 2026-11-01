@@ -27,6 +27,9 @@ enum class SoundMode : std::uint8_t
 // The name of a console that has none, as a fresh WeeOS is (docs/DECISIONS.md, Settings).
 constexpr std::u16string_view FreshConsoleNickname = u"WeeOS";
 
+// The volume of the speakers of the remotes (BT.SPKV, 0 to 127) of a console that has no such setting (INP-01).
+constexpr std::uint8_t DefaultSpeakerVolume = 0x59;
+
 // Where the sensor bar stands. The remote needs to know to find the screen.
 enum class SensorBarPosition : std::uint8_t
 {
@@ -77,6 +80,10 @@ public:
     // Whether the remotes may rumble. The HOME menu and PC Settings change it.
     bool IsRumbleOn() const;
     void SetRumble(bool isOn);
+
+    // The volume of the speakers of the remotes, from 0 to 127. The HOME menu changes it.
+    std::uint8_t GetSpeakerVolume() const;
+    void SetSpeakerVolume(std::uint8_t volume);
 
     // The settings as they are held in memory. For tests and for tools that want to see every setting.
     const Formats::SystemConfiguration& Configuration() const;

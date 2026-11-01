@@ -14,10 +14,21 @@ ButtonController::ButtonController(MenuLayout& menuLayout, const Display& menuDi
 {
 }
 
+ButtonController::ButtonController(MenuLayout& menuLayout, const Display& menuDisplay, const std::vector<std::string>& enabledPaneNames)
+    : ButtonController(menuLayout, menuDisplay)
+{
+    for (const std::string& paneName : enabledPaneNames)
+    {
+        AddButton(paneName);
+        SetEnabled(paneName, true);
+    }
+}
+
 void ButtonController::AddButton(const std::string& paneName)
 {
     Button button;
     button.name = paneName;
+    button.index = buttons.size();
     button.pane = &layout.PaneNamed(paneName);
     buttons.push_back(button);
 }
@@ -42,42 +53,45 @@ void ButtonController::ForgetPointers()
         button.playersInside.reset();
 }
 
-std::vector<ButtonEvent> ButtonController::Poll(const InputManager& input)
+std::vector<ButtonEvent> ButtonController::Poll(const InputManager& input, bool isActive)
 {
     std::vector<ButtonEvent> events;
     for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
-        PollPlayer(playerIndex, input, events);
+        PollPlayer(playerIndex, input, isActive, events);
 
     return events;
 }
 
-void ButtonController::PollPlayer(int playerIndex, const InputManager& input, std::vector<ButtonEvent>& events)
+void ButtonController::PollPlayer(int playerIndex, const InputManager& input, bool isActive, std::vector<ButtonEvent>& events)
 {
-    std::vector<const Formats::Pane*> panesUnderPointer = PanesUnderPointer(playerIndex, input);
+    std::vector<const Formats::Pane*> panesUnderPointer;
+    if (isActive)
+        panesUnderPointer = PanesUnderPointer(playerIndex, input);
 
     for (Button& button : buttons)
     {
-        if (!button.isEnabled)
+        bool hasLeft = button.isEnabled && button.playersInside[playerIndex] && !IsPointedAt(button, panesUnderPointer);
+        if (!hasLeft)
             continue;
 
-        bool isPointedAt = std::find(panesUnderPointer.begin(), panesUnderPointer.end(), button.pane) != panesUnderPointer.end();
-        UpdateFocus(button, playerIndex, isPointedAt, events);
+        button.playersInside[playerIndex] = false;
+        if (button.playersInside.none())
+            events.push_back(MakeEvent(ButtonEventKind::FocusLost, button, playerIndex));
     }
 
-    if (!input.HasPlayerPressed(playerIndex, SelectButtons))
-        return;
-
-    // The pane in front gets the press. The panes are listed from the front.
-    for (const Formats::Pane* pane : panesUnderPointer)
+    for (Button& button : buttons)
     {
-        auto pressedButton = std::find_if(buttons.begin(), buttons.end(),
-            [&](const Button& button) { return button.isEnabled && button.pane == pane; });
-        if (pressedButton != buttons.end())
-        {
-            events.push_back({ButtonEventKind::Pressed, pressedButton->name, playerIndex});
-            return;
-        }
+        bool hasArrived = button.isEnabled && !button.playersInside[playerIndex] && IsPointedAt(button, panesUnderPointer);
+        if (!hasArrived)
+            continue;
+
+        button.playersInside[playerIndex] = true;
+        if (button.playersInside.count() == 1)
+            events.push_back(MakeEvent(ButtonEventKind::FocusGained, button, playerIndex));
     }
+
+    if (isActive && input.HasPlayerPressed(playerIndex, SelectButtons))
+        ReportPress(playerIndex, panesUnderPointer, events);
 }
 
 std::vector<const Formats::Pane*> ButtonController::PanesUnderPointer(int playerIndex, const InputManager& input) const
@@ -90,19 +104,30 @@ std::vector<const Formats::Pane*> ButtonController::PanesUnderPointer(int player
     return layout.BoundingPanesAt(point);
 }
 
-void ButtonController::UpdateFocus(Button& button, int playerIndex, bool isPointedAt, std::vector<ButtonEvent>& events)
+bool ButtonController::IsPointedAt(const Button& button, const std::vector<const Formats::Pane*>& panesUnderPointer) const
 {
-    bool wasPointedAt = button.playersInside[playerIndex];
-    if (isPointedAt == wasPointedAt)
-        return;
+    return std::find(panesUnderPointer.begin(), panesUnderPointer.end(), button.pane) != panesUnderPointer.end();
+}
 
-    button.playersInside[playerIndex] = isPointedAt;
+// The pane in front gets the press. The panes are listed from the front.
+void ButtonController::ReportPress(int playerIndex, const std::vector<const Formats::Pane*>& panesUnderPointer,
+    std::vector<ButtonEvent>& events)
+{
+    for (const Formats::Pane* pane : panesUnderPointer)
+    {
+        auto pressedButton = std::find_if(buttons.begin(), buttons.end(),
+            [&](const Button& button) { return button.isEnabled && button.pane == pane; });
+        if (pressedButton != buttons.end())
+        {
+            events.push_back(MakeEvent(ButtonEventKind::Pressed, *pressedButton, playerIndex));
+            return;
+        }
+    }
+}
 
-    if (isPointedAt && button.playersInside.count() == 1)
-        events.push_back({ButtonEventKind::FocusGained, button.name, playerIndex});
-
-    if (!isPointedAt && button.playersInside.none())
-        events.push_back({ButtonEventKind::FocusLost, button.name, playerIndex});
+ButtonEvent ButtonController::MakeEvent(ButtonEventKind kind, const Button& button, int playerIndex) const
+{
+    return {kind, button.name, button.index, playerIndex};
 }
 
 }
