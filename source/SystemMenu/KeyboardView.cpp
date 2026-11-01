@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -52,6 +53,25 @@ std::string AnimationEnding(KeyAnimation animation)
     return "normal";
 }
 
+KeyboardButtonTexts MenuButtonTexts(const Text::MessageCatalog& messages)
+{
+    KeyboardButtonTexts texts;
+    texts.cancel = messages.Find(CancelMessage);
+    texts.confirm = messages.Find(OkMessage);
+    texts.others = messages.Find(OthersMessage);
+    texts.close = messages.Find(CloseMessage);
+    texts.back = messages.Find(BackMessage);
+    texts.next = messages.Find(NextMessage);
+    return texts;
+}
+
+// A word that is empty keeps the text of the layout.
+void SetTextUnlessEmpty(MenuLayout& layout, std::string_view paneName, const std::u16string& text)
+{
+    if (!text.empty())
+        layout.SetText(paneName, text);
+}
+
 std::u16string OneCharacter(char16_t character)
 {
     return std::u16string(1, character);
@@ -60,9 +80,14 @@ std::u16string OneCharacter(char16_t character)
 }
 
 KeyboardView::KeyboardView(Display& menuDisplay, const MenuFiles& files, const Text::MessageCatalog& menuMessages)
+    : KeyboardView(menuDisplay, files.OpenLayoutBundle(BundleName), MenuButtonTexts(menuMessages))
+{
+}
+
+KeyboardView::KeyboardView(Display& menuDisplay, std::unique_ptr<Layout::LayoutArchive> keyboardArchive, const KeyboardButtonTexts& texts)
     : display(menuDisplay)
-    , messages(menuMessages)
-    , archive(files.OpenLayoutBundle(BundleName))
+    , buttonTexts(texts)
+    , archive(std::move(keyboardArchive))
 {
     background = std::make_unique<MenuLayout>(display, *archive, "fs_VK_bg_a");
     field = std::make_unique<MenuLayout>(display, *archive, "fs_VK_textBox_a");
@@ -96,12 +121,12 @@ void KeyboardView::HideWhatWeeOSDoesNotNeed()
 
 void KeyboardView::SetFixedTexts()
 {
-    bar->SetText("T_BT_cancel", messages.Find(CancelMessage));
-    bar->SetText("T_BT_confirm", messages.Find(OkMessage));
-    keys->SetText("T_USEU_Chng_sign", messages.Find(OthersMessage));
-    symbols->SetText("T_SGNkey_close", messages.Find(CloseMessage));
-    symbols->SetText("T_SGNkey_prev", messages.Find(BackMessage));
-    symbols->SetText("T_SGNkey_next", messages.Find(NextMessage));
+    SetTextUnlessEmpty(*bar, "T_BT_cancel", buttonTexts.cancel);
+    SetTextUnlessEmpty(*bar, "T_BT_confirm", buttonTexts.confirm);
+    SetTextUnlessEmpty(*keys, "T_USEU_Chng_sign", buttonTexts.others);
+    SetTextUnlessEmpty(*symbols, "T_SGNkey_close", buttonTexts.close);
+    SetTextUnlessEmpty(*symbols, "T_SGNkey_prev", buttonTexts.back);
+    SetTextUnlessEmpty(*symbols, "T_SGNkey_next", buttonTexts.next);
 }
 
 void KeyboardView::RegisterKeys()
