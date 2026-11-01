@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Channels/ChannelServices.h"
+#include "Channels/MiiChannel/ButtonFocus.h"
 #include "Channels/MiiChannel/MessageWindow.h"
 #include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/MiiChannel/MiiFigures.h"
@@ -104,6 +105,7 @@ private:
     MessageWindow& message;
     MiiChannelData& data;
     std::unique_ptr<SystemMenu::MenuLayout> layout;
+    std::unique_ptr<ButtonFocus> focus;
     MiiHeads heads;
     MiiPlaza plaza;
 

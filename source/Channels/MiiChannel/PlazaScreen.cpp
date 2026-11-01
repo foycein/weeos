@@ -23,6 +23,30 @@ constexpr std::string_view LayoutName = "squareNigaoe_00";
 constexpr std::array<std::string_view, 3> ArrivalAnimations = {"anmSQUMenuActionL", "anmSQUMenuActionR_01", "anmSQUWhistleAction"};
 constexpr std::array<std::string_view, 3> ArrivalPanes = {"RootPane", "squButtonNull_07", "squButtonNull_04"};
 
+// The focus of the buttons (the table at 8023B9F0 bound by 80041024): the left buttons with anmSQUMenuFocusL, the right ones with
+// anmSQUMenuFocusR, each on its squPrBtnNull pane; the whistle with its icon and its text; each sort button with anmSQUSortFocus. The
+// round buttons sound big, the two small ones small and the whistle's the editor's (Assumed, CHN-83).
+constexpr std::string_view BigFocusSound = "SEQ_BUT_SELECT_BIG";
+constexpr std::string_view SmallFocusSound = "SEQ_BUT_SELECT_SMALL";
+constexpr std::string_view WhistleFocusSound = "SEQ_EDIT_BUT_SELECT";
+constexpr std::array<FocusedButton, 15> PlazaButtonFocus = {{
+    {"squButtonNull_03", "squPrBtnNull_03", "anmSQUMenuFocusL", SmallFocusSound},
+    {"squButtonNull_05", "squPrBtnNull_05", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_06", "squPrBtnNull_06", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_08", "squPrBtnNull_08", "anmSQUMenuFocusL", BigFocusSound},
+    {"squButtonNull_09", "squPrBtnNull_09", "anmSQUMenuFocusL", SmallFocusSound},
+    {"squButtonNull_07", "squPrBtnNull_07", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_00", "squPrBtnNull_00", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_01", "squPrBtnNull_01", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_02", "squPrBtnNull_02", "anmSQUMenuFocusR", BigFocusSound},
+    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleFocus", WhistleFocusSound},
+    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleTextFocus", WhistleFocusSound},
+    {"squButtonNull_10", "squButtonNull_10", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_11", "squButtonNull_11", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_12", "squButtonNull_12", "anmSQUSortFocus", WhistleFocusSound},
+    {"squButtonNull_13", "squButtonNull_13", "anmSQUSortFocus", WhistleFocusSound},
+}};
+
 // The sort buttons of the bar (squText_10 to _13) and what they arrange.
 struct SortButton
 {
@@ -109,6 +133,7 @@ PlazaScreen::PlazaScreen(ChannelServices& channelServices, const Layout::LayoutA
             Layout::PlaybackMode::PlayOnce);
         layout->ShowLastFrameOfAnimation(slot);
     }
+    focus = std::make_unique<ButtonFocus>(*layout, channelServices.sounds, PlazaButtonFocus);
 
     for (const SortButton& sort : SortButtons)
         layout->PaneNamed(sort.pane).isVisible = false;
@@ -180,6 +205,8 @@ void PlazaScreen::Update(bool acceptsInput)
     UpdateWaits();
 
     HandleMessageAnswer();
+    bool takesInput = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii();
+    focus->Update(takesInput ? ReadPlayerOne(services).pointer : std::nullopt);
     if (!acceptsInput || message.IsOpen() || loadSteps > 0)
         return;
 

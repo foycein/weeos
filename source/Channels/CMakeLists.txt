@@ -2,6 +2,7 @@ add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelSystem.cpp
     InternetChannel.cpp
+    MiiChannel/ButtonFocus.cpp
     MiiChannel/EditorScreen.cpp
     MiiChannel/LookAlikeScreen.cpp
     MiiChannel/MessageWindow.cpp
