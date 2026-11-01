@@ -12,7 +12,7 @@ namespace Channels
 namespace
 {
 
-// "Searching the SD Card..." stays at least this long, so that it can be read also when the card is searched at once (Assumed, CHN-29).
+// "Searching the SD Card..." stays at least this long, so that it can be read also when the card is searched at once (Assumed, CHN-31).
 constexpr int StepsOfSearchingAtLeast = 45;
 
 constexpr std::array<std::string_view, 4> HowToViewPages = {"title_what1", "title_what2", "title_what3", "title_what4"};

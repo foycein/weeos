@@ -55,6 +55,9 @@ constexpr int FixedPointFractionBits = 16;
 
 // The descriptors of an "esds" box (MPEG-4 Systems): the elementary stream, its decoder configuration and the setup of the decoder.
 constexpr std::size_t VersionAndFlagsSize = 4;
+constexpr std::size_t FlagsSize = 3;
+constexpr Formats::Byte MediaHeaderWithLongTimes = 1;
+constexpr std::size_t CreationAndChangeTimes = 2;
 constexpr std::uint8_t ElementaryStreamDescriptor = 0x03;
 constexpr std::uint8_t DecoderConfigDescriptor = 0x04;
 constexpr std::uint8_t DecoderSetupDescriptor = 0x05;
@@ -273,19 +276,20 @@ struct MediaHeader
 MediaHeader ReadMediaHeader(Formats::ByteView body)
 {
     Formats::ByteReader reader(body, DataDescription);
-    bool hasLongTimes = reader.ReadByte() == 1;
-    reader.Skip(3);
+    bool hasLongTimes = reader.ReadByte() == MediaHeaderWithLongTimes;
+    reader.Skip(FlagsSize);
 
+    // The time of creation and of the last change come first; the media header of version 1 holds them in 64 bits.
     MediaHeader header;
     if (hasLongTimes)
     {
-        reader.Skip(2 * sizeof(std::uint64_t));
+        reader.Skip(CreationAndChangeTimes * sizeof(std::uint64_t));
         header.timeScale = reader.ReadUint32();
         header.duration = reader.ReadUint64();
     }
     else
     {
-        reader.Skip(2 * sizeof(std::uint32_t));
+        reader.Skip(CreationAndChangeTimes * sizeof(std::uint32_t));
         header.timeScale = reader.ReadUint32();
         header.duration = reader.ReadUint32();
     }

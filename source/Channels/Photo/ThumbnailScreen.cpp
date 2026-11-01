@@ -16,7 +16,7 @@ namespace Channels
 namespace
 {
 
-// The place of the list and how many columns each zoom shows. The original draws the list itself; these numbers are Assumed (CHN-29).
+// The place of the list and how many columns each zoom shows. The original draws the list itself; these numbers are Assumed (CHN-31).
 constexpr float ListTop = 150;
 constexpr float ListBottom = -150;
 constexpr float ListSideMargin = 40;

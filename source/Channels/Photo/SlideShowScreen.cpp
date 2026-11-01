@@ -13,7 +13,7 @@ namespace Channels
 namespace
 {
 
-// The pace of the slide show "Simple" (Assumed, CHN-29). The settings of the original (order, effects, the user's music) are not
+// The pace of the slide show "Simple" (Assumed, CHN-31). The settings of the original (order, effects, the user's music) are not
 // built yet, so their button is not shown.
 constexpr double SecondsPerSlide = 5;
 constexpr double SecondsOfCrossFade = 1;

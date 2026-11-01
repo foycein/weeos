@@ -16,7 +16,7 @@ namespace Channels
 {
 
 // The names of the sounds the screens ask for, as rev_photo.brsar names them. Which sound the original plays at which moment
-// was not read from its program: these are Assumed (docs/audit/OpenPoints/Channels.md CHN-29).
+// was not read from its program: these are Assumed (docs/audit/OpenPoints/Channels.md CHN-31).
 namespace PhotoSound
 {
 

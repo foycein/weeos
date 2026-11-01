@@ -53,14 +53,18 @@ constexpr std::string_view AdobeSignature = "Adobe";
 constexpr std::size_t AdobeSegmentSize = 12;
 constexpr std::size_t AdobeVersionAndFlagsSize = 6;
 
+// Several fields of the headers are two numbers of four bits in one byte.
+constexpr int NibbleBits = 4;
+constexpr int NibbleMask = 0x0F;
+
 int HighNibble(Formats::Byte value)
 {
-    return value >> 4;
+    return value >> NibbleBits;
 }
 
 int LowNibble(Formats::Byte value)
 {
-    return value & 0x0F;
+    return value & NibbleMask;
 }
 
 int DivideRoundingUp(int value, int divisor)
