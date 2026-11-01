@@ -45,6 +45,7 @@ target_link_libraries(Sound PRIVATE ole32)
 # so the files that run once per sample are optimized in every configuration. The runtime checks of the debug build cannot be combined with that.
 if(MSVC)
     string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/Od" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set_source_files_properties(Envelope.cpp LowPassFilter.cpp Mixer.cpp MonoStreamConverter.cpp Resampler.cpp Reverb.cpp Voice.cpp
         WaveDecoder.cpp WavePlayer.cpp WaveTableSynth.cpp
         PROPERTIES COMPILE_OPTIONS "/O2")
