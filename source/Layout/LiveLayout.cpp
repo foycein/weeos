@@ -177,8 +177,7 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
     texture.height = picture->height;
 
     const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName);
-    bool isTheSamePicture = sharpPicture && sharpPicture->width == picture->width && sharpPicture->height == picture->height;
-    if (isTheSamePicture)
+    if (sharpPicture && SharpArt::IsTheOriginalOf(*sharpPicture, *picture))
     {
         std::uint32_t pixelsPerUnit = SharpArt::PixelsPerUnitFor(*sharpPicture, device.ScreenPixelsPerUnit());
         texture.handle = SendPicture(SharpArt::DrawSharpPicture(*sharpPicture, pixelsPerUnit), horizontalWrap, verticalWrap);

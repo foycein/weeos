@@ -33,6 +33,9 @@ struct SharpPicture
     std::uint32_t width = 0;
     std::uint32_t height = 0;
 
+    // FingerprintOf the original, so a picture of another title that has the same name and size is never replaced.
+    std::uint32_t originalFingerprint = 0;
+
     // How many layout units the menu shows one pixel of the original at, at the most. Most pictures are shown at their size (1);
     // the digits of the clock are stretched to almost twice their size.
     float largestMagnification = 1;
@@ -51,6 +54,12 @@ std::span<const SharpPicture> AllSharpPictures();
 
 // The sharp picture for the texture file, or nothing when WeeOS draws none for it.
 const SharpPicture* FindSharpPicture(std::string_view textureFileName);
+
+// The CRC-32 of the red, green, blue and alpha bytes of every pixel, row by row.
+std::uint32_t FingerprintOf(const Formats::RgbaImage& picture);
+
+// True when the picture is the original that the sharp picture replaces: the same size and the same fingerprint.
+bool IsTheOriginalOf(const SharpPicture& sharpPicture, const Formats::RgbaImage& picture);
 
 // Draws the picture with pixelsPerUnit pixels for every pixel of the original.
 Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
