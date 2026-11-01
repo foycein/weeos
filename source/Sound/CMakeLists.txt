@@ -7,6 +7,7 @@ add_library(Sound STATIC
     Mixer.cpp
     Modulation.cpp
     NoteParameters.cpp
+    PlaybackDevices.cpp
     Reference.cpp
     Resampler.cpp
     Reverb.cpp
