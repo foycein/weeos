@@ -155,7 +155,7 @@ private:
     void FollowTheSdCard();
     bool IsCardInTheSlot() const;
     void DrawArrow(std::string_view arrowName);
-    void SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown);
+    void SlideArrow(BarButton button, FramePlayer& arrow, bool& isShown, bool shouldBeShown);
     bool IsShown(BarButton button) const;
     bool HasButtonInThisMode(BarButton button) const;
     void StartTheNextChange();

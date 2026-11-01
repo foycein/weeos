@@ -81,13 +81,16 @@ struct FocusButton
     float firstFrameOfFocusOut;
     float lastFrameOfFocusOut;
 
-    // The message of the balloon: 15 "Wii Message Board", 14 "Wii Options" (the table 0x8160F9C8). The arrows have none.
+    // The message of the balloon (the table 0x8160F9C8). The arrows have none.
     std::optional<std::uint16_t> balloonMessage;
 };
 
+constexpr std::uint16_t WiiMessageBoardMessage = 15;
+constexpr std::uint16_t WiiOptionsMessage = 14;
+
 constexpr std::array<FocusButton, 10> FocusButtons = {{
-    {BarButton::MessageBoardButton, "B_Bbs", "G_Bbs", 900, 906, 930, 938, 15},
-    {BarButton::WiiButton, "B_Set", "G_Set", 6900, 6906, 6930, 6938, 14},
+    {BarButton::MessageBoardButton, "B_Bbs", "G_Bbs", 900, 906, 930, 938, WiiMessageBoardMessage},
+    {BarButton::WiiButton, "B_Set", "G_Set", 6900, 6906, 6930, 6938, WiiOptionsMessage},
     {BarButton::NextPage, "B_ArwR", "G_ArwR_Focus", 10600, 10615, 10800, 10815, std::nullopt},
     {BarButton::PreviousPage, "B_ArwL", "G_ArwL_Focus", 10600, 10615, 10800, 10815, std::nullopt},
     {BarButton::ChannelsButton, "B_Ch", "G_Ch", 5900, 5906, 5930, 5938, std::nullopt},
@@ -211,15 +214,15 @@ void BottomBarScreen::MakeTheFocusStates()
 {
     for (const FocusButton& focusButton : FocusButtons)
     {
-        FocusState state;
-        state.focus = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(focusButton.group));
-        state.focus->Show(FrameOfTheWiiMenu);
+        FocusState focusState;
+        focusState.focus = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(focusButton.group));
+        focusState.focus->Show(FrameOfTheWiiMenu);
         if (focusButton.balloonMessage)
         {
-            state.balloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABalloonAppears);
-            state.balloon->SetText(services.messages.Find(*focusButton.balloonMessage));
+            focusState.balloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABalloonAppears);
+            focusState.balloon->SetText(services.messages.Find(*focusButton.balloonMessage));
         }
-        focusStates.push_back(std::move(state));
+        focusStates.push_back(std::move(focusState));
     }
 }
 
@@ -244,10 +247,10 @@ void BottomBarScreen::DrawPageArrows()
 
 void BottomBarScreen::DrawBalloons()
 {
-    for (FocusState& state : focusStates)
+    for (FocusState& focusState : focusStates)
     {
-        if (state.balloon)
-            state.balloon->Draw();
+        if (focusState.balloon)
+            focusState.balloon->Draw();
     }
     sdCardButton->DrawBalloon();
 }
@@ -267,12 +270,12 @@ void BottomBarScreen::DrawArrow(std::string_view arrowName)
 
 void BottomBarScreen::ShowPageArrows(bool hasPreviousPage, bool hasNextPage)
 {
-    SlideArrow(*previousPageArrow, isPreviousPageArrowShown, hasPreviousPage);
-    SlideArrow(*nextPageArrow, isNextPageArrowShown, hasNextPage);
+    SlideArrow(BarButton::PreviousPage, *previousPageArrow, isPreviousPageArrowShown, hasPreviousPage);
+    SlideArrow(BarButton::NextPage, *nextPageArrow, isNextPageArrowShown, hasNextPage);
 }
 
 // An arrow that slides out loses its focus first (the bar events 0x19 and 0x1A).
-void BottomBarScreen::SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldBeShown)
+void BottomBarScreen::SlideArrow(BarButton button, FramePlayer& arrow, bool& isShown, bool shouldBeShown)
 {
     if (isShown == shouldBeShown)
         return;
@@ -284,7 +287,6 @@ void BottomBarScreen::SlideArrow(FramePlayer& arrow, bool& isShown, bool shouldB
         return;
     }
 
-    BarButton button = &arrow == previousPageArrow.get() ? BarButton::PreviousPage : BarButton::NextPage;
     SetFocused(NumberOf(button), false);
     arrow.PlayOnce(FirstFrameOfSlidingOut, LastFrameOfSlidingOut);
 }
@@ -489,15 +491,15 @@ bool BottomBarScreen::RunMain()
     nextPageArrow->Step();
     previousPageFlash->Step();
     nextPageFlash->Step();
-    for (FocusState& state : focusStates)
+    for (FocusState& focusState : focusStates)
     {
-        state.focus->Step();
-        if (!state.balloon)
+        focusState.focus->Step();
+        if (!focusState.balloon)
             continue;
 
-        bool wasBalloonShown = state.balloon->IsShown();
-        state.balloon->Calculate();
-        if (!wasBalloonShown && state.balloon->IsShown())
+        bool wasBalloonShown = focusState.balloon->IsShown();
+        focusState.balloon->Calculate();
+        if (!wasBalloonShown && focusState.balloon->IsShown())
             services.sounds.Request(BalloonSound);
     }
 
@@ -539,8 +541,11 @@ void BottomBarScreen::FocusTheButtonsUnderThePointers()
     std::array<bool, FocusButtons.size()> isPointedAt = {};
     bool isSdCardButtonPointedAt = false;
     bool canBeFocused = areButtonsEnabled && services.fader.GetStatus() == FaderStatus::Clear;
-    for (int playerIndex = 0; playerIndex < PlayerCount && canBeFocused; ++playerIndex)
+    for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
     {
+        if (!canBeFocused)
+            break;
+
         const std::optional<PlayerInput>& player = services.input.Player(playerIndex);
         if (!player || !player->state.pointerIsValid)
             continue;
@@ -564,38 +569,38 @@ void BottomBarScreen::FocusTheButtonsUnderThePointers()
 // The first hand that comes plays the growing part and WIPL_SE_BT_TARGETTING; when the last hand goes the button shrinks (0x8139C690, 0x8139C7EC).
 void BottomBarScreen::SetFocused(std::size_t buttonNumber, bool shouldBeFocused)
 {
-    FocusState& state = focusStates.at(buttonNumber);
-    if (state.isFocused == shouldBeFocused)
+    FocusState& focusState = focusStates.at(buttonNumber);
+    if (focusState.isFocused == shouldBeFocused)
         return;
 
-    state.isFocused = shouldBeFocused;
+    focusState.isFocused = shouldBeFocused;
     const FocusButton& focusButton = FocusButtons[buttonNumber];
-    if (state.isFocused)
+    if (focusState.isFocused)
     {
-        state.focus->PlayOnce(focusButton.firstFrameOfFocusIn, focusButton.lastFrameOfFocusIn);
+        focusState.focus->PlayOnce(focusButton.firstFrameOfFocusIn, focusButton.lastFrameOfFocusIn);
         services.sounds.Request(TargetedSound);
     }
     else
     {
-        state.focus->PlayOnce(focusButton.firstFrameOfFocusOut, focusButton.lastFrameOfFocusOut);
+        focusState.focus->PlayOnce(focusButton.firstFrameOfFocusOut, focusButton.lastFrameOfFocusOut);
     }
 
-    if (state.balloon && state.isFocused)
-        state.balloon->PointerArrived();
-    else if (state.balloon)
-        state.balloon->PointerLeft();
+    if (focusState.balloon && focusState.isFocused)
+        focusState.balloon->PointerArrived();
+    else if (focusState.balloon)
+        focusState.balloon->PointerLeft();
 }
 
 void BottomBarScreen::PlaceTheBalloons()
 {
     for (std::size_t number = 0; number < FocusButtons.size(); ++number)
     {
-        FocusState& state = focusStates[number];
-        if (!state.balloon)
+        FocusState& focusState = focusStates[number];
+        if (!focusState.balloon)
             continue;
 
-        Formats::Vector2 button = PlaceOfButton(FocusButtons[number].button);
-        state.balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, BalloonMarginFromTheEdges);
+        Formats::Vector2 buttonPlace = PlaceOfButton(FocusButtons[number].button);
+        focusState.balloon->PlaceAt({buttonPlace.x, buttonPlace.y + BalloonHeightAboveTheButton}, BalloonMarginFromTheEdges);
     }
 }
 

@@ -19,20 +19,25 @@ constexpr std::array<std::string_view, 2> ShadowPictureNames = {"AccessShadow.1"
 constexpr float FramesOfATurn = 599;
 constexpr float FramesPerStep = 10;
 constexpr float FullTurnDegrees = 360;
+constexpr float HalfTurnDegrees = 180;
 
 // The model: a square of 4 units, the shadow 0.4 units right and down of the mark, with the alpha 0x2B of its corners.
 constexpr float HalfSideOfTheSquare = 2;
 constexpr float ShadowOffset = 0.4f;
 constexpr std::uint8_t ShadowAlpha = 0x2B;
+constexpr std::uint8_t OpaqueAlpha = 0xFF;
+constexpr std::uint8_t FullBrightness = 0xFF;
 
 // The camera of the mark (0x8001CA70): an orthographic box 47.6 units wide and 28 high around (0, 6.5), drawn into a viewport of 640
 // by 480 lines from the top of the picture. On the canvas of 832 by 456: x * 832 / 47.6, and the 480 lines of the viewport reach 24 lines
 // below the picture (AccessMarkViewportLines, Assumed: that the viewport starts at the top of the picture).
 constexpr float BoxWidth = 47.6f;
 constexpr float BoxHeight = 28;
-constexpr float BoxTop = 6.5f + BoxHeight / 2;
+constexpr float BoxMiddleY = 6.5f;
+constexpr float BoxTop = BoxMiddleY + BoxHeight / 2;
 constexpr float CanvasWidth = 832;
-constexpr float CanvasTop = 228;
+constexpr float CanvasHeight = 456;
+constexpr float CanvasTop = CanvasHeight / 2;
 constexpr float AccessMarkViewportLines = 480;
 constexpr float CanvasUnitsPerBoxUnitAcross = CanvasWidth / BoxWidth;
 constexpr float CanvasUnitsPerBoxUnitUp = AccessMarkViewportLines / BoxHeight;
@@ -63,12 +68,18 @@ Graphics::TextureHandle Upload(Graphics::GraphicsDevice& device, Formats::ByteVi
     return device.CreateTexture(description);
 }
 
+// A point turned around (0, 0) by the angle whose cosine and sine are given, counterclockwise.
+Formats::Vector2 Turned(Formats::Vector2 point, float cosine, float sine)
+{
+    return {cosine * point.x - sine * point.y, sine * point.x + cosine * point.y};
+}
+
 // A square of the model around its middle, turned clockwise, in canvas units.
 Graphics::Quad TurnedSquare(Formats::Vector2 middle, float scale, float turnDegrees, std::uint8_t alpha)
 {
-    float radians = -turnDegrees * std::numbers::pi_v<float> / 180;
-    float cosine = std::cos(radians);
-    float sine = std::sin(radians);
+    float clockwiseRadians = -turnDegrees * std::numbers::pi_v<float> / HalfTurnDegrees;
+    float cosine = std::cos(clockwiseRadians);
+    float sine = std::sin(clockwiseRadians);
     float half = HalfSideOfTheSquare * scale;
 
     Graphics::Quad quad;
@@ -76,9 +87,9 @@ Graphics::Quad TurnedSquare(Formats::Vector2 middle, float scale, float turnDegr
     const std::array<Formats::Vector2, Graphics::QuadCornerCount> pictureCorners = {{{0, 0}, {1, 0}, {1, 1}, {0, 1}}};
     for (std::size_t corner = 0; corner < Graphics::QuadCornerCount; ++corner)
     {
-        Formats::Vector2 turned = {cosine * corners[corner].x - sine * corners[corner].y, sine * corners[corner].x + cosine * corners[corner].y};
+        Formats::Vector2 turned = Turned(corners[corner], cosine, sine);
         quad.positions[corner] = BoxToCanvas({middle.x + turned.x, middle.y + turned.y});
-        quad.colors[corner] = {255, 255, 255, alpha};
+        quad.colors[corner] = {FullBrightness, FullBrightness, FullBrightness, alpha};
         quad.textureCoordinates[0][corner] = pictureCorners[corner];
     }
     return quad;
@@ -96,19 +107,19 @@ Graphics::Material PictureMaterial(Graphics::TextureHandle picture)
 ShopAccessMark::ShopAccessMark(Graphics::GraphicsDevice& graphicsDevice, Formats::ByteView accessMarkFile)
     : device(graphicsDevice)
 {
-    for (std::size_t frame = 0; frame < markPictures.size(); ++frame)
+    for (std::size_t pictureNumber = 0; pictureNumber < markPictures.size(); ++pictureNumber)
     {
-        markPictures[frame] = Upload(device, accessMarkFile, MarkPictureNames[frame]);
-        shadowPictures[frame] = Upload(device, accessMarkFile, ShadowPictureNames[frame]);
+        markPictures[pictureNumber] = Upload(device, accessMarkFile, MarkPictureNames[pictureNumber]);
+        shadowPictures[pictureNumber] = Upload(device, accessMarkFile, ShadowPictureNames[pictureNumber]);
     }
 }
 
 ShopAccessMark::~ShopAccessMark()
 {
-    for (std::size_t frame = 0; frame < markPictures.size(); ++frame)
+    for (std::size_t pictureNumber = 0; pictureNumber < markPictures.size(); ++pictureNumber)
     {
-        device.DestroyTexture(markPictures[frame]);
-        device.DestroyTexture(shadowPictures[frame]);
+        device.DestroyTexture(markPictures[pictureNumber]);
+        device.DestroyTexture(shadowPictures[pictureNumber]);
     }
 }
 
@@ -129,9 +140,12 @@ void ShopAccessMark::Draw(AccessMarkPlace place) const
     const MarkPlacement& placement = isOverThePage ? OverThePage : OverTheStartUpPicture;
     std::size_t pictureNumber = isOverThePage ? 1 : 0;
 
-    Formats::Vector2 shadowMiddle = {placement.middle.x + ShadowOffset * placement.scale, placement.middle.y - ShadowOffset * placement.scale};
-    device.DrawQuad(TurnedSquare(shadowMiddle, placement.scale, TurnDegrees(), ShadowAlpha), PictureMaterial(shadowPictures[pictureNumber]));
-    device.DrawQuad(TurnedSquare(placement.middle, placement.scale, TurnDegrees(), 255), PictureMaterial(markPictures[pictureNumber]));
+    float shadowDistance = ShadowOffset * placement.scale;
+    Formats::Vector2 shadowMiddle = {placement.middle.x + shadowDistance, placement.middle.y - shadowDistance};
+    Graphics::Quad shadow = TurnedSquare(shadowMiddle, placement.scale, TurnDegrees(), ShadowAlpha);
+    Graphics::Quad mark = TurnedSquare(placement.middle, placement.scale, TurnDegrees(), OpaqueAlpha);
+    device.DrawQuad(shadow, PictureMaterial(shadowPictures[pictureNumber]));
+    device.DrawQuad(mark, PictureMaterial(markPictures[pictureNumber]));
 }
 
 }
