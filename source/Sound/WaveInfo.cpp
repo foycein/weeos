@@ -42,6 +42,7 @@ WaveEncoding ReadEncoding(Formats::ByteReader& reader)
     return static_cast<WaveEncoding>(number);
 }
 
+
 // A channel is described by its own record, which the table of channels points to. The ADPCM parameters
 // lie somewhere else in the wave info and are pointed to as well.
 WaveChannel ReadChannel(Formats::ByteView sectionBytes, std::size_t waveInfoOffset, std::uint32_t channelOffset, WaveEncoding encoding,

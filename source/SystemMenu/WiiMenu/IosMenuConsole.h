@@ -3,6 +3,7 @@
 #include "SystemMenu/WiiMenu/MenuConsole.h"
 
 #include "Ios/IosServices.h"
+#include "Settings/ConsoleClock.h"
 
 namespace SystemMenu
 {
@@ -13,7 +14,8 @@ namespace SystemMenu
 class IosMenuConsole : public MenuConsole
 {
 public:
-    explicit IosMenuConsole(Ios::IosServices& iosServices);
+    // The clock of the PC is the clock of Windows unless a test gives another.
+    explicit IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock pcClock = Settings::ConsoleClock::ReadWindowsClock);
 
     std::vector<InstalledTitle> ListInstalledTitles() override;
     Formats::Bytes ReadBannerContent(Ios::TitleId titleId) override;
@@ -22,6 +24,8 @@ public:
     // The files of the menu have a fixed size: the new bytes must be as long as the file that is there. A file that is not there is made.
     void WriteNandFile(std::string_view path, Formats::ByteView bytes) override;
     LocalTime GetLocalTime() override;
+    bool HasTestedInternetConnection() override;
+    void WritePlayRecord(const Formats::PlayRecord& record) override;
     void UpdateSharedFlags() override;
 
 private:
@@ -30,6 +34,8 @@ private:
 
     Ios::TitleService& titles;
     Ios::FileSystemService& fileSystem;
+    Settings::PcClock pcClock;
+    Ios::NetworkConfigService& networkConfig;
 };
 
 }

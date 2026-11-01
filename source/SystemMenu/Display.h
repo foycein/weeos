@@ -1,12 +1,25 @@
 #pragma once
 
+#include "SystemMenu/ZoomedDevice.h"
+
 #include "Formats/Vectors.h"
 #include "Graphics/GraphicsDevice.h"
+#include "Layout/LiveLayout.h"
+#include "Layout/PanePlacement.h"
 #include "Layout/TextFonts.h"
 #include "Platform/ScreenShape.h"
 
+#include <vector>
+
 namespace SystemMenu
 {
+
+// A layout that was drawn into the picture, and how it was placed.
+struct DrawnLayout
+{
+    const Layout::LiveLayout* layout = nullptr;
+    Layout::PlacementSettings placement;
+};
 
 // The picture of a 4:3 screen is 608 by 456 layout units. The picture of a 16:9 screen is 832 by 456 units.
 constexpr Graphics::Canvas StandardCanvas = {608, 456};
@@ -19,7 +32,13 @@ class Display
 public:
     Display(Graphics::GraphicsDevice& graphicsDevice, Platform::ScreenShape initialScreenShape);
 
+    // The device to draw with. While an area is moved, the device moves what is drawn. Whatever draws for the display keeps this
+    // device, also the text of the layouts, so that it is moved too.
     Graphics::GraphicsDevice& Device();
+
+    // Everything that is drawn from now on into seenArea lands in shownArea, with its alpha scaled by alpha / 255, until StopMovingAreas.
+    void MoveArea(const PictureArea& seenArea, const PictureArea& shownArea, std::uint8_t alpha);
+    void StopMovingAreas();
 
     // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
     // The fonts must stay alive as long as the display draws.
@@ -31,6 +50,12 @@ public:
 
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
+
+    // The whole picture, in layout units.
+    PictureArea WholePicture() const;
+
+    // Paints a rectangle of the picture in one color.
+    void FillArea(const PictureArea& area, Formats::Rgba8Color color);
 
     // Starts a new picture of the screen. The program shows it with Present when everything is drawn.
     void BeginPicture();
@@ -47,10 +72,18 @@ public:
     // The root pane stretches the place, so the pane gets the place divided by the stretch.
     Formats::Vector2 CanvasToRootPaneSpace(Formats::Vector2 canvasPoint) const;
 
+    // The layouts that were drawn since the scene began, the one at the back first. A test finds the panes of the picture here.
+    // They are valid until the menu takes its next step.
+    void NoteDrawnLayout(const Layout::LiveLayout& layout, const Layout::PlacementSettings& placement);
+    void ForgetDrawnLayouts();
+    const std::vector<DrawnLayout>& DrawnLayouts() const;
+
 private:
     Graphics::GraphicsDevice& device;
+    ZoomedDevice zoomedDevice;
     const Layout::TextFonts* textFonts = nullptr;
     Platform::ScreenShape screenShape;
+    std::vector<DrawnLayout> drawnLayouts;
 };
 
 }

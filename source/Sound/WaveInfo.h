@@ -72,8 +72,7 @@ struct WaveInfo
     std::uint32_t ChannelByteCount() const;
 };
 
-// Reads the DSP-ADPCM parameters of one channel: 16 coefficients, a gain that must be 0, the header byte and the two samples before
-// the first frame, and the same for the loop.
+// Reads the 16 coefficients, the gain (which must be zero) and the start and loop states of one channel (46 bytes).
 AdpcmParameters ReadAdpcmParameters(Formats::ByteReader& reader);
 
 // Reads the wave info that starts at waveInfoOffset. The offsets inside it count from there.

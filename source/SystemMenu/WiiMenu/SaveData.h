@@ -72,4 +72,8 @@ std::optional<SaveData> ReadSaveData(Formats::ByteView bytes);
 // The bytes of the file, with the digest.
 Formats::Bytes WriteSaveData(const SaveData& saveData);
 
+// Before a channel starts, the menu puts it at the front of the list of started titles in the other data (0x813596B8), when it is
+// a title of the kinds 0x00010001, 3, 4 or 6 and not the Internet Channel.
+void PutFirstInTheListOfStartedTitles(SaveData& saveData, Ios::TitleId titleId);
+
 }

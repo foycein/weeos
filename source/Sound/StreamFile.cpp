@@ -1,11 +1,13 @@
 #include "Sound/StreamFile.h"
 
 #include "Sound/AdpcmFrame.h"
-#include "Sound/WaveInfo.h"
 
+#include "Formats/Alignment.h"
 #include "Formats/ByteReader.h"
+#include "Formats/FormatError.h"
 
 #include <format>
+#include <string_view>
 
 namespace Sound
 {
@@ -13,125 +15,104 @@ namespace Sound
 namespace
 {
 
-constexpr std::string_view DataDescription = "Stream file";
-constexpr std::size_t TagSize = 4;
-constexpr std::string_view FileTag = "BNS ";
+constexpr std::string_view Description = "Stream file";
+
+// The stream starts with its tag, the byte order mark and the version, its size, the size of this header and the number of chunks,
+// then the place and the size of the two chunks INFO and DATA. The places count from the start of the stream.
+constexpr std::string_view StreamTag = "BNS ";
+constexpr std::size_t FieldsBeforeChunkPlaces = 12;
 constexpr std::string_view InfoTag = "INFO";
 constexpr std::string_view DataTag = "DATA";
-constexpr std::uint32_t ByteOrderAndVersion = 0xFEFF0100;
-constexpr std::size_t SectionHeaderSize = 8;
-constexpr std::uint8_t DspAdpcmCodec = 0;
+constexpr std::size_t ChunkSizeField = 4;
+
+// What the information chunk holds before the table of the channels. The places inside the chunk count from behind its tag and size.
+constexpr std::uint8_t AdpcmCodec = 0;
 constexpr std::uint8_t MaximumChannelCount = 2;
+constexpr std::size_t FillAfterChannelCount = 1;
+constexpr std::size_t FillAfterSampleRate = 2;
 
-struct SectionPlace
+void CheckTag(Formats::ByteReader& reader, std::string_view tag)
 {
-    std::uint32_t offset;
-    std::uint32_t size;
-};
-
-struct StreamHeader
-{
-    SectionPlace info;
-    SectionPlace data;
-};
-
-StreamHeader ReadStreamHeader(Formats::ByteReader& reader)
-{
-    std::string tag = reader.ReadText(TagSize);
-    if (tag != FileTag)
-        reader.Fail(std::format("the tag {} is not {}", tag, FileTag));
-
-    std::uint32_t byteOrderAndVersion = reader.ReadUint32();
-    if (byteOrderAndVersion != ByteOrderAndVersion)
-        reader.Fail(std::format("the byte order and version {:#010x} are not known", byteOrderAndVersion));
-
-    std::uint32_t fileSize = reader.ReadUint32();
-    if (fileSize != reader.Size())
-        reader.Fail(std::format("the header says the file has {} bytes, but it has {}", fileSize, reader.Size()));
-
-    reader.ReadUint16();
-    reader.ReadUint16();
-
-    StreamHeader header;
-    header.info = {reader.ReadUint32(), reader.ReadUint32()};
-    header.data = {reader.ReadUint32(), reader.ReadUint32()};
-    return header;
+    std::string text = reader.ReadText(tag.size());
+    if (text != tag)
+        reader.Fail(std::format("the tag {} is not {}", text, tag));
 }
 
-// The body of a section, after its tag and size.
-Formats::ByteView ReadSectionBody(Formats::ByteView bytes, SectionPlace place, std::string_view expectedTag)
+// Where the samples and the ADPCM parameters of one channel are: the information chunk holds a table with the place of a record for every
+// channel, and the record holds the place of the samples (in the data chunk) and of the parameters (in the information chunk).
+struct StreamPlaces
 {
-    Formats::ByteReader reader(bytes, DataDescription);
-    reader.MoveTo(place.offset);
-    Formats::ByteView section = reader.ReadBytes(place.size);
-
-    Formats::ByteReader sectionReader(section, DataDescription);
-    std::string tag = sectionReader.ReadText(TagSize);
-    if (tag != expectedTag)
-        sectionReader.Fail(std::format("the section {} was expected, but the section {} is there", expectedTag, tag));
-
-    return section.subspan(SectionHeaderSize);
-}
-
-struct StreamChannel
-{
-    std::uint32_t dataOffset;
-    AdpcmParameters adpcm;
+    std::size_t infoStart;
+    std::size_t channelTableStart;
+    std::size_t dataStart;
 };
 
-// Every channel has a record of three words (where its samples start in the data, where its ADPCM parameters are, and an unused word);
-// a table of offsets points to the records. All offsets count from the start of the INFO body.
-StreamChannel ReadStreamChannel(Formats::ByteView infoBody, std::uint32_t channelTableOffset, std::uint8_t channelNumber)
+std::vector<float> ReadChannel(Formats::ByteView stream, const StreamPlaces& places, std::uint32_t channelNumber, std::uint32_t sampleCount)
 {
-    Formats::ByteReader reader(infoBody, DataDescription);
-    reader.MoveTo(channelTableOffset + channelNumber * sizeof(std::uint32_t));
-    std::uint32_t recordOffset = reader.ReadUint32();
+    Formats::ByteReader reader(stream, Description);
+    reader.MoveTo(places.channelTableStart + sizeof(std::uint32_t) * channelNumber);
+    std::uint32_t channelRecord = reader.ReadUint32();
 
-    reader.MoveTo(recordOffset);
-    StreamChannel channel;
-    channel.dataOffset = reader.ReadUint32();
+    reader.MoveTo(places.infoStart + channelRecord);
+    std::uint32_t samplesOffset = reader.ReadUint32();
     std::uint32_t adpcmOffset = reader.ReadUint32();
 
-    reader.MoveTo(adpcmOffset);
-    channel.adpcm = ReadAdpcmParameters(reader);
-    return channel;
+    reader.MoveTo(places.infoStart + adpcmOffset);
+    AdpcmParameters parameters = ReadAdpcmParameters(reader);
+
+    std::uint64_t channelStart = std::uint64_t(places.dataStart) + samplesOffset;
+    std::uint32_t byteCount = AdpcmByteCount(sampleCount);
+    if (!Formats::IsRangeInside(channelStart, byteCount, stream.size()))
+        reader.Fail(std::format("the samples of channel {} lie behind the end of the file", channelNumber));
+
+    return DecodeAdpcm(stream.subspan(static_cast<std::size_t>(channelStart), byteCount), parameters, sampleCount);
 }
 
 }
 
-DecodedWave ReadStreamFile(Formats::ByteView bytes)
+DecodedWave ReadStreamFile(Formats::ByteView stream)
 {
-    Formats::ByteReader reader(bytes, DataDescription);
-    StreamHeader header = ReadStreamHeader(reader);
-    Formats::ByteView infoBody = ReadSectionBody(bytes, header.info, InfoTag);
-    Formats::ByteView dataBody = ReadSectionBody(bytes, header.data, DataTag);
+    Formats::ByteReader reader(stream, Description);
+    CheckTag(reader, StreamTag);
+    reader.Skip(FieldsBeforeChunkPlaces);
+    std::uint32_t infoPlace = reader.ReadUint32();
+    reader.Skip(ChunkSizeField);
+    std::uint32_t dataPlace = reader.ReadUint32();
 
-    Formats::ByteReader infoReader(infoBody, DataDescription);
-    std::uint8_t codec = infoReader.ReadByte();
-    if (codec != DspAdpcmCodec)
-        infoReader.Fail(std::format("the codec {} is not DSP-ADPCM", codec));
+    reader.MoveTo(dataPlace);
+    CheckTag(reader, DataTag);
+    reader.Skip(ChunkSizeField);
+    std::size_t dataStart = reader.Position();
+
+    reader.MoveTo(infoPlace);
+    CheckTag(reader, InfoTag);
+    reader.Skip(ChunkSizeField);
+    std::size_t infoStart = reader.Position();
+
+    std::uint8_t codec = reader.ReadByte();
+    if (codec != AdpcmCodec)
+        reader.Fail(std::format("the codec {} is not DSP-ADPCM", codec));
 
     DecodedWave wave;
-    wave.loops = infoReader.ReadByte() != 0;
-    std::uint8_t channelCount = infoReader.ReadByte();
+    wave.loops = reader.ReadByte() != 0;
+    std::uint8_t channelCount = reader.ReadByte();
     if (channelCount == 0 || channelCount > MaximumChannelCount)
-        infoReader.Fail(std::format("the stream has {} channels", channelCount));
+        reader.Fail(std::format("{} channels are not one or two", channelCount));
 
-    infoReader.ReadByte();
-    wave.sampleRate = infoReader.ReadUint16();
-    infoReader.ReadUint16();
-    wave.loopStartSample = infoReader.ReadUint32();
-    std::uint32_t sampleCount = infoReader.ReadUint32();
-    std::uint32_t channelTableOffset = infoReader.ReadUint32();
+    reader.Skip(FillAfterChannelCount);
+    wave.sampleRate = reader.ReadUint16();
+    reader.Skip(FillAfterSampleRate);
+    std::uint32_t loopStart = reader.ReadUint32();
+    std::uint32_t sampleCount = reader.ReadUint32();
+    std::uint32_t channelTable = reader.ReadUint32();
+    if (wave.loops && loopStart >= sampleCount)
+        reader.Fail("the loop starts behind the end of the sound");
 
-    for (std::uint8_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
-    {
-        StreamChannel channel = ReadStreamChannel(infoBody, channelTableOffset, channelNumber);
-        Formats::ByteReader dataReader(dataBody, DataDescription);
-        dataReader.MoveTo(channel.dataOffset);
-        Formats::ByteView frames = dataReader.ReadBytes(AdpcmByteCount(sampleCount));
-        wave.channels.push_back(DecodeAdpcm(frames, channel.adpcm, sampleCount));
-    }
+    wave.loopStartSample = wave.loops ? loopStart : 0;
+    StreamPlaces places = {infoStart, infoStart + channelTable, dataStart};
+    for (std::uint32_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
+        wave.channels.push_back(ReadChannel(stream, places, channelNumber, sampleCount));
+
     return wave;
 }
 

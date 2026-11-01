@@ -1,13 +1,15 @@
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
 
+#include "SystemMenu/BackgroundServices/NandFileAccess.h"
+#include "SystemMenu/BackgroundServices/PlayTimeLog.h"
 #include "SystemMenu/BackgroundServices/SharedFlagsFile.h"
 #include "SystemMenu/MenuError.h"
 
 #include "Ios/Title/ContentTypes.h"
 
 #include <algorithm>
-#include <ctime>
 #include <format>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -21,9 +23,6 @@ constexpr std::uint16_t BannerContentIndex = 0;
 // The menu keeps its files private: the owner reads and writes them, nobody else does.
 constexpr Ios::EntryPermissions MenuFilePermissions = {Ios::AccessRights::ReadWrite, Ios::AccessRights::None, Ios::AccessRights::None};
 constexpr std::uint8_t NoFileFlags = 0;
-
-constexpr int FirstYearOfTheCalendar = 1900;
-constexpr int FirstMonthNumber = 1;
 
 [[noreturn]] void FailWith(const std::string& problem, Ios::IosError error)
 {
@@ -54,9 +53,11 @@ bool AreAllContentsPresent(const Ios::TitleMetadataView& view, const std::vector
 
 }
 
-IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices)
+IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock clockOfThePc)
     : titles(iosServices.GetTitles())
     , fileSystem(iosServices.GetFileSystem())
+    , pcClock(std::move(clockOfThePc))
+    , networkConfig(iosServices.GetNetworkConfig())
 {
 }
 
@@ -85,6 +86,7 @@ InstalledTitle IosMenuConsole::DescribeTitle(Ios::TitleId titleId)
         return installedTitle;
 
     installedTitle.version = view.Value().titleVersion;
+    installedTitle.groupId = view.Value().groupId;
     for (const Ios::ContentView& content : view.Value().contents)
     {
         if (content.index == BannerContentIndex)
@@ -163,19 +165,37 @@ Ios::Result<Ios::OpenFile> IosMenuConsole::MakeFileAndOpenIt(const Ios::NandPath
     return fileSystem.Open(path, Ios::OpenMode::ReadWrite, caller);
 }
 
+bool IosMenuConsole::HasTestedInternetConnection()
+{
+    Ios::Result<Ios::NetworkConfiguration> configuration = networkConfig.ReadConfiguration();
+    if (configuration.Failed())
+        return false;
+
+    for (const Ios::ConnectionProfile& profile : configuration.Value().profiles)
+    {
+        if (profile.isEnabled && profile.hasPassedConnectionTest)
+            return true;
+    }
+    return false;
+}
+
+void IosMenuConsole::WritePlayRecord(const Formats::PlayRecord& record)
+{
+    NandFileAccess files(fileSystem, titles);
+    SystemMenu::WritePlayRecord(files, record);
+}
+
 LocalTime IosMenuConsole::GetLocalTime()
 {
-    std::time_t now = std::time(nullptr);
-    std::tm calendar = {};
-    localtime_s(&calendar, &now);
+    Settings::CalendarTime now = Settings::ConsoleClock::ToCalendarTime(pcClock());
 
     LocalTime time;
-    time.year = calendar.tm_year + FirstYearOfTheCalendar;
-    time.month = calendar.tm_mon + FirstMonthNumber;
-    time.day = calendar.tm_mday;
-    time.hour = calendar.tm_hour;
-    time.minute = calendar.tm_min;
-    time.second = calendar.tm_sec;
+    time.year = now.year;
+    time.month = now.month;
+    time.day = now.day;
+    time.hour = now.hour;
+    time.minute = now.minute;
+    time.second = now.second;
     return time;
 }
 

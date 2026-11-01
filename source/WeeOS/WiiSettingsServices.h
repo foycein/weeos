@@ -26,8 +26,8 @@ class WiiSettingsServices : public Settings::PcSettingsTarget
 {
 public:
     // Reads the settings and gives the window and the remote the settings of the PC. Everything given must outlive this object.
-    WiiSettingsServices(
-        Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote, ProgramSound& programSound);
+    WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
+        ProgramSound& programSound, Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile);
 
     SystemMenu::SettingsFlowServices& FlowServices();
 

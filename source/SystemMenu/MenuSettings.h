@@ -36,6 +36,10 @@ public:
     // Nothing when the settings have no parental controls.
     std::optional<ParentalControl> ReadParentalControl();
 
+    // What the parental controls restrict besides games: the News Channel (bit 0 of NET.CTPC) and the Internet Channel (WWW.RST).
+    bool IsNewsChannelRestricted();
+    bool IsInternetChannelRestricted();
+
 private:
     std::optional<Formats::SystemConfiguration> ReadConfiguration();
 
