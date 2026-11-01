@@ -5,6 +5,6 @@ add_library(WeeOSApplication STATIC
 )
 target_link_libraries(WeeOSApplication PUBLIC Boot Channels Graphics Input Ios Platform Settings Sound SystemMenu)
 
-add_executable(WeeOS main.cpp)
+add_executable(WeeOS main.cpp WeeOS.rc)
 target_link_libraries(WeeOS PRIVATE WeeOSApplication)
 CompileGraphicsShaders(WeeOS)
