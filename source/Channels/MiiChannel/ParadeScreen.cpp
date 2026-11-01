@@ -74,9 +74,11 @@ constexpr std::string_view ZoomOutSound = "SEQ_CAMERA_ZOOM_OFF";
 
 ParadeScreen::ParadeScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts,
     const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const PlazaGround& paradeRoad,
-    const Mii::MiiResources& faceParts, MessageWindow& messageWindow, MiiChannelData& channelData, std::uint32_t randomSeed)
+    const Mii::MiiResources& faceParts, MessageWindow& messageWindow, MiiChannelData& channelData, MiiEffects& miiEffects,
+    std::uint32_t randomSeed)
     : services(channelServices)
     , figures(miiFigures)
+    , effects(miiEffects)
     , road(paradeRoad)
     , message(messageWindow)
     , data(channelData)
@@ -135,6 +137,7 @@ void ParadeScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     parade.Update();
+    ShowPlazaMoments(effects, parade, figures);
     heads.Prepare(HeadsOfMiis(parade));
 
     std::string count = std::format("{:05}/{:05}", data.ParadeMiis().size(), Mii::HiddenMiiCapacity);
@@ -164,6 +167,7 @@ void ParadeScreen::Draw()
     services.display.Device().DrawQuad(background, Graphics::Material());
 
     figures.DrawPlaza(parade, road, heads);
+    effects.DrawAmongModels(parade.ViewMatrix(), parade.ProjectionMatrix());
     layout->Draw();
 }
 

@@ -10,7 +10,7 @@
 namespace Effects
 {
 
-using Formats::AnimationTarget;
+using Formats::EffectAnimationTarget;
 using Formats::AnimationValueKind;
 using Formats::EffectAnimation;
 using Formats::Rgba8Color;
@@ -70,31 +70,31 @@ void SetFirstComponents(Vector3& vector, const std::vector<float>& values)
         vector.z = values[2];
 }
 
-std::size_t ColorNumberOf(AnimationTarget target)
+std::size_t ColorNumberOf(EffectAnimationTarget target)
 {
-    std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(AnimationTarget::Color1PrimaryRgb);
+    std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(EffectAnimationTarget::Color1PrimaryRgb);
     return number / 2;
 }
 
-bool IsRgbTarget(AnimationTarget target)
+bool IsRgbTarget(EffectAnimationTarget target)
 {
-    return target == AnimationTarget::Color1PrimaryRgb || target == AnimationTarget::Color1SecondaryRgb ||
-        target == AnimationTarget::Color2PrimaryRgb || target == AnimationTarget::Color2SecondaryRgb;
+    return target == EffectAnimationTarget::Color1PrimaryRgb || target == EffectAnimationTarget::Color1SecondaryRgb ||
+        target == EffectAnimationTarget::Color2PrimaryRgb || target == EffectAnimationTarget::Color2SecondaryRgb;
 }
 
-bool IsAlphaTarget(AnimationTarget target)
+bool IsAlphaTarget(EffectAnimationTarget target)
 {
-    return target == AnimationTarget::Color1PrimaryAlpha || target == AnimationTarget::Color1SecondaryAlpha ||
-        target == AnimationTarget::Color2PrimaryAlpha || target == AnimationTarget::Color2SecondaryAlpha;
+    return target == EffectAnimationTarget::Color1PrimaryAlpha || target == EffectAnimationTarget::Color1SecondaryAlpha ||
+        target == EffectAnimationTarget::Color2PrimaryAlpha || target == EffectAnimationTarget::Color2SecondaryAlpha;
 }
 
-void ApplyTextureTransform(Particle& particle, AnimationTarget target, const std::vector<float>& values)
+void ApplyTextureTransform(Particle& particle, EffectAnimationTarget target, const std::vector<float>& values)
 {
     constexpr std::size_t TargetsPerTexture = 3;
-    std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(AnimationTarget::Texture1Scale);
+    std::size_t number = static_cast<std::size_t>(target) - static_cast<std::size_t>(EffectAnimationTarget::Texture1Scale);
     std::size_t texture = number / TargetsPerTexture;
     std::size_t part = number % TargetsPerTexture;
-    Formats::TextureTransform& transform = particle.textureTransforms[texture];
+    Formats::ParticleTextureTransform& transform = particle.textureTransforms[texture];
 
     if (part == 0)
         SetFirstComponents(transform.scale, values);
@@ -104,7 +104,7 @@ void ApplyTextureTransform(Particle& particle, AnimationTarget target, const std
         SetFirstComponents(transform.translation, values);
 }
 
-void ApplyValues(Particle& particle, AnimationTarget target, const std::vector<float>& values)
+void ApplyValues(Particle& particle, EffectAnimationTarget target, const std::vector<float>& values)
 {
     if (IsRgbTarget(target))
     {
@@ -118,7 +118,7 @@ void ApplyValues(Particle& particle, AnimationTarget target, const std::vector<f
         return;
     }
 
-    bool isTextureTransform = target >= AnimationTarget::Texture1Scale && target <= AnimationTarget::IndirectTextureTranslation;
+    bool isTextureTransform = target >= EffectAnimationTarget::Texture1Scale && target <= EffectAnimationTarget::IndirectTextureTranslation;
     if (isTextureTransform)
     {
         ApplyTextureTransform(particle, target, values);
@@ -127,21 +127,21 @@ void ApplyValues(Particle& particle, AnimationTarget target, const std::vector<f
 
     switch (target)
     {
-    case AnimationTarget::FirstAlphaReference:
+    case EffectAnimationTarget::FirstAlphaReference:
         if (!values.empty())
             particle.firstAlphaReference = ToByte(values[0]);
         break;
-    case AnimationTarget::SecondAlphaReference:
+    case EffectAnimationTarget::SecondAlphaReference:
         if (!values.empty())
             particle.secondAlphaReference = ToByte(values[0]);
         break;
-    case AnimationTarget::Size:
+    case EffectAnimationTarget::Size:
         SetFirstComponents(particle.size, values);
         break;
-    case AnimationTarget::Scale:
+    case EffectAnimationTarget::Scale:
         SetFirstComponents(particle.scale, values);
         break;
-    case AnimationTarget::Rotation:
+    case EffectAnimationTarget::Rotation:
         SetFirstComponents(particle.rotation, values);
         break;
     default:
@@ -155,7 +155,7 @@ void ApplyPattern(Particle& particle, const EffectAnimation& animation, const Cu
     if (key == nullptr || key->textureNameIndex >= animation.names.size())
         return;
 
-    std::size_t texture = static_cast<std::size_t>(animation.target) - static_cast<std::size_t>(AnimationTarget::Texture1Pattern);
+    std::size_t texture = static_cast<std::size_t>(animation.target) - static_cast<std::size_t>(EffectAnimationTarget::Texture1Pattern);
     particle.textureNames[texture] = animation.names[key->textureNameIndex];
 
     std::size_t wrapShift = texture * BitsPerTextureWrap;
@@ -227,7 +227,7 @@ Vector3 SpinPush(const std::vector<float>& values, Vector3 relativePosition)
 void AddField(FieldResult& fields, const EffectAnimation& animation, const std::vector<float>& values, const Particle& particle,
     Vector3 startVelocity, const Graphics::Matrix4& world)
 {
-    if (animation.target == AnimationTarget::SpeedField)
+    if (animation.target == EffectAnimationTarget::SpeedField)
     {
         fields.velocityChange = Add(fields.velocityChange, Multiply(startVelocity, ValueAt(values, 0) - 1));
         return;
@@ -239,11 +239,11 @@ void AddField(FieldResult& fields, const EffectAnimation& animation, const std::
         relativePosition = Graphics::TransformPoint(InvertAffine(world), particle.position);
 
     Vector3 result = {0, 0, 0};
-    if (animation.target == AnimationTarget::GravityField)
+    if (animation.target == EffectAnimationTarget::GravityField)
         result = Multiply({ValueAt(values, 1), ValueAt(values, 2), ValueAt(values, 3)}, ValueAt(values, 0));
-    else if (animation.target == AnimationTarget::VortexField)
+    else if (animation.target == EffectAnimationTarget::VortexField)
         result = VortexPush(values, relativePosition);
-    else if (animation.target == AnimationTarget::SpinField)
+    else if (animation.target == EffectAnimationTarget::SpinField)
         result = SpinPush(values, relativePosition);
 
     if (isInEmitterSpace)
@@ -402,25 +402,25 @@ void Emitter::ApplyEmitterAnimations()
         std::vector<float> values = EvaluateCurve(animation, time, 0, resource.version);
         switch (animation.target)
         {
-        case AnimationTarget::EmitterFormParameters:
+        case EffectAnimationTarget::EmitterFormParameters:
             for (std::size_t number = 0; number < values.size() && number < settings.formParameters.size(); ++number)
                 settings.formParameters[number] = values[number];
             break;
-        case AnimationTarget::EmitterScale: SetFirstComponents(settings.scale, values); break;
-        case AnimationTarget::EmitterRotation: SetFirstComponents(settings.rotation, values); break;
-        case AnimationTarget::EmitterTranslation: SetFirstComponents(settings.translation, values); break;
-        case AnimationTarget::EmitterRadiationSpeed: settings.radiationSpeed = ValueAt(values, 0); break;
-        case AnimationTarget::EmitterYAxisSpeed: settings.yAxisSpeed = ValueAt(values, 0); break;
-        case AnimationTarget::EmitterRandomDirectionSpeed: settings.randomDirectionSpeed = ValueAt(values, 0); break;
-        case AnimationTarget::EmitterNormalSpeed:
+        case EffectAnimationTarget::EmitterScale: SetFirstComponents(settings.scale, values); break;
+        case EffectAnimationTarget::EmitterRotation: SetFirstComponents(settings.rotation, values); break;
+        case EffectAnimationTarget::EmitterTranslation: SetFirstComponents(settings.translation, values); break;
+        case EffectAnimationTarget::EmitterRadiationSpeed: settings.radiationSpeed = ValueAt(values, 0); break;
+        case EffectAnimationTarget::EmitterYAxisSpeed: settings.yAxisSpeed = ValueAt(values, 0); break;
+        case EffectAnimationTarget::EmitterRandomDirectionSpeed: settings.randomDirectionSpeed = ValueAt(values, 0); break;
+        case EffectAnimationTarget::EmitterNormalSpeed:
             settings.normalSpeed = ValueAt(values, 0);
             settings.normalDiffusion = ValueAt(values, 1);
             break;
-        case AnimationTarget::EmitterSpecialDirectionSpeed:
+        case EffectAnimationTarget::EmitterSpecialDirectionSpeed:
             settings.specialDirectionSpeed = ValueAt(values, 0);
             settings.specialDirectionDiffusion = ValueAt(values, 1);
             break;
-        case AnimationTarget::EmitterEmitCount: settings.emitCount = ValueAt(values, 0); break;
+        case EffectAnimationTarget::EmitterEmitCount: settings.emitCount = ValueAt(values, 0); break;
         default: break;
         }
     }

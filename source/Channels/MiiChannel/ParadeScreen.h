@@ -4,6 +4,7 @@
 #include "Channels/MiiChannel/ButtonFocus.h"
 #include "Channels/MiiChannel/MessageWindow.h"
 #include "Channels/MiiChannel/MiiChannelData.h"
+#include "Channels/MiiChannel/MiiEffects.h"
 #include "Channels/MiiChannel/MiiFigures.h"
 #include "Channels/MiiChannel/MiiPlaza.h"
 #include "Channels/MiiChannel/PlazaGround.h"
@@ -33,7 +34,7 @@ public:
     // Everything given must outlive the screen.
     ParadeScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts, const Formats::NumberedMessageFile& messages,
         const MiiFigures& miiFigures, const PlazaGround& paradeRoad, const Mii::MiiResources& faceParts, MessageWindow& messageWindow,
-        MiiChannelData& channelData, std::uint32_t randomSeed);
+        MiiChannelData& channelData, MiiEffects& miiEffects, std::uint32_t randomSeed);
 
     // The Miis of the parade come onto the road; without any, the parade says that nobody is here.
     void Start();
@@ -60,6 +61,7 @@ private:
 
     ChannelServices& services;
     const MiiFigures& figures;
+    MiiEffects& effects;
     const PlazaGround& road;
     MessageWindow& message;
     MiiChannelData& data;

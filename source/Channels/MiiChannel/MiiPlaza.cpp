@@ -71,6 +71,18 @@ constexpr int ShortestNapSeconds = 6;
 constexpr int NapSecondsRange = 12;
 constexpr int StepsPerSecond = 60;
 
+// The moments of the effects (EffectManager.cpp): a talker lets out its first balloon at once and the answerer counts from 150; then a
+// balloon comes after 100 steps with a chance of one in 100 a step, and surely after 200 (8001F7A8 states 4 and 5). A running Mii
+// raises dust after (number of Miis + 50) / 2 steps with a chance of one in as many a step. The slip and the sneeze show at the frames
+// that the original's animation events name (80022584).
+constexpr int AnswerTalkBalloonStart = 150;
+constexpr int TalkBalloonShortestWait = 100;
+constexpr int TalkBalloonChances = 100;
+constexpr int TalkBalloonLongestWait = 200;
+constexpr int RunningDustBaseSteps = 50;
+constexpr float SlipDustFrame = 27;
+constexpr float SneezeSplashFrame = 13;
+
 // A talk goes on 140 to 160 steps before the two greet (800213F0 with 140 and 160).
 constexpr int ShortestTalkSteps = 140;
 constexpr int LongestTalkSteps = 160;
@@ -183,6 +195,7 @@ float WalkAnimationRate(float speed, const Mii::MiiRecord& record)
 MiiPlaza::MiiPlaza(std::uint32_t randomSeed, PlazaKind plazaKind)
     : kind(plazaKind)
     , random(randomSeed)
+    , effectRandom(randomSeed)
 {
     camera.eye = StartingEye;
     camera.destination = StartingEye;
@@ -556,13 +569,12 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
 
     case PlazaActivity::Running:
         Run(plazaMii);
+        CountRunningDust(plazaMii);
         return;
 
     case PlazaActivity::Talking:
-        PlayForSteps(plazaMii, PlazaActivity::Greeting);
-        return;
-
     case PlazaActivity::Answering:
+        CountTalkBalloon(plazaMii);
         PlayForSteps(plazaMii, PlazaActivity::Greeting);
         return;
 
@@ -583,13 +595,21 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
         return;
 
     case PlazaActivity::AfterSneeze:
+    {
+        float frameBefore = plazaMii.animationFrame;
         PlayOnce(plazaMii, PlazaActivity::Waiting);
+        NoteFrameMoment(plazaMii, frameBefore, SneezeSplashFrame, PlazaMoment::Sneezes);
         return;
+    }
 
     case PlazaActivity::Slipping:
+    {
+        float frameBefore = plazaMii.animationFrame;
         Slide(plazaMii);
         PlayOnce(plazaMii, PlazaActivity::GettingUp);
+        NoteFrameMoment(plazaMii, frameBefore, SlipDustFrame, PlazaMoment::Slips);
         return;
+    }
 
     case PlazaActivity::GettingUp:
         PlayOnce(plazaMii, PlazaActivity::Waiting);
@@ -614,6 +634,7 @@ void MiiPlaza::StartRunning(PlazaMii& plazaMii, Formats::Vector2 target)
 {
     StartActivity(plazaMii, PlazaActivity::Running);
     plazaMii.target = target;
+    plazaMii.stepsRunning = 0;
 }
 
 void MiiPlaza::StartActivity(PlazaMii& plazaMii, PlazaActivity activity)
@@ -742,6 +763,7 @@ void MiiPlaza::ChooseIdleMoment(PlazaMii& plazaMii)
         StartActivity(plazaMii, PlazaActivity::Napping);
         int napSeconds = ShortestNapSeconds + std::uniform_int_distribution<int>(0, NapSecondsRange - 1)(random);
         plazaMii.stepsOfActivity = napSeconds * StepsPerSecond;
+        moments.push_back({PlazaMoment::FallsAsleep, plazaMii.mii.slot});
         return;
     }
 
@@ -783,8 +805,50 @@ void MiiPlaza::StartTalk(PlazaMii& talker)
         listener.facingDegrees = direction + HalfTurnDegrees;
         listener.stepsOfActivity = talkSteps;
         listener.speed = 0;
+
+        talker.stepsSinceTalkBalloon = 0;
+        listener.stepsSinceTalkBalloon = AnswerTalkBalloonStart;
+        moments.push_back({PlazaMoment::Talks, talker.mii.slot});
         return;
     }
+}
+
+void MiiPlaza::CountTalkBalloon(PlazaMii& plazaMii)
+{
+    ++plazaMii.stepsSinceTalkBalloon;
+    int waited = plazaMii.stepsSinceTalkBalloon;
+    bool comesByChance = waited > TalkBalloonShortestWait && std::uniform_int_distribution<int>(0, TalkBalloonChances - 1)(effectRandom) == 0;
+    if (!comesByChance && waited <= TalkBalloonLongestWait)
+        return;
+
+    plazaMii.stepsSinceTalkBalloon = 0;
+    moments.push_back({PlazaMoment::Talks, plazaMii.mii.slot});
+}
+
+void MiiPlaza::CountRunningDust(PlazaMii& plazaMii)
+{
+    if (plazaMii.activity != PlazaActivity::Running)
+        return;
+
+    ++plazaMii.stepsRunning;
+    int chances = (static_cast<int>(miis.size()) + RunningDustBaseSteps) / 2;
+    if (plazaMii.stepsRunning > chances && std::uniform_int_distribution<int>(0, chances - 1)(effectRandom) == 0)
+        moments.push_back({PlazaMoment::RaisesDust, plazaMii.mii.slot});
+}
+
+// A moment at a frame of an animation comes in the step in which the animation passes that frame.
+void MiiPlaza::NoteFrameMoment(const PlazaMii& plazaMii, float frameBefore, float momentFrame, PlazaMoment moment)
+{
+    bool passesTheFrame = frameBefore < momentFrame && plazaMii.animationFrame >= momentFrame;
+    if (passesTheFrame)
+        moments.push_back({moment, plazaMii.mii.slot});
+}
+
+std::vector<PlazaMomentOfMii> MiiPlaza::TakeMoments()
+{
+    std::vector<PlazaMomentOfMii> taken = std::move(moments);
+    moments.clear();
+    return taken;
 }
 
 // Each of two Miis that stand too close moves away from the other by half of what is missing.

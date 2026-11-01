@@ -4,6 +4,7 @@
 #include "Channels/MiiChannel/MessageWindow.h"
 #include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/MiiChannel/MiiEditor.h"
+#include "Channels/MiiChannel/MiiEffects.h"
 #include "Channels/MiiChannel/MiiFigures.h"
 #include "Channels/MiiChannel/ProfileDialog.h"
 
@@ -36,7 +37,7 @@ public:
     // Everything given must outlive the screen.
     EditorScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts, const Formats::NumberedMessageFile& messages,
         const MiiFigures& miiFigures, const Mii::MiiResources& faceParts, MessageWindow& messageWindow, ProfileDialog& profileDialog,
-        SystemMenu::SoftKeyboard& softKeyboard, MiiChannelData& channelData);
+        SystemMenu::SoftKeyboard& softKeyboard, MiiChannelData& channelData, MiiEffects& miiEffects);
 
     // A Mii of the plaza keeps its slot; a new Mii gets one when it is saved.
     void Open(const Mii::MiiRecord& record, std::optional<std::size_t> slot);
@@ -98,11 +99,14 @@ private:
 
     bool IsPressed(std::string_view buttonPane) const;
     PictureRectangle RectangleOf(std::string_view paneName) const;
+    void SparkleAtThePart(float heightAboveTheHead);
     std::optional<ColorPart> ColorPartOf(EditorPart part) const;
 
     ChannelServices& services;
     const Formats::NumberedMessageFile& texts;
     const MiiFigures& figures;
+    MiiEffects& effects;
+    bool isFavoriteMarkShown = false;
     MessageWindow& message;
     ProfileDialog& profile;
     SystemMenu::SoftKeyboard& keyboard;

@@ -84,6 +84,8 @@ private:
     void PressPowerButton();
     void RunStepOfTheTurnOffQuestion();
     void LeaveWhenAsked();
+    void UpdateHands();
+    void DrawHandsOverTheQuestion();
 
     Ios::TitleId runningTitle;
     Graphics::GraphicsDevice& graphicsDevice;

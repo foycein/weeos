@@ -4,6 +4,7 @@
 #include "Channels/MiiChannel/ButtonFocus.h"
 #include "Channels/MiiChannel/MessageWindow.h"
 #include "Channels/MiiChannel/MiiChannelData.h"
+#include "Channels/MiiChannel/MiiEffects.h"
 #include "Channels/MiiChannel/MiiFigures.h"
 #include "Channels/MiiChannel/MiiPlaza.h"
 #include "Channels/MiiChannel/PlazaGround.h"
@@ -50,7 +51,7 @@ public:
     // Everything given must outlive the screen.
     PlazaScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts, const Formats::NumberedMessageFile& messages,
         const MiiFigures& miiFigures, const PlazaGround& plazaGround, const Mii::MiiResources& faceParts, MessageWindow& messageWindow,
-        MiiChannelData& channelData, std::uint32_t randomSeed);
+        MiiChannelData& channelData, MiiEffects& miiEffects, std::uint32_t randomSeed);
 
     // The Miis of the database come onto the plaza.
     void Start();
@@ -105,6 +106,7 @@ private:
     ChannelServices& services;
     const Formats::NumberedMessageFile& texts;
     const MiiFigures& figures;
+    MiiEffects& effects;
     const PlazaGround& ground;
     MessageWindow& message;
     MiiChannelData& data;

@@ -392,11 +392,11 @@ ParticleParameters ReadParticleParameters(ByteReader& reader, std::size_t parame
     particle.size = ReadVector2(reader);
     particle.scale = ReadVector2(reader);
     particle.rotation = ReadVector3(reader);
-    for (TextureTransform& transform : particle.textureTransforms)
+    for (ParticleTextureTransform& transform : particle.textureTransforms)
         transform.scale = ReadVector2(reader);
-    for (TextureTransform& transform : particle.textureTransforms)
+    for (ParticleTextureTransform& transform : particle.textureTransforms)
         transform.rotation = reader.ReadFloat();
-    for (TextureTransform& transform : particle.textureTransforms)
+    for (ParticleTextureTransform& transform : particle.textureTransforms)
         transform.translation = ReadVector2(reader);
 
     constexpr std::size_t RunTimeTexturePointersSize = 12;
@@ -424,7 +424,7 @@ ParticleParameters ReadParticleParameters(ByteReader& reader, std::size_t parame
     return particle;
 }
 
-AnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
+EffectAnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
 {
     constexpr std::uint8_t LastColorTarget = 0x0C;
     constexpr std::uint8_t FirstPatternTarget = 0x0E;
@@ -437,68 +437,68 @@ AnimationTarget Version5Target(ByteReader& reader, std::uint8_t number)
     constexpr std::uint8_t FieldOfTail = 0x27;
 
     if (number <= LastColorTarget)
-        return static_cast<AnimationTarget>(number);
+        return static_cast<EffectAnimationTarget>(number);
     if (number >= FirstPatternTarget && number <= LastTextureTarget)
-        return static_cast<AnimationTarget>(static_cast<std::uint8_t>(AnimationTarget::Texture1Pattern) + number - FirstPatternTarget);
+        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::Texture1Pattern) + number - FirstPatternTarget);
     if (number == ChildTarget)
-        return AnimationTarget::Child;
+        return EffectAnimationTarget::Child;
     if (number >= FirstFieldTarget && number <= static_cast<std::uint8_t>(FirstFieldTarget + 4))
-        return static_cast<AnimationTarget>(static_cast<std::uint8_t>(AnimationTarget::GravityField) + number - FirstFieldTarget);
+        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::GravityField) + number - FirstFieldTarget);
     if (number == FieldOfSpin)
-        return AnimationTarget::SpinField;
+        return EffectAnimationTarget::SpinField;
     if (number == FieldOfTail)
-        return AnimationTarget::TailField;
+        return EffectAnimationTarget::TailField;
     if (number >= FirstEmitterTarget && number <= LastEmitterTarget)
-        return static_cast<AnimationTarget>(static_cast<std::uint8_t>(AnimationTarget::EmitterFormParameters) + number - FirstEmitterTarget);
+        return static_cast<EffectAnimationTarget>(static_cast<std::uint8_t>(EffectAnimationTarget::EmitterFormParameters) + number - FirstEmitterTarget);
 
     reader.Fail(std::format("the animation target {:#x} is not known", number));
 }
 
 // Version 11 names most targets by their place in the particle parameters.
-AnimationTarget Version11ParameterTarget(ByteReader& reader, std::uint8_t place)
+EffectAnimationTarget Version11ParameterTarget(ByteReader& reader, std::uint8_t place)
 {
     switch (place)
     {
-    case 0x00: return AnimationTarget::Color1PrimaryRgb;
-    case 0x03: return AnimationTarget::Color1PrimaryAlpha;
-    case 0x04: return AnimationTarget::Color1SecondaryRgb;
-    case 0x07: return AnimationTarget::Color1SecondaryAlpha;
-    case 0x08: return AnimationTarget::Color2PrimaryRgb;
-    case 0x0B: return AnimationTarget::Color2PrimaryAlpha;
-    case 0x0C: return AnimationTarget::Color2SecondaryRgb;
-    case 0x0F: return AnimationTarget::Color2SecondaryAlpha;
-    case 0x10: return AnimationTarget::Size;
-    case 0x18: return AnimationTarget::Scale;
-    case 0x2C: return AnimationTarget::Texture1Scale;
-    case 0x34: return AnimationTarget::Texture2Scale;
-    case 0x3C: return AnimationTarget::IndirectTextureScale;
-    case 0x44: return AnimationTarget::Texture1Rotation;
-    case 0x48: return AnimationTarget::Texture2Rotation;
-    case 0x4C: return AnimationTarget::IndirectTextureRotation;
-    case 0x50: return AnimationTarget::Texture1Translation;
-    case 0x58: return AnimationTarget::Texture2Translation;
-    case 0x60: return AnimationTarget::IndirectTextureTranslation;
-    case 0x68: return AnimationTarget::Texture1Pattern;
-    case 0x6C: return AnimationTarget::Texture2Pattern;
-    case 0x70: return AnimationTarget::IndirectTexturePattern;
-    case 0x77: return AnimationTarget::FirstAlphaReference;
-    case 0x78: return AnimationTarget::SecondAlphaReference;
+    case 0x00: return EffectAnimationTarget::Color1PrimaryRgb;
+    case 0x03: return EffectAnimationTarget::Color1PrimaryAlpha;
+    case 0x04: return EffectAnimationTarget::Color1SecondaryRgb;
+    case 0x07: return EffectAnimationTarget::Color1SecondaryAlpha;
+    case 0x08: return EffectAnimationTarget::Color2PrimaryRgb;
+    case 0x0B: return EffectAnimationTarget::Color2PrimaryAlpha;
+    case 0x0C: return EffectAnimationTarget::Color2SecondaryRgb;
+    case 0x0F: return EffectAnimationTarget::Color2SecondaryAlpha;
+    case 0x10: return EffectAnimationTarget::Size;
+    case 0x18: return EffectAnimationTarget::Scale;
+    case 0x2C: return EffectAnimationTarget::Texture1Scale;
+    case 0x34: return EffectAnimationTarget::Texture2Scale;
+    case 0x3C: return EffectAnimationTarget::IndirectTextureScale;
+    case 0x44: return EffectAnimationTarget::Texture1Rotation;
+    case 0x48: return EffectAnimationTarget::Texture2Rotation;
+    case 0x4C: return EffectAnimationTarget::IndirectTextureRotation;
+    case 0x50: return EffectAnimationTarget::Texture1Translation;
+    case 0x58: return EffectAnimationTarget::Texture2Translation;
+    case 0x60: return EffectAnimationTarget::IndirectTextureTranslation;
+    case 0x68: return EffectAnimationTarget::Texture1Pattern;
+    case 0x6C: return EffectAnimationTarget::Texture2Pattern;
+    case 0x70: return EffectAnimationTarget::IndirectTexturePattern;
+    case 0x77: return EffectAnimationTarget::FirstAlphaReference;
+    case 0x78: return EffectAnimationTarget::SecondAlphaReference;
     default: break;
     }
     reader.Fail(std::format("the animation target {:#x} is not known", place));
 }
 
-AnimationTarget Version11FieldTarget(ByteReader& reader, std::uint8_t type)
+EffectAnimationTarget Version11FieldTarget(ByteReader& reader, std::uint8_t type)
 {
     switch (type)
     {
-    case 0: return AnimationTarget::GravityField;
-    case 1: return AnimationTarget::SpeedField;
-    case 2: return AnimationTarget::MagnetField;
-    case 3: return AnimationTarget::NewtonField;
-    case 4: return AnimationTarget::VortexField;
-    case 6: return AnimationTarget::SpinField;
-    case 7: return AnimationTarget::TailField;
+    case 0: return EffectAnimationTarget::GravityField;
+    case 1: return EffectAnimationTarget::SpeedField;
+    case 2: return EffectAnimationTarget::MagnetField;
+    case 3: return EffectAnimationTarget::NewtonField;
+    case 4: return EffectAnimationTarget::VortexField;
+    case 6: return EffectAnimationTarget::SpinField;
+    case 7: return EffectAnimationTarget::TailField;
     default: break;
     }
     reader.Fail(std::format("the field {} is not known", type));
@@ -724,21 +724,21 @@ std::vector<std::string> ReadNameTable(ByteReader& reader, std::size_t table, st
     return names;
 }
 
-std::size_t Version5FieldFloatCount(AnimationTarget target)
+std::size_t Version5FieldFloatCount(EffectAnimationTarget target)
 {
     switch (target)
     {
-    case AnimationTarget::GravityField: return 4;
-    case AnimationTarget::SpeedField: return 1;
-    case AnimationTarget::MagnetField: return 4;
-    case AnimationTarget::NewtonField: return 5;
-    case AnimationTarget::VortexField: return 6;
-    case AnimationTarget::SpinField: return 4;
+    case EffectAnimationTarget::GravityField: return 4;
+    case EffectAnimationTarget::SpeedField: return 1;
+    case EffectAnimationTarget::MagnetField: return 4;
+    case EffectAnimationTarget::NewtonField: return 5;
+    case EffectAnimationTarget::VortexField: return 6;
+    case EffectAnimationTarget::SpinField: return 4;
     default: return 1;
     }
 }
 
-FieldSettings ReadFieldSettings(ByteReader& reader, std::size_t info, std::uint32_t infoSize, AnimationTarget target, std::uint16_t version)
+FieldSettings ReadFieldSettings(ByteReader& reader, std::size_t info, std::uint32_t infoSize, EffectAnimationTarget target, std::uint16_t version)
 {
     FieldSettings field;
     if (infoSize == 0)
@@ -795,7 +795,7 @@ EffectAnimation ReadAnimation(ByteReader& reader, std::size_t start, std::uint16
     // Version 11's emitter animations are not read: none of the files plays one without the owner's server (the lobby).
     if (isEmitterAnimation && version == EffectFileVersion11)
     {
-        animation.target = AnimationTarget::EmitterUnnamed;
+        animation.target = EffectAnimationTarget::EmitterUnnamed;
         return animation;
     }
 
@@ -805,9 +805,9 @@ EffectAnimation ReadAnimation(ByteReader& reader, std::size_t start, std::uint16
     else if (animation.kind == AnimationValueKind::Field)
         animation.target = Version11FieldTarget(reader, header.target);
     else if (animation.kind == AnimationValueKind::Child)
-        animation.target = AnimationTarget::Child;
+        animation.target = EffectAnimationTarget::Child;
     else if (animation.kind == AnimationValueKind::Rotation)
-        animation.target = AnimationTarget::Rotation;
+        animation.target = EffectAnimationTarget::Rotation;
     else
         animation.target = Version11ParameterTarget(reader, header.target);
 

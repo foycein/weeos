@@ -258,7 +258,7 @@ struct EmitterSettings
     std::uint16_t randomSeed = 0;
 };
 
-struct TextureTransform
+struct ParticleTextureTransform
 {
     Vector2 scale = {1, 1};
     float rotation = 0;
@@ -277,7 +277,7 @@ struct ParticleParameters
     Vector3 rotation = {0, 0, 0};
 
     // Texture 1, texture 2 and the indirect texture.
-    std::array<TextureTransform, ParticleTextureCount> textureTransforms = {};
+    std::array<ParticleTextureTransform, ParticleTextureCount> textureTransforms = {};
 
     // Four bits per texture: horizontal wrap in bits 0 and 1, vertical in bits 2 and 3 (0 clamp, 1 repeat, 2 mirror).
     std::uint16_t textureWraps = 0;
@@ -300,7 +300,7 @@ struct ParticleParameters
 };
 
 // What an animation changes.
-enum class AnimationTarget : std::uint8_t
+enum class EffectAnimationTarget : std::uint8_t
 {
     Color1PrimaryRgb,
     Color1PrimaryAlpha,
@@ -433,7 +433,7 @@ enum class AnimationValueKind : std::uint8_t
 
 struct EffectAnimation
 {
-    AnimationTarget target = AnimationTarget::Size;
+    EffectAnimationTarget target = EffectAnimationTarget::Size;
     AnimationValueKind kind = AnimationValueKind::Floats;
     std::size_t componentCount = 1;
     std::uint8_t flags = 0;

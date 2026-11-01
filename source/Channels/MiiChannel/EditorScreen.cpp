@@ -23,6 +23,83 @@ constexpr std::string_view MiiPane = "humanNull_00";
 constexpr int PlacesPerGridPage = 12;
 constexpr float WaitAnimationFrames = 120.0f;
 
+// The sparkles of a changed part stand this far above the head of the Mii (0x80040BFC, its constants 0x803BE7B8 to 0x803BE7F0): a fixed
+// height for the face, the hair and the beard, and for the parts that move up and down a height that falls by 1.8 for each step of
+// their place. The eyes count their place from 3.
+constexpr float FaceSparkleHeight = 20;
+constexpr float HairSparkleHeight = 50;
+constexpr float BeardSparkleHeight = 5;
+constexpr float SparkleDropPerStep = 1.8f;
+constexpr float EyebrowSparkleTop = 50;
+constexpr float EyeSparkleTop = 50;
+constexpr int EyeSparklePlaceStart = 3;
+constexpr float NoseSparkleTop = 37;
+constexpr float MouthSparkleTop = 32;
+constexpr float MustacheSparkleTop = 29;
+constexpr float GlassesSparkleTop = 48;
+constexpr float MoleSparkleTop = 50;
+
+float PlacedSparkleHeight(float top, int place)
+{
+    return top - SparkleDropPerStep * static_cast<float>(place);
+}
+
+float TypeSparkleHeight(const Mii::MiiRecord& record, EditorPart part)
+{
+    switch (part)
+    {
+    case EditorPart::FaceShape:
+    case EditorPart::MakeUp:
+        return FaceSparkleHeight;
+    case EditorPart::Hair:
+        return HairSparkleHeight;
+    case EditorPart::Eyebrows:
+        return PlacedSparkleHeight(EyebrowSparkleTop, record.eyebrows.vertical);
+    case EditorPart::Eyes:
+        return PlacedSparkleHeight(EyeSparkleTop, record.eyes.vertical - EyeSparklePlaceStart);
+    case EditorPart::Nose:
+        return PlacedSparkleHeight(NoseSparkleTop, record.nose.vertical);
+    case EditorPart::Mouth:
+        return PlacedSparkleHeight(MouthSparkleTop, record.mouth.vertical);
+    case EditorPart::Glasses:
+        return PlacedSparkleHeight(GlassesSparkleTop, record.glasses.vertical);
+    case EditorPart::Mustache:
+        return PlacedSparkleHeight(MustacheSparkleTop, record.facialHair.mustacheVertical);
+    case EditorPart::Beard:
+        return BeardSparkleHeight;
+    case EditorPart::Mole:
+        return PlacedSparkleHeight(MoleSparkleTop, record.mole.vertical);
+    }
+    return FaceSparkleHeight;
+}
+
+// The favorite color has no sparkles; the color of the facial hair sparkles at the mustache without a beard, at the beard with one.
+std::optional<float> ColorSparkleHeight(const Mii::MiiRecord& record, ColorPart part)
+{
+    switch (part)
+    {
+    case ColorPart::Skin:
+        return FaceSparkleHeight;
+    case ColorPart::Hair:
+        return HairSparkleHeight;
+    case ColorPart::Eyebrows:
+        return TypeSparkleHeight(record, EditorPart::Eyebrows);
+    case ColorPart::Eyes:
+        return TypeSparkleHeight(record, EditorPart::Eyes);
+    case ColorPart::Mouth:
+        return TypeSparkleHeight(record, EditorPart::Mouth);
+    case ColorPart::Glasses:
+        return TypeSparkleHeight(record, EditorPart::Glasses);
+    case ColorPart::FacialHair:
+        if (record.facialHair.beardType == 0)
+            return TypeSparkleHeight(record, EditorPart::Mustache);
+        return BeardSparkleHeight;
+    case ColorPart::Favorite:
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
 // The windows of the nine pages, in the order of the tabs.
 constexpr std::array<std::string_view, EditorPageCount> PageWindows = {"windowProfile", "windowBody", "windowFace", "windowHair",
     "windowEyeB", "windowEye", "windowNose", "windowMouth", "windowEtc"};
@@ -225,10 +302,12 @@ std::u16string Ascii(std::string_view text)
 
 EditorScreen::EditorScreen(ChannelServices& channelServices, const Layout::LayoutArchive& layouts,
     const Formats::NumberedMessageFile& messages, const MiiFigures& miiFigures, const Mii::MiiResources& faceParts,
-    MessageWindow& messageWindow, ProfileDialog& profileDialog, SystemMenu::SoftKeyboard& softKeyboard, MiiChannelData& channelData)
+    MessageWindow& messageWindow, ProfileDialog& profileDialog, SystemMenu::SoftKeyboard& softKeyboard, MiiChannelData& channelData,
+    MiiEffects& miiEffects)
     : services(channelServices)
     , texts(messages)
     , figures(miiFigures)
+    , effects(miiEffects)
     , message(messageWindow)
     , profile(profileDialog)
     , keyboard(softKeyboard)
@@ -366,7 +445,11 @@ void EditorScreen::Draw()
     layout->Draw();
     const Mii::MiiHead* head = heads.Find(0);
     if (head != nullptr)
+    {
         figures.DrawStandingMii(editor->Record(), *head, RectangleOf(MiiPane), services.display.GetCanvas(), waitFrame);
+        FigureCamera camera = figures.StandingCamera(RectangleOf(MiiPane), services.display.GetCanvas());
+        effects.DrawAmongModels(camera.view, camera.projection);
+    }
 
     if (keyboard.IsOpen())
         keyboard.Draw();
@@ -489,6 +572,9 @@ void EditorScreen::RefreshProfile()
     TintWindow(layout->PaneNamed(ColorButtonPane), Mii::FavoriteColors[record.favoriteColor]);
     layout->SetText("textProf_04", record.creatorName);
     layout->PaneNamed("PicProf_05").isVisible = record.isFavorite;
+    if (record.isFavorite && !isFavoriteMarkShown)
+        effects.StartFlat(MiiEffects::FavoriteMarkSparkles, PlaceOf("PicProf_05"));
+    isFavoriteMarkShown = record.isFavorite;
 
     bool isSpecial = Mii::IsSpecialMii(record);
     layout->PaneNamed(SpecialMingleRow).isVisible = isSpecial;
@@ -550,6 +636,7 @@ bool EditorScreen::HandleGrid(EditorPart part)
             continue;
 
         editor->ChooseType(part, TypeAtGridPlace(part, place));
+        SparkleAtThePart(TypeSparkleHeight(editor->Record(), part));
         services.sounds.Request(PartSound);
         RefreshSelections();
         return true;
@@ -590,6 +677,8 @@ bool EditorScreen::HandlePalette(ColorPart part)
             continue;
 
         editor->ChooseColor(part, color);
+        if (std::optional<float> height = ColorSparkleHeight(editor->Record(), part))
+            SparkleAtThePart(*height);
         services.sounds.Request(ColorSound);
         RefreshSelections();
         return true;
@@ -749,6 +838,11 @@ bool EditorScreen::HandleProfileRows()
     {
         editor->SetFavorite(!record.isFavorite);
         services.sounds.Request(record.isFavorite ? "SEQ_FAVORITE_ON" : "SEQ_FAVORITE_OFF");
+        if (record.isFavorite)
+        {
+            bool isWoman = record.gender == Mii::Gender::Female;
+            effects.Start(isWoman ? MiiEffects::FavoriteSparklesOfAWoman : MiiEffects::FavoriteSparkles, Graphics::Matrix4());
+        }
         RefreshProfile();
         return true;
     }
@@ -924,6 +1018,14 @@ bool EditorScreen::IsPressed(std::string_view buttonPane) const
         return false;
 
     return layout->IsPointInPane(buttonPane, *input.pointer);
+}
+
+// The sparkles of a changed part (Nc_change_parts01) at a height above the head of the Mii.
+void EditorScreen::SparkleAtThePart(float heightAboveTheHead)
+{
+    Formats::Vector3 head = figures.StandingHeadPosition(editor->Record());
+    head.y += heightAboveTheHead;
+    effects.Start(MiiEffects::ChangedPartSparkles, Graphics::MakeTranslation(head));
 }
 
 PictureRectangle EditorScreen::RectangleOf(std::string_view paneName) const

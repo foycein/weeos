@@ -47,6 +47,7 @@ public:
     void Update() override;
     void Draw() override;
     SystemMenu::CursorManager& Hands() override;
+    EffectHands* OwnHands() override;
 
     Scene CurrentScene() const;
 
@@ -58,6 +59,7 @@ public:
     MessageWindow& Message();
     ProfileDialog& Profile();
     MiiChannelData& Data();
+    MiiEffects& Effects();
 
 private:
     enum class Welcome
@@ -88,6 +90,7 @@ private:
     SystemMenu::MenuFonts fonts;
     MiiChannelData data;
     MiiFigures figures;
+    MiiEffects effects;
     PlazaGround ground;
     PlazaGround road;
     MessageWindow message;
@@ -99,6 +102,7 @@ private:
     LookAlikeScreen lookAlike;
     EditorScreen editor;
     std::unique_ptr<SystemMenu::CursorManager> hands;
+    EffectHands ownHands;
 
     Scene scene = Scene::Starting;
     Welcome welcome = Welcome::None;

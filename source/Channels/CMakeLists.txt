@@ -1,6 +1,7 @@
 add_library(Channels STATIC
     ChannelFiles.cpp
     ChannelText.cpp
+    EffectHands.cpp
     ChannelSystem.cpp
     Internet/FavoritesScreen.cpp
     Internet/OperaData.cpp
@@ -25,6 +26,7 @@ add_library(Channels STATIC
     MiiChannel/MiiChannel.cpp
     MiiChannel/MiiChannelData.cpp
     MiiChannel/MiiChannelFiles.cpp
+    MiiChannel/MiiEffects.cpp
     MiiChannel/MiiEditor.cpp
     MiiChannel/MiiFigures.cpp
     MiiChannel/MiiPlaza.cpp
@@ -78,4 +80,4 @@ add_library(Channels STATIC
     WiiSpeak/WiiSpeakSession.cpp
 )
 
-target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound Browser)
+target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound Browser Effects)

@@ -121,7 +121,7 @@ void ChannelSystem::Update()
     if (manual)
     {
         UpdateManual();
-        channel->Hands().Update(input);
+        UpdateHands();
         fader.Calculate();
         return;
     }
@@ -139,7 +139,7 @@ void ChannelSystem::Update()
         sounds.ResumeAllSounds();
     sounds.ChangeConsoleVolume(homeButton->SoundVolume());
 
-    channel->Hands().Update(input);
+    UpdateHands();
     fader.Calculate();
     LeaveWhenAsked();
 }
@@ -158,13 +158,38 @@ void ChannelSystem::DrawScene()
     else
         channel->Draw();
 
+    EffectHands* ownHands = channel->OwnHands();
+    if (ownHands && !homeButton->IsOpen() && !IsAskingToTurnOff())
+        ownHands->Draw();
+
     homeButton->Draw();
     if (IsAskingToTurnOff())
     {
         turnOff->Draw();
-        channel->Hands().Draw();
+        DrawHandsOverTheQuestion();
     }
     fader.Draw();
+}
+
+// A channel with hands of its own shows them; the HOME menu's hands come only while the HOME menu is open.
+void ChannelSystem::UpdateHands()
+{
+    EffectHands* ownHands = channel->OwnHands();
+    if (ownHands)
+        channel->Hands().SetVisible(homeButton->IsOpen());
+
+    channel->Hands().Update(input);
+    if (ownHands)
+        ownHands->Update(input);
+}
+
+void ChannelSystem::DrawHandsOverTheQuestion()
+{
+    EffectHands* ownHands = channel->OwnHands();
+    if (ownHands)
+        ownHands->Draw();
+    else
+        channel->Hands().Draw();
 }
 
 std::optional<Ios::TitleId> ChannelSystem::TakeTitleToLaunch()
@@ -219,7 +244,7 @@ void ChannelSystem::RunStepOfTheTurnOffQuestion()
     if (isYes)
         PressPowerButton();
 
-    channel->Hands().Update(input);
+    UpdateHands();
     fader.Calculate();
 }
 

@@ -80,6 +80,7 @@ public:
     void Update() override;
     void Draw() override;
     SystemMenu::CursorManager& Hands() override;
+    EffectHands* OwnHands() override;
 
     Stage CurrentStage() const;
     const WaitingMark& Mark() const;
@@ -115,6 +116,7 @@ private:
     std::unique_ptr<SystemMenu::MenuLayout> oneMomentLayout;
     std::unique_ptr<SystemMenu::MenuLayout> errorLayout;
     std::unique_ptr<SystemMenu::CursorManager> cursors;
+    std::unique_ptr<EffectHands> ownHands;
     std::unique_ptr<WaitingMark> waitingMark;
     int errorMessageCount;
     Stage stage = Stage::OneMoment;

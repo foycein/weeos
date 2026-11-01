@@ -22,7 +22,7 @@ struct Particle
     Formats::Vector2 scale = {1, 1};
     Formats::Vector3 rotation = {0, 0, 0};
     Formats::Vector3 rotationOffset = {0, 0, 0};
-    std::array<Formats::TextureTransform, Formats::ParticleTextureCount> textureTransforms = {};
+    std::array<Formats::ParticleTextureTransform, Formats::ParticleTextureCount> textureTransforms = {};
     std::array<std::string_view, Formats::ParticleTextureCount> textureNames;
     std::uint16_t textureWraps = 0;
     std::uint8_t textureReverses = 0;

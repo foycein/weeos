@@ -590,7 +590,7 @@ std::optional<Graphics::BlendMode> BlendModeOf(const EffectDrawSetting& drawSett
 }
 
 // newS = factor * s' (+ factor when reversed), s' = the coordinate moved, turned and scaled around the middle of the picture.
-Graphics::TextureMatrix ParticleTextureMatrix(const Formats::TextureTransform& transform, std::uint8_t wrapBits, std::uint8_t reverseBits)
+Graphics::TextureMatrix ParticleTextureMatrix(const Formats::ParticleTextureTransform& transform, std::uint8_t wrapBits, std::uint8_t reverseBits)
 {
     constexpr float Middle = 0.5f;
 

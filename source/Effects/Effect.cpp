@@ -12,7 +12,7 @@
 namespace Effects
 {
 
-using Formats::AnimationTarget;
+using Formats::EffectAnimationTarget;
 using Formats::AnimationValueKind;
 using Formats::EmitterResource;
 using Formats::ParticleDrawType;
@@ -50,10 +50,10 @@ bool IsAnimationBuilt(const Formats::EffectAnimation& animation)
 {
     switch (animation.target)
     {
-    case AnimationTarget::MagnetField:
-    case AnimationTarget::NewtonField:
-    case AnimationTarget::TailField:
-    case AnimationTarget::EmitterUnnamed:
+    case EffectAnimationTarget::MagnetField:
+    case EffectAnimationTarget::NewtonField:
+    case EffectAnimationTarget::TailField:
+    case EffectAnimationTarget::EmitterUnnamed:
         return false;
     default:
         break;
