@@ -28,6 +28,7 @@ class SoftKeyboard;
 class SoundRequests;
 struct SettingsFlowServices;
 struct WiiMenuData;
+class TitleLaunchRequest;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
 // the screens of WeeOS get them in one place.
@@ -60,6 +61,9 @@ struct MenuServices
     // The HOME button: the Wii Menu starts it, a screen that must not be interrupted disables it.
     HomeButton& homeButton;
     WiiMenuData& wiiMenu;
+
+    // How the menu starts a channel: titleLaunch.Request(channelTitleId) once the start window has faded out.
+    TitleLaunchRequest& titleLaunch;
 
     // The titles, the NAND, the SD card and the identity for Data Management and the SD Card Menu. Nothing when the menu runs without IOS.
     DataManagementServices* dataManagement = nullptr;

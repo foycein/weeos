@@ -29,7 +29,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
     , nand(nandFiles)
     , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
-          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu}
+          parentalAnswer, frontPanel, wiiSettingsServices, homeButton, wiiMenu, titleLaunch}
 {
     display.SetTextFonts(fonts.Fonts());
 
@@ -121,7 +121,11 @@ void MenuSystem::ShowFatalError(FatalError reason)
 
 std::optional<Ios::TitleId> MenuSystem::TakeTitleToLaunch()
 {
-    return frontPanel.TakeTitleToLaunch();
+    std::optional<Ios::TitleId> titleOfFrontPanel = frontPanel.TakeTitleToLaunch();
+    if (titleOfFrontPanel)
+        return titleOfFrontPanel;
+
+    return titleLaunch.Take();
 }
 
 const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
