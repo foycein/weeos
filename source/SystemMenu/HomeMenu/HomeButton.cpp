@@ -22,7 +22,7 @@ constexpr double MillisecondsPerStep = 1001.0 / 60.0;
 constexpr double HighestIconAlpha = 255.9;
 
 // Where the picture lies, in the layout units of the 4:3 picture: the corner at the top left.
-// Assumed: the same place on a 16:9 screen (docs/audit/OpenPoints/SystemMenu.md SYS-29).
+// Assumed: the same place on a 16:9 screen (docs/audit/OpenPoints/SystemMenu.md SYS-61).
 constexpr float IconLeft = -256;
 constexpr float IconTop = 188;
 constexpr float IconRight = -200;
@@ -100,6 +100,12 @@ void HomeButton::Enable()
     isEnabled = true;
 }
 
+void HomeButton::HoldForFrontPanel()
+{
+    isHeldByFrontPanel = true;
+    isEnabled = false;
+}
+
 bool HomeButton::IsOpen() const
 {
     return isOpen;
@@ -119,7 +125,7 @@ void HomeButton::Update()
     if (canOpen)
         CheckHomeButton();
 
-    if (isOpen)
+    if (isOpen && !isHeldByFrontPanel)
     {
         menu->Update();
         if (menu->Outcome() != HomeMenuOutcome::Open)

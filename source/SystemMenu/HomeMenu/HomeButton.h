@@ -61,6 +61,9 @@ public:
     bool Disable();
     void Enable();
 
+    // While the POWER or RESET button is carried out, an open menu stands still and HOME does nothing until the menu starts again.
+    void HoldForFrontPanel();
+
     // While the menu is open the screens stand still and the cursor manager does not draw: the menu draws the hands.
     bool IsOpen() const;
 
@@ -103,6 +106,7 @@ private:
     bool isEnabled = true;
     bool isDisablePending = false;
     bool isOpen = false;
+    bool isHeldByFrontPanel = false;
     std::uint8_t speakerVolumeSetting = DefaultSpeakerVolumeSetting;
 
     // After "Wii Menu" the picture stays black until the menu starts again (VISetBlack of the original).

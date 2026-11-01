@@ -311,7 +311,7 @@ void HomeButtonMenu::PressBigButton()
 
     part = Part::Question;
     SetVisible("T_Dialog", true);
-    WaitFor("_cntBtn_psh", "btnL_00_psh", Step::QuestionOpening);
+    WaitFor("_cntBtn_psh", "btnL_00_psh", Step::BigButtonPushed);
 }
 
 void HomeButtonMenu::PressClose()
@@ -320,7 +320,7 @@ void HomeButtonMenu::PressClose()
     Stop("_hmMenu_bar_in", "hmMenu_bar_in");
     hasChosenButton = false;
     Play(HomeMenuSound::ReturnToProgram);
-    WaitFor("_hmMenu_bar_psh", "hmMenu_bar_psh", Step::Closing);
+    WaitFor("_hmMenu_bar_psh", "hmMenu_bar_psh", Step::ClosePushed);
 }
 
 void HomeButtonMenu::OpenRemoteSettings()

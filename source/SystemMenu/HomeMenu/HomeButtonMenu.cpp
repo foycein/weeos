@@ -337,41 +337,14 @@ void HomeButtonMenu::FitToScreenShape()
 
 // ---- The steps
 
+// The steps that run in every step of the menu, then the steps that only wait for their animation to end.
 void HomeButtonMenu::RunStep()
 {
-    bool isWaiting = waitedAnimation != nullptr && waitedAnimation->IsPlaying();
-
     switch (step)
     {
-    case Step::Opening:
-        if (!isWaiting)
-            FinishOpening();
-        break;
-
-    case Step::RemoteSettingsMoving:
-        if (!isWaiting)
-            FinishRemoteSettingsMove();
-        break;
-
-    case Step::WaitingForAnimation:
-        if (!isWaiting)
-            FinishWaiting();
-        break;
-
-    case Step::ShowingRumble:
-        if (isWaiting)
-            break;
-
-        // The remotes rumble as long as the button shows the choice.
-
-        for (int player = 0; player < PlayerCount; ++player)
-            StopRumble(player);
-        step = Step::Ready;
-        break;
-
     case Step::ReconnectStarting:
         RunReconnectStart();
-        break;
+        return;
 
     case Step::WaitingForDisconnect:
         if (input.ConnectedPlayers().none())
@@ -379,50 +352,81 @@ void HomeButtonMenu::RunStep()
             step = Step::ConnectWindow;
             stepsInConnectWindow = 0;
         }
-        break;
-
-    case Step::ConnectWindow:
-        if (!isWaiting)
-            RunConnectWindow();
-        break;
+        return;
 
     case Step::ConnectWindowClosing:
         FinishConnectWindow();
-        break;
-
-    case Step::QuestionOpening:
-        if (!isWaiting && waitedAnimation == &Animation("_cntBtn_psh", "btnL_00_psh"))
-            WaitFor("_cmn_msg_in", "cmn_msg_in", Step::QuestionOpening);
-        else if (!isWaiting)
-        {
-            DropMenuFocus();
-            step = Step::Ready;
-        }
-        break;
-
-    case Step::AnswerShown:
-        if (!isWaiting)
-            FinishAnswer();
-        break;
-
-    case Step::Closing:
-        if (!isWaiting && waitedAnimation == &Animation("_hmMenu_bar_psh", "hmMenu_bar_psh"))
-        {
-            SetVisible("T_Dialog", false);
-            WaitFor("_hmMenu_fnsh", "hmMenu_fnsh", Step::Closing);
-        }
-        else if (!isWaiting)
-            Finish(HomeMenuOutcome::Closed);
-        break;
+        return;
 
     case Step::FadingOut:
         ++fadeSteps;
         if (fadeSteps >= FadeOutSteps)
             Finish(HomeMenuOutcome::ButtonChosen);
-        break;
+        return;
 
     case Step::Ready:
     case Step::Finished:
+        return;
+
+    default:
+        break;
+    }
+
+    bool isWaiting = waitedAnimation != nullptr && waitedAnimation->IsPlaying();
+    if (!isWaiting)
+        RunStepAfterAnimation();
+}
+
+void HomeButtonMenu::RunStepAfterAnimation()
+{
+    switch (step)
+    {
+    case Step::Opening:
+        FinishOpening();
+        break;
+
+    case Step::RemoteSettingsMoving:
+        FinishRemoteSettingsMove();
+        break;
+
+    case Step::WaitingForAnimation:
+        FinishWaiting();
+        break;
+
+    // The remotes rumble as long as the button shows the choice.
+    case Step::ShowingRumble:
+        for (int player = 0; player < PlayerCount; ++player)
+            StopRumble(player);
+        step = Step::Ready;
+        break;
+
+    case Step::ConnectWindow:
+        RunConnectWindow();
+        break;
+
+    case Step::BigButtonPushed:
+        WaitFor("_cmn_msg_in", "cmn_msg_in", Step::QuestionOpening);
+        break;
+
+    case Step::QuestionOpening:
+        DropMenuFocus();
+        step = Step::Ready;
+        break;
+
+    case Step::AnswerShown:
+        FinishAnswer();
+        break;
+
+    case Step::ClosePushed:
+        SetVisible("T_Dialog", false);
+        WaitFor("_hmMenu_fnsh", "hmMenu_fnsh", Step::Closing);
+        break;
+
+    case Step::Closing:
+        Finish(HomeMenuOutcome::Closed);
+        break;
+
+    default:
         break;
     }
 }

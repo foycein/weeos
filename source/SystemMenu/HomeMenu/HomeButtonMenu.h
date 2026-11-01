@@ -109,8 +109,10 @@ private:
         WaitingForDisconnect,
         ConnectWindow,
         ConnectWindowClosing,
+        BigButtonPushed,
         QuestionOpening,
         AnswerShown,
+        ClosePushed,
         Closing,
         FadingOut,
         Finished,
@@ -187,6 +189,7 @@ private:
 
     // The steps (HomeButtonMenu.cpp)
     void RunStep();
+    void RunStepAfterAnimation();
     void FinishOpening();
     void FinishRemoteSettingsMove();
     void FinishWaiting();

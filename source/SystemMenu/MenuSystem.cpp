@@ -80,7 +80,7 @@ void MenuSystem::RunStep()
         dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
 
     if (frontPanel.IsWorking())
-        homeButton.Disable();
+        homeButton.HoldForFrontPanel();
 
     homeButton.Update();
     cursors.Update(input);
