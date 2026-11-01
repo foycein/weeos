@@ -1,7 +1,6 @@
 add_library(SystemMenu STATIC
     BackToWiiMenuScreen.cpp
     ButtonController.cpp
-    ButtonGroup.cpp
     ContinueWatcher.cpp
     CursorManager.cpp
     DialogManager.cpp

@@ -1,6 +1,7 @@
 #include "SystemMenu/DataManagement/DataEditorScreen.h"
 
 #include "SystemMenu/DataManagement/NandRoom.h"
+#include "SystemMenu/DataManagement/StartCleanup.h"
 #include "SystemMenu/DialogManager.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
@@ -64,6 +65,15 @@ constexpr std::uint16_t UnusableCardMessage = 0x38;
 
 constexpr std::string_view PushSound = "WIPL_SE_BT_PUSH";
 constexpr std::string_view PageSound = "WSD_SELECT";
+constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
+
+// The balloon with the name of an entry (0x813A0680, 0x813A50F8): 55 units below the place of its balloon in the list, at least 90 units
+// from the edges of a 16:9 picture and 60 of a 4:3 one; it appears as the balloons of the bar do (0x813D140C).
+constexpr std::string_view BalloonBundleName = "balloon";
+constexpr int StepsBeforeABalloonAppears = 17;
+constexpr float BalloonDepthBelowItsPlace = 55;
+constexpr float BalloonMarginOnAWideScreen = 90;
+constexpr float BalloonMarginOnANarrowScreen = 60;
 
 // The buttons of the list and of the window, in the order of their numbers in the button groups.
 constexpr std::size_t WiiButton = 0;
@@ -107,6 +117,8 @@ constexpr std::string_view SaveSlotButton = "B_Data_00";
 
 constexpr std::u16string_view DamagedName = u"???";
 
+// The places of the slots of the page that shows, which are also the places of their balloons, in the layout of the list. The original
+// takes N_Data_a_xx, which its slide animation has moved into the middle; WeeOS keeps the list at rest, where N_Data_b_xx is the middle.
 std::string SlotPaneName(std::size_t slotIndex)
 {
     return std::format("N_Data_b_{:02}", slotIndex);
@@ -136,10 +148,14 @@ DataEditorScreen::~DataEditorScreen()
 void DataEditorScreen::Load()
 {
     archive = services.files.OpenLayoutBundle(NamesOf(kind).bundle);
+    balloonArchive = services.files.OpenLayoutBundle(BalloonBundleName);
 }
 
 void DataEditorScreen::Build()
 {
+    if (services.dataManagement != nullptr)
+        CleanUpBeforeTheList(*services.dataManagement, kind);
+
     BuildList();
     BuildWindow(std::nullopt);
     ShowPlace(DataPlace::Wii);
@@ -175,7 +191,7 @@ void DataEditorScreen::BuildList()
         listLayout->ShowLastFrameOfAnimation(BindListAnimation("WiiSwitch", "G_Switch"));
 
     listLayout->PaneNamed("N_Error").isVisible = false;
-    listButtons = std::make_unique<ButtonGroup>(*listLayout, services.display, std::vector<std::string>{"B_SelectWii_00", "B_SelectSd_00", "B_ArwR", "B_ArwL"});
+    listButtons = std::make_unique<ButtonController>(*listLayout, services.display, std::vector<std::string>{"B_SelectWii_00", "B_SelectSd_00", "B_ArwR", "B_ArwL"});
 }
 
 // The window of save data shows the picture of its banner where the layout has an empty picture.
@@ -202,7 +218,7 @@ void DataEditorScreen::BuildWindow(const std::optional<Formats::RgbaImage>& save
         windowAnimations.focusOut[index] = BindWindowAnimation(std::format("{}FoucusOut", ButtonStems[index]), group);
         windowAnimations.flash[index] = BindWindowAnimation(std::format("{}Flash", ButtonStems[index]), group + "Flash");
     }
-    windowButtons = std::make_unique<ButtonGroup>(*windowLayout, services.display, std::vector<std::string>{"B_Move_00", "B_Copy_00", "B_Del_00"});
+    windowButtons = std::make_unique<ButtonController>(*windowLayout, services.display, std::vector<std::string>{"B_Move_00", "B_Copy_00", "B_Del_00"});
 }
 
 std::size_t DataEditorScreen::BindListAnimation(std::string_view ending, std::string_view group)
@@ -277,7 +293,9 @@ void DataEditorScreen::MakeSlot(std::size_t itemIndex)
         slot.layout->PaneNamed(channelPanes.hiddenFrame).isVisible = false;
         button = channelPanes.button;
     }
-    slot.buttons = std::make_unique<ButtonGroup>(*slot.layout, services.display, std::vector<std::string>{std::string(button)});
+    slot.buttons = std::make_unique<ButtonController>(*slot.layout, services.display, std::vector<std::string>{std::string(button)});
+    slot.balloon = std::make_unique<Balloon>(services.display, *balloonArchive, StepsBeforeABalloonAppears);
+    slot.balloon->SetText(item.firstLine);
 
     bool hasChannelIcon = kind == DataKind::Channels && !item.isDamaged && !item.channelIcon.empty();
     if (hasChannelIcon)
@@ -315,7 +333,9 @@ void DataEditorScreen::PlaceIcon(ChannelIconLayout& icon, MenuLayout& layout, st
     icon.Calculate();
 }
 
-// Every slot sits on its place of the middle page of the list, which moves when the pages turn.
+// Every slot sits on its place of the middle page of the list, which moves when the pages turn. As in the original (0x813A0C34,
+// 0x813A7568), the place in the list becomes the place of the slot below its root pane, which the wide screen
+// stretches once more: on a 16:9 screen the slots spread wider than the places of the list, which keep their 4:3 shape.
 void DataEditorScreen::PlaceSlots()
 {
     const ChannelSlotPanes& channelPanes = WideChannelSlot;
@@ -330,13 +350,28 @@ void DataEditorScreen::PlaceSlots()
         if (!point)
             continue;
 
-        Formats::Vector2 placeBelowRoot = services.display.CanvasToRootPaneSpace(*point);
-        slot.layout->PaneNamed(NamesOf(kind).slotAnchor).translation = {placeBelowRoot.x, placeBelowRoot.y, 0};
+        slot.layout->PaneNamed(NamesOf(kind).slotAnchor).translation = {point->x, point->y, 0};
         slot.layout->Calculate();
 
         if (slot.icon)
             PlaceIcon(*slot.icon, *slot.layout, channelPanes.iconPlace);
+
+        PlaceBalloon(*slot.balloon, slotIndex);
     }
+}
+
+void DataEditorScreen::PlaceBalloon(Balloon& balloon, std::size_t slotIndex)
+{
+    std::optional<Formats::Vector2> place = listLayout->PointOfPaneInPicture(SlotPaneName(slotIndex), {0, 0});
+    if (!place)
+        return;
+
+    balloon.PlaceAt({place->x, place->y - BalloonDepthBelowItsPlace}, BalloonMarginOnAWideScreen);
+
+    bool wasShown = balloon.IsShown();
+    balloon.Calculate();
+    if (!wasShown && balloon.IsShown())
+        services.sounds.Request(BalloonSound);
 }
 
 // The number of free blocks: of the user area of the NAND, or of the SD card (0x813A100C, 0x813A1234).
@@ -403,6 +438,9 @@ void DataEditorScreen::Draw(DrawPass pass)
             if (slot.icon)
                 slot.icon->Draw();
         }
+
+        for (Slot& slot : slots)
+            slot.balloon->Draw();
     }
 
     if (!openItem)
@@ -486,7 +524,7 @@ bool DataEditorScreen::RunClosing()
 
 void DataEditorScreen::RunList()
 {
-    HandleListButtons(listButtons->Update(services.input, true));
+    HandleListButtons(listButtons->Poll(services.input, true));
     HandleSlotButtons();
 
     if (services.input.AnyPlayerPressed(NextPageButtons))
@@ -500,14 +538,14 @@ void DataEditorScreen::RunList()
         ShowPlace(DataPlace::SdCard);
 }
 
-void DataEditorScreen::HandleListButtons(const std::vector<ButtonGroupEvent>& events)
+void DataEditorScreen::HandleListButtons(const std::vector<ButtonEvent>& events)
 {
-    for (const ButtonGroupEvent& event : events)
+    for (const ButtonEvent& event : events)
     {
-        if (event.kind == ButtonGroupEventKind::Focused)
+        if (event.kind == ButtonEventKind::FocusGained)
             services.sounds.Request(SoundName::ButtonTargeted);
 
-        if (event.kind != ButtonGroupEventKind::Pressed)
+        if (event.kind != ButtonEventKind::Pressed)
             continue;
 
         if (event.buttonIndex == WiiButton && place != DataPlace::Wii)
@@ -538,14 +576,22 @@ void DataEditorScreen::HandleSlotButtons()
     std::optional<std::size_t> pressedItem;
     for (Slot& slot : slots)
     {
-        for (const ButtonGroupEvent& event : slot.buttons->Update(services.input, true))
+        for (const ButtonEvent& event : slot.buttons->Poll(services.input, true))
         {
-            if (event.kind == ButtonGroupEventKind::Focused)
+            if (event.kind == ButtonEventKind::FocusGained)
+            {
                 slot.layout->StartAnimation(slot.focusInSlot);
-            else if (event.kind == ButtonGroupEventKind::Unfocused)
+                slot.balloon->PointerArrived();
+            }
+            else if (event.kind == ButtonEventKind::FocusLost)
+            {
                 slot.layout->StartAnimation(slot.focusOutSlot);
+                slot.balloon->PointerLeft();
+            }
             else
+            {
                 pressedItem = slot.itemIndex;
+            }
         }
     }
 
@@ -586,6 +632,9 @@ bool DataEditorScreen::WasBackPressed()
 // The window grows out of the slot and shows the name and the size of the entry (0x813A5EB8, 0x813C8BA0).
 void DataEditorScreen::OpenWindow(std::size_t itemIndex)
 {
+    for (Slot& slot : slots)
+        slot.balloon->PointerLeft();
+
     const DataItem& item = items[itemIndex];
     BuildWindow(item.savePicture);
     windowIcon.reset();
@@ -616,7 +665,7 @@ void DataEditorScreen::OpenWindow(std::size_t itemIndex)
     windowLayout->PaneNamed("BaseMove_off_00").isVisible = isMoveOff;
 
     openItem = itemIndex;
-    windowButtons->Reset();
+    windowButtons->ForgetPointers();
     windowLayout->StartAnimation(windowAnimations.seenIn);
     services.sounds.Request(SoundName::Decide);
     phase = Phase::Window;
@@ -633,14 +682,14 @@ void DataEditorScreen::RunWindow()
     if (windowLayout->IsAnimationPlaying(windowAnimations.seenIn))
         return;
 
-    for (const ButtonGroupEvent& event : windowButtons->Update(services.input, true))
+    for (const ButtonEvent& event : windowButtons->Poll(services.input, true))
     {
-        if (event.kind == ButtonGroupEventKind::Focused)
+        if (event.kind == ButtonEventKind::FocusGained)
         {
             windowLayout->StartAnimation(windowAnimations.focusIn[event.buttonIndex]);
             services.sounds.Request(SoundName::ButtonTargeted);
         }
-        else if (event.kind == ButtonGroupEventKind::Unfocused)
+        else if (event.kind == ButtonEventKind::FocusLost)
         {
             windowLayout->StartAnimation(windowAnimations.focusOut[event.buttonIndex]);
         }

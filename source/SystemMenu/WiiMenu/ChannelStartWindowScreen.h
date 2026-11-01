@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/ButtonGroup.h"
+#include "SystemMenu/ButtonController.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
@@ -107,7 +107,7 @@ private:
     void ShowTheNewChannel();
     void RunArrivingAtTheNewChannel();
 
-    void ReactToButton(const ButtonGroupEvent& event);
+    void ReactToButton(const ButtonEvent& event);
     void PressStart();
     void ShowMessage(std::uint16_t messageNumber);
     void ReadAnswerOfCannotBeUsed();
@@ -138,7 +138,7 @@ private:
     std::unique_ptr<Layout::LayoutArchive> bannerArchive;
     std::unique_ptr<MenuLayout> frame;
     std::unique_ptr<MenuLayout> bannerLayout;
-    std::unique_ptr<ButtonGroup> buttons;
+    std::unique_ptr<ButtonController> buttons;
 
     // The animations of the buttons, by the slots of the frame: the focus comes and goes, a press, Start in gray and back.
     std::size_t focusOnOfWiiMenu = 0;

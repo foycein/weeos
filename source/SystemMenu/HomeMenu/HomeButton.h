@@ -11,6 +11,7 @@
 #include "Graphics/GraphicsDevice.h"
 #include "Ios/Remote/RemoteService.h"
 #include "Layout/TextFonts.h"
+#include "Settings/SystemSettings.h"
 
 #include <cstdint>
 #include <functional>
@@ -20,8 +21,8 @@
 namespace SystemMenu
 {
 
-// The volume of the speakers of the remotes as SYSCONF keeps it (BT.SPKV, 0 to 127). A console without the setting has 0x59 (INP-01).
-constexpr std::uint8_t DefaultSpeakerVolumeSetting = 0x59;
+// The volume of the speakers of the remotes as SYSCONF keeps it (BT.SPKV, 0 to 127) when the console has no such setting.
+constexpr std::uint8_t DefaultSpeakerVolumeSetting = Settings::DefaultSpeakerVolume;
 
 // What the HOME menu needs from the rest of the console. Each one may be left empty while that part of the console is not there.
 struct HomeButtonConnections
