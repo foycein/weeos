@@ -3,6 +3,7 @@
 #include "SystemMenu/WiiSettings/NumberText.h"
 
 #include "Formats/Alignment.h"
+#include "Settings/PcGamepad.h"
 #include "Settings/PcKeys.h"
 
 #include <algorithm>
@@ -111,7 +112,7 @@ PcPages::PcPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemS
 
 bool PcPages::Owns(PageId page) const
 {
-    return page >= PageId::PcIndex && page <= PageId::PcMouse;
+    return page >= PageId::PcIndex && page <= PageId::PcGamepadButtons;
 }
 
 void PcPages::EnterPage(PageId page)
@@ -124,6 +125,9 @@ void PcPages::EnterPage(PageId page)
 
     if (page == PageId::PcKeys)
         shownKeyPage = 0;
+
+    if (page == PageId::PcGamepadButtons)
+        shownGamepadPage = 0;
 }
 
 void PcPages::BuildPage(PageId page, Page& content)
@@ -158,6 +162,14 @@ void PcPages::BuildPage(PageId page, Page& content)
 
     case PageId::PcKeys:
         BuildKeys(builder);
+        break;
+
+    case PageId::PcControllers:
+        BuildControllers(builder);
+        break;
+
+    case PageId::PcGamepadButtons:
+        BuildGamepadButtons(builder);
         break;
 
     default:
@@ -280,6 +292,7 @@ void PcPages::BuildControls(PageBuilder& builder)
     builder.AddMenuItem(0, u"Keys", [this] { navigator.GoTo(PageId::PcKeys); });
     builder.AddMenuItem(1, u"Mouse", [this] { navigator.GoTo(PageId::PcMouse); });
     builder.AddMenuItem(2, u"Rumble: " + OnOffText(settings.IsRumbleOn()), [this] { ToggleRumble(); }).name = "Rumble";
+    builder.AddMenuItem(3, u"Controllers", [this] { navigator.GoTo(PageId::PcControllers); });
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcIndex); });
 }
 
@@ -320,6 +333,77 @@ void PcPages::BuildMouse(PageBuilder& builder)
         [this] { Change([](Settings::PcSettings& changed) { changed.areMouseButtonsSwapped = true; }); });
     leftIsB.name = "Left Is B";
     builder.AddBackButton([this] { navigator.GoTo(PageId::PcControls); });
+}
+
+// How gamepads and Joy-Cons play a Wii Remote. Each row changes its setting when it is pressed.
+void PcPages::BuildControllers(PageBuilder& builder)
+{
+    const Input::ControllerSettings& controllers = pcSettings.Values().controllers;
+
+    builder.SetTitle(3, u"Controllers");
+    builder.AddMenuItem(0, u"Gamepad Buttons", [this] { navigator.GoTo(PageId::PcGamepadButtons); });
+
+    bool usesRightStick = controllers.gamepadPointerStick == Input::PointerStick::Right;
+    std::u16string stickText = usesRightStick ? u"Right Stick" : u"Left Stick";
+    PageButton& stick = builder.AddMenuItem(1, u"Gamepad Pointer: " + stickText,
+        [this, usesRightStick]
+        {
+            Input::PointerStick otherStick = usesRightStick ? Input::PointerStick::Left : Input::PointerStick::Right;
+            Change([otherStick](Settings::PcSettings& changed) { changed.controllers.gamepadPointerStick = otherStick; });
+        });
+    stick.name = "Gamepad Pointer";
+
+    bool usesJoyConStick = controllers.joyConPointer == Input::JoyConPointer::Stick;
+    std::u16string joyConText = usesJoyConStick ? u"Stick" : u"Turning";
+    PageButton& joyCon = builder.AddMenuItem(2, u"Joy-Con Pointer: " + joyConText,
+        [this, usesJoyConStick]
+        {
+            Input::JoyConPointer otherPointer = usesJoyConStick ? Input::JoyConPointer::Gyroscope : Input::JoyConPointer::Stick;
+            Change([otherPointer](Settings::PcSettings& changed) { changed.controllers.joyConPointer = otherPointer; });
+        });
+    joyCon.name = "Joy-Con Pointer";
+
+    PageButton& speed = builder.AddMenuItem(3, u"Pointer Speed: " + NumberText(controllers.pointerSpeed),
+        [this]
+        {
+            Change(
+                [](Settings::PcSettings& changed)
+                {
+                    int nextSpeed = changed.controllers.pointerSpeed + 1;
+                    if (nextSpeed > Input::FastestPointerSpeed)
+                        nextSpeed = Input::SlowestPointerSpeed;
+                    changed.controllers.pointerSpeed = nextSpeed;
+                });
+        });
+    speed.name = "Pointer Speed";
+
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcControls); });
+}
+
+// One row for each button of the remote with the gamepad button that presses it. Pressing a row gives the button the next free one.
+void PcPages::BuildGamepadButtons(PageBuilder& builder)
+{
+    builder.SetTitle(3, u"Gamepad Buttons");
+
+    std::span<const Settings::RemoteButtonName> buttons = Settings::AssignableButtons();
+    int firstRow = shownGamepadPage * RowsOnListPage;
+    int lastRow = std::min(firstRow + RowsOnListPage, static_cast<int>(buttons.size()));
+    for (int rowNumber = firstRow; rowNumber < lastRow; ++rowNumber)
+    {
+        const Settings::RemoteButtonName& button = buttons[rowNumber];
+        std::uint32_t gamepadButton = Settings::GamepadButtonOf(pcSettings.Values().controllers, button.button);
+        std::optional<Settings::GamepadButtonName> gamepadButtonName = Settings::FindGamepadButton(gamepadButton);
+        std::u16string_view shownName = gamepadButtonName ? gamepadButtonName->name : u"None";
+
+        PageRectangle bounds = RowBounds(rowNumber - firstRow);
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, bounds, "Gamepad " + NameOfText(button.name),
+            [this, mask = button.button] { ChangeGamepadButton(mask); });
+        row.text = std::u16string(button.name) + u":  " + std::u16string(shownName);
+        row.repeatsWhenHeld = true;
+    }
+
+    AddListArrows(builder, shownGamepadPage, ListPageCount(static_cast<int>(buttons.size())));
+    builder.AddBackButton([this] { navigator.GoTo(PageId::PcControllers); });
 }
 
 void PcPages::AddListArrows(PageBuilder& builder, int& shownListPage, int listPageCount)
@@ -368,6 +452,16 @@ void PcPages::ChangeVolume(int change)
         {
             int newVolume = changed.volume + change;
             changed.volume = std::clamp(newVolume, Settings::LowestVolume, Settings::HighestVolume);
+        });
+}
+
+void PcPages::ChangeGamepadButton(Input::ButtonMask button)
+{
+    Change(
+        [button](Settings::PcSettings& changed)
+        {
+            std::uint32_t next = Settings::NextFreeGamepadButton(changed.controllers, button, 1);
+            Settings::SetGamepadButtonOf(changed.controllers, button, next);
         });
 }
 

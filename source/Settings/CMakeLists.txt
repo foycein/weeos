@@ -1,6 +1,7 @@
 add_library(Settings STATIC
     ConsoleClock.cpp
     Countries.cpp
+    PcGamepad.cpp
     PcKeys.cpp
     PcSettings.cpp
     SystemSettings.cpp

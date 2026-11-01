@@ -34,6 +34,8 @@ enum class PageId
     PcControls,
     PcKeys,
     PcMouse,
+    PcControllers,
+    PcGamepadButtons,
 
     // PC Settings: the import of the person's own Wii.
     PcImport,

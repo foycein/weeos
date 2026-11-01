@@ -16,9 +16,11 @@ constexpr Ios::Caller SystemMenuCaller = {Ios::SystemMenuUserId, Ios::SystemMenu
 }
 
 WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, ProgramSound& programSound,
-    const Platform::RegionalSettings& regionalSettings, Settings::PcSettingsStore& pcSettingsStore)
+    const Platform::RegionalSettings& regionalSettings, Settings::PcSettingsStore& pcSettingsStore,
+    Input::RealControllers& realControllers)
     : window(programWindow)
     , remotes(iosServices.GetRemote())
+    , controllers(realControllers)
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
     , flowServices{systemSettings, iosServices.GetNetworkConfig(), iosServices.GetSockets(), pcSettingsStore, *this}
@@ -38,6 +40,16 @@ Settings::SoundMode WiiSettingsServices::SoundMode() const
     return systemSettings.GetSoundMode();
 }
 
+Settings::SensorBarPosition WiiSettingsServices::SensorBarPosition() const
+{
+    return systemSettings.GetSensorBarPosition();
+}
+
+int WiiSettingsServices::PointerSensitivity() const
+{
+    return systemSettings.GetPointerSensitivity();
+}
+
 // Fullscreen first, so that a window that leaves fullscreen gets its size.
 void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 {
@@ -53,6 +65,7 @@ void WiiSettingsServices::ApplyControlsAndSound(const Settings::PcSettings& sett
     Input::VirtualRemote& remote = remotes.GetVirtualRemote();
     remote.SetKeyMap(settings.keyMap);
     remote.SetMouseMap(Settings::MouseMapOf(settings));
+    controllers.SetControllerSettings(settings.controllers);
     sound.ApplyPcSettings(settings);
 }
 

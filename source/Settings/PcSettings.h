@@ -3,6 +3,7 @@
 #include "Settings/SystemSettings.h"
 
 #include "Input/ButtonMap.h"
+#include "Input/ControllerSettings.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -20,7 +21,7 @@ constexpr std::uint32_t DefaultWindowHeight = 720;
 constexpr int LowestVolume = 0;
 constexpr int HighestVolume = 100;
 
-// The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device and the keys. They are the pages "PC Settings"
+// The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device, the keys and the controllers. They are the pages "PC Settings"
 // of Wii Settings (docs/DECISIONS.md, Settings). The sound mode and the rumble are the console's own settings (SystemSettings).
 // The picture is always 16:9, so its shape is no setting.
 struct PcSettings
@@ -47,6 +48,9 @@ struct PcSettings
 
     // The left mouse button is A and the right one is B, or the other way round.
     bool areMouseButtonsSwapped = false;
+
+    // How gamepads and Joy-Cons play a Wii Remote.
+    Input::ControllerSettings controllers;
 
     // The owner's own server, which takes the place of every Nintendo service (docs/DECISIONS.md, Online): a host name or an IPv4
     // address, with ":port" when it is not 80. Empty until the server exists; until then every online channel shows its server error.

@@ -4,13 +4,15 @@ add_library(Platform STATIC
     AspectLock.cpp
     FilePicker.cpp
     FitPicture.cpp
+    HidDevices.cpp
     KeyCodes.cpp
     MessagePump.cpp
     PreciseTimer.cpp
     RegionalSettings.cpp
     Window.cpp
+    XInputGamepads.cpp
 )
 
 target_compile_definitions(Platform PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 target_compile_definitions(Platform PRIVATE UNICODE _UNICODE)
-target_link_libraries(Platform PUBLIC user32 ole32)
+target_link_libraries(Platform PUBLIC user32 ole32 hid setupapi xinput)

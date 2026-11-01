@@ -17,8 +17,8 @@ enum class SensorBarPosition : std::uint8_t
     AboveScreen,
 };
 
-// One device on one channel: the virtual remote of the mouse and keyboard now, and later real Wii Remotes,
-// Joy-Cons and gamepads. The menu asks every device the same questions in every frame.
+// One device on one channel: the virtual remote of the mouse and keyboard, a real Wii Remote, Joy-Cons or a gamepad
+// (RealControllers.h). The menu asks every device the same questions in every frame.
 // All the functions are called from one thread.
 class RemoteSource
 {

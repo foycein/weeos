@@ -3,6 +3,7 @@
 #include "Channels/ChannelSystem.h"
 #include "Channels/HomeMenuWaveSounds.h"
 #include "Channels/NativeChannels.h"
+#include "Input/SharedRemote.h"
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/FilePicker.h"
@@ -43,6 +44,7 @@ constexpr std::wstring_view NandImageFileName = L"nand.bin";
 
 // One step of the console, 1001/60000 of a second, in whole microseconds.
 constexpr std::chrono::microseconds StepOfAHiddenWindow(16683);
+constexpr double SecondsOfAStep = 1001.0 / 60000.0;
 
 SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
 {
@@ -70,6 +72,14 @@ bool CanStart(const Ios::TitleService& titles, Ios::TitleId titleId)
     return titles.ReadTitleMetadata(iosTitleId).Succeeded();
 }
 
+Input::SensorBarPosition SensorBarPositionOf(Settings::SensorBarPosition position)
+{
+    if (position == Settings::SensorBarPosition::AboveTelevision)
+        return Input::SensorBarPosition::AboveScreen;
+
+    return Input::SensorBarPosition::BelowScreen;
+}
+
 }
 
 std::optional<std::filesystem::path> PickNandWithWindows()
@@ -80,12 +90,15 @@ std::optional<std::filesystem::path> PickNandWithWindows()
 // The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
 // the keys of the PC that go to those services.
 // The window sends its events to the keyboard service, and the keyboard service to the virtual remote.
+// Remote 1 is the virtual remote shared with the first real controller; the real controllers on the other channels are plugged into
+// the remote service of this IOS in every step.
 class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
         Graphics::GraphicsDevice& graphicsDevice, Settings::PcSettingsStore& pcSettings, ProgramSound& programSound,
-        const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii, const std::filesystem::path& browserEngineFolder)
+        const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii, const std::filesystem::path& browserEngineFolder,
+        Input::RealControllers& controllers)
         : window(programWindow)
         , consoleImport(importOfAWii)
         , browserFolder(browserEngineFolder)
@@ -93,11 +106,17 @@ public:
         , titleContents(iosServices.GetTitles())
         , systemMenuContents(iosServices.GetTitles(), Ios::SystemMenuTitleId)
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, pcSettings)
+        , wiiSettings(iosServices, programWindow, programSound, host.regionalSettings, pcSettings, controllers)
         , wiiMenuConsole(iosServices, host.clock, ClockFormatOf(host.regionalSettings))
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
+        , remotes(iosServices.GetRemote())
+        , realControllers(controllers)
+        , remoteOne(virtualRemote)
     {
+        remotes.AttachSource(Ios::VirtualRemoteChannel, remoteOne);
+        PlugInControllers();
+
         if (runningTitle == Ios::SystemMenuTitleId)
             StartMenu(iosServices, graphicsDevice);
         else
@@ -111,6 +130,7 @@ public:
         sound.StopAllSounds();
         sound.StopTitleArchives();
         window.SetListener(nullptr);
+        UnplugControllers();
     }
 
     Session(const Session&) = delete;
@@ -131,6 +151,8 @@ public:
     // The virtual remote has no speaker: the sounds that the program sends to its speaker are dropped.
     void Update()
     {
+        PlugInControllers();
+
         if (menu)
         {
             menu->Update();
@@ -175,6 +197,41 @@ public:
     }
 
 private:
+    // The real controllers as they are after their update, and the settings of the console that they need: the sensor bar position
+    // (BT.BAR) in every step, as the menu gives it to the pointer library, and the camera sensitivity (BT.SENS).
+    void PlugInControllers()
+    {
+        remoteOne.SetRealSource(realControllers.SourceOfChannel(Ios::VirtualRemoteChannel));
+
+        for (int channelNumber = Ios::VirtualRemoteChannel + 1; channelNumber < Input::RemoteChannelCount; ++channelNumber)
+        {
+            Input::RemoteSource* source = realControllers.SourceOfChannel(channelNumber);
+            if (source == pluggedSources[channelNumber])
+                continue;
+
+            if (source != nullptr)
+                remotes.AttachSource(channelNumber, *source);
+            else
+                remotes.DetachSource(channelNumber);
+            pluggedSources[channelNumber] = source;
+        }
+
+        remotes.SetSensorBarPosition(SensorBarPositionOf(wiiSettings.SensorBarPosition()));
+        realControllers.SetCameraSensitivity(wiiSettings.PointerSensitivity());
+    }
+
+    // The service keeps the virtual remote alone on channel 0 again, so that nothing of this session stays plugged in.
+    void UnplugControllers()
+    {
+        for (int channelNumber = Ios::VirtualRemoteChannel + 1; channelNumber < Input::RemoteChannelCount; ++channelNumber)
+        {
+            if (pluggedSources[channelNumber] != nullptr)
+                remotes.DetachSource(channelNumber);
+        }
+
+        remotes.AttachSource(Ios::VirtualRemoteChannel, virtualRemote);
+    }
+
     void StartMenu(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice)
     {
         wiiSettings.FlowServices().consoleImport = &consoleImport;
@@ -277,6 +334,10 @@ private:
     std::unique_ptr<Channels::ChannelSystem> channel;
     Ios::PcKeyboard keyboard;
     Input::VirtualRemote& virtualRemote;
+    Ios::RemoteService& remotes;
+    Input::RealControllers& realControllers;
+    Input::SharedRemote remoteOne;
+    std::array<Input::RemoteSource*, Input::RemoteChannelCount> pluggedSources = {};
     std::optional<SystemMenu::MenuSound> menuSound;
     std::optional<SystemMenu::MenuSound> channelSound;
     Channels::RenderedSounds channelWaveSounds;
@@ -288,6 +349,7 @@ Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostE
     , importer(iosFolders, host.pickNand)
     , console(iosFolders, host.isPcConnected)
     , pcSettings(host.pcSettingsFile)
+    , controllers(*host.inputDevices)
     , window(WindowTitle, Platform::DefaultClientSize, host.windowVisibility)
     , device(window)
     , sound(isSilent)
@@ -320,7 +382,7 @@ void Application::StartSession()
 {
     std::filesystem::path browserFolder = folders.nandFolder.parent_path() / BrowserFolderName;
     session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, pcSettings, sound, host, importer,
-        browserFolder);
+        browserFolder, controllers);
     AttachMicrophone();
     StopOnTheKeyOfKoreanConsoles();
 }
@@ -416,7 +478,7 @@ void Application::RunOneStep()
         return;
 
     session->VirtualRemote().SetWindowSize(window.ClientSize());
-    session->Update();
+    RunStep();
     CarryOutRequestsOfTheMenu();
     StartImportedConsole();
     ReportProblems();
@@ -489,7 +551,15 @@ void Application::RunDueSteps()
 
     int dueSteps = pacer.TakeDueSteps(timer.ElapsedSeconds());
     for (int step = 0; step < dueSteps; ++step)
-        session->Update();
+        RunStep();
+}
+
+// The controllers count the steps as their time, so that they go with the console also when a test runs the steps faster.
+void Application::RunStep()
+{
+    controllerSeconds += SecondsOfAStep;
+    controllers.Update(controllerSeconds);
+    session->Update();
 }
 
 void Application::CarryOutRequestsOfTheMenu()
