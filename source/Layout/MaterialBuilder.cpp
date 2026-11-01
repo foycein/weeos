@@ -173,6 +173,11 @@ DrawableMaterial BuildDrawableMaterial(LiveLayout& layout, const LiveMaterial& l
     material.constantColors = description.constantColors;
     material.stages = ChooseStages(liveMaterial, channel, materialColor, paneAlpha, vertexColors);
     material.blendMode = liveMaterial.blendMode;
+    for (const Graphics::TevStage& stage : material.stages)
+    {
+        if (stage.isMovedByIndirectTexture)
+            material.indirectTexture = IndirectTextureOf(description);
+    }
     return drawable;
 }
 

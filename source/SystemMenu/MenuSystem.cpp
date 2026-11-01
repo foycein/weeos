@@ -11,9 +11,9 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles,
-    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole,
+    Ios::RemoteService& remoteService, Ios::PowerService& powerService, MenuConsole& wiiMenuConsole,
     SettingsFlowServices* wiiSettingsServices, ConsoleImport* consoleImport)
-    : display(device, screenShape)
+    : display(device)
     , files(titleContents)
     , fonts(display.Device(), titleContents, files)
     , messages(files.OpenEnglishMessages())
@@ -26,6 +26,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
     , program(titleContents)
     , settings(nandFiles)
     , dialogs(display, files, sounds)
+    , turnOffQuestion(display, files, sounds)
     , errorScreen(display, program, fonts, fader)
     , frontPanel(display, powerService, screens, nandFiles)
     , homeButton(display, files, input, remoteService, cursors, fader, ConnectHomeButton())
@@ -75,6 +76,12 @@ void MenuSystem::Update()
 void MenuSystem::RunStep()
 {
     input.Poll();
+    if (turnOffQuestion.IsOpen())
+    {
+        RunStepOfTheTurnOffQuestion();
+        return;
+    }
+
     bool isHomeMenuOpen = homeButton.IsOpen();
     if (!isHomeMenuOpen)
         screens.Update();
@@ -101,6 +108,33 @@ void MenuSystem::RunStep()
     fader.Calculate();
 }
 
+void MenuSystem::RunStepOfTheTurnOffQuestion()
+{
+    bool isYes = turnOffQuestion.Update(input);
+    if (isYes)
+        frontPanel.PressPower();
+
+    cursors.Update(input);
+    fader.Calculate();
+}
+
+// The error screen cannot be left any more, so there is nothing to ask: the console switches off.
+void MenuSystem::AskToTurnOff()
+{
+    if (errorScreen.IsRequested())
+    {
+        frontPanel.PressPower();
+        return;
+    }
+
+    turnOffQuestion.Ask();
+}
+
+bool MenuSystem::IsAskingToTurnOff() const
+{
+    return turnOffQuestion.IsOpen();
+}
+
 void MenuSystem::Draw()
 {
     display.BeginPicture();
@@ -116,11 +150,22 @@ void MenuSystem::DrawScene()
         keyboard.Draw();
         dialogs.Draw();
         homeButton.Draw();
+        DrawTheTurnOffQuestion();
     }
 
     errorScreen.Draw();
     fader.Draw();
     frontPanel.Draw();
+}
+
+// The question lies over the HOME menu too, so the hands come once more over it.
+void MenuSystem::DrawTheTurnOffQuestion()
+{
+    if (!turnOffQuestion.IsOpen())
+        return;
+
+    turnOffQuestion.Draw();
+    cursors.Draw();
 }
 
 // A button of the front panel that was pressed first wins: the error screen does not come then (0x81334F0C).

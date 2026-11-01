@@ -12,9 +12,9 @@ namespace Channels
 namespace
 {
 
-// The plaza is 2 x 2200 units wide (2 x 3050 in a 16:9 picture) and reaches from 1850 units behind the middle to 2050 units in front
-// of it: 4600 (6300) x 0.5 - 100 across, 4100 x 0.5 in front and 200 less behind (80026CD8, 803BE164 to 803BE16C, 803BE5C0 to 803BE5C8).
-constexpr float StandardHalfWidth = 2200.0f;
+// The plaza of the 16:9 picture is 2 x 3050 units wide (2 x 2200 in the 4:3 picture, which WeeOS does not show) and reaches from 1850
+// units behind the middle to 2050 units in front of it: 6300 x 0.5 - 100 across, 4100 x 0.5 in front and 200 less behind (80026CD8,
+// 803BE164 to 803BE16C, 803BE5C0 to 803BE5C8).
 constexpr float WideHalfWidth = 3050.0f;
 constexpr float FrontLimit = 2050.0f;
 constexpr float BackLimit = -1850.0f;
@@ -102,9 +102,8 @@ constexpr float ZoomHeights[] = {1400.0f, 3000.0f, 5400.0f, 12411.05f};
 constexpr Formats::Vector3 FarthestEye = {0.0f, 12411.05f, 7438.11f};
 constexpr Formats::Vector3 StartingEye = {0.0f, 3000.0f, 1700.0f};
 
-// The camera's limits (8001295C): at the height y it may move 2300 (3150 in 16:9) x (1 - y / 12411.05) to the sides, and 2050 x (that
-// same fraction) in front of and behind 1.02 x 0.6 y.
-constexpr float StandardCameraSideLimit = 2300.0f;
+// The camera's limits (8001295C): at the height y it may move 3150 in 16:9 (2300 in 4:3) x (1 - y / 12411.05) to the sides, and 2050 x
+// (that same fraction) in front of and behind 1.02 x 0.6 y.
 constexpr float WideCameraSideLimit = 3150.0f;
 constexpr float CameraDepthLimit = 2050.0f;
 constexpr float CameraCenterFactor = 1.02f;
@@ -113,7 +112,6 @@ constexpr float CameraCenterFactor = 1.02f;
 constexpr float VerticalViewDegrees = 14.0f;
 constexpr float NearDistance = 10.0f;
 constexpr float FarDistance = 100000.0f;
-constexpr float StandardAspect = 4.0f / 3.0f;
 constexpr float WideAspect = 16.0f / 9.0f;
 
 // The D-pad moves the camera 15 units a step (8001295C). The eye glides a tenth of the way to its destination every step (Assumed, CHN-62).
@@ -182,9 +180,8 @@ float WalkAnimationRate(float speed, const Mii::MiiRecord& record)
     return speed * WalkFramesPerUnit / Mii::SizeOf(record).length;
 }
 
-MiiPlaza::MiiPlaza(bool isWidePicture, std::uint32_t randomSeed, PlazaKind plazaKind)
-    : isWide(isWidePicture)
-    , kind(plazaKind)
+MiiPlaza::MiiPlaza(std::uint32_t randomSeed, PlazaKind plazaKind)
+    : kind(plazaKind)
     , random(randomSeed)
 {
     camera.eye = StartingEye;
@@ -456,7 +453,7 @@ Graphics::Matrix4 MiiPlaza::ViewMatrix() const
 
 Graphics::Matrix4 MiiPlaza::ProjectionMatrix() const
 {
-    float aspect = isWide ? WideAspect : StandardAspect;
+    float aspect = WideAspect;
     return Graphics::MakePerspective(VerticalViewDegrees, aspect, NearDistance, FarDistance);
 }
 
@@ -477,7 +474,7 @@ Formats::Vector2 MiiPlaza::GroundPointAt(Formats::Vector2 picturePlace, float ca
     Formats::Vector3 up = Cross(right, forward);
 
     float halfViewTangent = std::tan(VerticalViewDegrees / 2 / DegreesPerRadian);
-    float aspect = isWide ? WideAspect : StandardAspect;
+    float aspect = WideAspect;
     float across = picturePlace.x / (canvasWidth / 2) * halfViewTangent * aspect;
     float upward = picturePlace.y / (canvasHeight / 2) * halfViewTangent;
 
@@ -519,7 +516,7 @@ float MiiPlaza::HalfWidth() const
     if (kind == PlazaKind::Parade)
         return ParadeHalfWidth;
 
-    return isWide ? WideHalfWidth : StandardHalfWidth;
+    return WideHalfWidth;
 }
 
 float MiiPlaza::NearestZ()
@@ -888,7 +885,7 @@ void MiiPlaza::LimitCameraDestination()
 
     float height = camera.destination.y;
     float openness = 1.0f - height / FarthestEye.y;
-    float sideLimit = (isWide ? WideCameraSideLimit : StandardCameraSideLimit) * openness;
+    float sideLimit = WideCameraSideLimit * openness;
     float middleZ = CameraCenterFactor * height * (ViewDirection.z / ViewDirection.y);
     float depthLimit = CameraDepthLimit * openness;
 

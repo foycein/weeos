@@ -316,11 +316,9 @@ void CheckZlibHeader(ByteView zlibBytes)
 
 }
 
-Bytes InflateZlib(ByteView zlibBytes)
+Bytes Inflate(ByteView deflateBytes)
 {
-    CheckZlibHeader(zlibBytes);
-
-    BitReader reader(zlibBytes.subspan(ZlibHeaderSize));
+    BitReader reader(deflateBytes);
     Bytes output;
     bool isLastBlock = false;
     while (!isLastBlock)
@@ -339,6 +337,12 @@ Bytes InflateZlib(ByteView zlibBytes)
     }
 
     return output;
+}
+
+Bytes InflateZlib(ByteView zlibBytes)
+{
+    CheckZlibHeader(zlibBytes);
+    return Inflate(zlibBytes.subspan(ZlibHeaderSize));
 }
 
 }

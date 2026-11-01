@@ -14,7 +14,6 @@
 #include "Ios/Remote/RemoteService.h"
 #include "Ios/Title/TitleId.h"
 #include "Ios/Title/TitleService.h"
-#include "Platform/ScreenShape.h"
 
 #include <cstddef>
 #include <memory>
@@ -31,15 +30,18 @@ namespace Channels
 // the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again (CHN-16), and its
 // "Operations Guide" opens the channel's manual over the channel, which stands still until HOME closes the manual (CHN-13).
 // The POWER button switches the console off and the RESET button starts it again (CHN-27).
+// When the user closes the window, the question "Turn off WeeOS?" of the menu lies over the channel (AskToTurnOff).
 class ChannelSystem
 {
 public:
-    // Throws a ChannelError when WeeOS has no program for the title. The device, the contents and the services must outlive the channel system.
+    // Throws a ChannelError when WeeOS has no program for the title. The device, both contents and the services must outlive the
+    // channel system. The contents of the System Menu are read only when the question "Turn off WeeOS?" first comes.
     // A channel that brings no fonts of its own draws its texts with the console's fonts, when they are given (ReadConsoleFontArchive).
-    ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, Ios::RemoteService& remoteService,
-        Ios::NetworkConfigService& network, const ChannelStorage& storage, Ios::PowerService& powerService, Platform::ScreenShape screenShape,
-        Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
+    ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents, SystemMenu::TitleContents& systemMenuContents,
+        Ios::RemoteService& remoteService, Ios::NetworkConfigService& network, const ChannelStorage& storage, const ChannelAudio& audio,
+        Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime = Settings::ConsoleClock::ReadWindowsClock,
         std::optional<Formats::Bytes> consoleFontArchive = std::nullopt);
+    ~ChannelSystem();
 
     // One step of the console's picture, 1001/60000 of a second.
     void Update();
@@ -60,7 +62,17 @@ public:
     // The manual while it is open, or nothing.
     ManualViewer* OpenManualViewer();
 
+    // Asks "Turn off WeeOS?" over the channel; the channel stands still until the user answers, and Yes is the POWER button.
+    void AskToTurnOff();
+    bool IsAskingToTurnOff() const;
+
+    // The display that the question is drawn on while it is open, with its own fonts. A test finds the buttons of the question there.
+    const SystemMenu::Display* TurnOffQuestionDisplay() const;
+
 private:
+    // The dialog windows and the fonts of the System Menu, with a display of their own, for the question "Turn off WeeOS?".
+    class TurnOffParts;
+
     void LoadSystemFonts(SystemMenu::TitleContents& contents, std::optional<Formats::Bytes> consoleFontArchive);
     SystemMenu::HomeMenuFiles ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const;
     SystemMenu::HomeButtonConnections ConnectHomeButton();
@@ -69,9 +81,13 @@ private:
     void UpdateManual();
     void FollowHomeButtonPermission();
     void AnswerFrontPanel();
+    void PressPowerButton();
+    void RunStepOfTheTurnOffQuestion();
     void LeaveWhenAsked();
 
     Ios::TitleId runningTitle;
+    Graphics::GraphicsDevice& graphicsDevice;
+    SystemMenu::TitleContents& menuContents;
     ChannelSharedFiles sharedFiles;
     Ios::PowerService& power;
     SystemMenu::Display display;
@@ -86,6 +102,7 @@ private:
     std::unique_ptr<SystemMenu::HomeButton> homeButton;
     std::unique_ptr<ManualViewer> manual;
     bool isClosingManual = false;
+    std::unique_ptr<TurnOffParts> turnOff;
     SystemMenu::TitleLaunchRequest titleLaunch;
     bool hasAskedForMenu = false;
 };

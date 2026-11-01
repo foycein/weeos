@@ -15,11 +15,14 @@ constexpr std::uint32_t FirstTextureSetNumber = 1;
 // The bindings of set 0: draw records, stages, meshes and the corners of the meshes.
 constexpr std::uint32_t DrawDataBindingCount = 6;
 
-// Pushed to the vertex shader before the draws: half the width and half the height of the canvas.
+// Pushed to the vertex shaders before the draws. The picture is the whole target, which can be larger than the canvas in its middle:
+// half its width and height in canvas units, and the share of the picture's width and height that the canvas covers.
 struct CanvasConstants
 {
-    float halfWidth;
-    float halfHeight;
+    float halfPictureWidth;
+    float halfPictureHeight;
+    float canvasShareOfWidth;
+    float canvasShareOfHeight;
 };
 
 // The shaders and the pipelines that draw quads and meshes. Both run the stages of the material in the same fragment program;

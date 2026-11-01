@@ -24,7 +24,8 @@ public:
 
     Graphics::TextureHandle CreateTexture(const Graphics::TextureDescription& description) override;
     void DestroyTexture(Graphics::TextureHandle texture) override;
-    void BeginFrame(const Graphics::Canvas& canvas, Platform::ScreenShape screenShape) override;
+    void BeginFrame(const Graphics::Canvas& canvas) override;
+    Graphics::ScissorRectangle WholeArea() const override;
     void SetScissor(const Graphics::ScissorRectangle& scissor) override;
     void ClearScissor() override;
     void DrawQuad(const Graphics::Quad& quad, const Graphics::Material& material) override;

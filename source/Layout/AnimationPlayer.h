@@ -21,10 +21,18 @@ enum class PlaybackMode
     Loop,
 };
 
+// The panes an animation reaches: the panes given to the player and all the panes below them, or the given panes alone (an animation
+// file whose pat1 section says not to bind below its groups, as the Wii Speak Channel's files do).
+enum class PaneReach
+{
+    PanesAndThoseBelow,
+    GivenPanesOnly,
+};
+
 // Plays an animation on the panes and the materials of a live layout.
 //
 // The animation changes the panes and materials it names. It is bound to the panes given to the player (all panes of a group,
-// for example), to all the panes below them, and to the materials that those panes use. A name that none of these panes has,
+// for example), to all the panes below them unless the reach says otherwise, and to the materials that those panes use. A name that none of these panes has,
 // and no material of these panes has, is left out.
 //
 // The animation has as many frames as its frame count says: the frame numbers go from 0 up to one below the frame count.
@@ -35,7 +43,8 @@ class AnimationPlayer
 public:
     // Throws a LayoutError when the animation changes something that does not exist, for example a property number
     // that no pane has or a texture of its list that is not there.
-    AnimationPlayer(LiveLayout& layout, Formats::LayoutAnimation animation, PlaybackMode mode, const std::vector<Formats::Pane*>& panes);
+    AnimationPlayer(LiveLayout& layout, Formats::LayoutAnimation animation, PlaybackMode mode, const std::vector<Formats::Pane*>& panes,
+        PaneReach reach = PaneReach::PanesAndThoseBelow);
 
     // One frame further. The layout of the console does exactly this once for every picture it draws.
     void Step();
@@ -63,7 +72,7 @@ private:
         std::size_t objectIndex;
     };
 
-    void BindObjects(const std::vector<Formats::Pane*>& panes);
+    void BindObjects(const std::vector<Formats::Pane*>& panes, PaneReach reach);
     void ApplyCurrentFrame();
 
     LiveLayout& layout;

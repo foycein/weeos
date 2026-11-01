@@ -58,6 +58,8 @@ struct ShaderStage
 
     // The raster swap in bits 0 to 7 and the texture swap in bits 8 to 15, two bits for each of red, green, blue and alpha.
     std::uint32_t swaps;
+
+    std::uint32_t isMovedByIndirectTexture;
 };
 
 // One quad with its material. The stages of the draw are ShaderStage structures in the stage buffer, starting at firstStage.
@@ -83,7 +85,12 @@ struct ShaderDrawRecord
 
     // For a mesh: its number in the mesh buffer.
     std::uint32_t meshNumber;
-    std::array<std::uint32_t, 2> unused;
+
+    // The indirect texture of the material and the two rows of its matrix (Material::indirectTexture).
+    std::uint32_t indirectTextureIndex;
+    std::uint32_t unused;
+    std::array<float, 6> indirectMatrix;
+    std::array<std::uint32_t, 2> unusedAtTheEnd;
 };
 
 // One mesh: its matrices and its light. The rows of the matrices are in the order of Matrix4.
@@ -129,8 +136,8 @@ struct ShaderMeshCorner
     std::array<std::uint32_t, 2> unused;
 };
 
-static_assert(sizeof(ShaderStage) == 23 * sizeof(std::uint32_t));
-static_assert(sizeof(ShaderDrawRecord) == 352);
+static_assert(sizeof(ShaderStage) == 24 * sizeof(std::uint32_t));
+static_assert(sizeof(ShaderDrawRecord) == 384);
 static_assert(sizeof(ShaderMeshRecord) == 240);
 static_assert(sizeof(ShaderMeshCorner) == 48);
 static_assert(sizeof(ShaderBone) == 96);

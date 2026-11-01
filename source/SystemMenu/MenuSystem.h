@@ -20,6 +20,7 @@
 #include "SystemMenu/SoftKeyboard.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
+#include "SystemMenu/TurnOffQuestion.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 #include "SystemMenu/TitleLaunchRequest.h"
 
@@ -42,7 +43,7 @@ public:
     // and starts it. The device, the contents, the files, the services and the console of the Wii Menu must outlive the menu.
     // Wii Settings opens only when its services are given; the other screens work without them.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles, Ios::RemoteService& remoteService,
-        Ios::PowerService& powerService, Platform::ScreenShape screenShape, MenuConsole& wiiMenuConsole,
+        Ios::PowerService& powerService, MenuConsole& wiiMenuConsole,
         SettingsFlowServices* wiiSettingsServices = nullptr, ConsoleImport* consoleImport = nullptr);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
@@ -65,6 +66,11 @@ public:
     // (MenuServices::titleLaunch). The program ends the menu and launches it. Nothing most of the time.
     std::optional<Ios::TitleId> TakeTitleToLaunch();
 
+    // Asks "Turn off WeeOS?" over everything; the menu stands still until the user answers, and Yes presses the POWER button.
+    // The program asks when the user closes the window.
+    void AskToTurnOff();
+    bool IsAskingToTurnOff() const;
+
     // The keys of this USB keyboard type into the soft keyboard. The service must stay alive as long as the menu.
     void UsePhysicalKeyboard(Ios::KeyboardService& keyboardService);
 
@@ -72,6 +78,8 @@ public:
 
 private:
     void RunStep();
+    void RunStepOfTheTurnOffQuestion();
+    void DrawTheTurnOffQuestion();
     HomeButtonConnections ConnectHomeButton();
     void SaveRumble(bool isRumbleOn);
 
@@ -90,6 +98,7 @@ private:
     ProgramImage program;
     MenuSettings settings;
     DialogManager dialogs;
+    TurnOffQuestion turnOffQuestion;
     ErrorScreen errorScreen;
     FrontPanel frontPanel;
     HomeButton homeButton;
