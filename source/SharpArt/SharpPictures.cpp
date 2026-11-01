@@ -3,6 +3,7 @@
 #include "SharpArt/ClockPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
+#include "SharpArt/WiiOptionsPictures.h"
 
 #include <algorithm>
 #include <array>
@@ -38,6 +39,7 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_ab.tpl", 48, 48, ClockMagnification, Intensity, DrawClockColon},
     SharpPicture{"my_Clock_b0.tpl", 48, 32, ClockMagnification, Intensity, DrawClockAm},
     SharpPicture{"my_Clock_b1.tpl", 48, 32, ClockMagnification, Intensity, DrawClockPm},
+    SharpPicture{"it_Setting_a.tpl", 256, 200, ShownAtItsSize, ColorAndAlpha, DrawWiiSettingsButton, TransparentWhite},
     SharpPicture{"it_BarWii_a.tpl", 72, 33, ShownAtItsSize, ColorAndAlpha, DrawWiiLogoOfTheSettings, TransparentWhite},
     SharpPicture{"my_TopBtn_a0.tpl", 48, 32, ShownAtItsSize, Intensity, DrawEnvelope},
     SharpPicture{"my_TopBtn_a.tpl", 80, 80, ShownAtItsSize, ColorAndAlpha, DrawRoundButton, TransparentButtonGray},
