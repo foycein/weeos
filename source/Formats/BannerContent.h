@@ -28,6 +28,10 @@ struct ChannelName
 struct BannerContent
 {
     std::array<ChannelName, BannerLanguageCount> names;
+
+    // True when another content of the title holds a script or a module that drives the icon (icon.cs or icon.rso).
+    bool isIconDrivenByCode = false;
+
     U8Archive files;
 };
 

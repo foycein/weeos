@@ -24,12 +24,12 @@ public:
     Platform::ScreenShape GetScreenShape() const;
     void SetScreenShape(Platform::ScreenShape newScreenShape);
 
+    // The fonts that the text boxes are drawn with. A text box draws nothing until the menu has set them.
+    const Layout::TextFonts* GetTextFonts() const;
+    void SetTextFonts(const Layout::TextFonts* newTextFonts);
+
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
-
-    // The fonts that text boxes are drawn with. A layout draws no text while there are none. The fonts must outlive the display.
-    void SetTextFonts(const Layout::TextFonts* fonts);
-    const Layout::TextFonts* TextFonts() const;
 
     // Starts a new picture of the screen. The program shows it with Present when everything is drawn.
     void BeginPicture();

@@ -16,23 +16,8 @@ MenuAnimation::MenuAnimation(Layout::LiveLayout& layoutToAnimate, Formats::Layou
 
 void MenuAnimation::Start()
 {
-    range.reset();
     player.emplace(layout, animation, mode, panes);
     isPlaying = true;
-}
-
-void MenuAnimation::StartBetween(float firstFrame, float lastFrame)
-{
-    range = FrameRange{firstFrame, lastFrame};
-    ShowFrameWithNewPlayer(firstFrame);
-    isPlaying = firstFrame < lastFrame;
-}
-
-void MenuAnimation::ShowFrame(float frameToShow)
-{
-    range.reset();
-    ShowFrameWithNewPlayer(frameToShow);
-    isPlaying = false;
 }
 
 bool MenuAnimation::IsPlaying() const
@@ -40,50 +25,24 @@ bool MenuAnimation::IsPlaying() const
     return isPlaying;
 }
 
+void MenuAnimation::ShowFrame(float frame)
+{
+    player.emplace(layout, animation, mode, panes);
+    player->Advance(frame);
+    isPlaying = false;
+}
+
 void MenuAnimation::Step()
 {
     if (!isPlaying)
         return;
 
-    if (range)
-        StepFrameRange();
-    else
-        StepWholeAnimation();
-}
-
-// A player shows frame 0 when it is made. It moves on by the number of frames that it is given.
-void MenuAnimation::ShowFrameWithNewPlayer(float frameToShow)
-{
-    player.emplace(layout, animation, Layout::PlaybackMode::PlayOnce, panes);
-    player->Advance(frameToShow);
-    frame = frameToShow;
-}
-
-void MenuAnimation::StepWholeAnimation()
-{
     player->Step();
 
     float lastFrame = static_cast<float>(animation.frameCount) - 1;
     bool hasReachedLastFrame = player->CurrentFrame() >= lastFrame;
     if (mode == Layout::PlaybackMode::PlayOnce && hasReachedLastFrame)
         isPlaying = false;
-}
-
-void MenuAnimation::StepFrameRange()
-{
-    player->Step();
-    frame += 1;
-    if (frame < range->last)
-        return;
-
-    if (mode == Layout::PlaybackMode::PlayOnce)
-    {
-        isPlaying = false;
-        return;
-    }
-
-    float framesBeyondTheEnd = frame - range->last;
-    ShowFrameWithNewPlayer(range->first + framesBeyondTheEnd);
 }
 
 }

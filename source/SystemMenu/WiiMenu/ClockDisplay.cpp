@@ -1,6 +1,7 @@
 #include "SystemMenu/WiiMenu/ClockDisplay.h"
 
 #include "SystemMenu/MenuClock.h"
+#include "SystemMenu/WiiMenu/LayoutParts.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Text/MessageCatalog.h"
@@ -18,17 +19,17 @@ constexpr std::string_view LayoutName = "my_Clock_a";
 constexpr std::string_view ChangeAnimation = "my_Clock_a_Change";
 constexpr std::string_view BlinkAnimation = "my_Clock_a_Min";
 
-constexpr std::string_view ClockPane = "N_WiiMenu";
 constexpr std::string_view LabelPane = "T_WiiMenu";
-constexpr std::string_view ColonPane = "ClockTen";
 constexpr std::string_view FirstHourDigitPane = "Clock3";
 constexpr std::string_view SecondHourDigitPane = "Clock2";
 constexpr std::string_view FirstMinuteDigitPane = "Clock1";
 constexpr std::string_view SecondMinuteDigitPane = "Clock0";
-constexpr std::string_view AfternoonPane = "AM_PM";
-constexpr std::string_view AfternoonOnTheRightPane = "AM_PM_R";
 
-// The layout keeps a picture of every digit and of AM and PM for the clock to take the textures from.
+// A console of the USA shows AM and PM on the right of the digits. Japan shows them on the left, Europe shows 24 hours.
+constexpr std::string_view LeftAfternoonPane = "AM_PM";
+constexpr std::string_view RightAfternoonPane = "AM_PM_R";
+
+// The layout keeps a picture of every digit and of AM and PM, outside of the picture, for the clock to take the textures from.
 constexpr std::array<std::string_view, 10> DigitPictures = {"Num0", "Num1", "Num2", "Num3", "Num4", "Num5", "Num6", "Num7", "Num8", "Num9"};
 constexpr std::string_view MorningPicture = "AM";
 constexpr std::string_view AfternoonPicture = "PM";
@@ -36,15 +37,17 @@ constexpr std::string_view AfternoonPicture = "PM";
 // The message "Wii Menu".
 constexpr std::uint16_t LabelMessage = 16;
 
-// The change from the label to the time has 26 frames.
-constexpr float LastFrameOfTheChange = 25;
-
 constexpr double SecondsOfTheLabel = 3;
 constexpr int SecondsBetweenBlinks = 2;
 
-bool IsEvenSecond(const LocalTime& time)
+bool IsBlinkSecond(const LocalTime& time)
 {
     return time.second % SecondsBetweenBlinks == 0;
+}
+
+float LastFrameOf(const Layout::LayoutArchive& archive, std::string_view animationName)
+{
+    return static_cast<float>(archive.ReadAnimation(std::string(animationName)).frameCount - 1);
 }
 
 }
@@ -53,11 +56,12 @@ ClockDisplay::ClockDisplay(MenuServices& menuServices, const Layout::LayoutArchi
     : services(menuServices)
     , layout(std::make_unique<MenuLayout>(menuServices.display, archive, std::string(LayoutName)))
 {
-    changeSlot = layout->BindAnimationToWholeLayout(std::string(ChangeAnimation), Layout::PlaybackMode::PlayOnce);
-    blinkSlot = layout->BindAnimationToPane(std::string(BlinkAnimation), ColonPane, Layout::PlaybackMode::PlayOnce);
+    change = std::make_unique<FramePlayer>(*layout, layout->BindAnimationToAllPanes(std::string(ChangeAnimation)));
+    blink = std::make_unique<FramePlayer>(*layout, layout->BindAnimationToAllPanes(std::string(BlinkAnimation)));
+    lastFrameOfTheChange = LastFrameOf(archive, ChangeAnimation);
+    lastFrameOfTheBlink = LastFrameOf(archive, BlinkAnimation);
 
-    // A console of the USA shows AM and PM on the left of the digits.
-    layout->PaneNamed(AfternoonOnTheRightPane).isVisible = false;
+    layout->PaneNamed(LeftAfternoonPane).isVisible = false;
     layout->SetText(LabelPane, services.messages.Find(LabelMessage));
 
     bool isFirstAppearance = !services.wiiMenu.hasClockShownTheLabel;
@@ -66,18 +70,20 @@ ClockDisplay::ClockDisplay(MenuServices& menuServices, const Layout::LayoutArchi
     {
         phase = Phase::ShowingTheLabel;
         labelStartedSeconds = services.clock.Seconds();
-        layout->ShowAnimationFrame(changeSlot, 0);
+        change->Show(0);
     }
     else
     {
         phase = Phase::ShowingTheTime;
-        layout->ShowAnimationFrame(changeSlot, LastFrameOfTheChange);
+        change->Show(lastFrameOfTheChange);
     }
 
-    for (const Formats::Pane* pane : Layout::PaneWithDescendants(layout->PaneNamed(ClockPane)))
-        panesOfTheClock.insert(pane);
-
     ShowTheFace(MakeClockFace(services.wiiMenu.console.GetLocalTime()));
+}
+
+bool ClockDisplay::ShowsTheLabel() const
+{
+    return phase == Phase::ShowingTheLabel;
 }
 
 void ClockDisplay::Calculate()
@@ -90,22 +96,24 @@ void ClockDisplay::Calculate()
 
     StartTheChangeWhenItIsTime(time);
     BlinkTheColon(time);
+    change->Step();
+    blink->Step();
     layout->Calculate();
 }
 
 void ClockDisplay::DrawAt(Formats::Vector2 place)
 {
-    layout->MoveTo(place);
-    layout->Draw([&](const Formats::Pane& pane) { return panesOfTheClock.contains(&pane); });
+    MoveLayoutTo(*layout, place);
+    layout->Draw();
 }
 
 void ClockDisplay::ShowTheFace(const ClockFace& face)
 {
-    layout->CopyTexture(FirstHourDigitPane, DigitPictures[face.hourTens]);
-    layout->CopyTexture(SecondHourDigitPane, DigitPictures[face.hourOnes]);
-    layout->CopyTexture(FirstMinuteDigitPane, DigitPictures[face.minuteTens]);
-    layout->CopyTexture(SecondMinuteDigitPane, DigitPictures[face.minuteOnes]);
-    layout->CopyTexture(AfternoonPane, face.isAfternoon ? AfternoonPicture : MorningPicture);
+    CopyFirstTexture(*layout, FirstHourDigitPane, DigitPictures[face.hourTens]);
+    CopyFirstTexture(*layout, SecondHourDigitPane, DigitPictures[face.hourOnes]);
+    CopyFirstTexture(*layout, FirstMinuteDigitPane, DigitPictures[face.minuteTens]);
+    CopyFirstTexture(*layout, SecondMinuteDigitPane, DigitPictures[face.minuteOnes]);
+    CopyFirstTexture(*layout, RightAfternoonPane, face.isAfternoon ? AfternoonPicture : MorningPicture);
 
     // A clock does not show a 0 in front of the hours.
     layout->PaneNamed(FirstHourDigitPane).isVisible = face.hourTens != 0;
@@ -118,23 +126,22 @@ void ClockDisplay::StartTheChangeWhenItIsTime(const LocalTime& time)
     if (phase == Phase::ShowingTheLabel)
     {
         bool hasShownLongEnough = services.clock.Seconds() - labelStartedSeconds >= SecondsOfTheLabel;
-        if (hasShownLongEnough && IsEvenSecond(time))
+        if (hasShownLongEnough && IsBlinkSecond(time))
         {
-            layout->StartAnimation(changeSlot);
+            change->PlayOnce(0, lastFrameOfTheChange);
             phase = Phase::ChangingToTheTime;
         }
+        return;
     }
-    else if (phase == Phase::ChangingToTheTime && !layout->IsAnimationPlaying(changeSlot))
-    {
+
+    if (phase == Phase::ChangingToTheTime && !change->IsPlaying())
         phase = Phase::ShowingTheTime;
-    }
 }
 
-// The colon goes out and comes back once for every two seconds. The animation takes a little more than a second.
 void ClockDisplay::BlinkTheColon(const LocalTime& time)
 {
-    if (phase == Phase::ShowingTheTime && !layout->IsAnimationPlaying(blinkSlot) && IsEvenSecond(time))
-        layout->StartAnimation(blinkSlot);
+    if (phase == Phase::ShowingTheTime && !blink->IsPlaying() && IsBlinkSecond(time))
+        blink->PlayOnce(0, lastFrameOfTheBlink);
 }
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/MenuConsole.h"
+#include "SystemMenu/WiiMenu/MenuConsole.h"
 
 #include "Text/MessageCatalog.h"
 
@@ -23,6 +23,9 @@ struct ClockFace
 };
 
 ClockFace MakeClockFace(const LocalTime& time);
+
+// The same time of day, a number of days earlier (a negative number) or later.
+LocalTime ShiftDays(const LocalTime& time, int days);
 
 // The day of the week and the date as the menu writes them above the Message Board, for example "Wed 10/28" in English.
 // The names of the days are messages of the menu.

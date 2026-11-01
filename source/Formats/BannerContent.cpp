@@ -21,9 +21,15 @@ constexpr std::size_t TagOffset = 0x80;
 constexpr std::string_view Tag = "IMET";
 constexpr std::size_t TagSize = 4;
 
-// Behind the tag: the size of the header (the U8 archive starts behind it), then three numbers that are not used here
-// (the version and the sizes of icon.bin, banner.bin and sound.bin), and then the names.
+// Behind the tag: the size of the header (the U8 archive starts behind it), then four numbers that are not used here
+// (the version and the sizes of icon.bin, banner.bin and sound.bin), the word that names the contents of the scripts, and then the names.
+constexpr std::size_t ScriptContentsOffset = TagOffset + 0x18;
 constexpr std::size_t NamesOffset = TagOffset + 0x1C;
+
+// Four numbers of four bits each in the word of the scripts, from bit 16 up: banner.cs, icon.cs, banner.rso and icon.rso.
+constexpr int IconScriptShift = 20;
+constexpr int IconModuleShift = 28;
+constexpr std::uint32_t ContentNumberMask = 0xF;
 
 // Every language has 42 characters in two lines of 21.
 constexpr std::size_t LineLength = 21;
@@ -73,6 +79,12 @@ BannerContent ReadBannerContent(ByteView content)
         reader.Fail(std::format("the header says the archive starts at {:#x}, behind the end of the content", archiveOffset));
 
     BannerContent banner;
+    reader.MoveTo(ScriptContentsOffset);
+    std::uint32_t scriptContents = reader.ReadUint32();
+    bool hasIconScript = ((scriptContents >> IconScriptShift) & ContentNumberMask) != 0;
+    bool hasIconModule = ((scriptContents >> IconModuleShift) & ContentNumberMask) != 0;
+    banner.isIconDrivenByCode = hasIconScript || hasIconModule;
+
     reader.MoveTo(NamesOffset);
     for (ChannelName& name : banner.names)
         name = ReadName(reader);

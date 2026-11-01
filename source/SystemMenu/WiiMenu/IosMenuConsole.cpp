@@ -1,4 +1,4 @@
-#include "SystemMenu/IosMenuConsole.h"
+#include "SystemMenu/WiiMenu/IosMenuConsole.h"
 
 #include "SystemMenu/MenuError.h"
 

@@ -10,40 +10,31 @@
 #include "Text/TextLayouter.h"
 
 #include <memory>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace SystemMenu
 {
 
-// The content of the System Menu title that holds the two system fonts wbf1.brfna and wbf2.brfna.
-constexpr std::uint16_t FontContentIndex = 5;
-
-// The three fonts of the menu, ready to draw text boxes. The layouts name their fonts by file name, and each name means one of these fonts.
+// The fonts that the text boxes of the layouts are drawn with. A layout names its fonts by file name, and this says which font each name means.
 class MenuFonts
 {
 public:
-    // Reads the fonts from the System Menu title. The glyph sheets go to the device when the first glyph of a sheet is drawn.
-    // The device must outlive the fonts.
-    MenuFonts(Graphics::GraphicsDevice& device, TitleContents& titleContents, const MenuFiles& files);
+    // Reads the three fonts of the menu: the two bitmap fonts of the font content and the large font of the resource archive.
+    // The device and the files must stay alive as long as this object.
+    MenuFonts(Graphics::GraphicsDevice& graphicsDevice, TitleContents& titleContents, const MenuFiles& menuFiles);
+
+    // Makes a font available under the names that layouts use for it.
+    void AddFont(Formats::Font font, const std::vector<std::string>& names);
 
     const Layout::TextFonts& Fonts() const;
 
 private:
-    // A font with what is needed to draw with it. The layouter and the drawer keep a reference to the font, so it stays where it is.
-    struct DrawableFontSet
-    {
-        DrawableFontSet(Graphics::GraphicsDevice& device, Formats::Font fontToDraw);
-
-        Formats::Font font;
-        Text::TextLayouter layouter;
-        Text::TextDrawer drawer;
-    };
-
-    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
-
-    std::vector<std::unique_ptr<DrawableFontSet>> fontSets;
-    Layout::TextFonts fonts;
+    Graphics::GraphicsDevice& device;
+    std::vector<std::unique_ptr<Formats::Font>> fonts;
+    std::vector<std::unique_ptr<Text::TextLayouter>> layouters;
+    std::vector<std::unique_ptr<Text::TextDrawer>> drawers;
+    Layout::TextFonts textFonts;
 };
 
 }

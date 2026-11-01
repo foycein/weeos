@@ -15,6 +15,18 @@ namespace
 
 constexpr std::string_view IconFilePath = "meta/icon.bin";
 
+constexpr std::string_view AnimationsFolder = "arc/anim/";
+constexpr std::string_view AnimationExtension = ".brlan";
+constexpr std::string_view StartAnimation = "icon_Start";
+constexpr std::string_view LoopAnimation = "icon";
+constexpr std::string_view WholeAnimation = "icon_Whole";
+
+bool HasAnimation(const Formats::U8Archive& iconFiles, std::string_view animationName)
+{
+    std::string path = std::string(AnimationsFolder) + std::string(animationName) + std::string(AnimationExtension);
+    return iconFiles.FindFile(path).has_value();
+}
+
 bool IsPositionInsideTheGrid(SlotPosition position)
 {
     bool isPageInside = position.page >= 0 && position.page < PageCount;
@@ -33,6 +45,23 @@ void RequireInsideTheGrid(SlotPosition position)
         throw MenuError(std::format("The place page {} number {} is not in the channel grid", position.page, position.index));
 }
 
+}
+
+std::optional<std::string> ChooseIconAnimation(const Formats::U8Archive& iconFiles, bool isIconDrivenByCode)
+{
+    if (isIconDrivenByCode && HasAnimation(iconFiles, StartAnimation))
+        return std::string(StartAnimation);
+
+    if (isIconDrivenByCode)
+        return std::nullopt;
+
+    if (HasAnimation(iconFiles, LoopAnimation))
+        return std::string(LoopAnimation);
+
+    if (HasAnimation(iconFiles, WholeAnimation))
+        return std::string(WholeAnimation);
+
+    return std::nullopt;
 }
 
 ChannelManager::ChannelManager(MenuConsole& menuConsole)
@@ -81,6 +110,19 @@ int ChannelManager::UsedSlotCount() const
         usedSlotCount += slot.kind == SavedSlotKind::Empty ? 0 : 1;
 
     return usedSlotCount;
+}
+
+bool ChannelManager::IsFull() const
+{
+    return UsedSlotCount() == SlotCount;
+}
+
+bool ChannelManager::CanPickUp(SlotPosition position) const
+{
+    if (!IsPositionInsideTheGrid(position))
+        return false;
+
+    return SlotAt(position).kind == SavedSlotKind::Title && !IsFull();
 }
 
 bool ChannelManager::CanMove(SlotPosition from, SlotPosition to) const
@@ -136,7 +178,11 @@ std::unique_ptr<LoadedChannel> ChannelManager::ReadChannel(Ios::TitleId titleId)
 
         std::optional<Formats::ByteView> iconFile = banner.files.FindFile(IconFilePath);
         if (iconFile)
-            channel->icon = std::make_unique<Layout::LayoutArchive>(Formats::ReadLayoutFile(*iconFile));
+        {
+            Formats::U8Archive iconFiles = Formats::ReadLayoutFile(*iconFile);
+            channel->iconAnimation = ChooseIconAnimation(iconFiles, banner.isIconDrivenByCode);
+            channel->icon = std::make_unique<Layout::LayoutArchive>(std::move(iconFiles));
+        }
     }
     catch (const Formats::FormatError&)
     {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/MenuConsole.h"
+#include "SystemMenu/WiiMenu/MenuConsole.h"
 
 #include "Ios/IosServices.h"
 

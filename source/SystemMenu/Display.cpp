@@ -31,22 +31,22 @@ void Display::SetScreenShape(Platform::ScreenShape newScreenShape)
     screenShape = newScreenShape;
 }
 
+const Layout::TextFonts* Display::GetTextFonts() const
+{
+    return textFonts;
+}
+
+void Display::SetTextFonts(const Layout::TextFonts* newTextFonts)
+{
+    textFonts = newTextFonts;
+}
+
 Graphics::Canvas Display::GetCanvas() const
 {
     if (screenShape == Platform::ScreenShape::SixteenByNine)
         return WideCanvas;
 
     return StandardCanvas;
-}
-
-void Display::SetTextFonts(const Layout::TextFonts* fonts)
-{
-    textFonts = fonts;
-}
-
-const Layout::TextFonts* Display::TextFonts() const
-{
-    return textFonts;
 }
 
 void Display::BeginPicture()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/MenuConsole.h"
+#include "SystemMenu/WiiMenu/MenuConsole.h"
 #include "SystemMenu/WiiMenu/SaveData.h"
 
 #include "Formats/BannerContent.h"
@@ -9,6 +9,8 @@
 #include <array>
 #include <map>
 #include <memory>
+#include <optional>
+#include <string>
 
 namespace SystemMenu
 {
@@ -37,7 +39,14 @@ struct LoadedChannel
 
     // Nothing when the files of the channel are damaged. The grid shows the picture of a damaged channel then.
     std::unique_ptr<Layout::LayoutArchive> icon;
+
+    // The animation that the tile plays, for example "icon". Nothing when the icon has none that the menu starts.
+    std::optional<std::string> iconAnimation;
 };
+
+// The animation of an icon, as the grid chooses it: an icon that a script drives plays icon_Start, when it has it, and the script
+// does the rest. Any other icon plays icon, or icon_Whole when it has no icon. The files are the files of icon.bin.
+std::optional<std::string> ChooseIconAnimation(const Formats::U8Archive& iconFiles, bool isIconDrivenByCode);
 
 // The channel grid as the menu keeps it (the ChannelManager and the SaveDataManager of the original, docs/research/SystemMenuStructure.md 5.1):
 // four pages of twelve places, the page that is shown, and the files of the channels in the places.
@@ -58,6 +67,13 @@ public:
 
     // The number of places that hold the Disc Channel or a title.
     int UsedSlotCount() const;
+
+    // True when all 48 places hold a channel.
+    bool IsFull() const;
+
+    // True when the channel at the place may be picked up to move it: a channel title, not the Disc Channel, and only while the grid
+    // has an empty place.
+    bool CanPickUp(SlotPosition position) const;
 
     // True when the channel at the first place may move to the second: the second place is empty, or it is the first place itself.
     bool CanMove(SlotPosition from, SlotPosition to) const;
