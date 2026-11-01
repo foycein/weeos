@@ -118,7 +118,8 @@ void ChannelSystem::LoadSystemFonts(SystemMenu::TitleContents& contents)
 SystemMenu::HomeMenuFiles ChannelSystem::ReadHomeMenuFiles(SystemMenu::TitleContents& contents) const
 {
     Formats::U8Archive homeMenuContent = ReadArchiveContent(contents, sharedFiles.homeMenuContentIndex);
-    return SystemMenu::ReadChannelHomeMenuFiles(homeMenuContent, sharedFiles.homeMenuFolder, sharedFiles.offeredHomeMenuButtons);
+    return SystemMenu::ReadChannelHomeMenuFiles(homeMenuContent, sharedFiles.homeMenuFolder, sharedFiles.isHomeMenuPacked,
+        sharedFiles.offeredHomeMenuButtons);
 }
 
 SystemMenu::HomeButtonConnections ChannelSystem::ConnectHomeButton()

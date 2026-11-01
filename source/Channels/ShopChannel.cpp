@@ -317,7 +317,7 @@ std::optional<Formats::Vector2> ShopChannel::PointerOnPage(int playerIndex) cons
     if (!player || !player->state.pointerIsValid)
         return std::nullopt;
 
-    return PagePainter::PictureToPage(services.display.PointerToCanvas(player->state.pointer));
+    return painter->PictureToPage(services.display.PointerToCanvas(player->state.pointer));
 }
 
 void ShopChannel::DrawWallpaper()

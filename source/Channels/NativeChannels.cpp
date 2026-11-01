@@ -1,5 +1,6 @@
 #include "Channels/NativeChannels.h"
 
+#include "Channels/InternetChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
 
@@ -20,9 +21,12 @@ constexpr WiiConnect24ChannelFiles NewsFiles = {
 // The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
 // the Shop HomeButton2 (0x802F75B8).
 constexpr std::size_t WiiMenuAndReset = 2;
-constexpr ChannelSharedFiles ForecastSharedFiles = {7, 6, "./HomeButton3", WiiMenuAndReset};
-constexpr ChannelSharedFiles NewsSharedFiles = {7, 6, "./HomeButton3", WiiMenuAndReset};
-constexpr ChannelSharedFiles ShopSharedFiles = {9, 7, "./HomeButton2", WiiMenuAndReset};
+constexpr ChannelSharedFiles ForecastSharedFiles = {7, 6, "./HomeButton3", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles NewsSharedFiles = {7, 6, "./HomeButton3", true, WiiMenuAndReset};
+constexpr ChannelSharedFiles ShopSharedFiles = {9, 7, "./HomeButton2", true, WiiMenuAndReset};
+
+// The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
+constexpr ChannelSharedFiles InternetSharedFiles = {8, 5, "homebutton", false, WiiMenuAndReset};
 
 }
 
@@ -36,6 +40,9 @@ std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)
 
     if (titleId == NewsChannelTitleId)
         return NewsSharedFiles;
+
+    if (titleId == InternetChannelTitleId)
+        return InternetSharedFiles;
 
     return std::nullopt;
 }
@@ -55,6 +62,9 @@ std::unique_ptr<Channel> MakeChannel(Ios::TitleId titleId, ChannelServices& serv
 
     if (titleId == NewsChannelTitleId)
         return std::make_unique<WiiConnect24Channel>(services, NewsFiles);
+
+    if (titleId == InternetChannelTitleId)
+        return std::make_unique<InternetChannel>(services);
 
     return nullptr;
 }

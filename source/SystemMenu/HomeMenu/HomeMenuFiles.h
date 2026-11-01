@@ -57,9 +57,10 @@ struct HomeMenuFiles
 // Throws a MenuError or a FormatError when a file is missing or damaged.
 HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files);
 
-// The same files of the copy that a channel carries in its shared content of the HOME menu, in the folder of the version that its
-// program opens, for example "./HomeButton3". The channel offers the first offeredButtonCount big buttons: a channel whose manual
-// cannot be shown leaves out the third one.
-HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, std::size_t offeredButtonCount);
+// The same files of the copy that a channel carries, in the folder that its program opens, for example "./HomeButton3" of its shared
+// content of the HOME menu. The copies of the shared content are packed. The channel offers the first offeredButtonCount big buttons:
+// a channel whose manual cannot be shown leaves out the third one.
+HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, bool arePacked,
+    std::size_t offeredButtonCount);
 
 }

@@ -27,6 +27,7 @@ struct ChannelSharedFiles
     std::uint16_t fontContentIndex;
     std::uint16_t homeMenuContentIndex;
     std::string_view homeMenuFolder;
+    bool isHomeMenuPacked;
 
     // The big buttons of the HOME menu that WeeOS offers: "Wii Menu" and "Reset". The third one of HomeButton3 opens the channel's
     // manual, which is not built (CHN-13), so it is left out.

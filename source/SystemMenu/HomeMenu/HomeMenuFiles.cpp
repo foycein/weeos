@@ -25,13 +25,16 @@ constexpr std::string_view TextsPath = "homebutton/home.csv";
 constexpr std::string_view SpeakerSoundsPath = "homebutton/SpeakerSe.arc";
 constexpr std::string_view ProhibitedIconPath = "homebutton/homeBtnIcon.tpl";
 
-// The copy of the HOME menu that every channel carries in a shared content, in a folder of its version (HomeButton2, HomeButton3).
-// The archives are packed with LZ77, the speaker sounds with Huffman.
-constexpr std::string_view ChannelLanguageArchiveName = "LZ77_homeBtn_ENG.arc";
-constexpr std::string_view ChannelCommonArchiveName = "LZ77_homeBtn.arc";
+// The copy of the HOME menu that a channel carries, in a folder of its version (HomeButton2, HomeButton3 of the shared content, or
+// homebutton of the Internet Channel's own content). In the shared content the archives are packed with LZ77 and the speaker sounds
+// with Huffman, and their names say so.
+constexpr std::string_view ChannelLanguageArchiveName = "homeBtn_ENG.arc";
+constexpr std::string_view ChannelCommonArchiveName = "homeBtn.arc";
+constexpr std::string_view ChannelSpeakerSoundsName = "SpeakerSe.arc";
+constexpr std::string_view Lz77NamePrefix = "LZ77_";
+constexpr std::string_view HuffmanNamePrefix = "Huf8_";
 constexpr std::string_view ChannelConfigurationName = "config.txt";
 constexpr std::string_view ChannelTextsName = "home.csv";
-constexpr std::string_view ChannelSpeakerSoundsName = "Huf8_SpeakerSe.arc";
 constexpr std::string_view ChannelProhibitedIconName = "homeBtnIcon.tpl";
 
 constexpr std::string_view LayoutFileExtension = ".brlyt";
@@ -206,13 +209,32 @@ HomeMenuFiles ReadHomeMenuFiles(const MenuFiles& files)
     return homeMenuFiles;
 }
 
-HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, std::size_t offeredButtonCount)
+Formats::U8Archive ReadChannelArchive(const Formats::U8Archive& content, std::string_view folder, std::string_view name, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, name)));
+
+    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, Lz77NamePrefix, name));
+    return Formats::ReadU8Archive(Formats::DecompressLz77(packedFile));
+}
+
+Formats::U8Archive ReadChannelSpeakerSounds(const Formats::U8Archive& content, std::string_view folder, bool isPacked)
+{
+    if (!isPacked)
+        return Formats::ReadU8Archive(FindFileOfContent(content, std::format("{}/{}", folder, ChannelSpeakerSoundsName)));
+
+    Formats::ByteView packedFile = FindFileOfContent(content, std::format("{}/{}{}", folder, HuffmanNamePrefix, ChannelSpeakerSoundsName));
+    return Formats::ReadU8Archive(Formats::DecompressHuffman(packedFile));
+}
+
+HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent, std::string_view folder, bool arePacked,
+    std::size_t offeredButtonCount)
 {
     auto readFile = [&](std::string_view name) { return FindFileOfContent(homeMenuContent, std::format("{}/{}", folder, name)); };
 
     HomeMenuFiles homeMenuFiles;
-    Formats::U8Archive languageArchive = Formats::ReadU8Archive(Formats::DecompressLz77(readFile(ChannelLanguageArchiveName)));
-    Formats::U8Archive commonArchive = Formats::ReadU8Archive(Formats::DecompressLz77(readFile(ChannelCommonArchiveName)));
+    Formats::U8Archive languageArchive = ReadChannelArchive(homeMenuContent, folder, ChannelLanguageArchiveName, arePacked);
+    Formats::U8Archive commonArchive = ReadChannelArchive(homeMenuContent, folder, ChannelCommonArchiveName, arePacked);
     homeMenuFiles.archive = std::make_unique<Layout::LayoutArchive>(JoinArchives(languageArchive, commonArchive));
 
     ReadConfiguration(readFile(ChannelConfigurationName), homeMenuFiles);
@@ -220,7 +242,7 @@ HomeMenuFiles ReadChannelHomeMenuFiles(const Formats::U8Archive& homeMenuContent
         homeMenuFiles.buttonAsks.resize(offeredButtonCount);
 
     ReadTexts(readFile(ChannelTextsName), homeMenuFiles);
-    ReadSpeakerSounds(Formats::ReadU8Archive(Formats::DecompressHuffman(readFile(ChannelSpeakerSoundsName))), homeMenuFiles);
+    ReadSpeakerSounds(ReadChannelSpeakerSounds(homeMenuContent, folder, arePacked), homeMenuFiles);
     homeMenuFiles.prohibitedIcon = ReadProhibitedIcon(readFile(ChannelProhibitedIconName));
     return homeMenuFiles;
 }
