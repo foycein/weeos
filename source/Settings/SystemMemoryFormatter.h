@@ -12,7 +12,7 @@ namespace Settings
 // What the console needs to start stays: boot2, the System Menu, every IOS, the system channels and their tickets, the shared contents,
 // the settings of the console (SYSCONF) and the product information file of the System Menu.
 //
-// This is a choice of WeeOS (docs/audit/OpenPoints/Settings.md): the original asks the NAND library for the format and the owner has no
+// This is a choice of WeeOS (docs/audit/OpenPoints/Settings.md SET-07): the original asks the NAND library for the format and the owner has no
 // console to look at what it keeps. The settings stay because WeeOS has no first-time setup to bring them back.
 class SystemMemoryFormatter
 {

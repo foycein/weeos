@@ -208,6 +208,7 @@ void ParentalPages::BuildPage(PageId page, Page& content)
     PageBuilder builder(content);
     builder.SetTitle(1, std::u16string(Title));
 
+    // PageId lists the pages of the parental controls in three groups: the setup, the settings, and the checks of controls that are on.
     if (page <= PageId::ParentalAnswerChoice)
         BuildSetupPage(page, builder);
     else if (page <= PageId::ParentalCleared)
