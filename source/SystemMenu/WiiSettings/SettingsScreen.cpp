@@ -6,6 +6,8 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/ParentalAnswer.h"
+#include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoftKeyboard.h"
 #include "SystemMenu/SoundRequests.h"
 
@@ -23,6 +25,9 @@ constexpr int InternetArgument = 1;
 constexpr int SystemUpdateArgument = 3;
 constexpr int SecondIndexArgument = 4;
 constexpr int CountryArgument = 6;
+
+// The parental dialog tells, after a right PIN, that the restriction is lifted until the user has finished (SystemMenuStructure.md 4.10).
+constexpr int ParentalDialogArgument = 1;
 
 // A button that is held down presses again after 400 milliseconds, then every 150 milliseconds. A step lasts 1001/60000 of a second.
 constexpr int StepsBeforeRepeat = 24;
@@ -75,6 +80,14 @@ bool IsHoldingA(const PlayerInput& player)
     return hasClassicController && (player.state.classic.buttonsHeld & Input::ClassicButtons::A) != 0;
 }
 
+}
+
+std::unique_ptr<Screen> MakeWiiSettingsScreen(MenuServices& services, int argument)
+{
+    if (services.wiiSettings == nullptr)
+        return nullptr;
+
+    return std::make_unique<SettingsScreen>(services, argument);
 }
 
 SettingsScreen::SettingsScreen(MenuServices& menuServices, int argumentOfTheScreen)
@@ -138,7 +151,7 @@ SettingsFlow& SettingsScreen::Flow()
 
 bool SettingsScreen::RunMain()
 {
-    if (IsWaitingForKeyboard())
+    if (IsWaitingForAnswer())
         return false;
 
     std::optional<std::size_t> pointedBefore = pointedButton;
@@ -171,10 +184,17 @@ void SettingsScreen::RequestSoundsOfThePages()
     }
 }
 
-// A page that asks for text or digits gets the soft keyboard. While it is open the pages wait, and its answer goes to the page.
-// The parental dialog (screen 0x1b) is not in this menu yet, so a request for it stays open and the page stays where it is.
-bool SettingsScreen::IsWaitingForKeyboard()
+// A page that asks for text or digits gets the soft keyboard, a page that needs the PIN of the parental controls gets their dialog
+// (screen 0x1b, opened with the argument 1 as the original does, 0x813F20AC). While one of them is open the pages wait, and its
+// answer goes to the page. The dialog is a child of this screen, so this screen stands still until the dialog is gone.
+bool SettingsScreen::IsWaitingForAnswer()
 {
+    if (isParentalDialogOpen)
+    {
+        TakeAnswerOfParentalDialog();
+        return false;
+    }
+
     if (services.keyboard.IsOpen())
         return true;
 
@@ -190,19 +210,45 @@ bool SettingsScreen::IsWaitingForKeyboard()
     }
 
     const std::optional<InputRequest>& request = flow->PendingInput();
-    if (!request || request->kind == InputKind::ParentalPassword)
+    if (!request)
         return false;
 
+    if (request->kind == InputKind::ParentalPassword)
+        OpenParentalDialog();
+    else
+        OpenKeyboard(*request);
+
+    return true;
+}
+
+void SettingsScreen::OpenKeyboard(const InputRequest& request)
+{
     KeyboardRequest keyboardRequest;
-    keyboardRequest.title = request->title;
-    keyboardRequest.initialText = request->initialText;
-    keyboardRequest.rules.maximumLength = request->maximumLength;
-    if (request->kind == InputKind::Digits)
+    keyboardRequest.title = request.title;
+    keyboardRequest.initialText = request.initialText;
+    keyboardRequest.rules.maximumLength = request.maximumLength;
+    if (request.kind == InputKind::Digits)
         keyboardRequest.rules.allowedCharacters = IsDigit;
 
     keyboardRequest.playerIndex = pressingPlayer;
     services.keyboard.Open(keyboardRequest);
-    return true;
+}
+
+void SettingsScreen::OpenParentalDialog()
+{
+    services.parentalAnswer = ParentalAnswer::None;
+    services.screens.OpenChild(ScreenId::ParentalDialog, ScreenId::WiiSettings, ParentalDialogArgument);
+    isParentalDialogOpen = true;
+}
+
+// Only a right PIN lets the page go on; three wrong PINs and Quit leave the user where he was.
+void SettingsScreen::TakeAnswerOfParentalDialog()
+{
+    isParentalDialogOpen = false;
+    if (services.parentalAnswer == ParentalAnswer::PinCorrect)
+        flow->AnswerInput(u"");
+    else
+        flow->CancelInput();
 }
 
 // Every remote that points at the screen points at a button or at nothing. The highlight follows the first of them, and a press of A

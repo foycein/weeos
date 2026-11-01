@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace SystemMenu
 {
@@ -43,10 +44,18 @@ public:
     // The screen that was asked for last and that the factory could not make, so that the program can tell the user.
     std::optional<ScreenId> UnbuiltScreen() const;
 
+    // The front panel asks every screen in the tree before a reset or a power off (Screen::CanStopForFrontPanel).
+    bool CanEveryScreenStop();
+    void TellEveryScreenToStop();
+    bool HasEveryScreenStopped();
+
     // True while a screen that was asked for has been made and loaded, and is not in the tree yet.
     bool IsLoadingScreen() const;
 
 private:
+    // Every screen in the tree, a screen before the screens below it.
+    std::vector<Screen*> AllScreens();
+
     static constexpr std::size_t MaximumPendingRequests = 8;
 
     void Post(const ScreenRequest& request);

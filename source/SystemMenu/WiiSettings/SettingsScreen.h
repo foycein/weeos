@@ -13,6 +13,9 @@
 namespace SystemMenu
 {
 
+// Wii Settings for the screen factory. A menu that runs without the settings of the console (the tests of the other screens) has none.
+std::unique_ptr<Screen> MakeWiiSettingsScreen(MenuServices& services, int argument);
+
 // Wii Settings (screen 0x12). In the original it is a small web site shown by a browser. Here the pages are made by the SettingsFlow and drawn
 // with the pictures of the original's pages; this screen brings the pointer and the buttons of the remote to the flow, and the flow's pages to the picture.
 class SettingsScreen : public Screen
@@ -39,7 +42,10 @@ protected:
 private:
     static PageId FirstPageOf(int argument);
 
-    bool IsWaitingForKeyboard();
+    bool IsWaitingForAnswer();
+    void OpenKeyboard(const InputRequest& request);
+    void OpenParentalDialog();
+    void TakeAnswerOfParentalDialog();
     void RequestSoundsOfThePages();
     void HandlePlayers();
     void PressWithPlayer(int player, std::size_t button);
@@ -56,6 +62,8 @@ private:
 
     // The button that the pointer of the first remote that points at the screen is on.
     std::optional<std::size_t> pointedButton;
+
+    bool isParentalDialogOpen = false;
 
     // The player who pressed a button last: the soft keyboard follows that player's pointer.
     int pressingPlayer = 0;

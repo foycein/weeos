@@ -9,6 +9,7 @@
 // WeeOS.exe [nand folder [identity folder]]
 // The NAND folder is the one NandTool import makes. The identity folder holds the keys.txt, device.cert and seeprom.bin of the console.
 // Without arguments the folders are data/nand and data/identity beside the program.
+// The SD card is the folder sd beside the NAND folder. Ctrl+S puts it into the slot or takes it out.
 
 namespace
 {
@@ -20,6 +21,7 @@ Ios::IosFolders ChooseFolders(int argumentCount, char** arguments)
     Ios::IosFolders folders;
     folders.nandFolder = argumentCount > 1 ? std::filesystem::path(arguments[1]) : dataFolder / "nand";
     folders.identityFolder = argumentCount > 2 ? std::filesystem::path(arguments[2]) : dataFolder / "identity";
+    folders.sdCardFolder = folders.nandFolder.parent_path() / "sd";
     return folders;
 }
 

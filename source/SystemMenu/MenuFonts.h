@@ -28,6 +28,9 @@ public:
 
     const Layout::TextFonts& Fonts() const;
 
+    // Makes one more font available under the names that layouts use for it, like the font of the error screen.
+    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
+
 private:
     struct LoadedFont
     {
@@ -37,8 +40,6 @@ private:
 
         LoadedFont(Graphics::GraphicsDevice& device, Formats::Font loadedFont);
     };
-
-    void AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames);
 
     std::vector<std::unique_ptr<LoadedFont>> loadedFonts;
     Layout::TextFonts textFonts;
