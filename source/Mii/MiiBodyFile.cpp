@@ -1,5 +1,6 @@
 #include "Mii/MiiBodyFile.h"
 
+#include "Formats/BitFields.h"
 #include "Formats/ByteReader.h"
 #include "Formats/FormatError.h"
 #include "Formats/TextureDecoder.h"
@@ -74,6 +75,7 @@ constexpr std::size_t CornerNormalByte = 3;
 // Every corner of the shadow is two bytes: a position number and a texture coordinate number.
 constexpr std::uint32_t ShadowCornerDescriptor = 0x400;
 constexpr std::size_t ShadowCornerSize = 2;
+constexpr std::size_t ShadowCornerTextureCoordinateByte = 1;
 
 // The commands of a draw list.
 constexpr std::uint8_t NoOperation = 0x00;
@@ -103,7 +105,7 @@ constexpr int FirstFixedTranslationBit = 19;
 constexpr std::uint32_t UniformScaleFlag = 0x10;
 constexpr std::uint32_t UndoesParentScaleFlag = 0x400;
 constexpr int RotationFormatShift = 25;
-constexpr std::uint32_t RotationFormatMask = 3;
+constexpr int RotationFormatBitCount = 2;
 constexpr std::size_t AxisCount = 3;
 
 // A track: a count, then keys from 8 on. The keys come in three sizes.
@@ -205,6 +207,11 @@ public:
 private:
     Formats::ByteReader reader;
 };
+
+bool IsBitSet(std::uint32_t value, int bit)
+{
+    return Formats::ExtractBits(value, bit, 1) != 0;
+}
 
 struct GroupEntry
 {
@@ -320,6 +327,30 @@ void AddStrip(const std::vector<BodyCorner>& strip, std::vector<BodyCorner>& tri
     }
 }
 
+// The corners of one primitive. Every corner names its bone through a matrix slot that the list loaded before.
+std::vector<BodyCorner> ReadBodyCorners(FileView& file, std::size_t& position, const std::map<std::uint32_t, int>& matrixIdOfSlot)
+{
+    std::uint16_t cornerCount = file.Uint16(position);
+    position += sizeof(std::uint16_t);
+
+    std::vector<BodyCorner> corners;
+    for (std::uint16_t cornerNumber = 0; cornerNumber < cornerCount; ++cornerNumber)
+    {
+        std::uint32_t slot = file.Byte(position) / MatrixSlotStep;
+        auto loadedSlot = matrixIdOfSlot.find(slot);
+        if (loadedSlot == matrixIdOfSlot.end())
+            file.Fail("a corner uses a matrix slot that was never loaded");
+
+        BodyCorner corner;
+        corner.matrixId = loadedSlot->second;
+        corner.position = file.Byte(position + CornerPositionByte);
+        corner.normal = file.Byte(position + CornerNormalByte);
+        corners.push_back(corner);
+        position += BodyCornerSize;
+    }
+    return corners;
+}
+
 // Follows the draw list in order: matrix loads fill slots, and every corner names its bone through a slot.
 std::vector<BodyCorner> ReadDrawList(FileView& file, std::size_t listStart, std::size_t listSize)
 {
@@ -336,12 +367,16 @@ std::vector<BodyCorner> ReadDrawList(FileView& file, std::size_t listStart, std:
         if (command == NoOperation)
             continue;
 
-        if (command == LoadPositionMatrix || command == LoadNormalMatrix || command == LoadTextureMatrix)
+        bool isMatrixLoad = command == LoadPositionMatrix || command == LoadNormalMatrix || command == LoadTextureMatrix;
+        if (isMatrixLoad)
         {
             std::uint32_t word = file.Uint32(position);
             position += sizeof(std::uint32_t);
-            if (command == LoadPositionMatrix)
-                matrixIdOfSlot[(word & MatrixAddressMask) / MatrixAddressStep] = static_cast<int>(word >> MatrixIdShift);
+            if (command != LoadPositionMatrix)
+                continue;
+
+            std::uint32_t slot = (word & MatrixAddressMask) / MatrixAddressStep;
+            matrixIdOfSlot[slot] = static_cast<int>(word >> MatrixIdShift);
             continue;
         }
 
@@ -349,24 +384,7 @@ std::vector<BodyCorner> ReadDrawList(FileView& file, std::size_t listStart, std:
         if (primitive != TrianglesCommand && primitive != TriangleStripCommand)
             file.Fail(std::format("the draw list has the unknown command {:#x}", command));
 
-        std::uint16_t cornerCount = file.Uint16(position);
-        position += sizeof(std::uint16_t);
-
-        std::vector<BodyCorner> corners;
-        for (std::uint16_t cornerNumber = 0; cornerNumber < cornerCount; ++cornerNumber)
-        {
-            std::uint32_t slot = file.Byte(position) / MatrixSlotStep;
-            if (!matrixIdOfSlot.contains(slot))
-                file.Fail("a corner uses a matrix slot that was never loaded");
-
-            BodyCorner corner;
-            corner.matrixId = matrixIdOfSlot[slot];
-            corner.position = file.Byte(position + CornerPositionByte);
-            corner.normal = file.Byte(position + CornerNormalByte);
-            corners.push_back(corner);
-            position += BodyCornerSize;
-        }
-
+        std::vector<BodyCorner> corners = ReadBodyCorners(file, position, matrixIdOfSlot);
         if (primitive == TriangleStripCommand)
             AddStrip(corners, triangleCorners);
         else
@@ -405,7 +423,8 @@ void ReadShadowCorners(FileView& file, std::size_t modelOffset, std::size_t obje
     if (file.Uint32(object + ObjectDescriptorPosition) != ShadowCornerDescriptor)
         file.Fail("the shadow does not have the corners of a shadow");
 
-    std::vector<Formats::Vector2> coordinates = ReadTextureCoordinates(file, modelOffset, file.Int16(object + ObjectTextureCoordinateArrayPosition));
+    int coordinateArray = file.Int16(object + ObjectTextureCoordinateArrayPosition);
+    std::vector<Formats::Vector2> coordinates = ReadTextureCoordinates(file, modelOffset, coordinateArray);
     std::size_t position = object + ObjectListPosition + file.Int32(object + ObjectListOffsetPosition);
     std::size_t end = position + file.Uint32(object + ObjectListSizePosition);
     while (position < end)
@@ -422,7 +441,7 @@ void ReadShadowCorners(FileView& file, std::size_t modelOffset, std::size_t obje
         for (std::uint16_t cornerNumber = 0; cornerNumber < cornerCount; ++cornerNumber)
         {
             shadow.cornerPositions.push_back(positions.vectors.at(file.Byte(position)));
-            shadow.cornerTextureCoordinates.push_back(coordinates.at(file.Byte(position + 1)));
+            shadow.cornerTextureCoordinates.push_back(coordinates.at(file.Byte(position + ShadowCornerTextureCoordinateByte)));
             position += ShadowCornerSize;
         }
     }
@@ -559,7 +578,7 @@ AnimationTracks ReadNodeTracks(FileView& file, std::size_t node, std::size_t& po
     AnimationTracks tracks;
     for (std::size_t axis = 0; axis < count; ++axis)
     {
-        bool isFixed = (code & (1u << (firstFixedBit + axis))) != 0;
+        bool isFixed = IsBitSet(code, firstFixedBit + static_cast<int>(axis));
         if (isFixed)
             tracks[axis].fixedValue = file.Float(position);
         else
@@ -587,19 +606,19 @@ BodyAnimation ReadAnimation(FileView& file, std::size_t animationOffset)
         BoneAnimation bone;
         bone.undoesParentScale = (code & UndoesParentScaleFlag) != 0;
 
-        if ((code & (1u << HasScaleBit)) != 0)
+        if (IsBitSet(code, HasScaleBit))
         {
             std::size_t count = AxisCount;
             if ((code & UniformScaleFlag) != 0)
                 count = 1;
             bone.scale = ReadNodeTracks(file, node, position, code, FirstFixedScaleBit, count, FloatKeys);
         }
-        if ((code & (1u << HasRotationBit)) != 0)
+        if (IsBitSet(code, HasRotationBit))
         {
-            std::uint32_t keyFormat = (code >> RotationFormatShift) & RotationFormatMask;
+            std::uint32_t keyFormat = Formats::ExtractBits(code, RotationFormatShift, RotationFormatBitCount);
             bone.rotation = ReadNodeTracks(file, node, position, code, FirstFixedRotationBit, AxisCount, keyFormat);
         }
-        if ((code & (1u << HasTranslationBit)) != 0)
+        if (IsBitSet(code, HasTranslationBit))
             bone.translation = ReadNodeTracks(file, node, position, code, FirstFixedTranslationBit, AxisCount, FloatKeys);
 
         animation.bones[entry.name] = bone;

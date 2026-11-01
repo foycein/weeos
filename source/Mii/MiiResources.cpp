@@ -283,9 +283,9 @@ MiiShape MiiResources::ReadShape(ShapePart part, int entry) const
         int textureCoordinateCount = reader.ReadUint16();
         for (int coordinateNumber = 0; coordinateNumber < textureCoordinateCount; ++coordinateNumber)
         {
-            float s = reader.ReadInt16() / TextureCoordinateUnit;
-            float t = reader.ReadInt16() / TextureCoordinateUnit;
-            shape.textureCoordinates.push_back({s, t});
+            float horizontal = reader.ReadInt16() / TextureCoordinateUnit;
+            float vertical = reader.ReadInt16() / TextureCoordinateUnit;
+            shape.textureCoordinates.push_back({horizontal, vertical});
         }
     }
 

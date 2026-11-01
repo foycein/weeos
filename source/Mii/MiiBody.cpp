@@ -70,7 +70,9 @@ BoneTransform PosedTransform(const MiiBodyFile& file, const BodyBone& bone, Body
 
     if (bone.name == PositionBone)
     {
-        transform.translation.y += LiftPerLength * (size.length - 1) + LiftPerThickness * (size.thickness - 1);
+        float lengthLift = LiftPerLength * (size.length - 1);
+        float thicknessLift = LiftPerThickness * (size.thickness - 1);
+        transform.translation.y += lengthLift + thicknessLift;
         transform.rotationDegrees.y += stance.facingDegrees;
     }
 
@@ -150,6 +152,15 @@ Formats::Vector3 Cross(Formats::Vector3 first, Formats::Vector3 second)
     return {first.y * second.z - first.z * second.y, first.z * second.x - first.x * second.z, first.x * second.y - first.y * second.x};
 }
 
+Graphics::TextureHandle UploadPicture(Graphics::GraphicsDevice& device, const Formats::RgbaImage& picture)
+{
+    Graphics::TextureDescription description;
+    description.width = picture.width;
+    description.height = picture.height;
+    description.pixels = picture.pixels;
+    return device.CreateTexture(description);
+}
+
 // The shadow's normals point up; nothing reads them, as the shadow has no light.
 std::vector<Graphics::MeshVertex> ShadowCorners(const BodyShadow& shadow)
 {
@@ -174,7 +185,8 @@ BodySize SizeOf(const MiiRecord& record)
 
     BodySize size;
     size.length = SmallestLength + LengthPerHeight * height;
-    size.thickness = SmallestThickness + ThicknessPerHeight * height + weight * (ThicknessPerWeight + ThicknessPerWeightAndHeight * height);
+    float thicknessFromWeight = weight * (ThicknessPerWeight + ThicknessPerWeightAndHeight * height);
+    size.thickness = SmallestThickness + ThicknessPerHeight * height + thicknessFromWeight;
     return size;
 }
 
@@ -257,20 +269,8 @@ MiiBodyModels::MiiBodyModels(Graphics::GraphicsDevice& graphicsDevice, const Mii
     , male(MakeModel(bodyFiles.male))
     , female(MakeModel(bodyFiles.female))
 {
-    const Formats::RgbaImage& sphere = bodyFiles.male.environmentTexture;
-
-    Graphics::TextureDescription description;
-    description.width = sphere.width;
-    description.height = sphere.height;
-    description.pixels = sphere.pixels;
-    environmentTexture = device.CreateTexture(description);
-
-    const Formats::RgbaImage& shadowPicture = bodyFiles.male.shadow.picture;
-    Graphics::TextureDescription shadowDescription;
-    shadowDescription.width = shadowPicture.width;
-    shadowDescription.height = shadowPicture.height;
-    shadowDescription.pixels = shadowPicture.pixels;
-    shadowTexture = device.CreateTexture(shadowDescription);
+    environmentTexture = UploadPicture(device, bodyFiles.male.environmentTexture);
+    shadowTexture = UploadPicture(device, bodyFiles.male.shadow.picture);
 }
 
 MiiBodyModels::~MiiBodyModels()

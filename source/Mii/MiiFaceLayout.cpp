@@ -101,12 +101,12 @@ FaceFeatureQuad MakeQuad(const QuadPlacement& placement, float unit)
     float top = -0.5f;
     float bottom = 0.5f;
 
-    float leftS = 0.0f;
-    float rightS = 1.0f;
+    float leftTextureX = 0.0f;
+    float rightTextureX = 1.0f;
     if (placement.anchor == Anchor::RightOfPointMirrored)
     {
-        leftS = 1.0f;
-        rightS = 0.0f;
+        leftTextureX = 1.0f;
+        rightTextureX = 0.0f;
     }
 
     FaceFeatureQuad quad;
@@ -117,7 +117,7 @@ FaceFeatureQuad MakeQuad(const QuadPlacement& placement, float unit)
         PlaceCorner(placement, {right, bottom}, unit),
         PlaceCorner(placement, {left, bottom}, unit),
     };
-    quad.textureCoordinates = {{{leftS, 0.0f}, {rightS, 0.0f}, {rightS, 1.0f}, {leftS, 1.0f}}};
+    quad.textureCoordinates = {{{leftTextureX, 0.0f}, {rightTextureX, 0.0f}, {rightTextureX, 1.0f}, {leftTextureX, 1.0f}}};
     return quad;
 }
 
@@ -131,11 +131,13 @@ std::vector<FaceFeatureQuad> LayOutFace(const MiiRecord& record, float textureSi
     float eyeX = HorizontalStep * static_cast<float>(eyes.spacing);
     float eyeY = EyeMiddle + VerticalStep * static_cast<float>(eyes.vertical);
     float eyeAngle = AngleOf(eyes.rotation, EyeRotationOffset[eyes.type]);
+    float eyeGrowth = Grow(eyes.size);
 
     const MiiEyebrows& eyebrows = record.eyebrows;
     float eyebrowX = HorizontalStep * static_cast<float>(eyebrows.spacing);
     float eyebrowY = EyebrowMiddle + VerticalStep * static_cast<float>(eyebrows.vertical);
     float eyebrowAngle = AngleOf(eyebrows.rotation, EyebrowRotationOffset[eyebrows.type]);
+    float eyebrowGrowth = Grow(eyebrows.size);
 
     float mouthY = MouthMiddle + VerticalStep * static_cast<float>(record.mouth.vertical);
     float mouthGrowth = Grow(record.mouth.size);
@@ -153,12 +155,12 @@ std::vector<FaceFeatureQuad> LayOutFace(const MiiRecord& record, float textureSi
         {FaceFeature::Mustache, FaceMiddle, mustacheY, MustacheWidth * mustacheGrowth, MustacheHeight * mustacheGrowth, 0,
             Anchor::RightOfPointMirrored},
         {FaceFeature::Mouth, FaceMiddle, mouthY, MouthWidth * mouthGrowth, MouthHeight * mouthGrowth, 0, Anchor::Centered},
-        {FaceFeature::Eyebrow, FaceMiddle - eyebrowX, eyebrowY, EyebrowWidth * Grow(eyebrows.size), EyebrowHeight * Grow(eyebrows.size),
-            eyebrowAngle, Anchor::LeftOfPoint},
-        {FaceFeature::Eyebrow, FaceMiddle + eyebrowX, eyebrowY, EyebrowWidth * Grow(eyebrows.size), EyebrowHeight * Grow(eyebrows.size),
+        {FaceFeature::Eyebrow, FaceMiddle - eyebrowX, eyebrowY, EyebrowWidth * eyebrowGrowth, EyebrowHeight * eyebrowGrowth, eyebrowAngle,
+            Anchor::LeftOfPoint},
+        {FaceFeature::Eyebrow, FaceMiddle + eyebrowX, eyebrowY, EyebrowWidth * eyebrowGrowth, EyebrowHeight * eyebrowGrowth,
             FullTurnDegrees - eyebrowAngle, Anchor::RightOfPointMirrored},
-        {FaceFeature::Eye, FaceMiddle - eyeX, eyeY, EyeWidth * Grow(eyes.size), EyeHeight * Grow(eyes.size), eyeAngle, Anchor::LeftOfPoint},
-        {FaceFeature::Eye, FaceMiddle + eyeX, eyeY, EyeWidth * Grow(eyes.size), EyeHeight * Grow(eyes.size), FullTurnDegrees - eyeAngle,
+        {FaceFeature::Eye, FaceMiddle - eyeX, eyeY, EyeWidth * eyeGrowth, EyeHeight * eyeGrowth, eyeAngle, Anchor::LeftOfPoint},
+        {FaceFeature::Eye, FaceMiddle + eyeX, eyeY, EyeWidth * eyeGrowth, EyeHeight * eyeGrowth, FullTurnDegrees - eyeAngle,
             Anchor::RightOfPointMirrored},
         {FaceFeature::Mole, moleX, moleY, moleGrowth, moleGrowth, 0, Anchor::Centered},
     };

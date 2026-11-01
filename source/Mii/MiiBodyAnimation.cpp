@@ -13,16 +13,18 @@ float HermiteValue(const AnimationKey& start, const AnimationKey& end, float fra
     if (span <= 0)
         return end.value;
 
-    float t = (frame - start.frame) / span;
-    float tSquared = t * t;
-    float tCubed = tSquared * t;
+    float progress = (frame - start.frame) / span;
+    float progressSquared = progress * progress;
+    float progressCubed = progressSquared * progress;
 
-    float startWeight = 2 * tCubed - 3 * tSquared + 1;
-    float endWeight = -2 * tCubed + 3 * tSquared;
-    float startSlopeWeight = tCubed - 2 * tSquared + t;
-    float endSlopeWeight = tCubed - tSquared;
+    float startWeight = 2 * progressCubed - 3 * progressSquared + 1;
+    float endWeight = -2 * progressCubed + 3 * progressSquared;
+    float startSlopeWeight = progressCubed - 2 * progressSquared + progress;
+    float endSlopeWeight = progressCubed - progressSquared;
 
-    return startWeight * start.value + endWeight * end.value + (startSlopeWeight * start.slope + endSlopeWeight * end.slope) * span;
+    float valuePart = startWeight * start.value + endWeight * end.value;
+    float slopePart = (startSlopeWeight * start.slope + endSlopeWeight * end.slope) * span;
+    return valuePart + slopePart;
 }
 
 Formats::Vector3 TracksValueAt(const AnimationTracks& tracks, float frame)

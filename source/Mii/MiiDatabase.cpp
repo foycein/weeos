@@ -226,11 +226,7 @@ void MiiDatabase::AddHiddenMii(MiiRecord record)
         RemoveHiddenEntry(*freeEntry);
     }
 
-    std::array<Formats::Byte, MiiRecordSize> recordBytes = {};
-    WriteMiiRecord(record, recordBytes);
-    std::size_t recordOffset = FirstHiddenMiiOffset + *freeEntry * HiddenMiiSize;
-    std::fill_n(bytes.begin() + recordOffset, HiddenMiiSize, Formats::Byte(0));
-    std::copy_n(recordBytes.begin(), HiddenMiiRecordPart, bytes.begin() + recordOffset);
+    WriteHiddenMii(*freeEntry, record);
 
     std::uint16_t newest = NewestHiddenEntry();
     bool isListEmpty = newest == NoListEnd;
@@ -360,6 +356,16 @@ MiiRecord MiiDatabase::ReadHiddenMii(std::uint16_t entryNumber) const
     std::size_t offset = FirstHiddenMiiOffset + entryNumber * HiddenMiiSize;
     std::copy_n(bytes.begin() + offset, HiddenMiiRecordPart, recordBytes.begin());
     return ReadMiiRecord(recordBytes);
+}
+
+void MiiDatabase::WriteHiddenMii(std::uint16_t entryNumber, const MiiRecord& record)
+{
+    std::array<Formats::Byte, MiiRecordSize> recordBytes = {};
+    WriteMiiRecord(record, recordBytes);
+
+    std::size_t offset = FirstHiddenMiiOffset + entryNumber * HiddenMiiSize;
+    std::fill_n(bytes.begin() + offset, HiddenMiiSize, Formats::Byte(0));
+    std::copy_n(recordBytes.begin(), HiddenMiiRecordPart, bytes.begin() + offset);
 }
 
 std::vector<std::uint16_t> MiiDatabase::HiddenEntriesInOrder() const
