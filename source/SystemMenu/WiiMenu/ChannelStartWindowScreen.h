@@ -6,6 +6,7 @@
 #include "SystemMenu/Screen.h"
 #include "SystemMenu/WiiMenu/ChannelLaunch.h"
 #include "SystemMenu/WiiMenu/ChannelManager.h"
+#include "SystemMenu/WiiMenu/FramePlayer.h"
 #include "SystemMenu/ZoomedWindow.h"
 
 #include "Formats/BannerContent.h"
@@ -103,6 +104,8 @@ private:
     void BuildTheBanner();
     void BuildTheChannelBanner();
     void BuildTheDiscBanner();
+    void BuildTheBannerScript(const std::string& animationName);
+    void StartTheBannerScript();
     void StartTheBanner();
 
     void RunShowingChannel();
@@ -169,9 +172,10 @@ private:
     std::size_t wordsOfStartIn = 0;
     bool areWordsOfStartChanging = false;
 
-    // The banner plays its start once and then its loop, from the moment it is started.
+    // The banner plays its start once and then its loop, or the first animation of its script, from the moment it is started.
     std::optional<std::size_t> bannerStart;
     std::optional<std::size_t> bannerLoop;
+    std::unique_ptr<FramePlayer> bannerScript;
     bool hasBannerStarted = false;
     bool isBannerLooping = false;
 

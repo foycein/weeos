@@ -11,8 +11,10 @@ target_sources(SystemMenu PRIVATE
     ClockDisplay.cpp
     ClockFace.cpp
     FramePlayer.cpp
+    IconScripts.cpp
     IosMenuConsole.cpp
     LayoutParts.cpp
     MainFrameScreen.cpp
     SaveData.cpp
+    SdCardButton.cpp
 )

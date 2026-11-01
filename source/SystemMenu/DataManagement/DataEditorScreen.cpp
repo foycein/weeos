@@ -64,8 +64,6 @@ constexpr std::uint16_t UnusableCardMessage = 0x38;
 
 constexpr std::string_view PushSound = "WIPL_SE_BT_PUSH";
 constexpr std::string_view PageSound = "WSD_SELECT";
-constexpr std::string_view CopyingSound = "WIPL_SE_COPYING";
-constexpr std::string_view CopyFinishedSound = "WIPL_SE_COPY_FINISH";
 
 // The buttons of the list and of the window, in the order of their numbers in the button groups.
 constexpr std::size_t WiiButton = 0;
@@ -681,6 +679,7 @@ void DataEditorScreen::PressAction(DataAction action)
     request.message = services.messages.Find(QuestionMessage(place, action));
     request.buttonAText = services.messages.Find(YesMessage);
     request.buttonBText = services.messages.Find(NoMessage);
+    request.cancelButton = DialogAnswer::ButtonB;
     services.dialogs.Open(request);
     phase = Phase::Asking;
 }
@@ -704,7 +703,6 @@ void DataEditorScreen::StartWork()
     request.message = services.messages.Find(ProgressMessage(place, *chosenAction));
     request.showsWaitIcon = true;
     services.dialogs.Open(request);
-    services.sounds.Request(CopyingSound);
 
     work = std::async(std::launch::async, RunDataAction, std::ref(*services.dataManagement), kind, place, *chosenAction, items[*openItem]);
     phase = Phase::Working;
@@ -725,7 +723,6 @@ void DataEditorScreen::FinishWork()
     services.dialogs.TakeAnswer();
 
     DataOutcome outcome = work.get();
-    services.sounds.Request(CopyFinishedSound);
     ShowMessage(OutcomeMessage(kind, place, *chosenAction, outcome));
 }
 

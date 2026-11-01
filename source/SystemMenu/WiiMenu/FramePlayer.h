@@ -31,6 +31,12 @@ public:
     // The same, but after the last frame the first one comes again.
     void Loop(float firstFrame, float lastFrame);
 
+    // A loop that starts at a frame between the first and the last one.
+    void LoopFrom(float firstFrame, float lastFrame, float startFrame);
+
+    // Shows the last frame at once and moves one frame back in every Step, down to the first frame, which stays.
+    void PlayBackwards(float firstFrame, float lastFrame);
+
     // Shows one frame and stops.
     void Show(float frame);
 
@@ -43,7 +49,8 @@ public:
     void Step();
 
 private:
-    void Start(float firstFrame, float lastFrame, bool shouldLoop);
+    void Start(float firstFrame, float lastFrame, float startFrame, bool shouldLoop);
+    void StepBackwards();
     void ShowCurrentFrame();
 
     MenuLayout& layout;
@@ -54,6 +61,7 @@ private:
     float last = 0;
     float frame = 0;
     bool isLooping = false;
+    bool isBackwards = false;
     bool isPlaying = false;
 };
 

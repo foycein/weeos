@@ -13,6 +13,7 @@
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/ChannelGridScreen.h"
 #include "SystemMenu/WiiMenu/ChannelTile.h"
+#include "SystemMenu/WiiMenu/ChannelTitleIds.h"
 #include "SystemMenu/WiiMenu/LayoutParts.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
@@ -105,6 +106,11 @@ constexpr std::string_view BannerFilePath = "meta/banner.bin";
 constexpr std::string_view SoundFilePath = "meta/sound.bin";
 constexpr std::string_view DiscStartAnimation = "my_DiskCh_a_Start";
 constexpr std::string_view NoDiscSound = "WIPL_ME_NO_DISC_BANNER";
+
+// The scripts of two banners (docs/research/Channels.md 1.6): the News Channel without save data shows the text textT0, the Photo
+// Channel loops its first animation from this frame.
+constexpr std::string_view NewsTextWithoutSaveData = "textT0";
+constexpr float FirstFrameOfThePhotoBannerLoop = 40;
 
 constexpr std::string_view FocusSound = "WIPL_SE_BT_TARGETTING";
 constexpr std::string_view PushSound = "WIPL_SE_BT_PUSH";
@@ -302,6 +308,7 @@ void ChannelStartWindowScreen::BuildTheBanner()
     isBannerLooping = false;
     bannerStart.reset();
     bannerLoop.reset();
+    bannerScript.reset();
 
     if (isDiscChannel)
         BuildTheDiscBanner();
@@ -309,23 +316,45 @@ void ChannelStartWindowScreen::BuildTheBanner()
         BuildTheChannelBanner();
 }
 
-// A banner without a script plays banner_Start once and then banner_Loop, or banner over and over. A banner that a script or a module
-// drives shows its English panes and what the script shows while the channel has no data of its own: its start, or its first animation
-// on the group Rso0 (docs/research/Channels.md 1.6, the same choice as for the icons, SYS-85).
+// Every banner shows its English panes (0x813B63EC calls 0x813B24C0). A banner without a script plays banner_Start once and then
+// banner_Loop, or banner over and over. A banner that a script or a module drives shows what the script shows while the channel has
+// no data of its own: its start, or its first animation on the group Rso0 (docs/research/Channels.md 1.6, SYS-92).
 void ChannelStartWindowScreen::BuildTheChannelBanner()
 {
     bannerLayout = std::make_unique<MenuLayout>(services.display, *bannerArchive, std::string(BannerLayout));
     const BannerAnimations& animations = bannerAnimations;
-    if (banner->isBannerDrivenByCode)
-        ShowOnlyTheEnglishPanes(*bannerLayout, *bannerArchive, std::string(BannerLayout));
+    ShowOnlyTheEnglishPanes(bannerLayout->Live(), bannerArchive->ReadLayout(std::string(BannerLayout)));
 
     if (animations.start)
         bannerStart = bannerLayout->BindAnimationToPane(*animations.start, RootPaneName, Layout::PlaybackMode::PlayOnce);
 
     if (animations.loop && animations.loopsOnTheScriptGroup)
-        bannerLoop = bannerLayout->BindAnimation(*animations.loop, ScriptGroupOfBanners, Layout::PlaybackMode::Loop);
+        BuildTheBannerScript(*animations.loop);
     else if (animations.loop)
         bannerLoop = bannerLayout->BindAnimationToPane(*animations.loop, RootPaneName, Layout::PlaybackMode::Loop);
+}
+
+// The News Channel's script shows the text for a channel without save data (docs/research/Channels.md 1.6).
+void ChannelStartWindowScreen::BuildTheBannerScript(const std::string& animationName)
+{
+    std::vector<Formats::Pane*> panes = bannerLayout->Live().PanesOfGroup(ScriptGroupOfBanners);
+    bannerScript = std::make_unique<FramePlayer>(*bannerLayout, *bannerArchive, animationName, panes);
+    if (IsInFamily(titleId, SystemChannelKind, NewsChannelFamily))
+        bannerLayout->PaneNamed(NewsTextWithoutSaveData).isVisible = true;
+}
+
+// What the script of a banner does with its first animation while the channel has no data of its own (Channels.md 1.6): the Photo
+// Channel plays it and loops it from frame 40, the News Channel plays it once and holds its last frame, the module of the Forecast
+// Channel, which is not decoded, loops it.
+void ChannelStartWindowScreen::StartTheBannerScript()
+{
+    float lastFrame = bannerScript->LastFrameOfTheFile();
+    if (IsInFamily(titleId, SystemChannelKind, PhotoChannel11Family))
+        bannerScript->LoopFrom(FirstFrameOfThePhotoBannerLoop, lastFrame + 1, 0);
+    else if (IsInFamily(titleId, SystemChannelKind, NewsChannelFamily))
+        bannerScript->PlayOnce(0, lastFrame);
+    else
+        bannerScript->Loop(0, lastFrame + 1);
 }
 
 void ChannelStartWindowScreen::BuildTheDiscBanner()
@@ -342,13 +371,20 @@ void ChannelStartWindowScreen::BeforeStep()
 {
     frame->Calculate();
     bannerLayout->Calculate();
+    if (bannerScript)
+        bannerScript->Step();
 
     bool hasStartEnded = !bannerStart || !bannerLayout->IsAnimationPlaying(*bannerStart);
-    if (hasBannerStarted && hasStartEnded && bannerLoop && !isBannerLooping)
-    {
+    if (!hasBannerStarted || !hasStartEnded || isBannerLooping)
+        return;
+
+    if (bannerLoop)
         bannerLayout->StartAnimation(*bannerLoop);
-        isBannerLooping = true;
-    }
+
+    if (bannerScript)
+        StartTheBannerScript();
+
+    isBannerLooping = true;
 }
 
 // The original waits until the grid has zoomed in and the window has faded in inside the television (state 3).

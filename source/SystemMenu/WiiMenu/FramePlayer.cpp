@@ -20,12 +20,23 @@ FramePlayer::FramePlayer(MenuLayout& layoutToAnimate, const Layout::LayoutArchiv
 
 void FramePlayer::PlayOnce(float firstFrame, float lastFrame)
 {
-    Start(firstFrame, lastFrame, false);
+    Start(firstFrame, lastFrame, firstFrame, false);
 }
 
 void FramePlayer::Loop(float firstFrame, float lastFrame)
 {
-    Start(firstFrame, lastFrame, true);
+    Start(firstFrame, lastFrame, firstFrame, true);
+}
+
+void FramePlayer::LoopFrom(float firstFrame, float lastFrame, float startFrame)
+{
+    Start(firstFrame, lastFrame, startFrame, true);
+}
+
+void FramePlayer::PlayBackwards(float firstFrame, float lastFrame)
+{
+    Start(firstFrame, lastFrame, lastFrame, false);
+    isBackwards = true;
 }
 
 void FramePlayer::Show(float frameToShow)
@@ -55,23 +66,48 @@ void FramePlayer::Step()
     if (!isPlaying)
         return;
 
+    if (isBackwards)
+    {
+        StepBackwards();
+        return;
+    }
+
     frame += 1;
     if (frame >= last && isLooping)
+    {
         frame = first + (frame - last);
-    else if (frame >= last)
+        ShowCurrentFrame();
+        return;
+    }
+
+    if (frame >= last)
+    {
         isPlaying = false;
-
-    if (frame > last)
         frame = last;
+        ShowCurrentFrame();
+        return;
+    }
 
+    player->Advance(1);
+}
+
+void FramePlayer::StepBackwards()
+{
+    frame -= 1;
+    if (frame <= first)
+    {
+        frame = first;
+        isPlaying = false;
+    }
     ShowCurrentFrame();
 }
 
-void FramePlayer::Start(float firstFrame, float lastFrame, bool shouldLoop)
+void FramePlayer::Start(float firstFrame, float lastFrame, float startFrame, bool shouldLoop)
 {
+    isBackwards = false;
     first = firstFrame;
     last = lastFrame;
-    frame = firstFrame;
+    frame = startFrame;
     isLooping = shouldLoop;
     isPlaying = firstFrame < lastFrame;
     ShowCurrentFrame();

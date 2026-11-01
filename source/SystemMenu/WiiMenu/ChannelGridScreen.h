@@ -47,8 +47,8 @@ enum class GridState
     // The window closes, and the grid zooms out of the television.
     ZoomingOutOfChannel,
 
-    // The Wii button was pressed: the picture fades out, then the menu goes to Wii Options.
-    LeavingForWiiOptions,
+    // The Wii button or the SD card button was pressed: the picture fades out, then the menu goes to Wii Options or to the SD Card Menu.
+    LeavingTheWiiMenu,
 };
 
 // The channel grid of the Wii Menu (screen 0x02, docs/research/SystemMenuStructure.md 4.3): four pages of twelve televisions on a
@@ -123,6 +123,7 @@ private:
     bool HandlePageButtons();
     bool HandlePressOfPlayer(int playerIndex, Formats::Vector2 place);
     void HandleBarButton(BarButton button);
+    void LeaveFor(ScreenId nextScreen);
 
     void TurnToPreviousPage();
     void TurnToNextPage();
@@ -135,6 +136,7 @@ private:
     std::optional<int> SlotIndexAt(Formats::Vector2 place);
     std::optional<Formats::Vector2> PointerPlaceOf(int playerIndex) const;
     BottomBarScreen* Bar();
+    void SetBarButtonsEnabled(bool shouldBeEnabled);
     ChannelTile& Tile(SlotPosition position);
     void DrawTiles(const PlacedPanes& placedPanes);
     PictureArea AreaOfTheTelevisionAt(Formats::Vector2 place) const;
@@ -155,6 +157,7 @@ private:
     std::unique_ptr<TelevisionZoom> zoom;
 
     GridState state = GridState::Idle;
+    ScreenId screenAfterLeaving = ScreenId::WiiOptionsBackground;
     GridState stateAfterTurning = GridState::Idle;
     int holdingPlayer = 0;
     SlotPosition heldChannel;
