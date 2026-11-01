@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Sound/WaveDecoder.h"
+
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 namespace Sound
 {
@@ -12,6 +15,7 @@ enum class SoundCommandKind : std::uint8_t
 {
     Play,
     PlayIfNotPlaying,
+    PlayWave,
     Stop,
     StopAll,
     ChangeVolume,
@@ -29,8 +33,11 @@ struct SoundCommand
     // The number of the sound in the archive. Used by Play and PlayIfNotPlaying.
     std::size_t soundNumber;
 
-    // The new volume of ChangeVolume.
+    // The new volume of ChangeVolume, and the volume of PlayWave.
     float volume = 1.0f;
+
+    // The wave that PlayWave plays.
+    std::shared_ptr<const DecodedWave> wave;
 
     // How many sound frames a stop, a change of the volume, a pause or a resume takes. 0 is at once.
     int fadeFrames = 0;

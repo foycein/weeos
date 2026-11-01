@@ -17,6 +17,11 @@ constexpr std::string_view ButtonPushed = "WIPL_SE_BT_PUSH";
 constexpr std::string_view Decide = "WIPL_SE_DECIDE";
 constexpr std::string_view Cancel = "WIPL_SE_CANCEL";
 
+// A window with a message opens; the menu is busy (it goes on until another sound of its player takes its place); the work is done.
+constexpr std::string_view InfoWindow = "WIPL_SE_INFO_WINDOW";
+constexpr std::string_view Busy = "WIPL_SE_COPYING";
+constexpr std::string_view BusyFinished = "WIPL_SE_COPY_FINISH";
+
 // The music of the menu, the one long sound of the archive. It goes on until it is stopped.
 constexpr std::string_view Music = "WIPL_BGM_MENU";
 

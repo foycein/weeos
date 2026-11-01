@@ -53,6 +53,10 @@ public:
     // The same, but the sound is dropped when a sound with the same number is still playing at that time.
     SoundHandle PlayIfNotPlaying(std::size_t soundNumber);
 
+    // Plays a wave that is not in the archive, for example the sound of a channel's banner, in the middle at the volume given, to its
+    // end or, when it loops, until it is stopped. It plays outside the players of the archive.
+    SoundHandle PlayWave(std::shared_ptr<const DecodedWave> wave, float volume);
+
     // Lets the sound fade out as its envelope says. With a fade time, the sound first falls to silence in that time.
     // Nothing happens when the sound has ended.
     void Stop(SoundHandle handle, double fadeSeconds = 0.0);
@@ -105,6 +109,8 @@ private:
     struct RunningSound
     {
         SoundHandle handle;
+
+        // FreeWaveNumber for a wave that PlayWave plays.
         std::size_t soundNumber;
         std::uint64_t startNumber;
         VoiceHandle voice;
@@ -137,6 +143,7 @@ private:
     void UpdateFades(RunningSound& sound);
     void StartSound(const SoundCommand& command);
     void StartWaveSound(const SoundCommand& command, const SoundInfo& info);
+    void StartFreeWave(const SoundCommand& command);
     void StartSequenceSound(const SoundCommand& command, const SoundInfo& info);
     bool HasEnded(const RunningSound& sound);
     bool MakeRoomInPlayer(const SoundInfo& info);

@@ -6,6 +6,7 @@
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/NandFiles.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 
 #include <array>
 
@@ -121,6 +122,7 @@ bool LimitOverScreen::IsReady()
 
     if (!hasFadeInStarted)
     {
+        services.sounds.Request(SoundName::InfoWindow);
         layout->StartAnimation(fadeInSlot);
         layout->Calculate();
         services.fader.SetClear();
@@ -150,7 +152,10 @@ bool LimitOverScreen::RunMain()
 {
     bool isDone = continueWatcher.HasUserConfirmed();
     if (isDone)
+    {
+        services.sounds.Request(SoundName::ButtonPushed);
         layout->StartAnimation(fadeOutSlot);
+    }
 
     layout->Calculate();
     return isDone;

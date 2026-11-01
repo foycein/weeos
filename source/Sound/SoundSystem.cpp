@@ -49,6 +49,14 @@ float MasterVolumeAt(std::size_t samplesDone, std::size_t sampleCount, float sta
     return startVolume + (endVolume - startVolume) * fractionDone;
 }
 
+// A wave of PlayWave is no sound of the archive, so it has no number of one.
+constexpr std::size_t FreeWaveNumber = static_cast<std::size_t>(-1);
+
+// A wave of PlayWave starts at full loudness at once and ends at once when it is let go, and it is as important as the most important
+// sound of the menu, so that it keeps its voice.
+constexpr std::uint8_t ImmediateEnvelopeNumber = 127;
+constexpr int FreeWavePriority = 127;
+
 int SoundFramesOf(double seconds)
 {
     double frames = seconds * double(MillisecondsPerSecond) / double(SoundFrameMilliseconds);
@@ -120,6 +128,21 @@ SoundHandle SoundSystem::PlayIfNotPlaying(std::size_t soundNumber)
 
     SoundHandle handle{++lastHandleNumber};
     if (!commands.Push({SoundCommandKind::PlayIfNotPlaying, handle.number, soundNumber}))
+        return SoundHandle{};
+
+    return handle;
+}
+
+SoundHandle SoundSystem::PlayWave(std::shared_ptr<const DecodedWave> wave, float volume)
+{
+    if (!wave || wave->channels.empty() || wave->channels.size() > Voice::MaximumChannelCount)
+        return SoundHandle{};
+
+    SoundHandle handle{++lastHandleNumber};
+    SoundCommand command{SoundCommandKind::PlayWave, handle.number, FreeWaveNumber};
+    command.volume = volume;
+    command.wave = std::move(wave);
+    if (!commands.Push(command))
         return SoundHandle{};
 
     return handle;
@@ -215,6 +238,10 @@ void SoundSystem::CarryOut(const SoundCommand& command)
     case SoundCommandKind::PlayIfNotPlaying:
         if (!IsPlaying(command.soundNumber))
             StartSound(command);
+        return;
+
+    case SoundCommandKind::PlayWave:
+        StartFreeWave(command);
         return;
 
     case SoundCommandKind::Stop:
@@ -411,6 +438,22 @@ std::uint8_t SoundSystem::PlayerPriorityOf(const RunningSound& sound) const
     return archive.sounds[sound.soundNumber].playerPriority;
 }
 
+void SoundSystem::StartFreeWave(const SoundCommand& command)
+{
+    VoiceSettings settings;
+    settings.volume = command.volume;
+
+    Envelope envelope(ImmediateEnvelopeNumber, ImmediateEnvelopeNumber, ImmediateEnvelopeNumber, ImmediateEnvelopeNumber);
+    std::optional<VoiceHandle> voice = voices.Start(command.wave, envelope, FreeWavePriority, settings);
+    if (!voice)
+        return;
+
+    RunningSound running{SoundHandle{command.handleNumber}, FreeWaveNumber, soundsStarted, *voice, nullptr};
+    ++soundsStarted;
+    running.waveSettings = settings;
+    runningSounds.push_back(std::move(running));
+}
+
 // A player plays only so many of its sounds at once. When it is full, the sound with the lowest priority (the oldest of
 // those) makes room, unless it is more important than the new sound.
 bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
@@ -420,6 +463,9 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
 
     for (RunningSound& sound : runningSounds)
     {
+        if (sound.soundNumber == FreeWaveNumber)
+            continue;
+
         const SoundInfo& runningInfo = archive.sounds[sound.soundNumber];
         if (runningInfo.playerNumber != info.playerNumber)
             continue;
