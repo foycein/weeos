@@ -6,6 +6,7 @@
 #include "Layout/LayoutDrawer.h"
 
 #include <format>
+#include <set>
 
 namespace SystemMenu
 {
@@ -31,6 +32,50 @@ constexpr std::array<std::string_view, 22> SoundNames = {"HOMESE_HOME_BUTTON", "
     "HOMESE_VOLUME_PLUS", "HOMESE_VOLUME_MINUS", "HOMESE_VOLUME_PLUS_LIMIT", "HOMESE_VOLUME_MINUS_LIMIT", "HOMESE_NOTHING_DONE",
     "HOMESE_VIBE_ON", "HOMESE_VIBE_OFF", "HOMESE_START_CONNECT_WINDOW", "HOMESE_CONNECTED", "HOMESE_CONNECTED2", "HOMESE_CONNECTED3",
     "HOMESE_CONNECTED4", "HOMESE_END_CONNECT_WINDOW"};
+
+// The materials a pane draws with: the one of a picture or a text box, the content and the frames of a window.
+std::vector<std::uint16_t> MaterialIndicesOf(const Formats::Pane& pane)
+{
+    std::vector<std::uint16_t> indices;
+    if (pane.picture)
+        indices.push_back(pane.picture->materialIndex);
+
+    if (pane.textBox)
+        indices.push_back(pane.textBox->materialIndex);
+
+    if (pane.window)
+    {
+        indices.push_back(pane.window->content.materialIndex);
+        for (const Formats::WindowFrame& frame : pane.window->frames)
+            indices.push_back(frame.materialIndex);
+    }
+    return indices;
+}
+
+// The library of the HOME menu binds an animation to the panes of its group alone, not to the panes below them (0x81371BF4).
+// The animation player of the layout binds the panes below too, so the animation keeps only what belongs to the panes of the group.
+Formats::LayoutAnimation OnlyForThePanes(const Formats::LayoutAnimation& animation, const std::vector<Formats::Pane*>& panes,
+    Layout::LiveLayout& layout)
+{
+    std::set<std::string> paneNames;
+    std::set<std::string> materialNames;
+    for (const Formats::Pane* pane : panes)
+    {
+        paneNames.insert(pane->name);
+        for (std::uint16_t materialIndex : MaterialIndicesOf(*pane))
+            materialNames.insert(layout.MaterialAt(materialIndex).description.name);
+    }
+
+    Formats::LayoutAnimation filtered = animation;
+    filtered.objects.clear();
+    for (const Formats::AnimatedObject& object : animation.objects)
+    {
+        const std::set<std::string>& names = object.isMaterial ? materialNames : paneNames;
+        if (names.contains(object.name))
+            filtered.objects.push_back(object);
+    }
+    return filtered;
+}
 
 }
 
@@ -217,7 +262,8 @@ void HomeButtonMenu::BindAnimation(const std::string& suffix, const std::string&
         animationFiles.emplace(fileName, files.archive->ReadAnimation(fileName));
 
     std::vector<Formats::Pane*> panes = layout.PanesOfGroup(groupName);
-    animations.push_back(std::make_unique<HomeMenuAnimation>(layout, animationFiles.at(fileName), panes));
+    Formats::LayoutAnimation animation = OnlyForThePanes(animationFiles.at(fileName), panes, layout);
+    animations.push_back(std::make_unique<HomeMenuAnimation>(layout, std::move(animation), panes));
     animationsByName[groupName + suffix] = animations.back().get();
 }
 
