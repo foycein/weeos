@@ -1,7 +1,8 @@
 #include "SystemMenu/FirstScreen.h"
 
-#include <cstddef>
-#include <cstdint>
+#include "Formats/FormatError.h"
+#include "Formats/NandBootInfoFile.h"
+#include "Formats/StateFile.h"
 
 namespace SystemMenu
 {
@@ -16,77 +17,70 @@ constexpr int ResumedSetupPage = 5;
 constexpr int FirstUpdateTypeThatResumes = 1;
 constexpr int LastUpdateTypeThatResumes = 2;
 
-// The file of the System Menu that remembers how the last title ended. Its bytes 4 to 7 are: flags, the type of the state,
-// the state of the disc and where to return to.
+// The file of the System Menu that remembers how the last title ended, and the file with which a title starts the menu with arguments.
 constexpr std::string_view StateFilePath = "/title/00000001/00000002/data/state.dat";
-constexpr std::size_t StateTypeOffset = 5;
-constexpr std::size_t StateReturnToOffset = 7;
-constexpr std::size_t StateFileMinimumSize = 8;
-constexpr std::uint8_t NoStateType = 0xFF;
-constexpr std::uint8_t ReturnStateType = 3;
-constexpr std::uint8_t ReturnToSettingsCode = 1;
-constexpr std::uint8_t ReturnWithArgumentsCode = 2;
-
-// The file that a title writes when it starts the menu with arguments. Its byte 0xB is the kind of the application, its word at 0xC
-// says what the title wants. The checksum of the file is not checked.
 constexpr std::string_view BootInformationPath = "/shared2/sys/NANDBOOTINFO";
-constexpr std::size_t ApplicationTypeOffset = 0xB;
-constexpr std::size_t LaunchCodeOffset = 0xC;
-constexpr std::size_t LaunchCodeSize = 4;
-constexpr std::size_t BootInformationMinimumSize = 0x10;
-constexpr std::uint8_t MenuArgumentsApplicationType = 4;
 
 // The record of a title that ran out of time: 32 bytes.
 constexpr std::string_view ExpiredRecordPath = "/shared2/expired";
 constexpr std::size_t ExpiredRecordSize = 32;
 
-struct LaunchInformation
+// A file that is missing or damaged is as good as no file.
+std::optional<Formats::StateFile> ReadState(NandFiles& nand)
 {
-    bool hasArguments = false;
-    int launchCode = 0;
-};
+    std::optional<Formats::Bytes> bytes = nand.ReadFile(StateFilePath);
+    if (!bytes)
+        return std::nullopt;
 
-LaunchInformation ReadLaunchInformation(NandFiles& nand)
+    try
+    {
+        return Formats::ReadStateFile(*bytes);
+    }
+    catch (const Formats::FormatError&)
+    {
+        return std::nullopt;
+    }
+}
+
+std::optional<Formats::NandBootInfo> ReadBootInformation(NandFiles& nand)
 {
     std::optional<Formats::Bytes> bytes = nand.ReadFile(BootInformationPath);
-    if (!bytes || bytes->size() < BootInformationMinimumSize)
-        return {};
+    if (!bytes)
+        return std::nullopt;
 
-    LaunchInformation information;
-    information.hasArguments = (*bytes)[ApplicationTypeOffset] == MenuArgumentsApplicationType;
-    for (std::size_t index = 0; index < LaunchCodeSize; ++index)
-        information.launchCode = information.launchCode * 256 + (*bytes)[LaunchCodeOffset + index];
-
-    return information;
+    try
+    {
+        return Formats::ReadNandBootInfo(*bytes);
+    }
+    catch (const Formats::FormatError&)
+    {
+        return std::nullopt;
+    }
 }
 
 void ReadBootType(NandFiles& nand, StartFacts& facts)
 {
-    std::optional<Formats::Bytes> state = nand.ReadFile(StateFilePath);
-    if (!state || state->size() < StateFileMinimumSize)
-        return;
-
-    if ((*state)[StateTypeOffset] != ReturnStateType)
+    std::optional<Formats::StateFile> state = ReadState(nand);
+    if (!state || state->type != Formats::StateTypeReturnToMenu)
         return;
 
     facts.bootType = BootType::ReturnFromTitle;
 
-    std::uint8_t returnTo = (*state)[StateReturnToOffset];
-    if (returnTo == ReturnToSettingsCode)
+    if (state->returnTo == Formats::StateReturnToSettings)
     {
         facts.bootType = BootType::ReturnToSettings;
         return;
     }
 
-    if (returnTo != ReturnWithArgumentsCode)
+    if (state->returnTo != Formats::StateReturnWithArguments)
         return;
 
-    LaunchInformation launch = ReadLaunchInformation(nand);
-    if (launch.hasArguments)
-    {
-        facts.bootType = BootType::LaunchWithArguments;
-        facts.launchCode = launch.launchCode;
-    }
+    std::optional<Formats::NandBootInfo> bootInformation = ReadBootInformation(nand);
+    if (!bootInformation || bootInformation->titleType != Formats::NandBootInfoTypeMenuLaunched)
+        return;
+
+    facts.bootType = BootType::LaunchWithArguments;
+    facts.launchCode = static_cast<int>(bootInformation->launchCode);
 }
 
 // The record counts only when the menu starts after a title. At any other start the file is deleted.
