@@ -38,6 +38,10 @@ namespace Channels
 class InternetChannel : public Channel
 {
 public:
+    // The orbs of the start page (Search, Favorites, Web Address) and the buttons under them (Operations Guide, Settings, Wii Menu).
+    static constexpr std::size_t OrbCount = 3;
+    static constexpr std::size_t ButtonCount = 3;
+
     // What takes the pointer now.
     enum class Screen
     {
@@ -163,6 +167,28 @@ private:
         Yahoo,
     };
 
+    // What the hand is on, for the sound of a rollover: at most one of the fields is set.
+    struct Focus
+    {
+        std::optional<Place> place;
+        std::optional<ToolbarButton> toolbarButton;
+        std::optional<FavoritesScreen::EditOption> editOption;
+        std::optional<std::size_t> favorite;
+        std::optional<SettingsScreen::Item> settingsItem;
+
+        bool operator==(const Focus& other) const = default;
+
+        bool IsNothing() const
+        {
+            return *this == Focus{};
+        }
+    };
+
+    void MakePainters();
+    void MakeHandsAndKeyboard();
+    void ReadStartPagePictures();
+    void ReadDialogPictures();
+
     void UpdateStartPage();
     void UpdatePage();
     void UpdatePageButtons(const Input::RemoteState& state);
@@ -175,6 +201,7 @@ private:
     void ToggleSingleColumn();
     void PlaySound(std::string_view soundName);
     void PlayRolloverWhenTheFocusMoves();
+    Focus CurrentFocus() const;
     void PlayLoadFinishWhenThePageIsLoaded();
     void UpdateSettings();
     void UpdateDialog();
@@ -187,6 +214,10 @@ private:
     void PressFavorite(std::size_t index);
     void PressSettingsItem(const SettingsScreen::Item& item);
     void Answer(DialogAnswer answer);
+    void DeleteTheFavoriteToDelete();
+    void AnswerSearchEngineChoice(DialogAnswer answer);
+    void SetTheConfirmedSearchEngine();
+    std::u16string SearchEngineName(SearchEngine engine) const;
     void UseKeyboardAnswer(const SystemMenu::KeyboardAnswer& answer);
 
     void OpenAddress(const std::string& address);
@@ -195,6 +226,7 @@ private:
     void OpenOperaAbout();
     void OpenFavorites();
     void OpenSettings();
+    void RememberTheViewBeforeTheList();
     void ShowView(View newView);
     void CloseList();
     void AddThePageToFavorites();
@@ -248,9 +280,9 @@ private:
     std::unique_ptr<PagePicture> homeIcon;
     std::unique_ptr<PagePicture> orb;
     std::unique_ptr<PagePicture> gloss;
-    std::array<std::unique_ptr<PagePicture>, 3> orbSymbols;
+    std::array<std::unique_ptr<PagePicture>, OrbCount> orbSymbols;
     std::unique_ptr<PagePicture> button;
-    std::array<std::unique_ptr<PagePicture>, 3> buttonIcons;
+    std::array<std::unique_ptr<PagePicture>, ButtonCount> buttonIcons;
     std::unique_ptr<PagePicture> controller;
     std::unique_ptr<PagePicture> dialogBack;
     std::unique_ptr<PagePicture> infoSign;
@@ -275,7 +307,7 @@ private:
     std::optional<std::size_t> renamedFavorite;
     bool isSingleColumn = false;
     bool wasPageLoading = false;
-    std::string focusBeforeTheStep;
+    Focus focusBeforeTheStep;
     std::optional<std::size_t> favoriteToDelete;
     std::u16string wordsToSearch;
     SearchEngine engineToConfirm = SearchEngine::None;

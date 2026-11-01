@@ -24,6 +24,8 @@ class FavoritesScreen
 {
 public:
     static constexpr int TilesPerRow = 4;
+    static constexpr std::size_t EditOptionCount = 4;
+    static constexpr std::size_t MoveArrowCount = 4;
 
     // The rows of the edit options, from the top (templates.editOptionDialog).
     enum class EditOption
@@ -83,8 +85,8 @@ private:
     std::unique_ptr<PagePicture> editFade;
     std::unique_ptr<PagePicture> editBackground;
     std::unique_ptr<PagePicture> editHighlight;
-    std::array<std::unique_ptr<PagePicture>, 4> editIcons;
-    std::array<std::unique_ptr<PagePicture>, 4> moveArrows;
+    std::array<std::unique_ptr<PagePicture>, EditOptionCount> editIcons;
+    std::array<std::unique_ptr<PagePicture>, MoveArrowCount> moveArrows;
     std::map<int, std::unique_ptr<PagePicture>> favoriteThumbnails;
     bool isEditing = false;
     int firstRow = 0;

@@ -16,28 +16,44 @@ namespace Channels
 namespace
 {
 
-constexpr std::string_view VolumePath = "/title/00010001/48414445/data/opera.vff";
+// The data folder of the Internet Channel (00010001-48414445, HADE).
+constexpr std::string_view DataFolder = "/title/00010001/48414445/data/";
+constexpr std::string_view VolumeFileName = "opera.vff";
 constexpr std::string_view FavoritesFileName = "opera6.adr";
 constexpr std::string_view PreferencesFileName = "operarc";
 constexpr std::string_view UserPreferencesSection = "[User Prefs]";
 constexpr std::string_view SearchEngineKey = "Search Engine";
 constexpr std::string_view ToolbarModeKey = "Toolbar Mode";
 
+// The lines of a favorite that the channel reads; the nickname and the number again are not read.
 constexpr std::size_t LinesPerFavorite = 6;
+constexpr std::size_t TitleLine = 0;
+constexpr std::size_t AddressLine = 1;
+constexpr std::size_t PositionLine = 3;
+constexpr std::size_t NumberLine = 4;
+
+// The first favorite of an empty list.
+constexpr int FirstPosition = 1;
+constexpr int FirstNumber = 1;
 
 // The pictures of the favorites (the reference console's data folder): bmarks.bmp beside opera.vff has 140 places of 18560 bytes,
 // each a bitmap of 90 x 68 pixels; BMARKS.TXT in opera.vff has a line for every place, the name of its picture or "*" for a free place.
 // The name of a picture is WeeOS's own: the number of the favorite in eight hexadecimal digits (Assumed: the original's names were not
 // traced to the favorites).
-constexpr std::string_view ThumbnailFilePath = "/title/00010001/48414445/data/bmarks.bmp";
+constexpr std::string_view ThumbnailFileName = "bmarks.bmp";
+constexpr std::string_view ThumbnailNameFolder = "bmarks/";
 constexpr std::string_view ThumbnailListFileName = "BMARKS.TXT";
 constexpr std::size_t ThumbnailPlaceCount = 140;
 constexpr std::size_t ThumbnailPlaceSize = 18560;
 constexpr std::string_view FreeThumbnailPlace = "*";
-constexpr std::size_t LongestTitle = 64;
 
 // opera.vff is 1.5 MB, as the original's (the dump's /title/00010001/48414445/data/opera.vff), which makes it a FAT12 volume.
 constexpr std::uint32_t VolumeSize = 1572864;
+
+std::string PathInDataFolder(std::string_view name)
+{
+    return std::string(DataFolder) + std::string(name);
+}
 
 std::vector<std::string_view> SplitLines(std::string_view text)
 {
@@ -104,10 +120,10 @@ std::vector<Favorite> ReadFavoriteList(Formats::ByteView text)
     for (std::size_t first = 0; first + LinesPerFavorite <= lines.size(); first += LinesPerFavorite)
     {
         Favorite favorite;
-        favorite.title = Browser::TextOfUtf8(lines[first]);
-        favorite.address = std::string(lines[first + 1]);
-        favorite.position = NumberOf(lines[first + 3]);
-        favorite.number = NumberOf(lines[first + 4]);
+        favorite.title = Browser::TextOfUtf8(lines[first + TitleLine]);
+        favorite.address = std::string(lines[first + AddressLine]);
+        favorite.position = NumberOf(lines[first + PositionLine]);
+        favorite.number = NumberOf(lines[first + NumberLine]);
         favorites.push_back(favorite);
     }
     return favorites;
@@ -177,7 +193,7 @@ OperaData::OperaData(Ios::FileSystemService& fileSystem, Ios::Caller caller, For
     , clock(std::move(consoleClock))
     , volume(Formats::VirtualFatVolume::MakeEmpty(VolumeSize))
 {
-    std::optional<Formats::Bytes> stored = files->ReadFile(VolumePath);
+    std::optional<Formats::Bytes> stored = files->ReadFile(PathInDataFolder(VolumeFileName));
     bool isReadable = false;
     if (stored)
     {
@@ -198,7 +214,7 @@ OperaData::OperaData(Ios::FileSystemService& fileSystem, Ios::Caller caller, For
         Formats::VolumeTime now = VolumeTimeOf(clock());
         volume.WriteFile(FavoritesFileName, defaultFavorites, now);
         volume.WriteFile(PreferencesFileName, defaultPreferences, now);
-        files->WriteFile(VolumePath, volume.FileBytes());
+        files->WriteFile(PathInDataFolder(VolumeFileName), volume.FileBytes());
     }
 
     std::optional<Formats::Bytes> favoriteFile = volume.ReadFile(FavoritesFileName);
@@ -230,7 +246,7 @@ bool OperaData::AddFavorite(const std::u16string& title, const std::string& addr
     if (IsFull())
         return false;
 
-    Favorite favorite{title, address, 1, 1};
+    Favorite favorite{title, address, FirstPosition, FirstNumber};
     for (const Favorite& existing : favorites)
     {
         favorite.position = std::max(favorite.position, existing.position + 1);
@@ -260,7 +276,7 @@ void OperaData::RenameFavorite(int number, const std::u16string& title)
     for (Favorite& favorite : favorites)
     {
         if (favorite.number == number)
-            favorite.title = title.substr(0, LongestTitle);
+            favorite.title = title.substr(0, LongestFavoriteTitle);
     }
     Save();
 }
@@ -291,7 +307,8 @@ void OperaData::SetThumbnail(int number, const Formats::RgbaImage& thumbnail)
         place = static_cast<std::size_t>(freePlace - thumbnailNames.begin());
     }
 
-    thumbnailNames[*place] = std::format("/title/00010001/48414445/data/bmarks/{:08x}.bmp", static_cast<std::uint32_t>(number));
+    std::string pictureName = std::format("{:08x}.bmp", static_cast<std::uint32_t>(number));
+    thumbnailNames[*place] = PathInDataFolder(ThumbnailNameFolder) + pictureName;
     Formats::Bytes bitmap = WriteThumbnailBitmap(thumbnail);
     std::copy(bitmap.begin(), bitmap.end(), thumbnailFile.begin() + static_cast<std::ptrdiff_t>(*place * ThumbnailPlaceSize));
     SaveThumbnails();
@@ -328,7 +345,7 @@ void OperaData::ReadThumbnails()
     }
     thumbnailNames.resize(ThumbnailPlaceCount, std::string(FreeThumbnailPlace));
 
-    std::optional<Formats::Bytes> stored = files->ReadFile(ThumbnailFilePath);
+    std::optional<Formats::Bytes> stored = files->ReadFile(PathInDataFolder(ThumbnailFileName));
     thumbnailFile = stored ? *stored : Formats::Bytes();
     thumbnailFile.resize(ThumbnailPlaceCount * ThumbnailPlaceSize, 0);
 }
@@ -340,8 +357,8 @@ void OperaData::SaveThumbnails()
         list += name + "\n";
 
     volume.WriteFile(ThumbnailListFileName, BytesOf(list), VolumeTimeOf(clock()));
-    files->WriteFile(VolumePath, volume.FileBytes());
-    files->WriteFile(ThumbnailFilePath, thumbnailFile);
+    files->WriteFile(PathInDataFolder(VolumeFileName), volume.FileBytes());
+    files->WriteFile(PathInDataFolder(ThumbnailFileName), thumbnailFile);
 }
 
 std::optional<Favorite> OperaData::FindFavorite(const std::string& address) const
@@ -402,7 +419,7 @@ void OperaData::Save()
     Formats::VolumeTime now = VolumeTimeOf(clock());
     volume.WriteFile(FavoritesFileName, WriteFavoriteList(favorites), now);
     volume.WriteFile(PreferencesFileName, BytesOf(preferences), now);
-    files->WriteFile(VolumePath, volume.FileBytes());
+    files->WriteFile(PathInDataFolder(VolumeFileName), volume.FileBytes());
 }
 
 }

@@ -23,6 +23,9 @@ namespace Channels
 // The original keeps at most this many favorites (operarc: "Max Number Favorites = 56"; the manual: "up to 56 Webpages").
 constexpr std::size_t MaximumFavoriteCount = 56;
 
+// The longest title of a favorite (the original's "Edit Title" prompt, favorites.js).
+constexpr std::size_t LongestFavoriteTitle = 64;
+
 struct Favorite
 {
     std::u16string title;
@@ -81,7 +84,7 @@ public:
     void RemoveFavorite(int number);
     std::optional<Favorite> FindFavorite(const std::string& address) const;
 
-    // A new title for the favorite (the original's "Edit Title" takes at most 64 characters).
+    // A new title for the favorite, cut to LongestFavoriteTitle characters.
     void RenameFavorite(int number, const std::u16string& title);
 
     // Puts the favorite at another place of the list; the positions follow the new order.
