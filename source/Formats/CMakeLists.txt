@@ -7,7 +7,10 @@ add_library(Formats STATIC
     BootMiiKeyBlock.cpp
     ByteReader.cpp
     ByteWriter.cpp
+    BoardMessageFile.cpp
+    CdbRecordFile.cpp
     Certificate.cpp
+    Crc32.cpp
     ConsoleKeys.cpp
     DeviceCertificate.cpp
     DolExecutable.cpp
@@ -30,6 +33,7 @@ add_library(Formats STATIC
     NandImage.cpp
     NandTitles.cpp
     OneTimeProgrammable.cpp
+    PlayLogAttachment.cpp
     PlayRecordFile.cpp
     PngImage.cpp
     RgbaImage.cpp
@@ -53,6 +57,7 @@ add_library(Formats STATIC
     TplTexture.cpp
     U8Archive.cpp
     Vectors.cpp
+    VirtualFatVolume.cpp
     WadFile.cpp
     Yaz0.cpp
 )
