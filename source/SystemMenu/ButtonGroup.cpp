@@ -29,9 +29,9 @@ ButtonGroup::ButtonGroup(MenuLayout& buttonLayout, Display& menuDisplay, std::ve
 {
 }
 
-std::vector<ButtonEvent> ButtonGroup::Update(const InputManager& input, bool isActive)
+std::vector<ButtonGroupEvent> ButtonGroup::Update(const InputManager& input, bool isActive)
 {
-    std::vector<ButtonEvent> events;
+    std::vector<ButtonGroupEvent> events;
 
     for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
     {
@@ -40,7 +40,7 @@ std::vector<ButtonEvent> ButtonGroup::Update(const InputManager& input, bool isA
         MoveFocus(playerIndex, button, events);
 
         if (button && HasPressedA(*player))
-            events.push_back({ButtonEventKind::Pressed, *button, playerIndex});
+            events.push_back({ButtonGroupEventKind::Pressed, *button, playerIndex});
     }
     return events;
 }
@@ -68,7 +68,7 @@ std::optional<std::size_t> ButtonGroup::ButtonUnderPointer(const std::optional<P
     return std::nullopt;
 }
 
-void ButtonGroup::MoveFocus(int playerIndex, std::optional<std::size_t> newButton, std::vector<ButtonEvent>& events)
+void ButtonGroup::MoveFocus(int playerIndex, std::optional<std::size_t> newButton, std::vector<ButtonGroupEvent>& events)
 {
     std::optional<std::size_t> oldButton = buttonOfPlayer[playerIndex];
     if (newButton == oldButton)
@@ -78,14 +78,14 @@ void ButtonGroup::MoveFocus(int playerIndex, std::optional<std::size_t> newButto
     {
         --pointerCounts[*oldButton];
         if (pointerCounts[*oldButton] == 0)
-            events.push_back({ButtonEventKind::Unfocused, *oldButton, playerIndex});
+            events.push_back({ButtonGroupEventKind::Unfocused, *oldButton, playerIndex});
     }
 
     if (newButton)
     {
         ++pointerCounts[*newButton];
         if (pointerCounts[*newButton] == 1)
-            events.push_back({ButtonEventKind::Focused, *newButton, playerIndex});
+            events.push_back({ButtonGroupEventKind::Focused, *newButton, playerIndex});
     }
 
     buttonOfPlayer[playerIndex] = newButton;

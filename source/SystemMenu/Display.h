@@ -21,12 +21,13 @@ public:
 
     Graphics::GraphicsDevice& Device();
 
+    // The fonts that the text boxes of the layouts are drawn with. Without fonts the text boxes draw nothing.
+    // The fonts must stay alive as long as the display draws.
+    void SetTextFonts(const Layout::TextFonts& fonts);
+    const Layout::TextFonts* TextFonts() const;
+
     Platform::ScreenShape GetScreenShape() const;
     void SetScreenShape(Platform::ScreenShape newScreenShape);
-
-    // The fonts that the text boxes are drawn with. A text box draws nothing until the menu has set them.
-    const Layout::TextFonts* GetTextFonts() const;
-    void SetTextFonts(const Layout::TextFonts* newTextFonts);
 
     // The size of the picture in layout units.
     Graphics::Canvas GetCanvas() const;
@@ -48,8 +49,8 @@ public:
 
 private:
     Graphics::GraphicsDevice& device;
-    Platform::ScreenShape screenShape;
     const Layout::TextFonts* textFonts = nullptr;
+    Platform::ScreenShape screenShape;
 };
 
 }

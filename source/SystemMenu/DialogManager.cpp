@@ -232,7 +232,7 @@ void DialogManager::UpdateWaiting(const InputManager& input, bool isActive)
         return;
     }
 
-    for (const ButtonEvent& event : openWindow->buttons->Update(input, isActive))
+    for (const ButtonGroupEvent& event : openWindow->buttons->Update(input, isActive))
     {
         ReactToButton(event);
         if (state != State::Waiting)
@@ -261,17 +261,17 @@ void DialogManager::UpdateMessageWindow()
         StartClosing(DialogAnswer::ProgressDone);
 }
 
-void DialogManager::ReactToButton(const ButtonEvent& event)
+void DialogManager::ReactToButton(const ButtonGroupEvent& event)
 {
     MenuLayout& layout = *openWindow->layout;
 
-    if (event.kind == ButtonEventKind::Focused)
+    if (event.kind == ButtonGroupEventKind::Focused)
         layout.StartAnimation(FocusOnSlot(event.buttonIndex));
 
-    if (event.kind == ButtonEventKind::Unfocused)
+    if (event.kind == ButtonGroupEventKind::Unfocused)
         layout.StartAnimation(FocusOffSlot(event.buttonIndex));
 
-    if (event.kind == ButtonEventKind::Pressed)
+    if (event.kind == ButtonGroupEventKind::Pressed)
     {
         closingAnswer = ButtonAnswers[event.buttonIndex];
         choiceSlot = SelectSlot(event.buttonIndex);

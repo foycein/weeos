@@ -51,7 +51,7 @@ ErrorScreen::ErrorScreen(Display& menuDisplay, const ProgramImage& program, Menu
     if (!font)
         throw MenuError("The layout of the error screen has no font");
 
-    menuFonts.AddFont(Formats::ReadFont(*font), {std::string(FontName)});
+    menuFonts.AddFont(display.Device(), Formats::ReadFont(*font), {FontName});
 
     archive = std::make_unique<Layout::LayoutArchive>(std::move(files));
     layout = std::make_unique<MenuLayout>(display, *archive, std::string(LayoutName));

@@ -33,6 +33,14 @@ ScreenManager::ScreenManager(ScreenFactory screenFactory)
 
 void ScreenManager::Start(ScreenId firstScreen, int argument)
 {
+    pendingRequests.clear();
+    loadingScreen.reset();
+    isLoadingScreenArmed = false;
+    MakeLauncher(firstScreen, argument);
+}
+
+void ScreenManager::MakeLauncher(ScreenId firstScreen, int argument)
+{
     root = std::make_unique<LauncherScreen>(*this, firstScreen, argument);
     root->Build();
 }
@@ -159,6 +167,11 @@ bool ScreenManager::HasEveryScreenStopped()
     return true;
 }
 
+bool ScreenManager::IsLoadingScreen() const
+{
+    return loadingScreen != nullptr;
+}
+
 void ScreenManager::UpdateScreens(Screen& screen)
 {
     if (CanBeUpdated(screen))
@@ -226,7 +239,7 @@ void ScreenManager::GoToNewRoot(const ScreenRequest& request)
     if (root)
         RemoveScreen(*root);
 
-    Start(request.screen, request.argument);
+    MakeLauncher(request.screen, request.argument);
 }
 
 Screen* ScreenManager::FindParentFor(const ScreenRequest& request)

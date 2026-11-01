@@ -21,6 +21,10 @@ struct WaveSound
     std::uint8_t pan;
     std::uint8_t surroundPan;
 
+    // How much of the sound goes to the reverb of the effect bus A, 0 to 127. The sends to the buses B and C are not kept,
+    // because the menu gives those buses no effect.
+    std::uint8_t effectSendA;
+
     // How much of the sound goes to the speakers, 0 to 127.
     std::uint8_t mainSend;
 
@@ -32,11 +36,18 @@ struct WaveSound
 struct WaveSoundFile
 {
     std::vector<WaveSound> sounds;
+
+    // A file of version 1.2 describes its waves itself, and the wave data holds their samples one after the other. A file of
+    // version 1.3 describes none: its wave data is a wave archive (RWAR), and the sounds number its waves.
+    bool describesItsWaves = true;
     std::vector<WaveInfo> waves;
 };
 
 // The menu's wave sounds start their one note at the beginning and let it play to the end of the wave.
 // Sounds with more notes or other timing are refused.
 WaveSoundFile ReadWaveSoundFile(Formats::ByteView bytes);
+
+// Fails when a sound plays a wave that is not among the waveCount waves.
+void CheckThatTheWavesExist(const WaveSoundFile& waveSoundFile, std::size_t waveCount);
 
 }

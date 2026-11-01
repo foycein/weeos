@@ -46,9 +46,10 @@ private:
         Finished,
     };
 
-    void ReactToButton(const ButtonEvent& event);
+    void ReactToButton(const ButtonGroupEvent& event);
     void Press(std::size_t buttonIndex, int playerIndex);
     void CheckPin();
+    void OpenKeyboard(int playerIndex);
     void ReadTypedPin();
     void ReadAnswerOfDialog();
     bool IsPinRight() const;

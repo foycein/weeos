@@ -34,6 +34,12 @@ constexpr ButtonSet ConfirmButtons = {
     Input::ClassicButtons::A | Input::ClassicButtons::B,
 };
 
+// The buttons that press what the hand points at: A of the Wii Remote and A of the Classic Controller.
+constexpr ButtonSet SelectButtons = {
+    Input::RemoteButtons::A,
+    Input::ClassicButtons::A,
+};
+
 // Reads the four remotes once in every step, the way the menu's controller update does (docs/research/Engines.md 5.2).
 class InputManager
 {
@@ -56,6 +62,9 @@ public:
 
     // True when a connected remote has gone down with one of the buttons since the Poll before.
     bool AnyPlayerPressed(const ButtonSet& buttons) const;
+
+    // The same for one player. False while the remote of the player is not connected.
+    bool HasPlayerPressed(int playerIndex, const ButtonSet& buttons) const;
 
 private:
     void PollPlayer(int playerIndex);

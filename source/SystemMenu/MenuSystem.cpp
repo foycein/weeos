@@ -9,25 +9,26 @@ namespace SystemMenu
 {
 
 MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles,
-    Ios::RemoteService& remoteService, Ios::PowerService& powerService, TextEntry& textEntryOfTheMenu, Platform::ScreenShape screenShape)
+    Ios::RemoteService& remoteService, Ios::PowerService& powerService, Platform::ScreenShape screenShape)
     : display(device, screenShape)
     , files(titleContents)
+    , fonts(device, titleContents, files)
     , messages(files.OpenEnglishMessages())
     , fader(display)
     , input(remoteService)
     , cursors(display, files)
     , screens([this](ScreenId screen, int argument) { return MakeScreen(screen, argument, services); })
+    , keyboard(display, files, messages, clock, input, sounds)
     , program(titleContents)
     , settings(nandFiles)
-    , fonts(device, titleContents, files)
     , dialogs(display, files)
     , errorScreen(display, program, fonts, fader)
     , frontPanel(display, powerService, screens, nandFiles)
     , nand(nandFiles)
-    , textEntry(textEntryOfTheMenu)
-    , services{display, files, messages, clock, fader, input, cursors, screens, program, nand, settings, dialogs, textEntry, parentalAnswer, frontPanel}
+    , services{display, files, messages, clock, fader, input, cursors, screens, sounds, keyboard, program, nand, settings, dialogs,
+          parentalAnswer, frontPanel}
 {
-    display.SetTextFonts(&fonts.Fonts());
+    display.SetTextFonts(fonts.Fonts());
 
     StartFacts facts = ReadStartFacts(nand, settings);
     RecordMenuStart(nand);
@@ -41,6 +42,7 @@ MenuSystem::MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleCon
 
 void MenuSystem::Update()
 {
+    sounds.StartNextStep();
     clock.Advance();
     frontPanel.Update(errorScreen.IsRequested());
 
@@ -66,10 +68,11 @@ void MenuSystem::Update()
 void MenuSystem::RunStep()
 {
     input.Poll();
-    if (!frontPanel.IsWorking())
-        textEntry.Update();
-
     screens.Update();
+
+    if (!frontPanel.IsWorking())
+        keyboard.Update();
+
     dialogs.Update(input, fader.GetStatus() == FaderStatus::Clear);
     cursors.Update(input);
     fader.Calculate();
@@ -86,6 +89,7 @@ void MenuSystem::DrawScene()
     if (!errorScreen.IsShown())
     {
         screens.Draw();
+        keyboard.Draw();
         dialogs.Draw();
         cursors.Draw();
     }
@@ -112,6 +116,11 @@ std::optional<Ios::TitleId> MenuSystem::TakeTitleToLaunch()
 const std::optional<std::string>& MenuSystem::FatalErrorMessage() const
 {
     return fatalErrorMessage;
+}
+
+void MenuSystem::UsePhysicalKeyboard(Ios::KeyboardService& keyboardService)
+{
+    keyboard.UsePhysicalKeyboard(keyboardService);
 }
 
 MenuServices& MenuSystem::Services()

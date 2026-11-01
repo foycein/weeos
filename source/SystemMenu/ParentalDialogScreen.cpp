@@ -4,7 +4,7 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MenuSettings.h"
-#include "SystemMenu/TextEntry.h"
+#include "SystemMenu/SoftKeyboard.h"
 
 #include "Text/MessageCatalog.h"
 
@@ -129,7 +129,7 @@ bool ParentalDialogScreen::RunMain()
     switch (phase)
     {
     case Phase::WaitingForButton:
-        for (const ButtonEvent& event : buttons->Update(services.input, services.fader.GetStatus() == FaderStatus::Clear))
+        for (const ButtonGroupEvent& event : buttons->Update(services.input, services.fader.GetStatus() == FaderStatus::Clear))
         {
             ReactToButton(event);
             if (phase != Phase::WaitingForButton)
@@ -173,17 +173,17 @@ bool ParentalDialogScreen::RunClosing()
 }
 
 // The OK button reacts only when a PIN is typed.
-void ParentalDialogScreen::ReactToButton(const ButtonEvent& event)
+void ParentalDialogScreen::ReactToButton(const ButtonGroupEvent& event)
 {
     bool isDimmedOkButton = event.buttonIndex == OkButton && !hasPin;
 
-    if (event.kind == ButtonEventKind::Focused && !isDimmedOkButton)
+    if (event.kind == ButtonGroupEventKind::Focused && !isDimmedOkButton)
         layout->StartAnimation(FocusOnSlot(event.buttonIndex));
 
-    if (event.kind == ButtonEventKind::Unfocused && !isDimmedOkButton)
+    if (event.kind == ButtonGroupEventKind::Unfocused && !isDimmedOkButton)
         layout->StartAnimation(FocusOffSlot(event.buttonIndex));
 
-    if (event.kind == ButtonEventKind::Pressed && !isDimmedOkButton)
+    if (event.kind == ButtonGroupEventKind::Pressed && !isDimmedOkButton)
         Press(event.buttonIndex, event.playerIndex);
 }
 
@@ -200,7 +200,7 @@ void ParentalDialogScreen::Press(std::size_t buttonIndex, int playerIndex)
 
     if (buttonIndex == PinFieldButton)
     {
-        services.textEntry.Begin(playerIndex, PinLength);
+        OpenKeyboard(playerIndex);
         phase = Phase::TypingPin;
     }
 
@@ -240,25 +240,35 @@ bool ParentalDialogScreen::IsPinRight() const
     return parentalControl && parentalControl->pin.size() == PinLength && parentalControl->pin == pin;
 }
 
+// The soft keyboard takes digits only, at most four of them.
+void ParentalDialogScreen::OpenKeyboard(int playerIndex)
+{
+    KeyboardRequest request;
+    request.title = services.messages.Find(InputPinMessage);
+    request.rules.maximumLength = PinLength;
+    request.rules.allowedCharacters = IsDigit;
+    request.playerIndex = playerIndex;
+    services.keyboard.Open(request);
+}
+
+// Cancel leaves the PIN as it was. OK takes what was typed, also when it is shorter than a PIN: the check of OK then says it is wrong.
 void ParentalDialogScreen::ReadTypedPin()
 {
-    TextEntryState entryState = services.textEntry.State();
-    if (entryState == TextEntryState::Typing)
+    std::optional<KeyboardAnswer> keyboardAnswer = services.keyboard.TakeAnswer();
+    if (!keyboardAnswer)
         return;
 
-    if (entryState == TextEntryState::Finished)
-    {
-        pin.clear();
-        for (char16_t character : services.textEntry.Text().substr(0, PinLength))
-            pin.push_back(static_cast<char>(character));
-
-        hasPin = true;
-        layout->StartAnimation(OffButtonSlot);
-        layout->StartAnimation(BeforeAfterSlot);
-    }
-
-    services.textEntry.End();
     phase = Phase::WaitingForButton;
+    if (!keyboardAnswer->wasConfirmed)
+        return;
+
+    pin.clear();
+    for (char16_t character : keyboardAnswer->text)
+        pin.push_back(static_cast<char>(character));
+
+    hasPin = true;
+    layout->StartAnimation(OffButtonSlot);
+    layout->StartAnimation(BeforeAfterSlot);
 }
 
 // After a wrong PIN the user goes back to the field, until the third wrong PIN. After the message of the right PIN the dialog is done.

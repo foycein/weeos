@@ -17,7 +17,8 @@
 #include "SystemMenu/ParentalAnswer.h"
 #include "SystemMenu/ProgramImage.h"
 #include "SystemMenu/ScreenManager.h"
-#include "SystemMenu/TextEntry.h"
+#include "SystemMenu/SoftKeyboard.h"
+#include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/TitleContents.h"
 
 #include "Ios/Power/PowerService.h"
@@ -36,9 +37,9 @@ class MenuSystem
 {
 public:
     // Reads the resources of the menu from the contents of the System Menu title, chooses the first screen from the files of the NAND
-    // and starts it. The device, the contents, the files, the services and the text entry must outlive the menu.
+    // and starts it. The device, the contents, the files and the services must outlive the menu.
     MenuSystem(Graphics::GraphicsDevice& device, TitleContents& titleContents, NandFiles& nandFiles, Ios::RemoteService& remoteService,
-        Ios::PowerService& powerService, TextEntry& textEntryOfTheMenu, Platform::ScreenShape screenShape);
+        Ios::PowerService& powerService, Platform::ScreenShape screenShape);
 
     // One step of the console's picture, 1001/60000 of a second: reads the remotes, updates the screens, the hands and the fader.
     // A MenuError that a screen throws ends the menu with the error screen.
@@ -59,6 +60,9 @@ public:
     // The title that the console should start now. The program ends the menu and launches it. Nothing most of the time.
     std::optional<Ios::TitleId> TakeTitleToLaunch();
 
+    // The keys of this USB keyboard type into the soft keyboard. The service must stay alive as long as the menu.
+    void UsePhysicalKeyboard(Ios::KeyboardService& keyboardService);
+
     MenuServices& Services();
 
 private:
@@ -66,20 +70,21 @@ private:
 
     Display display;
     MenuFiles files;
+    MenuFonts fonts;
     Text::MessageCatalog messages;
     MenuClock clock;
     Fader fader;
     InputManager input;
     CursorManager cursors;
     ScreenManager screens;
+    SoundRequests sounds;
+    SoftKeyboard keyboard;
     ProgramImage program;
     MenuSettings settings;
-    MenuFonts fonts;
     DialogManager dialogs;
     ErrorScreen errorScreen;
     FrontPanel frontPanel;
     NandFiles& nand;
-    TextEntry& textEntry;
     ParentalAnswer parentalAnswer = ParentalAnswer::None;
     MenuServices services;
     std::optional<std::string> fatalErrorMessage;

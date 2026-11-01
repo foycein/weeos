@@ -7,9 +7,11 @@
 #include "Layout/LayoutArchive.h"
 #include "Layout/LiveLayout.h"
 #include "Layout/PanePlacement.h"
+#include "Text/LaidOutText.h"
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,8 +36,8 @@ public:
     // The material of a picture pane. Throws a MenuError when the pane is not a picture.
     Layout::LiveMaterial& MaterialOf(const Formats::Pane& pane);
 
-    // Sets the text of a text box. Throws a MenuError when the pane is not a text box.
-    void SetText(std::string_view paneName, const std::u16string& text);
+    // Puts the text into the text box with this name. Throws a MenuError when the layout has no such text box.
+    void SetText(std::string_view paneName, std::u16string_view text);
 
     // Binds the animation "<animationName>.brlan" of the archive to the panes of the group and the panes below them.
     // Gives back the slot of the animation: 0 for the first animation that was bound, then 1 and so on.
@@ -47,17 +49,35 @@ public:
     // Binds the animation to every pane of the layout.
     std::size_t BindAnimationToAllPanes(const std::string& animationName);
 
+    // The same for one pane and the panes below it, for an animation that moves a whole set of panes of which this is one.
+    std::size_t BindAnimationToPane(const std::string& animationName, std::string_view paneName, Layout::PlaybackMode mode);
+
     void StartAnimation(std::size_t slot);
+
+    // The animation stops where it is. The panes keep what it did to them.
+    void StopAnimation(std::size_t slot);
+
     bool IsAnimationPlaying(std::size_t slot) const;
 
     // Shows a frame of the animation and plays nothing.
     void ShowAnimationFrame(std::size_t slot, float frame);
 
-    // The bounding panes that lie under a place of the picture, in layout units of the picture, the one in front first.
-    std::vector<const Formats::Pane*> BoundingPanesAt(Formats::Vector2 canvasPoint);
+    // The animation shows its last frame at once and stands still.
+    void ShowLastFrameOfAnimation(std::size_t slot);
 
     // One step: fits the layout to the shape of the screen and moves every animation that plays one frame on.
     void Calculate();
+
+    // The text of the text box as it is laid out now, in the space of the pane: the lines, and the place of every character.
+    // Throws a MenuError when the layout has no such text box or the display has no fonts.
+    Text::LaidOutText LayOutText(std::string_view paneName);
+
+    // A point in the space of the pane as a point of the picture, in layout units. Nothing while the pane is not shown.
+    std::optional<Formats::Vector2> PointOfPaneInPicture(std::string_view paneName, Formats::Vector2 point);
+
+    // The bounding panes (the panes named B_...) of the layout that the point lies in, the one in front first.
+    // The point is in layout units of the picture: the middle is (0, 0), x grows to the right and y grows upward.
+    std::vector<const Formats::Pane*> BoundingPanesAt(Formats::Vector2 point) const;
 
     void Draw();
 

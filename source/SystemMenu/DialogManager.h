@@ -116,7 +116,7 @@ private:
     void ShowMessageExtras(const DialogRequest& request);
     void UpdateWaiting(const InputManager& input, bool isActive);
     void UpdateMessageWindow();
-    void ReactToButton(const ButtonEvent& event);
+    void ReactToButton(const ButtonGroupEvent& event);
     void StartClosing(DialogAnswer reason);
 
     Display& display;

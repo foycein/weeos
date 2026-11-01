@@ -14,9 +14,20 @@ constexpr float HighestSurroundPan = 2.0f;
 // The two channels of a stereo wave are pushed to the left and to the right, before the pan of the voice is added.
 constexpr float StereoChannelOffset = 1.0f;
 
-// Minus 3 decibels. A voice behind the listener is made 3 decibels softer when it is moved to the rear speaker, and a stereo
-// output plays the rear speaker with both front speakers, again 3 decibels softer.
-constexpr float MinusThreeDecibels = 0.70710678f;
+// Minus 3 decibels: the loudness table of the original at -3.0 (0x8150f31c). In the sound mode Surround the rear channel of a
+// voice is made this much softer.
+constexpr float RearChannelGain = 0.70794578f;
+
+// Assumed: a stereo output plays the rear channel on both speakers, each at minus 3 decibels. The AX library does this in
+// its DSP program, which is not in the menu's program.
+constexpr float RearToSpeakersGain = 0.70710678f;
+
+// How one channel of a wave is spread over the outputs: the gains of the front speakers, and the gain of the rear that both speakers get.
+struct Placement
+{
+    ChannelGains front;
+    float rear = 0.0f;
+};
 
 float PanOffsetOfChannel(std::size_t channelNumber, std::size_t channelCount)
 {
@@ -35,6 +46,56 @@ ChannelGains PanGains(float pan)
     gains.left = std::sqrt((1.0f - clampedPan) / 2.0f);
     gains.right = std::sqrt((1.0f + clampedPan) / 2.0f);
     return gains;
+}
+
+// Mono puts everything in the middle. Stereo uses the pan. Surround also moves the sound to the rear with the surround pan,
+// and the front gets softer as the rear gets louder.
+Placement PlaceChannel(SoundMode mode, float pan, float surroundPan)
+{
+    Placement placement;
+    if (mode == SoundMode::Mono)
+    {
+        placement.front = PanGains(0.0f);
+        return placement;
+    }
+
+    placement.front = PanGains(pan);
+    if (mode == SoundMode::Stereo)
+        return placement;
+
+    float clampedSurroundPan = std::clamp(surroundPan, 0.0f, HighestSurroundPan);
+    float frontGain = std::sqrt(1.0f - clampedSurroundPan / HighestSurroundPan);
+    placement.front.left *= frontGain;
+    placement.front.right *= frontGain;
+    placement.rear = std::sqrt(clampedSurroundPan / HighestSurroundPan) * RearChannelGain * RearToSpeakersGain;
+    return placement;
+}
+
+ChannelGains Spread(const Placement& placement, float loudness)
+{
+    ChannelGains gains;
+    gains.left = loudness * (placement.front.left + placement.rear);
+    gains.right = loudness * (placement.front.right + placement.rear);
+    return gains;
+}
+
+float Interpolate(float from, float to, float fraction)
+{
+    return from + (to - from) * fraction;
+}
+
+using GainsOfChannels = std::array<MixGains, Voice::MaximumChannelCount>;
+
+bool SendsToReverb(const GainsOfChannels& atStart, const GainsOfChannels& atEnd)
+{
+    for (std::size_t channelNumber = 0; channelNumber < Voice::MaximumChannelCount; ++channelNumber)
+    {
+        const ChannelGains& start = atStart[channelNumber].reverb;
+        const ChannelGains& end = atEnd[channelNumber].reverb;
+        if (start.left != 0.0f || start.right != 0.0f || end.left != 0.0f || end.right != 0.0f)
+            return true;
+    }
+    return false;
 }
 
 }
@@ -74,6 +135,7 @@ void Voice::Start(
     position = 0.0;
     gainsAtFrameStart = {};
     gainsAtFrameEnd = {};
+    lowPassFilters = {};
 }
 
 bool Voice::IsActive() const
@@ -96,31 +158,43 @@ void Voice::SetSettings(const VoiceSettings& newSettings)
     settings = newSettings;
 }
 
+void Voice::ChangeEnvelopeNumbers(std::uint8_t attack, std::uint8_t decay, std::uint8_t sustain, std::uint8_t release)
+{
+    if (attack != EnvelopeNumberNotSet)
+        envelope.SetAttack(attack);
+
+    if (decay != EnvelopeNumberNotSet)
+        envelope.SetDecay(decay);
+
+    if (sustain != EnvelopeNumberNotSet)
+        envelope.SetSustain(sustain);
+
+    if (release != EnvelopeNumberNotSet)
+        envelope.SetRelease(release);
+}
+
 void Voice::Stop()
 {
     active = false;
     wave.reset();
 }
 
-std::array<ChannelGains, Voice::MaximumChannelCount> Voice::ComputeGains() const
+std::array<MixGains, Voice::MaximumChannelCount> Voice::ComputeGains(SoundMode mode) const
 {
-    float surroundPan = std::clamp(settings.surroundPan, 0.0f, HighestSurroundPan);
-    float frontGain = std::sqrt(1.0f - surroundPan / HighestSurroundPan);
-    float rearGain = std::sqrt(surroundPan / HighestSurroundPan) * MinusThreeDecibels * MinusThreeDecibels;
-    float loudness = settings.volume * envelope.Gain() * settings.mainSend;
+    float loudness = settings.volume * envelope.Gain();
 
-    std::array<ChannelGains, MaximumChannelCount> gains{};
+    std::array<MixGains, MaximumChannelCount> gains{};
     for (std::size_t channelNumber = 0; channelNumber < wave->channels.size(); ++channelNumber)
     {
         float pan = settings.pan + PanOffsetOfChannel(channelNumber, wave->channels.size());
-        ChannelGains panGains = PanGains(pan);
-        gains[channelNumber].left = loudness * (panGains.left * frontGain + rearGain);
-        gains[channelNumber].right = loudness * (panGains.right * frontGain + rearGain);
+        Placement placement = PlaceChannel(mode, pan, settings.surroundPan);
+        gains[channelNumber].speakers = Spread(placement, loudness * settings.mainSend);
+        gains[channelNumber].reverb = Spread(placement, loudness * settings.effectSend);
     }
     return gains;
 }
 
-void Voice::BeginFrame()
+void Voice::BeginFrame(SoundMode mode)
 {
     if (!active)
         return;
@@ -133,7 +207,7 @@ void Voice::BeginFrame()
     }
 
     gainsAtFrameStart = gainsAtFrameEnd;
-    gainsAtFrameEnd = ComputeGains();
+    gainsAtFrameEnd = ComputeGains(mode);
 
     // A new voice starts at its gains at once. A voice that plays already moves from its gains of the last frame.
     if (atTheFirstFrame)
@@ -148,8 +222,8 @@ void Voice::BeginFrame()
     envelope.Advance(SoundFrameMilliseconds);
 }
 
-void Voice::Mix(const Resampler& resampler, double deviceSampleRate, std::span<float> left, std::span<float> right,
-    std::size_t firstSampleInFrame, std::size_t frameLength)
+void Voice::Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
+    std::size_t frameLength)
 {
     if (!active)
         return;
@@ -158,23 +232,33 @@ void Voice::Mix(const Resampler& resampler, double deviceSampleRate, std::span<f
     std::size_t channelCount = wave->channels.size();
     std::size_t sampleCount = wave->SampleCount();
     std::size_t loopLength = sampleCount - wave->loopStartSample;
+    bool sendsToReverb = SendsToReverb(gainsAtFrameStart, gainsAtFrameEnd);
 
     std::array<WaveSamples, MaximumChannelCount> channelSamples;
     for (std::size_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
+    {
         channelSamples[channelNumber] = WaveSamples{wave->channels[channelNumber], wave->loops, wave->loopStartSample};
+        lowPassFilters[channelNumber].SetValue(settings.lowPass, deviceSampleRate);
+    }
 
-    for (std::size_t outputNumber = 0; outputNumber < left.size(); ++outputNumber)
+    for (std::size_t outputNumber = 0; outputNumber < buffers.left.size(); ++outputNumber)
     {
         float fractionOfFrame = float(firstSampleInFrame + outputNumber) / float(frameLength);
 
         for (std::size_t channelNumber = 0; channelNumber < channelCount; ++channelNumber)
         {
             float sample = resampler.Read(channelSamples[channelNumber], position, step);
+            sample = lowPassFilters[channelNumber].Process(sample);
 
-            const ChannelGains& from = gainsAtFrameStart[channelNumber];
-            const ChannelGains& to = gainsAtFrameEnd[channelNumber];
-            left[outputNumber] += sample * (from.left + (to.left - from.left) * fractionOfFrame);
-            right[outputNumber] += sample * (from.right + (to.right - from.right) * fractionOfFrame);
+            const MixGains& from = gainsAtFrameStart[channelNumber];
+            const MixGains& to = gainsAtFrameEnd[channelNumber];
+            buffers.left[outputNumber] += sample * Interpolate(from.speakers.left, to.speakers.left, fractionOfFrame);
+            buffers.right[outputNumber] += sample * Interpolate(from.speakers.right, to.speakers.right, fractionOfFrame);
+            if (sendsToReverb)
+            {
+                buffers.reverbLeft[outputNumber] += sample * Interpolate(from.reverb.left, to.reverb.left, fractionOfFrame);
+                buffers.reverbRight[outputNumber] += sample * Interpolate(from.reverb.right, to.reverb.right, fractionOfFrame);
+            }
         }
 
         position += step;

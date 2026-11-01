@@ -5,6 +5,9 @@
 namespace Sound
 {
 
+// A sequence leaves an envelope number at this value when it does not set it. Then the number of the instrument is used.
+constexpr std::uint8_t EnvelopeNumberNotSet = 0xFF;
+
 // The numbers that an envelope is made of, for the parameters 0 to 127.
 
 // How much of the distance to full loudness is left after one millisecond of the attack. 0 means the attack is over at once.
@@ -33,7 +36,10 @@ public:
     // Starts the fall to silence. Does nothing when the fall has started.
     void StartRelease();
 
-    // Changes how fast the fall is, from now on.
+    // Change one number of an envelope that is running. The envelope follows the new number from now on.
+    void SetAttack(std::uint8_t attack);
+    void SetDecay(std::uint8_t decay);
+    void SetSustain(std::uint8_t sustain);
     void SetRelease(std::uint8_t release);
 
     void Advance(int milliseconds);

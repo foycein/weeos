@@ -13,7 +13,7 @@
 namespace SystemMenu
 {
 
-enum class ButtonEventKind
+enum class ButtonGroupEventKind
 {
     // The first pointer came onto the button.
     Focused,
@@ -25,9 +25,9 @@ enum class ButtonEventKind
     Pressed,
 };
 
-struct ButtonEvent
+struct ButtonGroupEvent
 {
-    ButtonEventKind kind;
+    ButtonGroupEventKind kind;
     std::size_t buttonIndex;
 
     // The player whose pointer made the event.
@@ -43,14 +43,14 @@ public:
 
     // Once in every step. Tells what changed since the step before. While the group is not active (for example while the picture fades)
     // no pointer is on any button.
-    std::vector<ButtonEvent> Update(const InputManager& input, bool isActive);
+    std::vector<ButtonGroupEvent> Update(const InputManager& input, bool isActive);
 
     // Forgets what every pointer aims at, so that the next Update starts from nothing.
     void Reset();
 
 private:
     std::optional<std::size_t> ButtonUnderPointer(const std::optional<PlayerInput>& player);
-    void MoveFocus(int playerIndex, std::optional<std::size_t> newButton, std::vector<ButtonEvent>& events);
+    void MoveFocus(int playerIndex, std::optional<std::size_t> newButton, std::vector<ButtonGroupEvent>& events);
 
     MenuLayout& layout;
     Display& display;

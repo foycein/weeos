@@ -4,7 +4,6 @@
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
 #include "SystemMenu/IosNandFiles.h"
-#include "SystemMenu/KeyboardDigitEntry.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 
@@ -36,13 +35,13 @@ public:
         : window(programWindow)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , textEntry(iosServices.GetKeyboard())
-        , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), textEntry, PictureShape)
+        , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), PictureShape)
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
         , hostKeys(keyboard, commandListener)
         , virtualRemote(iosServices.GetRemote().GetVirtualRemote())
     {
         virtualRemote.SetScreenShape(PictureShape);
+        menu.UsePhysicalKeyboard(iosServices.GetKeyboard());
         window.SetListener(&hostKeys);
     }
 
@@ -68,7 +67,6 @@ private:
     Platform::Window& window;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
-    SystemMenu::KeyboardDigitEntry textEntry;
     SystemMenu::MenuSystem menu;
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;

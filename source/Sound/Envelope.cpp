@@ -95,6 +95,21 @@ void Envelope::StartRelease()
     stage = Stage::Release;
 }
 
+void Envelope::SetAttack(std::uint8_t attack)
+{
+    attackFactor = AttackFactor(attack);
+}
+
+void Envelope::SetDecay(std::uint8_t decay)
+{
+    decayRate = FallRate(decay);
+}
+
+void Envelope::SetSustain(std::uint8_t sustain)
+{
+    sustainLevel = SustainLevel(sustain);
+}
+
 void Envelope::SetRelease(std::uint8_t release)
 {
     releaseRate = FallRate(release);
