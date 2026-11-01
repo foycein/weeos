@@ -515,6 +515,15 @@ std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogOk() const
     return PageToPicture({place.left + place.width / 2, place.top + place.height / 2}, frame);
 }
 
+std::optional<Formats::Vector2> InternetChannel::PlaceOfDialogCancel() const
+{
+    if (!dialog || !dialog->hasCancel)
+        return std::nullopt;
+
+    PageRectangle place = CancelButton();
+    return PageToPicture({place.left + place.width / 2, place.top + place.height / 2}, frame);
+}
+
 // The join of the network ends while the start page shows, and the channel tells it once (0x800320CC, 0x800338B0).
 bool InternetChannel::ShowNetworkErrorWhenDue()
 {

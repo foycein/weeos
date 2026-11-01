@@ -101,6 +101,7 @@ public:
     std::optional<Formats::Vector2> PlaceOfSettingsItem(const SettingsScreen::Item& item) const;
     std::optional<Formats::Vector2> PlaceOfEditOption(FavoritesScreen::EditOption option) const;
     std::optional<Formats::Vector2> PlaceOfDialogOk() const;
+    std::optional<Formats::Vector2> PlaceOfDialogCancel() const;
 
 private:
     // What lies under the dialogs and the keyboard.
