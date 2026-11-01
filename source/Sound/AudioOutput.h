@@ -38,16 +38,18 @@ enum class AudioLatency
     Shortest,
 };
 
-// Plays what a function makes on the default playback device of Windows, through WASAPI in shared mode like any other program.
+// Plays what a function makes on a playback device of Windows, through WASAPI in shared mode like any other program: the device that was
+// chosen by its name, or the default device of Windows.
 //
 // The output uses the format Windows already mixes in (32 bit floating point, the sample rate and the channels of the device),
 // so Windows does not convert the sound again. The device wakes the audio thread through an event; the thread asks the function
 // for the free frames and puts the left sound on the first channel and the right sound on the second.
 //
 // The output keeps playing when things go wrong around it. When the program is too slow, the device plays silence for a moment
-// and goes on (UnderrunCount). When the user chooses another default device, or the device is unplugged, or its format changes, the
-// audio thread opens the default device again, as often as it takes, until there is one (ReopenCount). It then tells the program
-// the sample rate of the new device. Only a render function that throws stops the output for good (HasFailed).
+// and goes on (UnderrunCount). When the user chooses another default device (while the output plays on the default device), or the
+// device is unplugged, or its format changes, the audio thread opens the device again, as often as it takes, until there is one
+// (ReopenCount). A chosen device that has gone is replaced by the default device. The thread then tells the program the sample rate
+// of the new device. Only a render function that throws stops the output for good (HasFailed).
 //
 // Create, start, stop and destroy an AudioOutput on one thread.
 class AudioOutput
@@ -62,9 +64,10 @@ public:
     // opened the device again. The sample rate may be another one now; then the function that makes the sound has to follow.
     using SampleRateFunction = std::function<void(std::uint32_t sampleRate)>;
 
-    // Opens the default playback device and prepares the stream. Nothing is played until Start.
+    // Opens the playback device with the name (as ListPlaybackDeviceNames gives it), or the default device of Windows when the name is
+    // empty or no device has it now, and prepares the stream. Nothing is played until Start.
     // Throws a NoPlaybackDeviceError when there is no device, and an AudioOutputError when it does not give the format the output needs.
-    explicit AudioOutput(AudioLatency latency = AudioLatency::Normal);
+    explicit AudioOutput(AudioLatency latency = AudioLatency::Normal, std::u16string deviceName = {});
     ~AudioOutput();
 
     AudioOutput(const AudioOutput&) = delete;
@@ -90,9 +93,15 @@ public:
     // Stops the stream and the audio thread. Does nothing when the output is not playing.
     void Stop();
 
-    // Makes the audio thread open the default device again, for example because the user has chosen another one in the settings.
-    // It returns at once. A stopped output opens the device again when it starts.
+    // Makes the audio thread open the device again. It returns at once. A stopped output opens the device again when it starts.
     void ReopenDevice();
+
+    // Plays on the device with this name from now on, or on the default device of Windows when the name is empty or no device has it.
+    // The audio thread opens the device; the sound goes on there after a short gap. It returns at once.
+    void ChooseDevice(std::u16string deviceName);
+
+    // True while the output plays on the default device of Windows because no device was chosen or the chosen one is not there.
+    bool PlaysOnDefaultDevice() const;
 
     // True when the render function threw an exception, so that the audio thread has stopped.
     bool HasFailed() const;

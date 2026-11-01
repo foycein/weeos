@@ -4,6 +4,7 @@
 #include "Ios/Keyboard/PcKeyboard.h"
 #include "Platform/MessagePump.h"
 #include "SystemMenu/IosNandFiles.h"
+#include "SystemMenu/MenuSound.h"
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "WeeOS/WiiSettingsServices.h"
@@ -29,11 +30,12 @@ class Application::Session
 {
 public:
     Session(Ios::IosServices& iosServices, Platform::Window& programWindow, Graphics::GraphicsDevice& graphicsDevice,
-        Platform::HostCommandListener& commandListener)
+        Platform::HostCommandListener& commandListener, ProgramSound& programSound)
         : window(programWindow)
+        , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
-        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote())
+        , wiiSettings(iosServices, programWindow, iosServices.GetRemote().GetVirtualRemote(), programSound)
         , menu(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(), iosServices.GetPower(), wiiSettings.PictureShape(),
               &wiiSettings.FlowServices())
         , keyboard(iosServices.GetKeyboard(), iosServices.GetRemote().GetVirtualRemote())
@@ -43,10 +45,15 @@ public:
         wiiSettings.UseDisplay(menu.Services().display);
         menu.UsePhysicalKeyboard(iosServices.GetKeyboard());
         window.SetListener(&hostKeys);
+
+        Sound::SoundSystem* soundSystem = sound.Start(menu.Services().files.ReadFile(SystemMenu::MenuSoundArchivePath));
+        if (soundSystem != nullptr)
+            menuSound.emplace(*soundSystem);
     }
 
     ~Session()
     {
+        sound.StopAllSounds();
         window.SetListener(nullptr);
     }
 
@@ -63,8 +70,20 @@ public:
         return virtualRemote;
     }
 
+    // What the screens asked to hear in the step that has just run, in the sound mode of the console's settings, which the Sound page
+    // of Wii Settings changes at once. The virtual remote has no speaker: the sounds that the menu sends to its speaker are dropped.
+    void PlaySoundsOfTheStep()
+    {
+        sound.SetSoundMode(wiiSettings.SoundMode());
+        if (menuSound)
+            menuSound->PlayRequests(menu.Services().sounds);
+
+        virtualRemote.TakeSpeakerSounds();
+    }
+
 private:
     Platform::Window& window;
+    ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
     WiiSettingsServices wiiSettings;
@@ -72,13 +91,15 @@ private:
     Ios::PcKeyboard keyboard;
     Platform::HostKeys hostKeys;
     Input::VirtualRemote& virtualRemote;
+    std::optional<SystemMenu::MenuSound> menuSound;
 };
 
-Application::Application(const Ios::IosFolders& iosFolders)
+Application::Application(const Ios::IosFolders& iosFolders, bool isSilent)
     : folders(iosFolders)
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
+    , sound(isSilent)
     , pacer(timer.ElapsedSeconds())
 {
     console.PowerOn();
@@ -90,7 +111,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), window, device, commandListener);
+    session = std::make_unique<Session>(console.GetServices(), window, device, commandListener, sound);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -152,7 +173,10 @@ void Application::RunDueSteps()
 
     int dueSteps = pacer.TakeDueSteps(timer.ElapsedSeconds());
     for (int step = 0; step < dueSteps; ++step)
+    {
         session->Menu().Update();
+        session->PlaySoundsOfTheStep();
+    }
 }
 
 void Application::CarryOutRequestsOfTheMenu()
@@ -280,6 +304,11 @@ Graphics::VulkanGraphicsDevice& Application::GetDevice()
 SystemMenu::MenuSystem& Application::GetMenu()
 {
     return session->Menu();
+}
+
+ProgramSound& Application::GetSound()
+{
+    return sound;
 }
 
 }

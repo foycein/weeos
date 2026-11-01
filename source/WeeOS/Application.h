@@ -7,6 +7,7 @@
 #include "Platform/PreciseTimer.h"
 #include "Platform/Window.h"
 #include "SystemMenu/MenuSystem.h"
+#include "WeeOS/ProgramSound.h"
 
 #include <memory>
 #include <optional>
@@ -21,7 +22,8 @@ class Application : private Platform::HostCommandListener
 {
 public:
     // Powers the console on. Throws when the console cannot start or the window cannot open.
-    explicit Application(const Ios::IosFolders& folders);
+    // A silent application gives its sound output only silence.
+    Application(const Ios::IosFolders& folders, bool isSilent);
     ~Application();
 
     Application(const Application&) = delete;
@@ -38,6 +40,7 @@ public:
     Platform::Window& GetWindow();
     Graphics::VulkanGraphicsDevice& GetDevice();
     SystemMenu::MenuSystem& GetMenu();
+    ProgramSound& GetSound();
 
 private:
     // Everything that depends on the IOS that runs: a reset starts IOS again and makes a new session.
@@ -60,6 +63,7 @@ private:
     Boot::ConsoleStartup console;
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;
+    ProgramSound sound;
     std::unique_ptr<Session> session;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;

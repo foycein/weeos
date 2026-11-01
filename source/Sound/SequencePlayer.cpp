@@ -166,6 +166,9 @@ SequencePlayer::SequencePlayer(const SequenceFile& sequenceFile, const LoadedBan
 
 void SequencePlayer::Update()
 {
+    if (isHeld)
+        return;
+
     int tickCount = 0;
     while (tickProgress >= TickProgressForOneTick)
     {
@@ -187,6 +190,25 @@ void SequencePlayer::Stop()
     {
         if (track.isRunning)
             EndTrack(track);
+    }
+}
+
+void SequencePlayer::SetVolume(float sequenceVolume)
+{
+    volume = sequenceVolume;
+}
+
+void SequencePlayer::SetHeld(bool held)
+{
+    isHeld = held;
+    for (SequenceTrack& track : tracks)
+    {
+        for (PlayingNote& note : track.notes)
+        {
+            Voice* voice = voices.Find(note.voice);
+            if (voice != nullptr)
+                voice->SetHeld(held);
+        }
     }
 }
 

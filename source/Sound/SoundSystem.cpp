@@ -5,6 +5,7 @@
 #include "Formats/FormatError.h"
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 
 namespace Sound
@@ -36,6 +37,22 @@ std::size_t LongestFrameLength(std::uint32_t sampleRate)
 std::uint64_t SamplesBeforeFrame(std::uint64_t frameNumber, std::uint32_t sampleRate)
 {
     return frameNumber * sampleRate * SoundFrameMilliseconds / MillisecondsPerSecond;
+}
+
+// A change of the master volume moves in a straight line over one rendered buffer. A volume that does not change is exact.
+float MasterVolumeAt(std::size_t samplesDone, std::size_t sampleCount, float startVolume, float endVolume)
+{
+    if (startVolume == endVolume)
+        return endVolume;
+
+    float fractionDone = float(samplesDone) / float(sampleCount);
+    return startVolume + (endVolume - startVolume) * fractionDone;
+}
+
+int SoundFramesOf(double seconds)
+{
+    double frames = seconds * double(MillisecondsPerSecond) / double(SoundFrameMilliseconds);
+    return std::max(0, int(std::lround(frames)));
 }
 
 }
@@ -96,19 +113,62 @@ SoundHandle SoundSystem::Play(std::size_t soundNumber)
     return handle;
 }
 
-void SoundSystem::Stop(SoundHandle handle)
+SoundHandle SoundSystem::PlayIfNotPlaying(std::size_t soundNumber)
 {
-    commands.Push({SoundCommandKind::Stop, handle.number, 0});
+    if (soundNumber >= archive.sounds.size())
+        return SoundHandle{};
+
+    SoundHandle handle{++lastHandleNumber};
+    if (!commands.Push({SoundCommandKind::PlayIfNotPlaying, handle.number, soundNumber}))
+        return SoundHandle{};
+
+    return handle;
 }
 
-void SoundSystem::StopAll()
+void SoundSystem::Stop(SoundHandle handle, double fadeSeconds)
 {
-    commands.Push({SoundCommandKind::StopAll, 0, 0});
+    SoundCommand command{SoundCommandKind::Stop, handle.number, 0};
+    command.fadeFrames = SoundFramesOf(fadeSeconds);
+    commands.Push(command);
+}
+
+void SoundSystem::StopAll(double fadeSeconds)
+{
+    SoundCommand command{SoundCommandKind::StopAll, 0, 0};
+    command.fadeFrames = SoundFramesOf(fadeSeconds);
+    commands.Push(command);
+}
+
+void SoundSystem::ChangeVolume(SoundHandle handle, float volume, double fadeSeconds)
+{
+    SoundCommand command{SoundCommandKind::ChangeVolume, handle.number, 0};
+    command.volume = volume;
+    command.fadeFrames = SoundFramesOf(fadeSeconds);
+    commands.Push(command);
+}
+
+void SoundSystem::PauseRunningSounds(double fadeSeconds)
+{
+    SoundCommand command{SoundCommandKind::PauseRunningSounds, 0, 0};
+    command.fadeFrames = SoundFramesOf(fadeSeconds);
+    commands.Push(command);
+}
+
+void SoundSystem::ResumePausedSounds(double fadeSeconds)
+{
+    SoundCommand command{SoundCommandKind::ResumePausedSounds, 0, 0};
+    command.fadeFrames = SoundFramesOf(fadeSeconds);
+    commands.Push(command);
 }
 
 void SoundSystem::SetMasterVolume(float volume)
 {
     masterVolume.store(volume);
+}
+
+float SoundSystem::MasterVolume() const
+{
+    return masterVolume.load();
 }
 
 void SoundSystem::SetPaused(bool shouldBePaused)
@@ -139,18 +199,154 @@ void SoundSystem::ProcessCommands()
 {
     SoundCommand command;
     while (commands.Pop(command))
-    {
-        if (command.kind == SoundCommandKind::Play)
-        {
-            StartSound(command);
-            continue;
-        }
+        CarryOut(command);
+}
 
-        for (RunningSound& sound : runningSounds)
-        {
-            if (command.kind == SoundCommandKind::StopAll || sound.handle.number == command.handleNumber)
-                StopRunningSound(sound);
-        }
+void SoundSystem::CarryOut(const SoundCommand& command)
+{
+    RunningSound* sound = FindRunningSound(command.handleNumber);
+
+    switch (command.kind)
+    {
+    case SoundCommandKind::Play:
+        StartSound(command);
+        return;
+
+    case SoundCommandKind::PlayIfNotPlaying:
+        if (!IsPlaying(command.soundNumber))
+            StartSound(command);
+        return;
+
+    case SoundCommandKind::Stop:
+        if (sound != nullptr)
+            StartStop(*sound, command.fadeFrames);
+        return;
+
+    case SoundCommandKind::StopAll:
+        for (RunningSound& runningSound : runningSounds)
+            StartStop(runningSound, command.fadeFrames);
+        return;
+
+    case SoundCommandKind::ChangeVolume:
+        if (sound != nullptr)
+            sound->volume.MoveTo(command.volume, command.fadeFrames);
+        return;
+
+    case SoundCommandKind::PauseRunningSounds:
+        for (RunningSound& runningSound : runningSounds)
+            StartPause(runningSound, command.fadeFrames);
+        return;
+
+    case SoundCommandKind::ResumePausedSounds:
+        for (RunningSound& runningSound : runningSounds)
+            Resume(runningSound, command.fadeFrames);
+        return;
+    }
+}
+
+bool SoundSystem::IsPlaying(std::size_t soundNumber) const
+{
+    return std::any_of(runningSounds.begin(), runningSounds.end(), [&](const RunningSound& sound) { return sound.soundNumber == soundNumber; });
+}
+
+SoundSystem::RunningSound* SoundSystem::FindRunningSound(std::uint32_t handleNumber)
+{
+    for (RunningSound& sound : runningSounds)
+    {
+        if (sound.handle.number == handleNumber)
+            return &sound;
+    }
+    return nullptr;
+}
+
+// A stop without a fade lets the sound go at once, as its envelope says. With a fade, the sound first falls to silence.
+void SoundSystem::StartStop(RunningSound& sound, int fadeFrames)
+{
+    if (fadeFrames == 0)
+    {
+        StopRunningSound(sound);
+        return;
+    }
+
+    sound.stopFade.MoveTo(0.0f, fadeFrames);
+    sound.stopsWhenFaded = true;
+}
+
+// A sound that is paused already stays paused, also when it was about to go on.
+void SoundSystem::StartPause(RunningSound& sound, int fadeFrames)
+{
+    if (sound.stopsWhenFaded)
+        return;
+
+    sound.resumesAtNextFrame = false;
+    sound.pauseFade.MoveTo(0.0f, fadeFrames);
+    sound.pausesWhenFaded = !sound.isPaused;
+}
+
+// The voices are let go at the start of the next sound frame, so that a sound stands still for whole frames.
+void SoundSystem::Resume(RunningSound& sound, int fadeFrames)
+{
+    if (!sound.isPaused && !sound.pausesWhenFaded)
+        return;
+
+    sound.resumesAtNextFrame = sound.isPaused;
+    sound.pausesWhenFaded = false;
+    sound.pauseFade.MoveTo(1.0f, fadeFrames);
+}
+
+// A paused sound holds its voices, and a sequence also stands still.
+void SoundSystem::HoldVoices(RunningSound& sound, bool shouldBeHeld)
+{
+    sound.isPaused = shouldBeHeld;
+    if (sound.sequence)
+    {
+        sound.sequence->SetHeld(shouldBeHeld);
+        return;
+    }
+
+    Voice* voice = voices.Find(sound.voice);
+    if (voice != nullptr)
+        voice->SetHeld(shouldBeHeld);
+}
+
+// Moves the fades of a sound on by one sound frame and gives its voices the volume that comes out. A stop or a pause whose fade has
+// reached silence is carried out then.
+void SoundSystem::UpdateFades(RunningSound& sound)
+{
+    if (sound.resumesAtNextFrame)
+    {
+        sound.resumesAtNextFrame = false;
+        HoldVoices(sound, false);
+    }
+
+    sound.volume.Advance();
+    sound.stopFade.Advance();
+    sound.pauseFade.Advance();
+
+    float fadeVolume = sound.volume.Value() * sound.stopFade.Value() * sound.pauseFade.Value();
+    if (sound.sequence)
+    {
+        sound.sequence->SetVolume(sound.archiveVolume * fadeVolume);
+    }
+    else
+    {
+        VoiceSettings settings = sound.waveSettings;
+        settings.volume *= fadeVolume;
+        Voice* voice = voices.Find(sound.voice);
+        if (voice != nullptr)
+            voice->SetSettings(settings);
+    }
+
+    if (sound.stopsWhenFaded && sound.stopFade.HasArrived())
+    {
+        sound.stopsWhenFaded = false;
+        StopRunningSound(sound);
+    }
+
+    if (sound.pausesWhenFaded && sound.pauseFade.HasArrived())
+    {
+        sound.pausesWhenFaded = false;
+        HoldVoices(sound, true);
     }
 }
 
@@ -174,6 +370,7 @@ void SoundSystem::StartSequenceSound(const SoundCommand& command, const SoundInf
     float soundVolume = float(info.volume) / HighestNumber;
     RunningSound sound{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, VoiceHandle{}, nullptr};
     sound.sequence = std::make_unique<SequencePlayer>(sequenceFile, bank, info.sequence, soundVolume, voices, sequenceGlobals);
+    sound.archiveVolume = soundVolume;
     runningSounds.push_back(std::move(sound));
 }
 
@@ -197,7 +394,9 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
     if (!voice)
         return;
 
-    runningSounds.push_back({SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, *voice, nullptr});
+    RunningSound running{SoundHandle{command.handleNumber}, command.soundNumber, soundsStarted++, *voice, nullptr};
+    running.waveSettings = settings;
+    runningSounds.push_back(std::move(running));
 }
 
 // A player plays only so many of its sounds at once. When it is full, the sound with the lowest priority (the oldest of
@@ -233,8 +432,13 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
     return true;
 }
 
+// A paused sound is let go first, so that its voices can end.
 void SoundSystem::StopRunningSound(RunningSound& sound)
 {
+    sound.resumesAtNextFrame = false;
+    if (sound.isPaused)
+        HoldVoices(sound, false);
+
     if (sound.sequence)
     {
         sound.sequence->Stop();
@@ -270,6 +474,7 @@ void SoundSystem::RunSoundFrame()
 {
     for (RunningSound& sound : runningSounds)
     {
+        UpdateFades(sound);
         if (sound.sequence)
             sound.sequence->Update();
     }
@@ -302,11 +507,15 @@ MixBuffers SoundSystem::ClearedBuffers(std::size_t count)
 }
 
 // The reverb gets what the voices send to it, and what comes out is added to the speakers. It also goes on when no voice sends
-// anything, because its tail is still sounding.
+// anything, because its tail is still sounding. A reverb that is switched off loses its tail, as an effect that the menu shuts down
+// does, and starts from an empty room when it is switched on again.
 void SoundSystem::AddReverb(const MixBuffers& buffers)
 {
     if (!reverbEnabled.load())
+    {
+        reverb.Clear();
         return;
+    }
 
     reverb.Process(buffers.reverbLeft, buffers.reverbRight);
     for (std::size_t sampleNumber = 0; sampleNumber < buffers.left.size(); ++sampleNumber)
@@ -324,6 +533,11 @@ void SoundSystem::SetSoundMode(SoundMode mode)
 void SoundSystem::SetReverbEnabled(bool enabled)
 {
     reverbEnabled.store(enabled);
+}
+
+bool SoundSystem::IsReverbEnabled() const
+{
+    return reverbEnabled.load();
 }
 
 void SoundSystem::SetDeviceSampleRate(std::uint32_t sampleRate)
@@ -359,7 +573,11 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
         return;
     }
 
-    float volume = masterVolume.load();
+    float startVolume = hasRendered ? renderedMasterVolume : masterVolume.load();
+    float endVolume = masterVolume.load();
+    renderedMasterVolume = endVolume;
+    hasRendered = true;
+
     std::size_t totalSampleCount = interleavedStereo.size() / StereoChannelCount;
     std::size_t doneSampleCount = 0;
 
@@ -378,9 +596,10 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
         std::span<float> right = buffers.right;
         for (std::size_t sampleNumber = 0; sampleNumber < count; ++sampleNumber)
         {
-            std::size_t firstChannelIndex = StereoChannelCount * (doneSampleCount + sampleNumber);
-            interleavedStereo[firstChannelIndex] = left[sampleNumber] * volume;
-            interleavedStereo[firstChannelIndex + 1] = right[sampleNumber] * volume;
+            std::size_t outputNumber = doneSampleCount + sampleNumber;
+            float volume = MasterVolumeAt(outputNumber + 1, totalSampleCount, startVolume, endVolume);
+            interleavedStereo[StereoChannelCount * outputNumber] = left[sampleNumber] * volume;
+            interleavedStereo[StereoChannelCount * outputNumber + 1] = right[sampleNumber] * volume;
         }
 
         doneSampleCount += count;

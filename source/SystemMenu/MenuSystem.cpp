@@ -105,6 +105,7 @@ void MenuSystem::ShowFatalError(FatalError reason)
     if (frontPanel.IsWorking())
         return;
 
+    sounds.StopAllSounds(ErrorStopFadeSteps);
     errorScreen.Show(reason);
 }
 

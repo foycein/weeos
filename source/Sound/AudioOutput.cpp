@@ -1,5 +1,6 @@
 #include "Sound/AudioOutput.h"
 
+#include "Sound/PlaybackDevices.h"
 #include "Sound/StereoPlacement.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -160,6 +161,7 @@ struct Stream
     std::uint32_t channelCount = 0;
     UINT32 periodFrames = 0;
     UINT32 bufferFrameCount = 0;
+    bool isDefaultDevice = true;
 };
 
 ComPtr<IMMDevice> FindDefaultDevice(IMMDeviceEnumerator& enumerator)
@@ -170,6 +172,23 @@ ComPtr<IMMDevice> FindDefaultDevice(IMMDeviceEnumerator& enumerator)
         throw NoPlaybackDeviceError("Audio output: Windows has no playback device");
 
     ThrowIfFailed(result, "finding the default playback device");
+    return device;
+}
+
+// The device with the name, or nothing when the name is empty or no device has it now.
+ComPtr<IMMDevice> FindNamedDevice(IMMDeviceEnumerator& enumerator, const std::u16string& deviceName)
+{
+    if (deviceName.empty())
+        return nullptr;
+
+    std::optional<std::wstring> identifier = FindPlaybackDeviceId(deviceName);
+    if (!identifier)
+        return nullptr;
+
+    ComPtr<IMMDevice> device;
+    if (FAILED(enumerator.GetDevice(identifier->c_str(), &device)))
+        return nullptr;
+
     return device;
 }
 
@@ -197,12 +216,17 @@ UINT32 ChoosePeriod(IAudioClient3& client, const WAVEFORMATEX& mixFormat, AudioL
     return latency == AudioLatency::Shortest ? shortestPeriod : defaultPeriod;
 }
 
-// Opens the default playback device and prepares a stream on it that wakes the thread through the event.
+// Opens the playback device with the name, or the default device, and prepares a stream on it that wakes the thread through the event.
 // Gives nothing when another program holds the mixer of Windows at another short period, so that this period cannot be had.
-std::optional<Stream> TryToOpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency)
+std::optional<Stream> TryToOpenStream(
+    IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency, const std::u16string& deviceName)
 {
     Stream stream;
-    ComPtr<IMMDevice> device = FindDefaultDevice(enumerator);
+    ComPtr<IMMDevice> device = FindNamedDevice(enumerator, deviceName);
+    stream.isDefaultDevice = device == nullptr;
+    if (stream.isDefaultDevice)
+        device = FindDefaultDevice(enumerator);
+
     ThrowIfFailed(device->Activate(__uuidof(IAudioClient3), CLSCTX_ALL, nullptr, &stream.client), "opening the playback device");
 
     MixFormat mixFormat = ReadMixFormat(*stream.client.Get());
@@ -225,11 +249,11 @@ std::optional<Stream> TryToOpenStream(IMMDeviceEnumerator& enumerator, HANDLE bu
 
 // The normal period is the one that every other program plays at, so an output that cannot have the shortest period
 // plays at the normal one instead of waiting for a device that it can never open.
-Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency)
+Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, AudioLatency latency, const std::u16string& deviceName)
 {
-    std::optional<Stream> stream = TryToOpenStream(enumerator, bufferReadyEvent, latency);
+    std::optional<Stream> stream = TryToOpenStream(enumerator, bufferReadyEvent, latency, deviceName);
     if (!stream)
-        stream = TryToOpenStream(enumerator, bufferReadyEvent, AudioLatency::Normal);
+        stream = TryToOpenStream(enumerator, bufferReadyEvent, AudioLatency::Normal, deviceName);
     if (!stream)
         throw AudioOutputError("Audio output: another program holds the mixer of Windows at another period");
 
@@ -240,8 +264,9 @@ Stream OpenStream(IMMDeviceEnumerator& enumerator, HANDLE bufferReadyEvent, Audi
 
 struct AudioOutput::Implementation
 {
-    explicit Implementation(AudioLatency latencyToUse)
+    Implementation(AudioLatency latencyToUse, std::u16string deviceName)
         : latency(latencyToUse)
+        , chosenDeviceName(std::move(deviceName))
     {
     }
 
@@ -279,7 +304,36 @@ struct AudioOutput::Implementation
         notifications.Attach(new DeviceNotifications(defaultDeviceChanged, wakeEvent));
         ThrowIfFailed(enumerator->RegisterEndpointNotificationCallback(notifications.Get()), "asking Windows for news about the devices");
 
-        InstallStream(OpenStream(*enumerator.Get(), bufferReadyEvent, latency));
+        InstallStream(OpenChosenStream());
+    }
+
+    std::u16string ChosenDeviceName() const
+    {
+        std::lock_guard lock(deviceNameMutex);
+        return chosenDeviceName;
+    }
+
+    void ChooseDevice(std::u16string deviceName)
+    {
+        {
+            std::lock_guard lock(deviceNameMutex);
+            chosenDeviceName = std::move(deviceName);
+        }
+        reopenAsked = true;
+        SetEvent(wakeEvent);
+    }
+
+    Stream OpenChosenStream()
+    {
+        return OpenStream(*enumerator.Get(), bufferReadyEvent, latency, ChosenDeviceName());
+    }
+
+    // A new default device of Windows matters only to an output that plays on the default device.
+    bool MustOpenAnotherDevice()
+    {
+        bool defaultHasChanged = defaultDeviceChanged.exchange(false);
+        bool reopenWasAsked = reopenAsked.exchange(false);
+        return reopenWasAsked || (defaultHasChanged && isOnDefaultDevice);
     }
 
     // Makes the stream the one that plays. Only the thread that plays, or nobody, calls this.
@@ -289,6 +343,7 @@ struct AudioOutput::Implementation
         sampleRate = openedStream.sampleRate;
         channelCount = openedStream.channelCount;
         periodFrames = openedStream.periodFrames;
+        isOnDefaultDevice = openedStream.isDefaultDevice;
 
         std::lock_guard lock(streamMutex);
         stream = std::move(openedStream);
@@ -325,7 +380,7 @@ struct AudioOutput::Implementation
         CloseStream();
         try
         {
-            InstallStream(OpenStream(*enumerator.Get(), bufferReadyEvent, latency));
+            InstallStream(OpenChosenStream());
             StartStream();
         }
         catch (const AudioOutputError&)
@@ -340,14 +395,13 @@ struct AudioOutput::Implementation
     // Makes the stream ready to play, with a new device when the device has changed. Gives false when that is not possible now.
     bool TryToStartTheStream()
     {
-        bool deviceHasChanged = defaultDeviceChanged.exchange(false);
-        bool reopenWasAsked = reopenAsked.exchange(false);
+        bool mustOpenAnotherDevice = MustOpenAnotherDevice();
         try
         {
-            if (!stream.client || deviceHasChanged || reopenWasAsked)
+            if (!stream.client || mustOpenAnotherDevice)
             {
                 CloseStream();
-                InstallStream(OpenStream(*enumerator.Get(), bufferReadyEvent, latency));
+                InstallStream(OpenChosenStream());
             }
             StartStream();
         }
@@ -442,7 +496,7 @@ struct AudioOutput::Implementation
 
         while (!stopRequested && !failed)
         {
-            if (reopenAsked.exchange(false) || defaultDeviceChanged.exchange(false))
+            if (MustOpenAnotherDevice())
                 deviceIsOpen = false;
 
             if (!deviceIsOpen)
@@ -532,6 +586,10 @@ struct AudioOutput::Implementation
 
     AudioLatency latency;
     bool comIsInitialized = false;
+
+    // The name of the device that the user chose; empty for the default device. The menu thread changes it, the audio thread reads it.
+    mutable std::mutex deviceNameMutex;
+    std::u16string chosenDeviceName;
     std::thread::id creatingThread;
 
     HANDLE bufferReadyEvent = nullptr;
@@ -552,6 +610,7 @@ struct AudioOutput::Implementation
     std::atomic<bool> failed{false};
     std::atomic<bool> reopenAsked{false};
     std::atomic<bool> defaultDeviceChanged{false};
+    std::atomic<bool> isOnDefaultDevice{true};
     std::atomic<int> mutedAsked{MuteNotAsked};
 
     std::atomic<std::uint32_t> sampleRate{0};
@@ -562,8 +621,8 @@ struct AudioOutput::Implementation
     std::atomic<std::uint32_t> reopenCount{0};
 };
 
-AudioOutput::AudioOutput(AudioLatency latency)
-    : implementation(std::make_unique<Implementation>(latency))
+AudioOutput::AudioOutput(AudioLatency latency, std::u16string deviceName)
+    : implementation(std::make_unique<Implementation>(latency, std::move(deviceName)))
 {
     implementation->Open();
 }
@@ -609,6 +668,16 @@ void AudioOutput::ReopenDevice()
 {
     implementation->reopenAsked = true;
     SetEvent(implementation->wakeEvent);
+}
+
+void AudioOutput::ChooseDevice(std::u16string deviceName)
+{
+    implementation->ChooseDevice(std::move(deviceName));
+}
+
+bool AudioOutput::PlaysOnDefaultDevice() const
+{
+    return implementation->isOnDefaultDevice;
 }
 
 bool AudioOutput::HasFailed() const
