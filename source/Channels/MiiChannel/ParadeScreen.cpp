@@ -3,7 +3,6 @@
 #include "Channels/MiiChannel/MiiChannelFiles.h"
 #include "Channels/MiiChannel/MiiChannelInput.h"
 
-#include <algorithm>
 #include <array>
 #include <format>
 
@@ -48,8 +47,6 @@ constexpr std::string_view CountText = "numberText_00";
 constexpr std::string_view RunIcon = "squRunIcon_00";
 constexpr std::string_view WalkIcon = "squWalkIcon_00";
 
-// The parade shows its newest 100 Miis at a time (Assumed, CHN-84).
-constexpr std::size_t ShownParadeMiis = 100;
 
 constexpr std::string_view ToPlazaSound = "SEQ_PARADE_TO_PLAZA";
 constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";
@@ -57,8 +54,6 @@ constexpr std::string_view GrabSound = "SEQ_DOOL_GLIP_ON";
 constexpr std::string_view LetGoSound = "SEQ_DOOL_GLIP_OFF";
 constexpr std::string_view EraseSound = "SEQ_HIROBA_TRUSH";
 constexpr std::string_view SendSound = "SEQ_HIROBA_NEW";
-constexpr std::string_view ZoomInSound = "SEQ_CAMERA_ZOOM_ON";
-constexpr std::string_view ZoomOutSound = "SEQ_CAMERA_ZOOM_OFF";
 
 }
 
@@ -100,7 +95,7 @@ void ParadeScreen::Start()
         return;
     }
 
-    if (parade.Miis().empty())
+    if (data.ParadeMiis().empty())
         message.ShowNotice(MiiMessage::NobodyIsHere);
 }
 
@@ -163,26 +158,18 @@ void ParadeScreen::Draw()
     layout->Draw();
 }
 
-// The newest Miis of the parade walk on the road; each is known by its place in the parade's list.
+// The Miis of the parade walk on the road; each is known by its place in the parade's list.
 void ParadeScreen::ShowParadeMiis()
 {
     std::vector<Mii::MiiRecord> paradeMiis = data.ParadeMiis();
-    std::size_t firstShown = paradeMiis.size() - std::min(paradeMiis.size(), ShownParadeMiis);
-
     std::vector<StoredMii> shown;
-    for (std::size_t place = firstShown; place < paradeMiis.size(); ++place)
+    for (std::size_t place = 0; place < paradeMiis.size(); ++place)
         shown.push_back({place, paradeMiis[place]});
     parade.SetMiis(shown);
 }
 
 void ParadeScreen::HandleButtons()
 {
-    PlayerOneInput input = ReadPlayerOne(services);
-    if (input.WasPressed(Input::RemoteButtons::Plus) && parade.ZoomIn())
-        services.sounds.Request(ZoomInSound);
-    if (input.WasPressed(Input::RemoteButtons::Minus) && parade.ZoomOut())
-        services.sounds.Request(ZoomOutSound);
-
     if (IsPressed(PlazaButton))
     {
         services.sounds.Request(ToPlazaSound);
@@ -253,7 +240,7 @@ void ParadeScreen::HandleMessageAnswer()
     {
         isIntroducing = false;
         data.SetFlag(ChannelFlag::ParadeIntroduced, true);
-        if (parade.Miis().empty())
+        if (data.ParadeMiis().empty())
             message.ShowNotice(MiiMessage::NobodyIsHere);
         return;
     }
