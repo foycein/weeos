@@ -86,7 +86,7 @@ void Reverb::DelayLine::Clear()
     position = 0;
 }
 
-Reverb::Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameters)
+Reverb::Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameters, std::size_t inputDelaySamples)
 {
     parameters.preDelaySeconds = Limited(wantedParameters.preDelaySeconds, HighestPreDelaySeconds);
     parameters.timeSeconds = Limited(wantedParameters.timeSeconds, HighestTimeSeconds);
@@ -95,7 +95,7 @@ Reverb::Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameter
     parameters.crosstalk = Limited(wantedParameters.crosstalk, 1.0f);
     parameters.mix = Limited(wantedParameters.mix, 1.0f);
 
-    std::size_t preDelayLength = static_cast<std::size_t>(float(sampleRate) * parameters.preDelaySeconds);
+    std::size_t preDelayLength = inputDelaySamples + static_cast<std::size_t>(float(sampleRate) * parameters.preDelaySeconds);
     for (std::size_t channelNumber = 0; channelNumber < ChannelCount; ++channelNumber)
     {
         Channel& channel = channels[channelNumber];
@@ -122,7 +122,7 @@ Reverb::Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameter
     inputWeight = 1.0f - dampingWeight;
 
     double secondsUntilSilent = double(TailTimesToKeep) * parameters.timeSeconds + parameters.preDelaySeconds + SecondsOfSafety;
-    samplesUntilSilent = static_cast<std::size_t>(secondsUntilSilent * double(sampleRate));
+    samplesUntilSilent = inputDelaySamples + static_cast<std::size_t>(secondsUntilSilent * double(sampleRate));
 }
 
 const ReverbParameters& Reverb::Parameters() const

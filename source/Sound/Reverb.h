@@ -43,7 +43,8 @@ constexpr ReverbParameters MenuReverbParameters = {0.02f, 3.0f, 0.6f, 0.4f, 0.1f
 class Reverb
 {
 public:
-    Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameters);
+    // The input delay holds back what the reverb hears by that many samples, before its own pre-delay.
+    Reverb(std::uint32_t sampleRate, const ReverbParameters& wantedParameters, std::size_t inputDelaySamples = 0);
 
     // The parameters as the reverb uses them.
     const ReverbParameters& Parameters() const;

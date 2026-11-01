@@ -16,6 +16,15 @@ namespace
 constexpr float HighestNumber = 127.0f;
 constexpr std::uint64_t MillisecondsPerSecond = 1000;
 
+// The AX library plays what an effect makes from a frame of its bus two sound frames later: three buffers take turns, one that the
+// voices fill, one that the effect works on and one that is played (0x81552880, 0x81552690, 0x815526c4).
+constexpr std::uint64_t EffectBusDelayFrames = 2;
+
+std::size_t EffectBusDelaySamples(std::uint32_t sampleRate)
+{
+    return std::size_t(sampleRate * EffectBusDelayFrames * SoundFrameMilliseconds / MillisecondsPerSecond);
+}
+
 // The most samples that one sound frame can have at a sample rate: its length rounded up.
 std::size_t LongestFrameLength(std::uint32_t sampleRate)
 {
@@ -34,7 +43,7 @@ std::uint64_t SamplesBeforeFrame(std::uint64_t frameNumber, std::uint32_t sample
 SoundSystem::SoundSystem(SoundArchiveFile archiveToPlay, std::uint32_t deviceSampleRate)
     : archive(std::move(archiveToPlay))
     , mixer(deviceSampleRate)
-    , reverb(deviceSampleRate, MenuReverbParameters)
+    , reverb(deviceSampleRate, MenuReverbParameters, EffectBusDelaySamples(deviceSampleRate))
 {
     for (const SoundInfo& sound : archive.sounds)
     {
@@ -323,7 +332,7 @@ void SoundSystem::SetDeviceSampleRate(std::uint32_t sampleRate)
         return;
 
     mixer.SetDeviceSampleRate(sampleRate);
-    reverb = Reverb(sampleRate, MenuReverbParameters);
+    reverb = Reverb(sampleRate, MenuReverbParameters, EffectBusDelaySamples(sampleRate));
     ResizeBuffers(sampleRate);
 
     // The frames start again from the time zero, because the grid of the frames depends on the rate.
