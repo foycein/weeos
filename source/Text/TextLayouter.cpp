@@ -192,7 +192,10 @@ private:
         {
             char16_t character = text[index];
             if (character == LineFeed)
-                return {{lineStart, index, lineWidth, true}, index + 1, false};
+            {
+                Line line = {.firstCharacter = lineStart, .endCharacter = index, .width = lineWidth, .endsWithLineFeed = true};
+                return {.line = line, .nextLineStart = index + 1, .isLastLine = false};
+            }
 
             if (IsSkippedControlCode(character))
                 continue;
@@ -201,15 +204,22 @@ private:
             bool reachesBeyondTheArea = widthWithCharacter > area.width;
             bool isFirstCharacterOfTheLine = index == lineStart;
             if (reachesBeyondTheArea && !isFirstCharacterOfTheLine)
-                return {{lineStart, index, lineWidth, false}, index, false};
+            {
+                Line line = {.firstCharacter = lineStart, .endCharacter = index, .width = lineWidth, .endsWithLineFeed = false};
+                return {.line = line, .nextLineStart = index, .isLastLine = false};
+            }
 
             lineWidth = widthWithCharacter;
             followsGlyph = character != Tab;
             if (reachesBeyondTheArea)
-                return {{lineStart, index + 1, lineWidth, false}, index + 1, false};
+            {
+                Line line = {.firstCharacter = lineStart, .endCharacter = index + 1, .width = lineWidth, .endsWithLineFeed = false};
+                return {.line = line, .nextLineStart = index + 1, .isLastLine = false};
+            }
         }
 
-        return {{lineStart, text.size(), lineWidth, false}, text.size(), true};
+        Line line = {.firstCharacter = lineStart, .endCharacter = text.size(), .width = lineWidth, .endsWithLineFeed = false};
+        return {.line = line, .nextLineStart = text.size(), .isLastLine = true};
     }
 
     // How far a line reaches after the character. A tab goes to the next tab stop. A glyph adds its advance, and the character space
@@ -269,7 +279,14 @@ private:
         place.left = block.left + freeWidth * FreeSpaceBefore(style.alignment.horizontal);
         place.blockLeft = block.left;
         place.baselineY = lineTop - font.ascent * scaleY;
-        laidOutText.lines.push_back({line.firstCharacter, line.endCharacter, place.left, line.width, lineTop, lineHeight});
+        PlacedLine placedLine;
+        placedLine.firstCharacter = line.firstCharacter;
+        placedLine.endCharacter = line.endCharacter;
+        placedLine.left = place.left;
+        placedLine.width = line.width;
+        placedLine.top = lineTop;
+        placedLine.height = lineHeight;
+        laidOutText.lines.push_back(placedLine);
 
         Pen pen = {place.left, false};
         for (std::size_t index = line.firstCharacter; index < line.endCharacter; ++index)
