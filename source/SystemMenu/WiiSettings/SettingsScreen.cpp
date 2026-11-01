@@ -242,7 +242,8 @@ std::optional<std::size_t> SettingsScreen::FindButtonAt(float pageX, float pageY
     for (std::size_t buttonIndex = 0; buttonIndex < page.buttons.size(); ++buttonIndex)
     {
         const PageButton& button = page.buttons[buttonIndex];
-        if (button.isShown && button.bounds.Contains(static_cast<int>(pageX), static_cast<int>(pageY)))
+        bool isUnderThePointer = button.bounds.Contains(static_cast<int>(pageX), static_cast<int>(pageY));
+        if (button.isShown && isUnderThePointer)
             return buttonIndex;
     }
 

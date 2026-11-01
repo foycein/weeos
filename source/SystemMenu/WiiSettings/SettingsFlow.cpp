@@ -92,17 +92,16 @@ const std::optional<InputRequest>& SettingsFlow::PendingInput() const
 
 void SettingsFlow::AnswerInput(const std::u16string& answer)
 {
-    if (!pendingInput)
-        return;
-
-    // The request is taken away first, because the answer may ask for something again.
-    std::function<void(std::optional<std::u16string>)> handler = std::move(inputAnswerHandler);
-    pendingInput.reset();
-    inputAnswerHandler = nullptr;
-    handler(answer);
+    GiveAnswer(answer);
 }
 
 void SettingsFlow::CancelInput()
+{
+    GiveAnswer(std::nullopt);
+}
+
+// The request is taken away first, because the answer may ask for something again.
+void SettingsFlow::GiveAnswer(std::optional<std::u16string> answer)
 {
     if (!pendingInput)
         return;
@@ -110,7 +109,7 @@ void SettingsFlow::CancelInput()
     std::function<void(std::optional<std::u16string>)> handler = std::move(inputAnswerHandler);
     pendingInput.reset();
     inputAnswerHandler = nullptr;
-    handler(std::nullopt);
+    handler(answer);
 }
 
 std::vector<PageSound> SettingsFlow::TakeSounds()

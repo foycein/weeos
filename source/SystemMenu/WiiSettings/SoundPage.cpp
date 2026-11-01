@@ -2,13 +2,28 @@
 
 #include "SystemMenu/WiiSettings/PageBuilder.h"
 
+#include <array>
+#include <string_view>
+
 namespace SystemMenu
 {
 
 namespace
 {
 
+struct SoundModeChoice
+{
+    std::u16string_view text;
+    Settings::SoundMode soundMode;
+};
+
 constexpr int ChoiceCount = 3;
+
+constexpr std::array<SoundModeChoice, ChoiceCount> SoundModeChoices = {{
+    {u"Mono", Settings::SoundMode::Mono},
+    {u"Stereo", Settings::SoundMode::Stereo},
+    {u"Surround", Settings::SoundMode::Surround},
+}};
 
 }
 
@@ -36,14 +51,15 @@ void SoundPage::BuildPage(PageId page, Page& content)
     PageBuilder builder(content);
     builder.SetTitle(3, u"Sound Mode");
 
-    Settings::SoundMode soundMode = settings.GetSoundMode();
-    builder.AddChoice(0, ChoiceCount, u"Mono", soundMode == Settings::SoundMode::Mono, [this] { ChooseSoundMode(Settings::SoundMode::Mono); })
-        .sound = PageSound::Surround;
-    builder.AddChoice(1, ChoiceCount, u"Stereo", soundMode == Settings::SoundMode::Stereo, [this] { ChooseSoundMode(Settings::SoundMode::Stereo); })
-        .sound = PageSound::Surround;
-    builder.AddChoice(2, ChoiceCount, u"Surround", soundMode == Settings::SoundMode::Surround,
-        [this] { ChooseSoundMode(Settings::SoundMode::Surround); })
-        .sound = PageSound::Surround;
+    Settings::SoundMode chosenMode = settings.GetSoundMode();
+    for (int slot = 0; slot < ChoiceCount; ++slot)
+    {
+        Settings::SoundMode soundMode = SoundModeChoices[slot].soundMode;
+        bool isChosen = soundMode == chosenMode;
+        std::u16string text(SoundModeChoices[slot].text);
+        PageButton& button = builder.AddChoice(slot, ChoiceCount, text, isChosen, [this, soundMode] { ChooseSoundMode(soundMode); });
+        button.sound = PageSound::Surround;
+    }
 
     builder.AddBackButton(
         [this]

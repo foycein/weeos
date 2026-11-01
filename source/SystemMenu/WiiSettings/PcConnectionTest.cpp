@@ -2,7 +2,6 @@
 
 #include "SystemMenu/NetworkStart.h"
 
-#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <string>
@@ -30,7 +29,9 @@ constexpr std::uint16_t UnableToConnectToTheInternetMessage = 405;
 std::string LowerCase(std::string_view text)
 {
     std::string lower(text);
-    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char letter) { return static_cast<char>(std::tolower(letter)); });
+    for (char& letter : lower)
+        letter = static_cast<char>(std::tolower(static_cast<unsigned char>(letter)));
+
     return lower;
 }
 
@@ -56,12 +57,15 @@ bool NamesTheTestServerOrganization(std::string_view header)
             lineEnd = header.size();
 
         std::string_view line = header.substr(lineStart, lineEnd - lineStart);
+        lineStart = lineEnd + 1;
+
         std::size_t colon = line.find(':');
-        bool isOrganization = colon != std::string_view::npos && LowerCase(Trim(line.substr(0, colon))) == OrganizationHeaderName;
+        if (colon == std::string_view::npos)
+            continue;
+
+        bool isOrganization = LowerCase(Trim(line.substr(0, colon))) == OrganizationHeaderName;
         if (isOrganization && Trim(line.substr(colon + 1)) == TestServerOrganization)
             return true;
-
-        lineStart = lineEnd + 1;
     }
     return false;
 }
@@ -82,7 +86,8 @@ ConnectionTestResult JudgeServerReply(const ServerReply& reply)
     if (reply.answer == ServerAnswer::NameNotFound)
         return FailedTest(NameNotFoundFamily);
 
-    bool isTheTestServer = reply.answer == ServerAnswer::Answered && reply.statusCode == HttpOk && NamesTheTestServerOrganization(reply.header);
+    bool isAnsweredWell = reply.answer == ServerAnswer::Answered && reply.statusCode == HttpOk;
+    bool isTheTestServer = isAnsweredWell && NamesTheTestServerOrganization(reply.header);
     if (!isTheTestServer)
         return FailedTest(RequestFailedFamily);
 

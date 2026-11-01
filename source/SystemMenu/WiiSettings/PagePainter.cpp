@@ -151,13 +151,15 @@ void PagePainter::DrawButton(const PageButton& button, bool isPointed)
     if (look.hasChosenFrame && button.isChosen)
     {
         const PageImage& leftFrame = images.Find(look.chosenFrameLeft.imagePath);
-        PageRectangle leftBounds = {button.bounds.left + look.chosenFrameLeft.offsetFromLeft, button.bounds.top + look.chosenFrameLeft.offsetFromTop,
-            leftFrame.width, leftFrame.height};
+        int leftFrameLeft = button.bounds.left + look.chosenFrameLeft.offsetFromLeft;
+        int leftFrameTop = button.bounds.top + look.chosenFrameLeft.offsetFromTop;
+        PageRectangle leftBounds = {leftFrameLeft, leftFrameTop, leftFrame.width, leftFrame.height};
         DrawPicture(look.chosenFrameLeft.imagePath, leftBounds, White);
 
         const PageImage& rightFrame = images.Find(look.chosenFrameRight.imagePath);
-        int rightLeft = button.bounds.left + button.bounds.width + look.chosenFrameRight.offsetFromLeft;
-        PageRectangle rightBounds = {rightLeft, button.bounds.top + look.chosenFrameRight.offsetFromTop, rightFrame.width, rightFrame.height};
+        int rightFrameLeft = button.bounds.left + button.bounds.width + look.chosenFrameRight.offsetFromLeft;
+        int rightFrameTop = button.bounds.top + look.chosenFrameRight.offsetFromTop;
+        PageRectangle rightBounds = {rightFrameLeft, rightFrameTop, rightFrame.width, rightFrame.height};
         DrawPicture(look.chosenFrameRight.imagePath, rightBounds, White);
     }
 
@@ -187,11 +189,13 @@ void PagePainter::DrawPicture(const std::string& imagePath, const PageRectangle&
     device.DrawQuad(MakeQuad(bounds, tint), MakeMaterial(images.Find(imagePath)));
 }
 
-void PagePainter::DrawPictureAtItsOwnSizeInTheMiddle(const std::string& imagePath, const PageRectangle& bounds, const Formats::Rgba8Color& tint)
+void PagePainter::DrawPictureAtItsOwnSizeInTheMiddle(const std::string& imagePath, const PageRectangle& bounds,
+    const Formats::Rgba8Color& tint)
 {
     const PageImage& image = images.Find(imagePath);
-    PageRectangle ownBounds = {bounds.left + (bounds.width - image.width) / 2, bounds.top + (bounds.height - image.height) / 2, image.width,
-        image.height};
+    int left = bounds.left + (bounds.width - image.width) / 2;
+    int top = bounds.top + (bounds.height - image.height) / 2;
+    PageRectangle ownBounds = {left, top, image.width, image.height};
     device.DrawQuad(MakeQuad(ownBounds, tint), MakeMaterial(image));
 }
 

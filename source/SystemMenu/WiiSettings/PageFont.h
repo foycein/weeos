@@ -13,8 +13,8 @@
 namespace SystemMenu
 {
 
-// The font of the Wii Settings pages: the first small font of the menu, drawn smaller or larger. The pages of the original use a font of their own for
-// the web browser; this is the font of the menu that looks the closest to it.
+// The font of the Wii Settings pages: the first small font of the menu, drawn smaller or larger. The pages of the original use a font
+// of their own for the web browser; this is the font of the menu that looks the closest to it.
 class PageFont
 {
 public:

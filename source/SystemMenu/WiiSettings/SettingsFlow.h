@@ -35,8 +35,8 @@ struct SettingsFlowServices
     ConsoleImport* consoleImport = nullptr;
 };
 
-// The pages of Wii Settings and the way from one to the next. It knows nothing about pictures: it says which page is shown and what is on it,
-// and it does what a button does when the screen tells it that the button was pressed.
+// The pages of Wii Settings and the way from one to the next. It knows nothing about pictures: it says which page is shown and what
+// is on it, and it does what a button does when the screen tells it that the button was pressed.
 class SettingsFlow : public PageNavigator
 {
 public:
@@ -78,6 +78,7 @@ public:
 private:
     PageGroup& GroupOf(PageId page);
     void MakeGroups(const SettingsFlowServices& services);
+    void GiveAnswer(std::optional<std::u16string> answer);
 
     std::vector<std::unique_ptr<PageGroup>> groups;
     PageId currentPageId;

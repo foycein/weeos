@@ -23,8 +23,8 @@ std::u16string ErrorCodeLine(int supportCode)
 
 }
 
-ConnectionPages::ConnectionPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService, Ios::SocketService& socketService,
-    const Settings::PcSettingsStore& pcSettingsStore)
+ConnectionPages::ConnectionPages(PageNavigator& pageNavigator, Ios::NetworkConfigService& networkConfigService,
+    Ios::SocketService& socketService, const Settings::PcSettingsStore& pcSettingsStore)
     : navigator(pageNavigator)
     , networkConfig(networkConfigService)
     , sockets(socketService)
@@ -73,8 +73,8 @@ std::vector<std::u16string> ConnectionPages::LinesOfTheResult() const
 {
     if (!result.isConnectedThroughThePc)
     {
-        return {u"The connection test failed.", u"", u"WeeOS could not reach the internet through this PC.", u"Check the internet connection of the PC",
-            u"and try again.", u"", ErrorCodeLine(result.supportCode)};
+        return {u"The connection test failed.", u"", u"WeeOS could not reach the internet through this PC.",
+            u"Check the internet connection of the PC", u"and try again.", u"", ErrorCodeLine(result.supportCode)};
     }
 
     std::vector<std::u16string> lines = {u"The connection test was successful.", u"", u"WeeOS reaches the internet through this PC.", u""};
@@ -90,7 +90,8 @@ void ConnectionPages::BuildStatus(Page& content)
 {
     PageBuilder builder(content);
     builder.SetTitle(1, std::u16string(Title));
-    builder.AddMessage({u"Connected through the PC", u"", u"WeeOS uses the internet connection of this PC.", u"There is nothing to set up."});
+    builder.AddMessage(
+        {u"Connected through the PC", u"", u"WeeOS uses the internet connection of this PC.", u"There is nothing to set up."});
     builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
     builder.AddBottomRight(u"Connection Test", [this] { navigator.GoTo(PageId::ConnectionTesting); });
 }

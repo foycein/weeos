@@ -16,8 +16,9 @@ namespace SystemMenu
 // Wii Settings for the screen factory. A menu that runs without the settings of the console (the tests of the other screens) has none.
 std::unique_ptr<Screen> MakeWiiSettingsScreen(MenuServices& services, int argument);
 
-// Wii Settings (screen 0x12). In the original it is a small web site shown by a browser. Here the pages are made by the SettingsFlow and drawn
-// with the pictures of the original's pages; this screen brings the pointer and the buttons of the remote to the flow, and the flow's pages to the picture.
+// Wii Settings (screen 0x12). In the original it is a small web site shown by a browser. Here the pages are made by the SettingsFlow
+// and drawn with the pictures of the original's pages; this screen brings the pointer and the buttons of the remote to the flow, and
+// the flow's pages to the picture.
 class SettingsScreen : public Screen
 {
 public:
