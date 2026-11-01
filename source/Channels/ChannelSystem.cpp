@@ -153,6 +153,7 @@ void ChannelSystem::Draw()
 // The HOME menu lies over the channel and draws the hands; while it is closed it draws the hands of the channel.
 void ChannelSystem::DrawScene()
 {
+    display.ForgetDrawnLayouts();
     if (manual)
         manual->Draw();
     else

@@ -50,7 +50,6 @@ constexpr std::array<ButtonLabel, 9> ButtonLabels = {{
     {"TextBox_08", WiiSpeakText::ChatRoomButtonLobby},
 }};
 
-const std::string BackgroundWaves = "02000_bg_wait_00";
 const std::string SharedPhotoName = "SharedPhoto";
 
 // The last frame of the photo coming out of the slot.
@@ -80,10 +79,6 @@ constexpr std::string_view ClockRipplePane = "T_time_02";
 constexpr int LastMinuteOfTheHour = 59;
 constexpr int FirstSecondOfTheRipples = 57;
 
-// The original lets a drop fall with every third drop of the water's sound (0x800A9DE4); WeeOS does not play the events of that sound,
-// so a drop falls every 150 steps (ChatRoomStepsBetweenDrops, EFF-14, Assumed).
-constexpr int ChatRoomStepsBetweenDrops = 150;
-
 // The photo lands in its slot, the Miis come up in the middle of the circle.
 constexpr std::string_view PhotoPane = "P_photoA_00";
 constexpr Formats::Vector2 MiddleOfTheCircle = {0, 0};
@@ -104,7 +99,7 @@ std::u16string DigitText(int digit)
 
 ChatRoomScreen::ChatRoomScreen(WiiSpeakSession& chatSession)
     : session(chatSession)
-    , background(session.services.display, session.files.SceneLayouts(SceneName, "02000_bg.arc"), "02000_bg")
+    , water(WiiSpeakWater::OfTheChatRoom(chatSession, true))
     , buttons(session.services.display, session.files.SceneLayouts(SceneName, "02000_button.arc"), "02000_button")
     , clock(session.services.display, session.files.SceneLayouts(SceneName, "02000_clock.arc"), "02000_clock")
     , muteSign(session.services.display, session.files.SystemLayouts("02100_mute.arc"), "02100_mute")
@@ -114,8 +109,6 @@ ChatRoomScreen::ChatRoomScreen(WiiSpeakSession& chatSession)
              CreateMessageButton, AddressBookButton, LobbyButton})
         buttons.AddButton(button);
 
-    std::size_t wavesSlot = background.Layout().BindAnimationToPane(BackgroundWaves, "RootPane", Layout::PlaybackMode::Loop);
-    background.Layout().StartAnimation(wavesSlot);
     buttons.PlayAnimation("allbutton_00_in");
     ShowTexts();
     ShowMute();
@@ -146,8 +139,8 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
     }
 
     ShowClock();
-    LetDropsFall();
-    for (SceneLayout* layout : {&background, &buttons, &clock, &muteSign, &circle})
+    water->Update();
+    for (SceneLayout* layout : {&buttons, &clock, &muteSign, &circle})
         layout->Calculate();
     if (miisInCircle)
         miisInCircle->Calculate();
@@ -158,7 +151,7 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
 
 void ChatRoomScreen::Draw()
 {
-    background.Draw();
+    water->Draw();
     session.ripples.Draw();
     circle.Draw();
     if (miisInCircle)
@@ -172,7 +165,7 @@ void ChatRoomScreen::Draw()
 
 std::vector<SceneLayout*> ChatRoomScreen::ShownLayouts()
 {
-    return {&background, &circle, &clock, &muteSign, &buttons};
+    return {&water->Layout(), &circle, &clock, &muteSign, &buttons};
 }
 
 bool ChatRoomScreen::IsCircleLit() const
@@ -230,16 +223,6 @@ void ChatRoomScreen::StartClockRipples(const std::tm& calendar)
 
     std::optional<Formats::Vector2> place = clock.PlaceOfPane(ClockRipplePane);
     session.ripples.StartClockRipple(place.value_or(MiddleOfTheCircle), isTheFullHour);
-}
-
-void ChatRoomScreen::LetDropsFall()
-{
-    ++stepsSinceTheLastDrop;
-    if (stepsSinceTheLastDrop < ChatRoomStepsBetweenDrops)
-        return;
-
-    stepsSinceTheLastDrop = 0;
-    session.ripples.StartDrop(WiiSpeakRipples::ChatRoomDrop);
 }
 
 void ChatRoomScreen::ShowMute()

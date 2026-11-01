@@ -4,6 +4,7 @@
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/VoiceRecording.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
+#include "Channels/WiiSpeak/WiiSpeakWater.h"
 
 #include "Sound/WavePlayer.h"
 
@@ -67,6 +68,7 @@ private:
     void UpdateMiiChooser();
 
     WiiSpeakSession& session;
+    std::unique_ptr<WiiSpeakWater> water;
     SceneLayout letter;
     SceneLayout comment;
     Phase phase = Phase::Letter;

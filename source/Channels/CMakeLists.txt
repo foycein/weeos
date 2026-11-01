@@ -80,6 +80,7 @@ add_library(Channels STATIC
     WiiSpeak/WiiSpeakRipples.cpp
     WiiSpeak/WiiSpeakSaveData.cpp
     WiiSpeak/WiiSpeakSession.cpp
+    WiiSpeak/WiiSpeakWater.cpp
 )
 
 target_link_libraries(Channels PUBLIC SystemMenu Media Mii Sound Browser Effects)

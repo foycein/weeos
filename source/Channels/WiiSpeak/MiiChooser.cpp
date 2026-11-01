@@ -234,12 +234,14 @@ std::size_t MiiChooser::PageCount() const
 
 ChooseMiisScreen::ChooseMiisScreen(WiiSpeakSession& chooseSession)
     : session(chooseSession)
+    , water(WiiSpeakWater::OfTheChatRoom(chooseSession, false))
     , chooser(chooseSession, chooseSession.saveData.ChosenMiis(), MostChatRoomMiis)
 {
 }
 
 std::optional<WiiSpeakScreenName> ChooseMiisScreen::Update()
 {
+    water->Update();
     if (session.dialog.IsOpen())
     {
         session.dialog.TakeChoice();
@@ -258,6 +260,7 @@ std::optional<WiiSpeakScreenName> ChooseMiisScreen::Update()
 
 void ChooseMiisScreen::Draw()
 {
+    water->Draw();
     chooser.Draw();
 }
 
