@@ -7,6 +7,7 @@
 
 #include "Formats/Vectors.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -49,12 +50,14 @@ class ChannelTile
 {
 public:
     // The picture of a channel, from the layout archive of its icon. The channel must have an icon and outlive the tile.
+    // The loop of an icon without a script and the snow of an empty place start at a random frame, so that the televisions
+    // do not flicker together; the random number is one of MenuRandom.
     static std::unique_ptr<ChannelTile> MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
-        const std::u16string& name);
+        const std::u16string& name, std::uint32_t randomNumber);
 
     static std::unique_ptr<ChannelTile> MakeDamagedChannel(Display& display, const TileArchives& archives);
     static std::unique_ptr<ChannelTile> MakeDiscChannel(Display& display, const TileArchives& archives, const std::u16string& name);
-    static std::unique_ptr<ChannelTile> MakeEmptySlot(Display& display, const TileArchives& archives);
+    static std::unique_ptr<ChannelTile> MakeEmptySlot(Display& display, const TileArchives& archives, std::uint32_t randomNumber);
 
     TileKind Kind() const;
 
@@ -62,7 +65,13 @@ public:
     void SetFocused(bool isFocused);
     bool IsFocused() const;
 
+    // The channel was pressed: the frame plays its select animation.
+    void ShowPressed();
+
     const Balloon* NameBalloon() const;
+
+    // The frame of the picture's own animation, for the tests.
+    float FrameOfThePicture() const;
 
     // Gives back true when the balloon has begun to grow into view in this step.
     bool Calculate();
@@ -76,7 +85,7 @@ public:
 private:
     ChannelTile(Display& display, TileKind kind, std::unique_ptr<MenuLayout> picture, const TileArchives& archives);
 
-    void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
+    void PlayAnimation(const Layout::LayoutArchive& archive, const std::string& animationName, std::uint32_t randomNumber);
     void PlayScriptAnimation(const Layout::LayoutArchive& archive, const std::string& animationName);
     void ShowOnlyTheEnglishPanes(const Layout::LayoutArchive& archive);
     void AddBalloon(const TileArchives& archives, const std::u16string& name);
@@ -86,10 +95,11 @@ private:
     std::unique_ptr<MenuLayout> picture;
     std::unique_ptr<MenuLayout> focusFrame;
     std::unique_ptr<Balloon> balloon;
+    std::unique_ptr<FramePlayer> pictureAnimation;
+    std::unique_ptr<FramePlayer> scriptAnimation;
     std::unique_ptr<FramePlayer> focusOn;
     std::unique_ptr<FramePlayer> focusOff;
-    float lastFrameOfFocusOn = 0;
-    float lastFrameOfFocusOff = 0;
+    std::unique_ptr<FramePlayer> select;
     bool isFocused = false;
 };
 

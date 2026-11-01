@@ -13,4 +13,5 @@ target_sources(SystemMenu PRIVATE
     LayoutParts.cpp
     MainFrameScreen.cpp
     SaveData.cpp
+    SdCardButton.cpp
 )
