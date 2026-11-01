@@ -55,6 +55,7 @@ public:
     std::string AdjustButton(EditorPart part, Adjustment adjustment) const;
     static constexpr std::string_view QuitButton = "windowOK_00";
     static constexpr std::string_view NicknameButton = "frmProfile_00";
+    static constexpr std::string_view FavoriteButton = "frmProfile_05";
 
     // Where the middle of a pane is in the picture, in layout units, for the tests that point at it. (0, 0) for a pane that is hidden.
     Formats::Vector2 PlaceOf(std::string_view paneName) const;
@@ -90,6 +91,9 @@ private:
     bool HandleSubTabs();
     bool HandleBodySliders();
     bool HandleProfileRows();
+    void OfferCreatorNames();
+    void ToggleFavorite();
+    void OpenKeyboard(std::uint32_t titleNumber, const std::u16string& initialText, bool isForTheCreator);
     void Ask(ProfileQuestion question);
     void HandleDialogAnswers();
     void HandleKeyboardAnswer();
@@ -98,7 +102,6 @@ private:
     void Save();
 
     bool IsPressed(std::string_view buttonPane) const;
-    PictureRectangle RectangleOf(std::string_view paneName) const;
     void SparkleAtThePart(float heightAboveTheHead);
     std::optional<ColorPart> ColorPartOf(EditorPart part) const;
 
@@ -106,7 +109,6 @@ private:
     const Formats::NumberedMessageFile& texts;
     const MiiFigures& figures;
     MiiEffects& effects;
-    bool isFavoriteMarkShown = false;
     MessageWindow& message;
     ProfileDialog& profile;
     SystemMenu::SoftKeyboard& keyboard;
@@ -119,7 +121,7 @@ private:
     std::optional<EditorResult> result;
     EditorPage page = EditorPage::Profile;
     int subPart = 0;
-    std::array<int, 16> gridPages = {};
+    std::array<int, EditorPartCount> gridPages = {};
     Pending pending = Pending::Nothing;
     bool isTypingCreator = false;
     std::optional<ProfileQuestion> askedQuestion;
@@ -127,6 +129,7 @@ private:
     int chosenBirthMonth = 0;
     std::optional<int> draggedSlider;
     float waitFrame = 0;
+    bool isFavoriteMarkShown = false;
 };
 
 }

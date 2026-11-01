@@ -21,7 +21,9 @@ namespace
 constexpr std::string_view LayoutName = "editNigaoe_00";
 constexpr std::string_view MiiPane = "humanNull_00";
 constexpr int PlacesPerGridPage = 12;
-constexpr float WaitAnimationFrames = 120.0f;
+
+// The editor keeps the head of its one Mii under this key.
+constexpr std::size_t EditedMiiHeadKey = 0;
 
 // The sparkles of a changed part stand this far above the head of the Mii (0x80040BFC, its constants 0x803BE7B8 to 0x803BE7F0): a fixed
 // height for the face, the hair and the beard, and for the parts that move up and down a height that falls by 1.8 for each step of
@@ -38,6 +40,8 @@ constexpr float MouthSparkleTop = 32;
 constexpr float MustacheSparkleTop = 29;
 constexpr float GlassesSparkleTop = 48;
 constexpr float MoleSparkleTop = 50;
+
+constexpr int NoBeardType = 0;
 
 float PlacedSparkleHeight(float top, int place)
 {
@@ -91,7 +95,7 @@ std::optional<float> ColorSparkleHeight(const Mii::MiiRecord& record, ColorPart 
     case ColorPart::Glasses:
         return TypeSparkleHeight(record, EditorPart::Glasses);
     case ColorPart::FacialHair:
-        if (record.facialHair.beardType == 0)
+        if (record.facialHair.beardType == NoBeardType)
             return TypeSparkleHeight(record, EditorPart::Mustache);
         return BeardSparkleHeight;
     case ColorPart::Favorite:
@@ -128,10 +132,6 @@ constexpr std::array<GridPanes, 11> Grids = {{
     {EditorPart::Mole, "frmEtcPrNull_", 1, "frameEtc_", 24, ""},
     {EditorPart::Beard, "frmEtcPrNull_", 1, "frameEtc_", 16, ""},
 }};
-
-// The page null of the parts that share one null with a number of their own.
-const std::map<EditorPart, int> PageNullNumbers = {{EditorPart::FaceShape, 0}, {EditorPart::MakeUp, 1}, {EditorPart::Glasses, 0},
-    {EditorPart::Mustache, 1}, {EditorPart::Mole, 2}, {EditorPart::Beard, 3}};
 
 // A palette: its buttons (colorPHair_00, ...) from the first number on, and the colors they show.
 struct PalettePanes
@@ -195,6 +195,7 @@ constexpr std::string_view HairFlipButton = "editHairFrm_02";
 // The body page: the knobs of height and weight on their bars, 280 units long.
 constexpr std::array<std::string_view, 2> SliderBars = {"barBody_00", "barBody_01"};
 constexpr std::array<std::string_view, 2> SliderKnobs = {"btnBodyNull_00", "btnBodyNull_01"};
+constexpr int HeightSlider = 0;
 constexpr float SliderLength = 280.0f;
 constexpr int SliderMaximum = 128;
 
@@ -203,9 +204,15 @@ constexpr std::string_view BirthdayButton = "frmProfile_01";
 constexpr std::string_view GenderButton = "frmProfile_02";
 constexpr std::string_view ColorButtonPane = "frmProfile_03";
 constexpr std::string_view CreatorButton = "frmProfile_04";
-constexpr std::string_view FavoriteButton = "frmProfile_05";
 constexpr std::string_view MingleButton = "frmProfile_06";
 constexpr std::string_view SpecialMingleRow = "frmProfile_07";
+constexpr std::string_view MingleRow = "frmProfNull_06";
+constexpr std::string_view NicknameText = "textProf_00";
+constexpr std::string_view BirthdayText = "textProf_01";
+constexpr std::string_view GenderText = "textProf_02";
+constexpr std::string_view CreatorText = "textProf_04";
+constexpr std::string_view FavoriteMark = "PicProf_05";
+constexpr std::string_view MingleText = "textProf_06";
 constexpr std::uint32_t MaleWord = 300101;
 constexpr std::uint32_t FemaleWord = 300201;
 constexpr std::uint32_t MingleOffWord = 200801;
@@ -216,6 +223,8 @@ constexpr std::uint32_t EnterCreatorName = 300007;
 // Assumed (CHN-67): the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
 constexpr Formats::Rgba8Color ChosenTint = {255, 210, 90, 255};
 constexpr Formats::Rgba8Color NotChosenTint = {255, 255, 255, 255};
+constexpr std::uint8_t ChosenColorAlpha = 255;
+constexpr std::uint8_t OtherColorAlpha = 200;
 
 // The sounds of the editor (the strings of 8003CBDC to 8003F26C).
 constexpr std::string_view TabSound = "SEQ_EDIT_BUT_PUSH_TOPMENU";
@@ -234,6 +243,8 @@ constexpr std::string_view QuitSound = "SEQ_EDIT_BUT_PUSH_EXIT";
 constexpr std::string_view SaveSound = "SEQ_EDITOR_EXIT_SAVE";
 constexpr std::string_view NoSaveSound = "SEQ_EDITOR_EXIT_NOSAVE";
 constexpr std::string_view ButtonSound = "SEQ_EDIT_BUT_PUSH";
+constexpr std::string_view FavoriteOnSound = "SEQ_FAVORITE_ON";
+constexpr std::string_view FavoriteOffSound = "SEQ_FAVORITE_OFF";
 
 const GridPanes& GridOf(EditorPart part)
 {
@@ -332,7 +343,10 @@ void EditorScreen::Open(const Mii::MiiRecord& record, std::optional<std::size_t>
     pending = Pending::Nothing;
     gridPages.fill(0);
     for (const GridPanes& grid : Grids)
-        gridPages[static_cast<std::size_t>(grid.part)] = GridPlaceOfType(grid.part, editor->ChosenType(grid.part)) / PlacesPerGridPage;
+    {
+        int chosenPlace = GridPlaceOfType(grid.part, editor->ChosenType(grid.part));
+        gridPages[static_cast<std::size_t>(grid.part)] = chosenPlace / PlacesPerGridPage;
+    }
     ShowPage(EditorPage::Face);
 }
 
@@ -403,8 +417,8 @@ void EditorScreen::Update(bool acceptsInput)
     if (!editor)
         return;
 
-    waitFrame = std::fmod(waitFrame + 1, WaitAnimationFrames);
-    heads.Prepare({{0, editor->Record()}});
+    waitFrame = std::fmod(waitFrame + 1, AnimationFramesOf(PlazaActivity::Waiting));
+    heads.Prepare({{EditedMiiHeadKey, editor->Record()}});
 
     if (keyboard.IsOpen())
     {
@@ -415,7 +429,8 @@ void EditorScreen::Update(bool acceptsInput)
 
     HandleDialogAnswers();
     HandleMessageAnswer();
-    if (!acceptsInput || !editor || pending != Pending::Nothing || message.IsOpen() || profile.IsOpen() || keyboard.IsOpen())
+    bool isBusy = !editor || pending != Pending::Nothing || message.IsOpen() || profile.IsOpen() || keyboard.IsOpen();
+    if (!acceptsInput || isBusy)
         return;
 
     if (IsPressed(QuitButton))
@@ -443,11 +458,12 @@ void EditorScreen::Draw()
         return;
 
     layout->Draw();
-    const Mii::MiiHead* head = heads.Find(0);
+    const Mii::MiiHead* head = heads.Find(EditedMiiHeadKey);
     if (head != nullptr)
     {
-        figures.DrawStandingMii(editor->Record(), *head, RectangleOf(MiiPane), services.display.GetCanvas(), waitFrame);
-        FigureCamera camera = figures.StandingCamera(RectangleOf(MiiPane), services.display.GetCanvas());
+        PictureRectangle miiRectangle = RectangleOfPane(*layout, MiiPane);
+        figures.DrawStandingMii(editor->Record(), *head, miiRectangle, services.display.GetCanvas(), waitFrame);
+        FigureCamera camera = figures.StandingCamera(miiRectangle, services.display.GetCanvas());
         effects.DrawAmongModels(camera.view, camera.projection);
     }
 
@@ -532,7 +548,8 @@ void EditorScreen::RefreshSelections()
         for (int color = 0; color < ColorCount(palette.part); ++color)
         {
             Formats::Pane& button = layout->PaneNamed(ColorButton(palette.part, color));
-            button.alpha = color == editor->ChosenColor(palette.part) ? 255 : 200;
+            bool isChosen = color == editor->ChosenColor(palette.part);
+            button.alpha = isChosen ? ChosenColorAlpha : OtherColorAlpha;
         }
     }
 
@@ -560,26 +577,26 @@ void EditorScreen::RefreshGridPage(EditorPart part)
 void EditorScreen::RefreshProfile()
 {
     const Mii::MiiRecord& record = editor->Record();
-    layout->SetText("textProf_00", record.name);
+    layout->SetText(NicknameText, record.name);
 
     std::string birthday = "--/--";
     if (record.birthMonth != 0)
         birthday = std::format("{}/{}", record.birthMonth, record.birthDay);
-    layout->SetText("textProf_01", Ascii(birthday));
+    layout->SetText(BirthdayText, Ascii(birthday));
 
     std::uint32_t genderWord = record.gender == Mii::Gender::Female ? FemaleWord : MaleWord;
-    layout->SetText("textProf_02", MessageText(texts, genderWord));
+    layout->SetText(GenderText, MessageText(texts, genderWord));
     TintWindow(layout->PaneNamed(ColorButtonPane), Mii::FavoriteColors[record.favoriteColor]);
-    layout->SetText("textProf_04", record.creatorName);
-    layout->PaneNamed("PicProf_05").isVisible = record.isFavorite;
+    layout->SetText(CreatorText, record.creatorName);
+    layout->PaneNamed(FavoriteMark).isVisible = record.isFavorite;
     if (record.isFavorite && !isFavoriteMarkShown)
-        effects.StartFlat(MiiEffects::FavoriteMarkSparkles, PlaceOf("PicProf_05"));
+        effects.StartFlat(MiiEffects::FavoriteMarkSparkles, PlaceOf(FavoriteMark));
     isFavoriteMarkShown = record.isFavorite;
 
     bool isSpecial = Mii::IsSpecialMii(record);
     layout->PaneNamed(SpecialMingleRow).isVisible = isSpecial;
-    layout->PaneNamed("frmProfNull_06").isVisible = !isSpecial;
-    layout->SetText("textProf_06", MessageText(texts, record.mayNotTravel ? MingleOffWord : MingleOnWord));
+    layout->PaneNamed(MingleRow).isVisible = !isSpecial;
+    layout->SetText(MingleText, MessageText(texts, record.mayNotTravel ? MingleOffWord : MingleOnWord));
 }
 
 void EditorScreen::RefreshBodySliders()
@@ -627,8 +644,13 @@ bool EditorScreen::HandleGrid(EditorPart part)
 {
     const GridPanes& grid = GridOf(part);
     int shownPage = gridPages[static_cast<std::size_t>(part)];
-    int firstPlace = grid.pageCount > 1 ? shownPage * PlacesPerGridPage : 0;
-    int lastPlace = std::min(TypeCount(part), grid.pageCount > 1 ? firstPlace + PlacesPerGridPage : TypeCount(part));
+    int firstPlace = 0;
+    int lastPlace = TypeCount(part);
+    if (grid.pageCount > 1)
+    {
+        firstPlace = shownPage * PlacesPerGridPage;
+        lastPlace = std::min(lastPlace, firstPlace + PlacesPerGridPage);
+    }
 
     for (int place = firstPlace; place < lastPlace; ++place)
     {
@@ -771,11 +793,12 @@ bool EditorScreen::HandleBodySliders()
     float fraction = (input.pointer->x - leftEnd->x) / (rightEnd->x - leftEnd->x);
     int value = static_cast<int>(std::lround(std::clamp(fraction, 0.0f, 1.0f) * SliderMaximum));
     const Mii::MiiRecord& record = editor->Record();
-    int oldValue = *draggedSlider == 0 ? record.height : record.weight;
+    bool isHeight = *draggedSlider == HeightSlider;
+    int oldValue = isHeight ? record.height : record.weight;
     if (value == oldValue)
         return true;
 
-    if (*draggedSlider == 0)
+    if (isHeight)
         editor->SetHeight(value);
     else
         editor->SetWeight(value);
@@ -788,15 +811,9 @@ bool EditorScreen::HandleBodySliders()
 bool EditorScreen::HandleProfileRows()
 {
     const Mii::MiiRecord& record = editor->Record();
-    SystemMenu::KeyboardRequest request;
-    request.rules.maximumLength = Mii::MiiNameLength;
-
     if (IsPressed(NicknameButton))
     {
-        request.title = MessageText(texts, EnterNickname);
-        request.initialText = record.name;
-        isTypingCreator = false;
-        keyboard.Open(request);
+        OpenKeyboard(EnterNickname, record.name, false);
         return true;
     }
 
@@ -820,30 +837,13 @@ bool EditorScreen::HandleProfileRows()
 
     if (IsPressed(CreatorButton))
     {
-        std::vector<std::u16string> creators;
-        std::set<std::u16string> seen;
-        for (const StoredMii& stored : data.Miis())
-        {
-            const std::u16string& creator = stored.record.creatorName;
-            if (!creator.empty() && seen.insert(creator).second)
-                creators.push_back(creator);
-        }
-        creatorChoices = creators;
-        profile.SetCreatorNames(creators);
-        Ask(ProfileQuestion::Creator);
+        OfferCreatorNames();
         return true;
     }
 
     if (IsPressed(FavoriteButton))
     {
-        editor->SetFavorite(!record.isFavorite);
-        services.sounds.Request(record.isFavorite ? "SEQ_FAVORITE_ON" : "SEQ_FAVORITE_OFF");
-        if (record.isFavorite)
-        {
-            bool isWoman = record.gender == Mii::Gender::Female;
-            effects.Start(isWoman ? MiiEffects::FavoriteSparklesOfAWoman : MiiEffects::FavoriteSparkles, Graphics::Matrix4());
-        }
-        RefreshProfile();
+        ToggleFavorite();
         return true;
     }
 
@@ -855,10 +855,52 @@ bool EditorScreen::HandleProfileRows()
     return false;
 }
 
+// "Choose a creator" offers the creators of the Miis of the plaza, each once.
+void EditorScreen::OfferCreatorNames()
+{
+    std::vector<std::u16string> creators;
+    std::set<std::u16string> seen;
+    for (const StoredMii& stored : data.Miis())
+    {
+        const std::u16string& creator = stored.record.creatorName;
+        bool isNew = !creator.empty() && seen.insert(creator).second;
+        if (isNew)
+            creators.push_back(creator);
+    }
+    creatorChoices = creators;
+    profile.SetCreatorNames(creators);
+    Ask(ProfileQuestion::Creator);
+}
+
+// A new favorite sparkles on the Mii's pants.
+void EditorScreen::ToggleFavorite()
+{
+    const Mii::MiiRecord& record = editor->Record();
+    editor->SetFavorite(!record.isFavorite);
+    services.sounds.Request(record.isFavorite ? FavoriteOnSound : FavoriteOffSound);
+    if (record.isFavorite)
+    {
+        bool isWoman = record.gender == Mii::Gender::Female;
+        effects.Start(isWoman ? MiiEffects::FavoriteSparklesOfAWoman : MiiEffects::FavoriteSparkles, Graphics::Matrix4());
+    }
+    RefreshProfile();
+}
+
+void EditorScreen::OpenKeyboard(std::uint32_t titleNumber, const std::u16string& initialText, bool isForTheCreator)
+{
+    SystemMenu::KeyboardRequest request;
+    request.rules.maximumLength = Mii::MiiNameLength;
+    request.title = MessageText(texts, titleNumber);
+    request.initialText = initialText;
+    isTypingCreator = isForTheCreator;
+    keyboard.Open(request);
+}
+
 void EditorScreen::Ask(ProfileQuestion question)
 {
+    constexpr bool OverItsOwnBackground = false;
     askedQuestion = question;
-    profile.Ask(question, false);
+    profile.Ask(question, OverItsOwnBackground);
 }
 
 // The birthday asks for the month and then for the day; "?" in either is no birthday. A new creator name is typed on the keyboard.
@@ -879,7 +921,7 @@ void EditorScreen::HandleDialogAnswers()
     switch (question)
     {
     case ProfileQuestion::Month:
-        if (answer->choice == 0)
+        if (answer->choice == ProfileDialog::NoBirthdayChoice)
         {
             editor->SetBirthday(0, 0);
             break;
@@ -888,13 +930,13 @@ void EditorScreen::HandleDialogAnswers()
         Ask(ProfileQuestion::Day);
         return;
     case ProfileQuestion::Day:
-        if (answer->choice == 0)
+        if (answer->choice == ProfileDialog::NoBirthdayChoice)
             editor->SetBirthday(0, 0);
         else
             editor->SetBirthday(chosenBirthMonth, answer->choice);
         break;
     case ProfileQuestion::Gender:
-        editor->SetGender(answer->choice == 1 ? Mii::Gender::Female : Mii::Gender::Male);
+        editor->SetGender(answer->choice == ProfileDialog::FemaleChoice ? Mii::Gender::Female : Mii::Gender::Male);
         break;
     case ProfileQuestion::FavoriteColor:
         editor->ChooseColor(ColorPart::Favorite, answer->choice);
@@ -902,18 +944,13 @@ void EditorScreen::HandleDialogAnswers()
     case ProfileQuestion::Creator:
         if (answer->choice == ProfileDialog::NewCreatorChoice)
         {
-            SystemMenu::KeyboardRequest request;
-            request.rules.maximumLength = Mii::MiiNameLength;
-            request.title = MessageText(texts, EnterCreatorName);
-            request.initialText = editor->Record().creatorName;
-            isTypingCreator = true;
-            keyboard.Open(request);
+            OpenKeyboard(EnterCreatorName, editor->Record().creatorName, true);
             return;
         }
         editor->SetCreatorName(creatorChoices.at(answer->choice));
         break;
     case ProfileQuestion::Mingle:
-        editor->SetMingles(answer->choice == 1);
+        editor->SetMingles(answer->choice == ProfileDialog::MingleChoice);
         break;
     case ProfileQuestion::HowToMake:
         break;
@@ -1026,17 +1063,6 @@ void EditorScreen::SparkleAtThePart(float heightAboveTheHead)
     Formats::Vector3 head = figures.StandingHeadPosition(editor->Record());
     head.y += heightAboveTheHead;
     effects.Start(MiiEffects::ChangedPartSparkles, Graphics::MakeTranslation(head));
-}
-
-PictureRectangle EditorScreen::RectangleOf(std::string_view paneName) const
-{
-    const Formats::Pane& pane = layout->PaneNamed(paneName);
-    std::optional<Formats::Vector2> middle = layout->PointOfPaneInPicture(paneName, {0, 0});
-    std::optional<Formats::Vector2> corner = layout->PointOfPaneInPicture(paneName, {pane.width / 2, pane.height / 2});
-    if (!middle || !corner)
-        return {};
-
-    return {*middle, {corner->x - middle->x, corner->y - middle->y}};
 }
 
 std::optional<ColorPart> EditorScreen::ColorPartOf(EditorPart part) const

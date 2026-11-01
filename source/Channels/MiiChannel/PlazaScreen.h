@@ -70,11 +70,11 @@ public:
     // Where a Mii of the plaza is in the picture, for the tests and the name balloon.
     Formats::Vector2 PictureCenterOf(std::size_t slot) const;
 
-    // Without input the Miis go on walking and the answers of the messages are taken, but no button reacts: a message or a dialog is
-    // over the plaza, or has just closed with the press of this step.
     // Where the middle of a pane is in the picture, in layout units, for the tests that point at it. (0, 0) for a pane that is hidden.
     Formats::Vector2 PlaceOf(std::string_view paneName) const;
 
+    // Without input the Miis go on walking and the answers of the messages are taken, but no button reacts: a message or a dialog is
+    // over the plaza, or has just closed with the press of this step.
     void Update(bool acceptsInput);
     void Draw();
 
@@ -90,14 +90,23 @@ private:
         ParadeAlmostFull,
     };
 
+    bool IsBlocked(bool acceptsInput) const;
     void HandleButtons();
+    bool HandleLeftButtons();
+    bool HandleRightButtons();
+    void HandleWhistleBar();
     void HandleHand();
     void HandleCamera();
     void HandleMessageAnswer();
     void TellWhatIsNew();
     void DropHeldMii(Formats::Vector2 pointer);
+    void DropOnEditMii(std::size_t slot, const Mii::MiiRecord& record);
+    void DropOnParade(std::size_t slot, const Mii::MiiRecord& record);
+    void StartReadingTheRemote();
+    void AskToBeginDs();
     void ShowNameBalloon(std::size_t slot);
-    void UpdateWaits();
+    void UpdateNameBalloon();
+    void UpdateLoadWindow();
     void ShowWhistleBar(bool showsSortButtons);
     void ShowLoadWindow(std::uint32_t messageNumber);
     void HideLoadWindow();

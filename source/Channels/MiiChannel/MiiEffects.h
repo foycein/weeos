@@ -36,6 +36,12 @@ public:
     static constexpr std::string_view FavoriteSparklesOfAWoman = "Nc_favor_pants01fm";
     static constexpr std::string_view FavoriteMarkSparkles = "Nc_favor_on01";
 
+    // The 2D box of the flat effects and of the channel's hand (0x80028608): 810 by 448 units, a 4:3 box of 608 made 4/3 wider for 16:9.
+    static constexpr float FlatBoxHalfWidth = 304.0f * 4 / 3;
+    static constexpr float FlatBoxHalfHeight = 224;
+    static constexpr Formats::Vector2 FlatBoxToCanvasScale = {
+        SystemMenu::WideCanvas.width / 2 / FlatBoxHalfWidth, SystemMenu::WideCanvas.height / 2 / FlatBoxHalfHeight};
+
     // The display must outlive the effects.
     MiiEffects(SystemMenu::Display& display, Formats::ByteView effectFile, Formats::ByteView textureFile);
 

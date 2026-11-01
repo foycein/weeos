@@ -73,6 +73,7 @@ private:
     };
 
     void StartFirstScene();
+    void GreetOrShowPlaza();
     void UpdateScene(bool acceptsInput);
     void FollowWelcome();
     void FollowPlaza();

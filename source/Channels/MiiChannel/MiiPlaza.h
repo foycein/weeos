@@ -163,6 +163,12 @@ public:
     static constexpr int ClosestZoomLevel = 0;
     static constexpr int FarthestZoomLevel = 3;
 
+    // The Miis of the plaza lean back by 45 degrees toward the camera (aslope_root of every animation).
+    static constexpr float MiiLeanCosine = 0.70710678f;
+
+    // A Mii's middle in the picture: 80 units above its feet, leaning back with the Mii.
+    static constexpr float MiiMiddleHeight = 80.0f * MiiLeanCosine;
+
     // The plaza of the 16:9 picture, which shows more of the ground than the 4:3 one, so the Miis may walk farther to the sides.
     explicit MiiPlaza(std::uint32_t randomSeed, PlazaKind plazaKind = PlazaKind::Plaza);
 
@@ -171,7 +177,7 @@ public:
     bool IsParadeRunning() const;
 
     // The Miis come onto the plaza at random places, each standing for a while before it walks.
-    void SetMiis(const std::vector<StoredMii>& miis);
+    void SetMiis(const std::vector<StoredMii>& storedMiis);
 
     // A Mii that was edited keeps its place; a new one comes in at the middle of the plaza.
     void UpdateMii(const StoredMii& mii);
@@ -232,6 +238,7 @@ public:
 
 private:
     void MoveMii(PlazaMii& plazaMii);
+    void Wait(PlazaMii& plazaMii);
     void StartWaiting(PlazaMii& plazaMii);
     void StartWalking(PlazaMii& plazaMii, Formats::Vector2 target);
     void StartRunning(PlazaMii& plazaMii, Formats::Vector2 target);
@@ -240,6 +247,7 @@ private:
     void Run(PlazaMii& plazaMii);
     void Slide(PlazaMii& plazaMii);
     void PlayOnce(PlazaMii& plazaMii, PlazaActivity nextActivity);
+    void PlayOnceWithMoment(PlazaMii& plazaMii, PlazaActivity nextActivity, float momentFrame, PlazaMoment moment);
     void PlayForSteps(PlazaMii& plazaMii, PlazaActivity nextActivity);
     void FinishActivity(PlazaMii& plazaMii);
     void ChooseIdleMoment(PlazaMii& plazaMii);

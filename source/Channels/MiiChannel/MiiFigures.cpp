@@ -40,17 +40,9 @@ constexpr Formats::Vector3 Upward = {0.0f, 1.0f, 0.0f};
 // The ground reaches from 0 to 5400 in depth with the middle of its paving at 2700; it lies with that middle under the middle of the plaza
 // (Assumed, CHN-71).
 constexpr Formats::Vector3 GroundPlace = {0.0f, 0.0f, -2700.0f};
-constexpr std::uint32_t FaceTextureSize = 128;
 
 // The faces of Mii::MiiExpression, from Normal to OpenMouth.
 constexpr std::size_t ExpressionCount = 7;
-
-std::vector<std::uint8_t> StoredBytes(const Mii::MiiRecord& record)
-{
-    std::array<Formats::Byte, Mii::MiiRecordSize> bytes = {};
-    Mii::WriteMiiRecord(record, bytes);
-    return {bytes.begin(), bytes.end()};
-}
 
 const Mii::MiiBodyFile& BodyFileOf(const Mii::MiiBodyFiles& bodies, const Mii::MiiRecord& record)
 {
@@ -91,6 +83,17 @@ std::vector<ShownHead> HeadsOfMiis(const MiiPlaza& plaza)
             shownHeads.push_back({PlazaHeadKey(slot, face), plazaMii.mii.record, face});
     }
     return shownHeads;
+}
+
+PictureRectangle RectangleOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName)
+{
+    const Formats::Pane& pane = layout.PaneNamed(paneName);
+    std::optional<Formats::Vector2> middle = layout.PointOfPaneInPicture(paneName, {0, 0});
+    std::optional<Formats::Vector2> corner = layout.PointOfPaneInPicture(paneName, {pane.width / 2, pane.height / 2});
+    if (!middle || !corner)
+        return {};
+
+    return {*middle, {corner->x - middle->x, corner->y - middle->y}};
 }
 
 Graphics::Matrix4 ProjectIntoRectangle(const Graphics::Matrix4& projection, const PictureRectangle& rectangle, Graphics::Canvas canvas)

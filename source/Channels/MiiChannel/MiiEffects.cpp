@@ -21,10 +21,6 @@ constexpr int FadePerStep = 17;
 // The channel shrinks the balloons of a talk and the splash of a sneeze to 0.8 (0x803BE364).
 constexpr float TalkAndSneezeScale = 0.8f;
 
-// The flat effects use the 2D box of the hand: 810 by 448 units in 16:9 (0x80028608).
-constexpr float FlatBoxHalfWidth = 304.0f * 4 / 3;
-constexpr float FlatBoxHalfHeight = 224;
-
 // The sneeze and the Zzz stand in a frame of the Mii that turns with it and whose origin lies this far below the head (EFF-13,
 // Assumed): the head of a Mii of the default size stands 94.5 units above its feet (MiiBodyTest), and the effects' own translations
 // (110 and 60 units up) are measured from the feet.
@@ -149,10 +145,9 @@ void MiiEffects::StartFlat(std::string_view name, Formats::Vector2 canvasPoint)
     if (flat.size() >= MostFlatEffects)
         return;
 
-    float scaleX = SystemMenu::WideCanvas.width / 2 / FlatBoxHalfWidth;
-    float scaleY = SystemMenu::WideCanvas.height / 2 / FlatBoxHalfHeight;
     PlayingEffect playing{name, MakeEffect(name)};
-    playing.effect->SetTranslation({canvasPoint.x / scaleX, canvasPoint.y / scaleY, 0});
+    Formats::Vector3 boxPoint = {canvasPoint.x / FlatBoxToCanvasScale.x, canvasPoint.y / FlatBoxToCanvasScale.y, 0};
+    playing.effect->SetTranslation(boxPoint);
     flat.push_back(std::move(playing));
 }
 
@@ -189,7 +184,7 @@ void MiiEffects::DrawAmongModels(const Graphics::Matrix4& view, const Graphics::
 void MiiEffects::DrawFlat() const
 {
     Effects::EffectCamera camera;
-    camera.boxToCanvasScale = {SystemMenu::WideCanvas.width / 2 / FlatBoxHalfWidth, SystemMenu::WideCanvas.height / 2 / FlatBoxHalfHeight};
+    camera.boxToCanvasScale = FlatBoxToCanvasScale;
     for (const PlayingEffect& playing : flat)
         Effects::DrawEffect(*playing.effect, camera);
 }

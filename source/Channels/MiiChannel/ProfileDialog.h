@@ -18,13 +18,13 @@ namespace Channels
 // The questions of the layout profileNigaoe: the first two when a new Mii is made, the others from the profile page of the editor.
 enum class ProfileQuestion
 {
-    // "Select a gender." Male (0) or female (1).
+    // "Select a gender."
     Gender,
 
-    // "How do you want to make a Mii?" Start from scratch (0) or choose a look-alike (1).
+    // "How do you want to make a Mii?"
     HowToMake,
 
-    // "Enter a birth date." Month 1 to 12, or 0 for "?"; then the day 1 to 31, or 0.
+    // "Enter a birth date." Month 1 to 12, or "?" for no birthday; then the day 1 to 31, or "?".
     Month,
     Day,
 
@@ -34,7 +34,7 @@ enum class ProfileQuestion
     // "Choose a creator." One of the names shown (0 to 2), or 3 for a new name.
     Creator,
 
-    // "Do you want to let this Mii mingle?" Mingle (1) or don't mingle (0).
+    // "Do you want to let this Mii mingle?"
     Mingle,
 };
 
@@ -49,6 +49,14 @@ struct ProfileAnswer
 class ProfileDialog
 {
 public:
+    // The choices of the questions.
+    static constexpr int MaleChoice = 0;
+    static constexpr int FemaleChoice = 1;
+    static constexpr int StartFromScratchChoice = 0;
+    static constexpr int LookAlikeChoice = 1;
+    static constexpr int NoBirthdayChoice = 0;
+    static constexpr int MingleChoice = 1;
+    static constexpr int DoNotMingleChoice = 0;
     static constexpr int CreatorChoiceCount = 3;
     static constexpr int NewCreatorChoice = 3;
 
@@ -84,7 +92,7 @@ private:
 
     std::vector<Choice> ChoicesOf(ProfileQuestion question) const;
     void ShowGroupOf(ProfileQuestion question);
-    void Answer(ProfileAnswer answer);
+    void Answer(ProfileAnswer givenAnswer);
     bool IsPressed(const std::string& buttonPane) const;
 
     ChannelServices& services;

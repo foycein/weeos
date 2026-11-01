@@ -12,12 +12,10 @@ namespace Channels
 namespace
 {
 
-// The music of the Mii Channel, the one sequence of NigaoeSound.brsar that plays on the player of the music (80018A2C). It goes on until the
-// channel ends.
+// The music of the Mii Channel, the one sequence of NigaoeSound.brsar on the player of the music (80018A2C), until the channel ends.
 constexpr std::string_view Music = "SEQ_TMP_BGM";
 
-// The channel's archive has two sounds for its keyboard: the focus of a key, and a press for everything else the keyboard does
-// (Assumed, CHN-75).
+// The channel's archive has two sounds for its keyboard: the focus of a key, and a press for everything else (Assumed, CHN-75).
 constexpr std::string_view KeyboardFocusSound = "SEQ_KEYBOARD_FORCUS";
 constexpr std::string_view KeyboardPushSound = "SEQ_KEYBOARD_PUSH";
 
@@ -39,18 +37,17 @@ SystemMenu::KeyboardButtonTexts KeyboardTextsOf(const Formats::NumberedMessageFi
     return texts;
 }
 
-// The Mii Channel's hand (EffectManager 0x80028878): only the first player's, in the box of its 2D projection, 810 by 448 units in 16:9
-// (0x80028608), with the shadow 3 units right and 3 down, made 4/3 wider (0x80029A54, 0x800295B0). The closed hand rises above the
-// pointer while it holds a Mii (0x80029264: 80 units, or 95 with another camera; MiiChannelHoldingLift, EFF-12, Assumed).
-constexpr float HandBoxHalfWidth = 304.0f * 4 / 3;
-constexpr float HandBoxHalfHeight = 224;
+// The Mii Channel's hand (EffectManager 0x80028878): only the first player's, in the box of the flat effects, with the shadow 3 units
+// right and 3 down, made 4/3 wider (0x80029A54, 0x800295B0). The closed hand rises above the pointer while it holds a Mii (0x80029264:
+// 80 units, or 95 with another camera; MiiChannelHoldingLift, EFF-12, Assumed).
+constexpr Formats::Vector2 HandShadowOffset = {3.0f * 4 / 3, -3};
 constexpr float MiiChannelHoldingLift = 80;
 constexpr EffectHandsLook MiiChannelHandsLook = {
-    false,
-    {SystemMenu::WideCanvas.width / 2 / HandBoxHalfWidth, SystemMenu::WideCanvas.height / 2 / HandBoxHalfHeight},
-    {3.0f * 4 / 3, -3},
-    MiiChannelHoldingLift,
-    false,
+    .showsEveryPlayer = false,
+    .boxToCanvasScale = MiiEffects::FlatBoxToCanvasScale,
+    .shadowOffset = HandShadowOffset,
+    .holdingLift = MiiChannelHoldingLift,
+    .closedHandTurns = false,
 };
 
 std::unique_ptr<Layout::LayoutArchive> ArchiveOf(const Formats::Bytes& bytes)
@@ -228,6 +225,11 @@ void MiiChannel::StartFirstScene()
         return;
     }
 
+    GreetOrShowPlaza();
+}
+
+void MiiChannel::GreetOrShowPlaza()
+{
     if (data.IsFirstStart())
     {
         welcome = Welcome::Greeting;
@@ -235,7 +237,7 @@ void MiiChannel::StartFirstScene()
         return;
     }
 
-    scene = Scene::Plaza;
+    ShowPlaza();
 }
 
 void MiiChannel::UpdateScene(bool acceptsInput)
@@ -286,13 +288,7 @@ void MiiChannel::FollowWelcome()
         data.Format();
         plaza.Start();
         welcome = Welcome::None;
-        if (data.IsFirstStart())
-        {
-            welcome = Welcome::Greeting;
-            message.ShowNotice(MiiMessage::Welcome);
-            return;
-        }
-        ShowPlaza();
+        GreetOrShowPlaza();
         return;
     case Welcome::Greeting:
         welcome = Welcome::Explaining;
@@ -373,7 +369,9 @@ void MiiChannel::FollowNewMiiQuestions()
             ShowPlaza();
             return;
         }
-        newMiiGender = answer->choice == 1 ? Mii::Gender::Female : Mii::Gender::Male;
+        newMiiGender = Mii::Gender::Male;
+        if (answer->choice == ProfileDialog::FemaleChoice)
+            newMiiGender = Mii::Gender::Female;
         AskNewMiiQuestion(ProfileQuestion::HowToMake);
         return;
     }
@@ -384,7 +382,7 @@ void MiiChannel::FollowNewMiiQuestions()
         return;
     }
 
-    if (answer->choice == 0)
+    if (answer->choice == ProfileDialog::StartFromScratchChoice)
     {
         editor.Open(AsNewMiiOfThisConsole(MakeScratchMii(newMiiGender)), std::nullopt);
         scene = Scene::Editor;
@@ -452,8 +450,9 @@ Mii::MiiRecord MiiChannel::AsNewMiiOfThisConsole(Mii::MiiRecord record) const
 
 void MiiChannel::AskNewMiiQuestion(ProfileQuestion question)
 {
+    constexpr bool OverItsOwnBackground = true;
     askedQuestion = question;
-    profile.Ask(question, true);
+    profile.Ask(question, OverItsOwnBackground);
     scene = Scene::NewMiiQuestions;
 }
 

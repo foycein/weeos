@@ -25,20 +25,20 @@ struct ParadeButton
 };
 
 constexpr std::array<ParadeButton, 5> ParadeButtons = {{
-    {"squButtonNull_06", "squPrBtnNull_06", "anmURAMenuActionL"},
-    {"squButtonNull_08", "squPrBtnNull_08", "anmURAMenuActionL"},
-    {"squButtonNull_07", "squPrBtnNull_07", "anmURAMenuActionR"},
-    {"squButtonNull_00", "squPrBtnNull_00", "anmURAMenuActionR"},
-    {"squButtonNull_01", "squPrBtnNull_01", "anmURAMenuActionR"},
+    {ParadeScreen::SendToPlazaButton, "squPrBtnNull_06", "anmURAMenuActionL"},
+    {ParadeScreen::EraseButton, "squPrBtnNull_08", "anmURAMenuActionL"},
+    {ParadeScreen::PlazaButton, "squPrBtnNull_07", "anmURAMenuActionR"},
+    {ParadeScreen::TravelSettingsButton, "squPrBtnNull_00", "anmURAMenuActionR"},
+    {ParadeScreen::SpeedButton, "squPrBtnNull_01", "anmURAMenuActionR"},
 }};
 
 constexpr std::string_view FocusSound = "SEQ_BUT_SELECT_BIG";
 constexpr std::array<FocusedButton, 5> ParadeButtonFocus = {{
-    {"squButtonNull_06", "squPrBtnNull_06", "anmURAMenuFocusL", FocusSound},
-    {"squButtonNull_08", "squPrBtnNull_08", "anmURAMenuFocusL", FocusSound},
-    {"squButtonNull_07", "squPrBtnNull_07", "anmURAMenuFocusR", FocusSound},
-    {"squButtonNull_00", "squPrBtnNull_00", "anmURAMenuFocusR", FocusSound},
-    {"squButtonNull_01", "squPrBtnNull_01", "anmURAMenuFocusR", FocusSound},
+    {ParadeScreen::SendToPlazaButton, "squPrBtnNull_06", "anmURAMenuFocusL", FocusSound},
+    {ParadeScreen::EraseButton, "squPrBtnNull_08", "anmURAMenuFocusL", FocusSound},
+    {ParadeScreen::PlazaButton, "squPrBtnNull_07", "anmURAMenuFocusR", FocusSound},
+    {ParadeScreen::TravelSettingsButton, "squPrBtnNull_00", "anmURAMenuFocusR", FocusSound},
+    {ParadeScreen::SpeedButton, "squPrBtnNull_01", "anmURAMenuFocusR", FocusSound},
 }};
 
 // The count of the parade, "Miis in the parade / Miis it holds" (Assumed, CHN-84).
@@ -50,16 +50,6 @@ constexpr std::string_view WalkIcon = "squWalkIcon_00";
 
 // The parade shows its newest 100 Miis at a time (Assumed, CHN-84).
 constexpr std::size_t ShownParadeMiis = 100;
-
-constexpr Formats::Rgba8Color BackgroundColor = {255, 255, 255, 255};
-
-// The middle of a Mii's body in the picture: half its height, leaning back with the plaza's 45 degrees.
-constexpr float MiddleHeight = 80.0f * 0.70710678f;
-
-constexpr std::uint32_t GrabHint = 500715;
-constexpr std::uint32_t EraseHint = 31;
-constexpr std::uint32_t EraseWord = 86;
-constexpr std::uint32_t DoNotEraseWord = 85;
 
 constexpr std::string_view ToPlazaSound = "SEQ_PARADE_TO_PLAZA";
 constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";
@@ -133,7 +123,7 @@ Formats::Vector2 ParadeScreen::PictureCenterOf(std::size_t place) const
         return {0, 0};
 
     Graphics::Canvas canvas = Canvas();
-    Formats::Vector3 middle = {paradeMii->position.x, MiddleHeight, paradeMii->position.y - MiddleHeight};
+    Formats::Vector3 middle = {paradeMii->position.x, MiiPlaza::MiiMiddleHeight, paradeMii->position.y - MiiPlaza::MiiMiddleHeight};
     return parade.PlaceInPicture(middle, canvas.width, canvas.height);
 }
 
@@ -167,14 +157,7 @@ void ParadeScreen::Update(bool acceptsInput)
 
 void ParadeScreen::Draw()
 {
-    Graphics::Canvas canvas = Canvas();
-    float halfWidth = canvas.width / 2;
-    float halfHeight = canvas.height / 2;
-    Graphics::Quad background;
-    background.positions = {{{-halfWidth, halfHeight}, {halfWidth, halfHeight}, {halfWidth, -halfHeight}, {-halfWidth, -halfHeight}}};
-    background.colors.fill(BackgroundColor);
-    services.display.Device().DrawQuad(background, Graphics::Material());
-
+    DrawWhiteBackground(services.display.Device(), Canvas());
     figures.DrawPlaza(parade, road, heads);
     effects.DrawAmongModels(parade.ViewMatrix(), parade.ProjectionMatrix());
     layout->Draw();
@@ -225,14 +208,14 @@ void ParadeScreen::HandleButtons()
     if (IsPressed(SendToPlazaButton))
     {
         services.sounds.Request(ButtonPushSound);
-        message.ShowNotice(GrabHint);
+        message.ShowNotice(MiiMessage::GrabHint);
         return;
     }
 
     if (IsPressed(EraseButton))
     {
         services.sounds.Request(ButtonPushSound);
-        message.ShowNotice(EraseHint);
+        message.ShowNotice(MiiMessage::EraseHint);
     }
 }
 
@@ -255,7 +238,7 @@ void ParadeScreen::HandleHand()
         return;
     }
 
-    bool grabsNow = input.IsHeld(GrabButtons) && (input.pressed & GrabButtons) != 0;
+    bool grabsNow = input.IsHeld(GrabButtons) && input.WasPressed(GrabButtons);
     std::optional<std::size_t> pointedMii = parade.MiiAt(*input.pointer, canvas.width, canvas.height);
     if (grabsNow && pointedMii)
     {
@@ -316,7 +299,7 @@ void ParadeScreen::DropHeldMii(Formats::Vector2 pointer)
     if (layout->IsPointInPane(EraseButton, pointer))
     {
         miiToErase = *held;
-        message.AskQuestion(MiiMessage::EraseThisMii, EraseWord, DoNotEraseWord);
+        message.AskQuestion(MiiMessage::EraseThisMii, MiiMessage::EraseWord, MiiMessage::DoNotEraseWord);
     }
 }
 

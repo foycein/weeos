@@ -24,9 +24,17 @@ namespace MiiMessage
 constexpr std::uint32_t Ok = 1;
 constexpr std::uint32_t Yes = 4;
 constexpr std::uint32_t No = 5;
+constexpr std::uint32_t EditHint = 7;
 constexpr std::uint32_t PlazaIsFullCannotCreate = 28;
 constexpr std::uint32_t FriendsNotRegistered = 12;
 constexpr std::uint32_t EraseThisMii = 15;
+constexpr std::uint32_t EraseHint = 31;
+constexpr std::uint32_t RemoteCommunicationError = 65;
+constexpr std::uint32_t DoNotEraseWord = 85;
+constexpr std::uint32_t EraseWord = 86;
+constexpr std::uint32_t ReadingRemote = 101501;
+constexpr std::uint32_t WaitingForDs = 101504;
+constexpr std::uint32_t GrabHint = 500715;
 constexpr std::uint32_t QuitWithoutSaving = 16;
 constexpr std::uint32_t ControlsHelp = 23;
 constexpr std::uint32_t SaveAndQuit = 25;
@@ -91,6 +99,15 @@ struct NoticePage
 class MessageWindow
 {
 public:
+    // The buttons of the windows: Yes and No of msgBg_00, OK of msgBg_01 and msgBg_03, the three choices of msgBg_04.
+    static constexpr std::string_view YesButton = "frmMsgYes_00";
+    static constexpr std::string_view NoButton = "frmMsgNo_00";
+    static constexpr std::string_view OkButton = "frmMsgOk_01";
+    static constexpr std::string_view TitledOkButton = "frmMsgOk_03";
+    static constexpr std::string_view FirstChoiceButton = "frm1Msg_04";
+    static constexpr std::string_view SecondChoiceButton = "frm2Msg_04";
+    static constexpr std::string_view ThirdChoiceButton = "frm3Msg_04";
+
     // The services, the archive and the messages must outlive the window.
     MessageWindow(ChannelServices& channelServices, const Layout::LayoutArchive& layouts, const Formats::NumberedMessageFile& messages);
 
@@ -123,7 +140,7 @@ public:
 private:
     void Open(int windowNumber, std::uint32_t messageNumber);
     void ShowPage(const NoticePage& page);
-    void Close(MessageAnswer answer, std::string_view soundName);
+    void Close(MessageAnswer givenAnswer, std::string_view soundName);
     bool IsPressed(std::string_view buttonPane);
 
     ChannelServices& services;

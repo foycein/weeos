@@ -67,7 +67,8 @@ constexpr float GetUpFromLanding05Frames = 131.0f;
 
 // The frames at which a falling Mii hits the ground (the animation events of 0x80022584, the floats 803BE420 to 803BE468): a smoke
 // comes a frame before each hit, the third one larger; the sounds come with the hits. bodySlap_03 falls from higher and hits later. The
-// program names a fourth hit at 120 (159), after the end of the animation, so it never comes. A Mii that gets down raises a smoke at frame 5.
+// program names a fourth hit at 120 (159), after the end of the animation, so it never comes. A Mii that gets down raises a smoke at
+// frame 5.
 struct GroundHits
 {
     std::array<float, 3> smokeFrames;
@@ -89,6 +90,7 @@ constexpr int WaysUp = 3;
 // 23 starts a nap of 6 to 17 seconds when it stands, 24 a sneeze.
 constexpr int IdleChances = 30000;
 constexpr int TalkChances = 7;
+constexpr int TalkSearchShare = 3;
 constexpr int NapChance = 23;
 constexpr int SneezeChance = 24;
 constexpr float TalkSearchDistance = 600.0f;
@@ -123,10 +125,9 @@ constexpr float SlideSpeedKeptPerStep = 0.94f;
 // The talking mouth opens and closes every 8 steps (Assumed, CHN-82).
 constexpr int MouthSteps = 8;
 
-// Assumed (CHN-63): how long a Mii stands, how far it walks and how fast it turns; the rules that choose them were not traced.
+// Assumed (CHN-63): how long a Mii stands and how fast it turns; the rules that choose them were not traced.
 constexpr int ShortestWaitSteps = 120;
 constexpr int LongestWaitSteps = 600;
-constexpr float LongestWalk = 900.0f;
 constexpr float TurnDegreesPerStep = 8.0f;
 
 // The whistle's lines (Assumed, CHN-64): ten Miis to a line, 160 units apart, the first line in front.
@@ -161,11 +162,9 @@ constexpr float GlidePerStep = 0.1f;
 constexpr float PickHeight = 160.0f;
 constexpr float PickHalfWidth = 45.0f;
 
-// The Miis of the plaza lean back by 45 degrees toward the camera (aslope_root of every animation).
-constexpr float LeanCosine = 0.70710678f;
-
 constexpr float DegreesPerRadian = 180.0f / std::numbers::pi_v<float>;
 constexpr float HalfTurnDegrees = 180.0f;
+constexpr float FullTurnDegrees = 360.0f;
 
 Formats::Vector3 Normalized(Formats::Vector3 vector)
 {
@@ -186,12 +185,18 @@ float Distance(Formats::Vector2 first, Formats::Vector2 second)
 // The difference of two directions, from -180 to 180 degrees.
 float TurnBetween(float fromDegrees, float toDegrees)
 {
-    float difference = std::fmod(toDegrees - fromDegrees, 360.0f);
-    if (difference > 180.0f)
-        difference -= 360.0f;
-    if (difference < -180.0f)
-        difference += 360.0f;
+    float difference = std::fmod(toDegrees - fromDegrees, FullTurnDegrees);
+    if (difference > HalfTurnDegrees)
+        difference -= FullTurnDegrees;
+    if (difference < -HalfTurnDegrees)
+        difference += FullTurnDegrees;
     return difference;
+}
+
+// One chance in this many.
+bool OneChanceIn(int chances, std::mt19937& generator)
+{
+    return std::uniform_int_distribution<int>(0, chances - 1)(generator) == 0;
 }
 
 // The point on the ground that the eye looks at, along the view direction.
@@ -200,6 +205,27 @@ Formats::Vector3 GroundPointUnder(Formats::Vector3 eye)
     Formats::Vector3 direction = Normalized(ViewDirection);
     float distance = eye.y / -direction.y;
     return {eye.x + direction.x * distance, 0.0f, eye.z + direction.z * distance};
+}
+
+// The camera's eye at a height, looking at the same point of the ground as from where it is.
+Formats::Vector3 EyeAtHeight(Formats::Vector3 eye, float height)
+{
+    Formats::Vector3 lookedAt = GroundPointUnder(eye);
+    Formats::Vector3 direction = Normalized(ViewDirection);
+    float distance = height / -direction.y;
+    return {lookedAt.x - direction.x * distance, height, lookedAt.z - direction.z * distance};
+}
+
+// A place of the whistle's lines: each line centered across the plaza, the lines one behind the other.
+Formats::Vector2 LinePlace(std::size_t place, std::size_t miiCount)
+{
+    int line = static_cast<int>(place) / MiisPerLine;
+    int column = static_cast<int>(place) % MiisPerLine;
+    int miisInLine = std::min<int>(MiisPerLine, static_cast<int>(miiCount) - line * MiisPerLine);
+    float middleColumn = static_cast<float>(miisInLine - 1) / 2;
+    float x = (static_cast<float>(column) - middleColumn) * LineSpacing;
+    float z = FirstLineZ - static_cast<float>(line) * LineSpacing;
+    return {x, z};
 }
 
 std::u16string LowerCase(std::u16string text)
@@ -316,19 +342,13 @@ void MiiPlaza::Arrange(PlazaArrangement arrangement)
     std::vector<std::size_t> order = ArrangedOrder(arrangement);
     for (std::size_t place = 0; place < order.size(); ++place)
     {
-        int line = static_cast<int>(place) / MiisPerLine;
-        int column = static_cast<int>(place) % MiisPerLine;
-        int miisInLine = std::min<int>(MiisPerLine, static_cast<int>(order.size()) - line * MiisPerLine);
-        float x = (static_cast<float>(column) - static_cast<float>(miisInLine - 1) / 2) * LineSpacing;
-        float z = FirstLineZ - static_cast<float>(line) * LineSpacing;
-
         for (PlazaMii& plazaMii : miis)
         {
             if (plazaMii.mii.slot != order[place] || plazaMii.activity == PlazaActivity::Held)
                 continue;
 
             plazaMii.staysAtTarget = true;
-            StartRunning(plazaMii, {x, z});
+            StartRunning(plazaMii, LinePlace(place, order.size()));
         }
     }
 }
@@ -464,11 +484,7 @@ bool MiiPlaza::ZoomIn()
         return false;
 
     --camera.zoomLevel;
-    Formats::Vector3 lookedAt = GroundPointUnder(camera.destination);
-    Formats::Vector3 direction = Normalized(ViewDirection);
-    float height = ZoomHeights[camera.zoomLevel];
-    float distance = height / -direction.y;
-    camera.destination = {lookedAt.x - direction.x * distance, height, lookedAt.z - direction.z * distance};
+    camera.destination = EyeAtHeight(camera.destination, ZoomHeights[camera.zoomLevel]);
     LimitCameraDestination();
     return true;
 }
@@ -485,11 +501,7 @@ bool MiiPlaza::ZoomOut()
         return true;
     }
 
-    Formats::Vector3 lookedAt = GroundPointUnder(camera.destination);
-    Formats::Vector3 direction = Normalized(ViewDirection);
-    float height = ZoomHeights[camera.zoomLevel];
-    float distance = height / -direction.y;
-    camera.destination = {lookedAt.x - direction.x * distance, height, lookedAt.z - direction.z * distance};
+    camera.destination = EyeAtHeight(camera.destination, ZoomHeights[camera.zoomLevel]);
     LimitCameraDestination();
     return true;
 }
@@ -509,8 +521,7 @@ Graphics::Matrix4 MiiPlaza::ViewMatrix() const
 
 Graphics::Matrix4 MiiPlaza::ProjectionMatrix() const
 {
-    float aspect = WideAspect;
-    return Graphics::MakePerspective(VerticalViewDegrees, aspect, NearDistance, FarDistance);
+    return Graphics::MakePerspective(VerticalViewDegrees, WideAspect, NearDistance, FarDistance);
 }
 
 Formats::Vector2 MiiPlaza::PlaceInPicture(Formats::Vector3 point, float canvasWidth, float canvasHeight) const
@@ -519,8 +530,8 @@ Formats::Vector2 MiiPlaza::PlaceInPicture(Formats::Vector3 point, float canvasWi
     const auto& rows = viewAndProjection.rows;
     float x = rows[0][0] * point.x + rows[0][1] * point.y + rows[0][2] * point.z + rows[0][3];
     float y = rows[1][0] * point.x + rows[1][1] * point.y + rows[1][2] * point.z + rows[1][3];
-    float w = rows[3][0] * point.x + rows[3][1] * point.y + rows[3][2] * point.z + rows[3][3];
-    return {x / w * canvasWidth / 2, y / w * canvasHeight / 2};
+    float depth = rows[3][0] * point.x + rows[3][1] * point.y + rows[3][2] * point.z + rows[3][3];
+    return {x / depth * canvasWidth / 2, y / depth * canvasHeight / 2};
 }
 
 Formats::Vector2 MiiPlaza::GroundPointAt(Formats::Vector2 picturePlace, float canvasWidth, float canvasHeight) const
@@ -530,8 +541,7 @@ Formats::Vector2 MiiPlaza::GroundPointAt(Formats::Vector2 picturePlace, float ca
     Formats::Vector3 up = Cross(right, forward);
 
     float halfViewTangent = std::tan(VerticalViewDegrees / 2 / DegreesPerRadian);
-    float aspect = WideAspect;
-    float across = picturePlace.x / (canvasWidth / 2) * halfViewTangent * aspect;
+    float across = picturePlace.x / (canvasWidth / 2) * halfViewTangent * WideAspect;
     float upward = picturePlace.y / (canvasHeight / 2) * halfViewTangent;
 
     Formats::Vector3 ray = {forward.x + right.x * across + up.x * upward, forward.y + right.y * across + up.y * upward,
@@ -549,8 +559,8 @@ std::optional<std::size_t> MiiPlaza::MiiAt(Formats::Vector2 picturePlace, float 
     float nearestZ = -FarDistance;
     for (const PlazaMii& plazaMii : miis)
     {
-        float leanedTopY = PickHeight * LeanCosine;
-        float leanedTopZ = plazaMii.position.y - PickHeight * LeanCosine;
+        float leanedTopY = PickHeight * MiiLeanCosine;
+        float leanedTopZ = plazaMii.position.y - PickHeight * MiiLeanCosine;
         Formats::Vector2 feet = PlaceInPicture({plazaMii.position.x, 0, plazaMii.position.y}, canvasWidth, canvasHeight);
         Formats::Vector2 top = PlaceInPicture({plazaMii.position.x, leanedTopY, leanedTopZ}, canvasWidth, canvasHeight);
         Formats::Vector2 side = PlaceInPicture({plazaMii.position.x + PickHalfWidth, 0, plazaMii.position.y}, canvasWidth, canvasHeight);
@@ -594,14 +604,7 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
         return;
 
     case PlazaActivity::Waiting:
-        plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, WaitAnimationFrames);
-        --plazaMii.stepsToWait;
-        if (kind == PlazaKind::Parade && plazaMii.stepsToWait <= 0)
-            WalkAlongTheParade(plazaMii);
-        else if (!plazaMii.staysAtTarget && plazaMii.stepsToWait <= 0)
-            StartWalking(plazaMii, RandomPlace());
-        else
-            ChooseIdleMoment(plazaMii);
+        Wait(plazaMii);
         return;
 
     case PlazaActivity::Walking:
@@ -638,33 +641,21 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
         return;
 
     case PlazaActivity::AfterSneeze:
-    {
-        float frameBefore = plazaMii.animationFrame;
-        PlayOnce(plazaMii, PlazaActivity::Waiting);
-        NoteFrameMoment(plazaMii, frameBefore, SneezeSplashFrame, PlazaMoment::Sneezes);
+        PlayOnceWithMoment(plazaMii, PlazaActivity::Waiting, SneezeSplashFrame, PlazaMoment::Sneezes);
         return;
-    }
 
     case PlazaActivity::Slipping:
-    {
-        float frameBefore = plazaMii.animationFrame;
         Slide(plazaMii);
-        PlayOnce(plazaMii, PlazaActivity::GettingUp);
-        NoteFrameMoment(plazaMii, frameBefore, SlipDustFrame, PlazaMoment::Slips);
+        PlayOnceWithMoment(plazaMii, PlazaActivity::GettingUp, SlipDustFrame, PlazaMoment::Slips);
         return;
-    }
 
     case PlazaActivity::GettingUp:
         PlayOnce(plazaMii, PlazaActivity::Waiting);
         return;
 
     case PlazaActivity::GettingDown:
-    {
-        float frameBefore = plazaMii.animationFrame;
-        PlayOnce(plazaMii, PlazaActivity::Waiting);
-        NoteFrameMoment(plazaMii, frameBefore, GetDownSmokeFrame, PlazaMoment::RaisesSlapSmoke);
+        PlayOnceWithMoment(plazaMii, PlazaActivity::Waiting, GetDownSmokeFrame, PlazaMoment::RaisesSlapSmoke);
         return;
-    }
 
     case PlazaActivity::Landing:
     case PlazaActivity::LandingFromHigh:
@@ -678,6 +669,20 @@ void MiiPlaza::MoveMii(PlazaMii& plazaMii)
         PlayOnce(plazaMii, PlazaActivity::Waiting);
         return;
     }
+}
+
+// A standing Mii walks on when its wait is over (on the parade toward the camera); a Mii that the whistle called stays.
+void MiiPlaza::Wait(PlazaMii& plazaMii)
+{
+    plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + 1, WaitAnimationFrames);
+    --plazaMii.stepsToWait;
+    bool isWaitOver = plazaMii.stepsToWait <= 0;
+    if (kind == PlazaKind::Parade && isWaitOver)
+        WalkAlongTheParade(plazaMii);
+    else if (!plazaMii.staysAtTarget && isWaitOver)
+        StartWalking(plazaMii, RandomPlace());
+    else
+        ChooseIdleMoment(plazaMii);
 }
 
 // The falling Mii's smokes and hits come at their frames; at the end it gets up.
@@ -703,16 +708,22 @@ void MiiPlaza::GetUpFromLanding(PlazaMii& plazaMii)
 {
     int way = 0;
     if (!lastWayUp)
+    {
         way = std::uniform_int_distribution<int>(0, WaysUp - 1)(random);
+    }
     else
-        way = (*lastWayUp + 1 + std::uniform_int_distribution<int>(0, WaysUp - 2)(random)) % WaysUp;
+    {
+        int waysAfterTheLast = 1 + std::uniform_int_distribution<int>(0, WaysUp - 2)(random);
+        way = (*lastWayUp + waysAfterTheLast) % WaysUp;
+    }
     lastWayUp = way;
 
     constexpr int SecondWay = 1;
     constexpr int ThirdWay = 2;
+    bool isWoman = plazaMii.mii.record.gender == Mii::Gender::Female;
     PlazaActivity wayUp = PlazaActivity::GettingUpFromLanding01;
     if (way == SecondWay)
-        wayUp = plazaMii.mii.record.gender == Mii::Gender::Female ? PlazaActivity::GettingUpFromLanding02 : PlazaActivity::GettingUpFromLanding04;
+        wayUp = isWoman ? PlazaActivity::GettingUpFromLanding02 : PlazaActivity::GettingUpFromLanding04;
     if (way == ThirdWay)
         wayUp = PlazaActivity::GettingUpFromLanding05;
     StartActivity(plazaMii, wayUp);
@@ -789,7 +800,7 @@ void MiiPlaza::Run(PlazaMii& plazaMii)
         return;
     }
 
-    bool slips = remaining > SlipFreeDistance && std::uniform_int_distribution<int>(0, SlipChances - 1)(random) == 0;
+    bool slips = remaining > SlipFreeDistance && OneChanceIn(SlipChances, random);
     if (slips)
     {
         StartActivity(plazaMii, PlazaActivity::Slipping);
@@ -836,6 +847,14 @@ void MiiPlaza::PlayOnce(PlazaMii& plazaMii, PlazaActivity nextActivity)
         FinishActivity(plazaMii);
     else
         StartActivity(plazaMii, nextActivity);
+}
+
+// The animation plays to its end, and a moment at one of its frames comes in the step that passes the frame.
+void MiiPlaza::PlayOnceWithMoment(PlazaMii& plazaMii, PlazaActivity nextActivity, float momentFrame, PlazaMoment moment)
+{
+    float frameBefore = plazaMii.animationFrame;
+    PlayOnce(plazaMii, nextActivity);
+    NoteFrameMoment(plazaMii, frameBefore, momentFrame, moment);
 }
 
 // The animation loops until the steps of the activity are over, then the next activity begins.
@@ -891,7 +910,7 @@ void MiiPlaza::StartTalk(PlazaMii& talker)
     if (miis.size() < 2)
         return;
 
-    int tries = static_cast<int>(miis.size()) / 3 + 1;
+    int tries = static_cast<int>(miis.size()) / TalkSearchShare + 1;
     std::uniform_int_distribution<std::size_t> anyMii(0, miis.size() - 1);
     for (int tryNumber = 0; tryNumber < tries; ++tryNumber)
     {
@@ -968,7 +987,7 @@ void MiiPlaza::CountTalkBalloon(PlazaMii& plazaMii)
 {
     ++plazaMii.stepsSinceTalkBalloon;
     int waited = plazaMii.stepsSinceTalkBalloon;
-    bool comesByChance = waited > TalkBalloonShortestWait && std::uniform_int_distribution<int>(0, TalkBalloonChances - 1)(effectRandom) == 0;
+    bool comesByChance = waited > TalkBalloonShortestWait && OneChanceIn(TalkBalloonChances, effectRandom);
     if (!comesByChance && waited <= TalkBalloonLongestWait)
         return;
 
@@ -983,7 +1002,8 @@ void MiiPlaza::CountRunningDust(PlazaMii& plazaMii)
 
     ++plazaMii.stepsRunning;
     int chances = (static_cast<int>(miis.size()) + RunningDustBaseSteps) / 2;
-    if (plazaMii.stepsRunning > chances && std::uniform_int_distribution<int>(0, chances - 1)(effectRandom) == 0)
+    bool raisesDust = plazaMii.stepsRunning > chances && OneChanceIn(chances, effectRandom);
+    if (raisesDust)
         moments.push_back({PlazaMoment::RaisesDust, plazaMii.mii.slot});
 }
 

@@ -3,6 +3,8 @@
 #include "Channels/MiiChannel/MiiPlaza.h"
 #include "Channels/MiiChannel/PlazaGround.h"
 
+#include "SystemMenu/MenuLayout.h"
+
 #include "Graphics/GraphicsDevice.h"
 #include "Mii/MiiBody.h"
 #include "Mii/MiiHead.h"
@@ -23,8 +25,14 @@ struct PictureRectangle
     Formats::Vector2 halfSize;
 };
 
+// The rectangle of a pane of a layout; an empty rectangle for a pane that is hidden.
+PictureRectangle RectangleOfPane(SystemMenu::MenuLayout& layout, std::string_view paneName);
+
 // A projection that draws into a rectangle of the picture what the projection would draw into the whole picture.
 Graphics::Matrix4 ProjectIntoRectangle(const Graphics::Matrix4& projection, const PictureRectangle& rectangle, Graphics::Canvas canvas);
+
+// The size of the face texture of a head.
+constexpr std::uint32_t FaceTextureSize = 128;
 
 // A head to keep: the Mii under a key of the caller's choice, with a face.
 struct ShownHead
@@ -86,8 +94,8 @@ public:
         float waitFrame) const;
 
     // One Mii in any stance, seen as the editor sees it, filling the rectangle.
-    void DrawPosedMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance, const PictureRectangle& rectangle,
-        Graphics::Canvas canvas) const;
+    void DrawPosedMii(const Mii::MiiRecord& record, const Mii::MiiHead& head, const Mii::BodyStance& stance,
+        const PictureRectangle& rectangle, Graphics::Canvas canvas) const;
 
     // A head alone, seen from the front, filling the rectangle: the faces to choose from in "Choose a look-alike".
     void DrawHead(const Mii::MiiHead& head, const PictureRectangle& rectangle, Graphics::Canvas canvas) const;

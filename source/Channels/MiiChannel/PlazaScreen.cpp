@@ -36,17 +36,17 @@ constexpr std::string_view BigFocusSound = "SEQ_BUT_SELECT_BIG";
 constexpr std::string_view SmallFocusSound = "SEQ_BUT_SELECT_SMALL";
 constexpr std::string_view WhistleFocusSound = "SEQ_EDIT_BUT_SELECT";
 constexpr std::array<FocusedButton, 15> PlazaButtonFocus = {{
-    {"squButtonNull_03", "squPrBtnNull_03", "anmSQUMenuFocusL", SmallFocusSound},
-    {"squButtonNull_05", "squPrBtnNull_05", "anmSQUMenuFocusL", BigFocusSound},
-    {"squButtonNull_06", "squPrBtnNull_06", "anmSQUMenuFocusL", BigFocusSound},
-    {"squButtonNull_08", "squPrBtnNull_08", "anmSQUMenuFocusL", BigFocusSound},
-    {"squButtonNull_09", "squPrBtnNull_09", "anmSQUMenuFocusL", SmallFocusSound},
-    {"squButtonNull_07", "squPrBtnNull_07", "anmSQUMenuFocusR", BigFocusSound},
-    {"squButtonNull_00", "squPrBtnNull_00", "anmSQUMenuFocusR", BigFocusSound},
-    {"squButtonNull_01", "squPrBtnNull_01", "anmSQUMenuFocusR", BigFocusSound},
-    {"squButtonNull_02", "squPrBtnNull_02", "anmSQUMenuFocusR", BigFocusSound},
-    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleFocus", WhistleFocusSound},
-    {"squButtonNull_14", "squButtonNull_14", "anmSQUWhistleTextFocus", WhistleFocusSound},
+    {PlazaScreen::WiiMenuButton, "squPrBtnNull_03", "anmSQUMenuFocusL", SmallFocusSound},
+    {PlazaScreen::NewMiiButton, "squPrBtnNull_05", "anmSQUMenuFocusL", BigFocusSound},
+    {PlazaScreen::EditMiiButton, "squPrBtnNull_06", "anmSQUMenuFocusL", BigFocusSound},
+    {PlazaScreen::EraseMiiButton, "squPrBtnNull_08", "anmSQUMenuFocusL", BigFocusSound},
+    {PlazaScreen::HelpButton, "squPrBtnNull_09", "anmSQUMenuFocusL", SmallFocusSound},
+    {PlazaScreen::ParadeButton, "squPrBtnNull_07", "anmSQUMenuFocusR", BigFocusSound},
+    {PlazaScreen::WiiRemoteButton, "squPrBtnNull_00", "anmSQUMenuFocusR", BigFocusSound},
+    {PlazaScreen::WiiFriendButton, "squPrBtnNull_01", "anmSQUMenuFocusR", BigFocusSound},
+    {PlazaScreen::DsButton, "squPrBtnNull_02", "anmSQUMenuFocusR", BigFocusSound},
+    {PlazaScreen::WhistleButton, PlazaScreen::WhistleButton, "anmSQUWhistleFocus", WhistleFocusSound},
+    {PlazaScreen::WhistleButton, PlazaScreen::WhistleButton, "anmSQUWhistleTextFocus", WhistleFocusSound},
     {"squButtonNull_10", "squButtonNull_10", "anmSQUSortFocus", WhistleFocusSound},
     {"squButtonNull_11", "squButtonNull_11", "anmSQUSortFocus", WhistleFocusSound},
     {"squButtonNull_12", "squButtonNull_12", "anmSQUSortFocus", WhistleFocusSound},
@@ -68,7 +68,6 @@ constexpr std::array<SortButton, 4> SortButtons = {{
     {"squButtonNull_13", PlazaArrangement::Alphabetical, "SEQ_SYUGOMENU_SORT_50"},
 }};
 
-constexpr Formats::Rgba8Color BackgroundColor = {255, 255, 255, 255};
 constexpr std::string_view CountText = "countText_00";
 
 // The words of the whistle: "Arrange" and "Disband".
@@ -80,23 +79,12 @@ constexpr std::string_view BalloonPane = "balAnimNull_00";
 constexpr std::string_view BalloonName = "balloonText_00";
 constexpr std::string_view BalloonCreator = "balText_00";
 
-constexpr std::uint32_t EditHint = 7;
-constexpr std::uint32_t EraseHint = 31;
-constexpr std::uint32_t EraseWord = 86;
-constexpr std::uint32_t DoNotEraseWord = 85;
-constexpr std::uint32_t RemoteCommunicationError = 65;
-constexpr std::uint32_t ReadingRemote = 101501;
-constexpr std::uint32_t WaitingForDs = 101504;
-
 // Assumed (CHN-05, CHN-68): how long the plaza shows "Reading..." of a Wii Remote and the search for a Nintendo DS before their answers.
 constexpr int RemoteReadingSteps = 60;
 constexpr int DsSearchSteps = 300;
 
 // The name balloon stays for 3 seconds after A on a Mii (Assumed, CHN-66).
 constexpr int BalloonSteps = 180;
-
-// A Mii's middle in the picture: 80 units above its feet, leaning back with the plaza's 45 degrees.
-constexpr float MiddleHeight = 80.0f * 0.70710678f;
 
 // B held with the hand near an edge scrolls the plaza (Assumed, CHN-62): beyond 70 percent of the way from the middle to the edge.
 constexpr float EdgeScrollFraction = 0.7f;
@@ -120,6 +108,9 @@ constexpr std::string_view WiiMenuSound = "SEQ_HIROBA_BUT_RETURN_TO_IPL";
 constexpr std::string_view RemoteSound = "SEQ_HIROBA_BUT_WII_CONTROLLER";
 constexpr std::string_view FriendSound = "SEQ_HIROBA_BUT_WII_FRIEND";
 constexpr std::string_view DsSound = "SEQ_HIROBA_BUT_DS";
+
+constexpr std::uint8_t Shown = 255;
+constexpr std::uint8_t Hidden = 0;
 
 }
 
@@ -201,7 +192,7 @@ Formats::Vector2 PlazaScreen::PictureCenterOf(std::size_t slot) const
         return {0, 0};
 
     Graphics::Canvas canvas = Canvas();
-    Formats::Vector3 middle = {plazaMii->position.x, MiddleHeight, plazaMii->position.y - MiddleHeight};
+    Formats::Vector3 middle = {plazaMii->position.x, MiiPlaza::MiiMiddleHeight, plazaMii->position.y - MiiPlaza::MiiMiddleHeight};
     return plaza.PlaceInPicture(middle, canvas.width, canvas.height);
 }
 
@@ -228,16 +219,18 @@ void PlazaScreen::Update(bool acceptsInput)
 
     std::string count = std::format("{:03}", plaza.Miis().size());
     layout->SetText(CountText, std::u16string(count.begin(), count.end()));
-    UpdateWaits();
+    UpdateNameBalloon();
+    UpdateLoadWindow();
 
     HandleMessageAnswer();
-    bool isQuiet = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii() && pending == Pending::Nothing;
+    bool isQuiet = !IsBlocked(acceptsInput) && !plaza.HeldMii() && pending == Pending::Nothing;
     if (isQuiet && shouldTellWhatIsNew)
         TellWhatIsNew();
 
-    bool takesInput = acceptsInput && !message.IsOpen() && loadSteps == 0 && !plaza.HeldMii();
+    bool isBlocked = IsBlocked(acceptsInput);
+    bool takesInput = !isBlocked && !plaza.HeldMii();
     focus->Update(takesInput ? ReadPlayerOne(services).pointer : std::nullopt);
-    if (!acceptsInput || message.IsOpen() || loadSteps > 0)
+    if (isBlocked)
         return;
 
     HandleHand();
@@ -248,23 +241,31 @@ void PlazaScreen::Update(bool acceptsInput)
     HandleButtons();
 }
 
-// Beyond the ground the plaza is white, the color its edges fade into (Assumed, CHN-71).
+// No button reacts while a message or a dialog is over the plaza, has just closed with the press of this step, or the load window shows.
+bool PlazaScreen::IsBlocked(bool acceptsInput) const
+{
+    return !acceptsInput || message.IsOpen() || loadSteps > 0;
+}
+
 void PlazaScreen::Draw()
 {
-    Graphics::Canvas canvas = Canvas();
-    float halfWidth = canvas.width / 2;
-    float halfHeight = canvas.height / 2;
-    Graphics::Quad background;
-    background.positions = {{{-halfWidth, halfHeight}, {halfWidth, halfHeight}, {halfWidth, -halfHeight}, {-halfWidth, -halfHeight}}};
-    background.colors.fill(BackgroundColor);
-    services.display.Device().DrawQuad(background, Graphics::Material());
-
+    DrawWhiteBackground(services.display.Device(), Canvas());
     figures.DrawPlaza(plaza, ground, heads);
     effects.DrawAmongModels(plaza.ViewMatrix(), plaza.ProjectionMatrix());
     layout->Draw();
 }
 
 void PlazaScreen::HandleButtons()
+{
+    if (HandleLeftButtons())
+        return;
+    if (HandleRightButtons())
+        return;
+    HandleWhistleBar();
+}
+
+// New Mii, Edit Mii, Erase Mii, Help and Wii Menu; true when one was pressed.
+bool PlazaScreen::HandleLeftButtons()
 {
     if (IsPressed(NewMiiButton))
     {
@@ -273,28 +274,28 @@ void PlazaScreen::HandleButtons()
             message.ShowNotice(MiiMessage::PlazaIsFullCannotCreate);
         else
             request = PlazaRequest::MakeNewMii;
-        return;
+        return true;
     }
 
     if (IsPressed(EditMiiButton))
     {
         services.sounds.Request(ButtonPushSound);
-        message.ShowNotice(EditHint);
-        return;
+        message.ShowNotice(MiiMessage::EditHint);
+        return true;
     }
 
     if (IsPressed(EraseMiiButton))
     {
         services.sounds.Request(ButtonPushSound);
-        message.ShowNotice(EraseHint);
-        return;
+        message.ShowNotice(MiiMessage::EraseHint);
+        return true;
     }
 
     if (IsPressed(HelpButton))
     {
         services.sounds.Request(HelpSound);
         message.ShowNotice(MiiMessage::ControlsHelp);
-        return;
+        return true;
     }
 
     if (IsPressed(WiiMenuButton))
@@ -302,24 +303,26 @@ void PlazaScreen::HandleButtons()
         services.sounds.Request(WiiMenuSound);
         pending = Pending::ReturnToWiiMenu;
         message.AskQuestion(MiiMessage::ReturnToWiiMenu);
-        return;
+        return true;
     }
+    return false;
+}
 
+// Mii Parade and the transfers: Wii Remote, Wii Friend and DS; true when one was pressed.
+bool PlazaScreen::HandleRightButtons()
+{
     if (IsPressed(ParadeButton))
     {
         services.sounds.Request(ButtonPushSound);
         request = PlazaRequest::ShowParade;
-        return;
+        return true;
     }
 
-    // The virtual Wii Remote has no memory for Miis: reading it fails as a remote that does not answer (message 65).
     if (IsPressed(WiiRemoteButton))
     {
         services.sounds.Request(RemoteSound);
-        ShowLoadWindow(ReadingRemote);
-        loadSteps = RemoteReadingSteps;
-        messageAfterLoad = RemoteCommunicationError;
-        return;
+        StartReadingTheRemote();
+        return true;
     }
 
     // Without WiiConnect24 there is no list of Wii Friends.
@@ -327,17 +330,21 @@ void PlazaScreen::HandleButtons()
     {
         services.sounds.Request(FriendSound);
         message.ShowNotice(MiiMessage::FriendsNotRegistered);
-        return;
+        return true;
     }
 
     if (IsPressed(DsButton))
     {
         services.sounds.Request(DsSound);
-        pending = Pending::BeginDs;
-        message.AskQuestion(MiiMessage::BeginDsCommunication);
-        return;
+        AskToBeginDs();
+        return true;
     }
+    return false;
+}
 
+// The whistle shows or hides the sort buttons, or disbands the lines; a sort button lines the Miis up.
+void PlazaScreen::HandleWhistleBar()
+{
     if (IsPressed(WhistleButton))
     {
         if (isArranged)
@@ -406,7 +413,7 @@ void PlazaScreen::HandleHand()
     if (!input.pointer)
         return;
 
-    bool grabsNow = input.IsHeld(GrabButtons) && (input.pressed & GrabButtons) != 0;
+    bool grabsNow = input.IsHeld(GrabButtons) && input.WasPressed(GrabButtons);
     std::optional<std::size_t> pointedMii = plaza.MiiAt(*input.pointer, canvas.width, canvas.height);
     if (grabsNow && pointedMii)
     {
@@ -429,13 +436,13 @@ void PlazaScreen::HandleCamera()
         services.sounds.Request(ZoomOutSound);
 
     Formats::Vector2 scroll = {0, 0};
-    if ((input.held & Input::RemoteButtons::Left) != 0)
+    if (input.IsHeld(Input::RemoteButtons::Left))
         scroll.x -= 1;
-    if ((input.held & Input::RemoteButtons::Right) != 0)
+    if (input.IsHeld(Input::RemoteButtons::Right))
         scroll.x += 1;
-    if ((input.held & Input::RemoteButtons::Up) != 0)
+    if (input.IsHeld(Input::RemoteButtons::Up))
         scroll.y -= 1;
-    if ((input.held & Input::RemoteButtons::Down) != 0)
+    if (input.IsHeld(Input::RemoteButtons::Down))
         scroll.y += 1;
 
     bool scrollsWithHand = input.IsHeld(Input::RemoteButtons::B) && !input.IsHeld(Input::RemoteButtons::A) && input.pointer;
@@ -484,7 +491,7 @@ void PlazaScreen::HandleMessageAnswer()
     case Pending::BeginDs:
         if (*answer == MessageAnswer::Yes)
         {
-            ShowLoadWindow(WaitingForDs);
+            ShowLoadWindow(MiiMessage::WaitingForDs);
             loadSteps = DsSearchSteps;
             messageAfterLoad = MiiMessage::NoDsFound;
         }
@@ -547,14 +554,7 @@ void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)
     std::optional<Mii::MiiRecord> record = data.FindMii(*held);
     if (layout->IsPointInPane(EditMiiButton, pointer) && record)
     {
-        if (!Mii::WasMadeOnConsole(*record, data.ConsoleSystemId()) || Mii::IsSpecialMii(*record))
-        {
-            message.ShowNotice(MiiMessage::CannotEditOthersMiis);
-            return;
-        }
-        services.sounds.Request(EditDropSound);
-        miiToEdit = *held;
-        request = PlazaRequest::EditMii;
+        DropOnEditMii(*held, *record);
         return;
     }
 
@@ -562,29 +562,19 @@ void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)
     {
         miiToErase = *held;
         pending = Pending::Erase;
-        message.AskQuestion(MiiMessage::EraseThisMii, EraseWord, DoNotEraseWord);
+        message.AskQuestion(MiiMessage::EraseThisMii, MiiMessage::EraseWord, MiiMessage::DoNotEraseWord);
         return;
     }
 
-    // "Send to Mii Parade": the parade keeps Miis that the plaza has no room for, without their birthday and creator.
     if (layout->IsPointInPane(ParadeButton, pointer) && record)
     {
-        if (Mii::IsSpecialMii(*record))
-        {
-            message.ShowNotice(MiiMessage::SpecialMiisCannotJoinParade);
-            return;
-        }
-        miiToSend = *held;
-        pending = Pending::SendToParade;
-        message.AskQuestion(MiiMessage::SendToParadeQuestion);
+        DropOnParade(*held, *record);
         return;
     }
 
     if (layout->IsPointInPane(WiiRemoteButton, pointer))
     {
-        ShowLoadWindow(ReadingRemote);
-        loadSteps = RemoteReadingSteps;
-        messageAfterLoad = RemoteCommunicationError;
+        StartReadingTheRemote();
         return;
     }
 
@@ -596,12 +586,51 @@ void PlazaScreen::DropHeldMii(Formats::Vector2 pointer)
 
     if (layout->IsPointInPane(DsButton, pointer))
     {
-        pending = Pending::BeginDs;
-        message.AskQuestion(MiiMessage::BeginDsCommunication);
+        AskToBeginDs();
         return;
     }
 
     services.sounds.Request(GroundSound);
+}
+
+// Only the Miis of this console can be edited, and no special Mii.
+void PlazaScreen::DropOnEditMii(std::size_t slot, const Mii::MiiRecord& record)
+{
+    if (!Mii::WasMadeOnConsole(record, data.ConsoleSystemId()) || Mii::IsSpecialMii(record))
+    {
+        message.ShowNotice(MiiMessage::CannotEditOthersMiis);
+        return;
+    }
+    services.sounds.Request(EditDropSound);
+    miiToEdit = slot;
+    request = PlazaRequest::EditMii;
+}
+
+// "Send to Mii Parade": the parade keeps Miis that the plaza has no room for, without their birthday and creator.
+void PlazaScreen::DropOnParade(std::size_t slot, const Mii::MiiRecord& record)
+{
+    if (Mii::IsSpecialMii(record))
+    {
+        message.ShowNotice(MiiMessage::SpecialMiisCannotJoinParade);
+        return;
+    }
+    miiToSend = slot;
+    pending = Pending::SendToParade;
+    message.AskQuestion(MiiMessage::SendToParadeQuestion);
+}
+
+// The virtual Wii Remote has no memory for Miis: reading it fails as a remote that does not answer (message 65).
+void PlazaScreen::StartReadingTheRemote()
+{
+    ShowLoadWindow(MiiMessage::ReadingRemote);
+    loadSteps = RemoteReadingSteps;
+    messageAfterLoad = MiiMessage::RemoteCommunicationError;
+}
+
+void PlazaScreen::AskToBeginDs()
+{
+    pending = Pending::BeginDs;
+    message.AskQuestion(MiiMessage::BeginDsCommunication);
 }
 
 void PlazaScreen::ShowNameBalloon(std::size_t slot)
@@ -617,28 +646,33 @@ void PlazaScreen::ShowNameBalloon(std::size_t slot)
     services.sounds.Request(record->isFavorite ? FavoriteNameSound : NameSound);
 }
 
-void PlazaScreen::UpdateWaits()
+// The name balloon follows its Mii above its head until its time is over or the Mii is gone.
+void PlazaScreen::UpdateNameBalloon()
 {
     Formats::Pane& balloon = layout->PaneNamed(BalloonPane);
     balloon.isVisible = balloonMii.has_value();
-    if (balloonMii)
+    if (!balloonMii)
+        return;
+
+    const PlazaMii* plazaMii = plaza.FindMii(*balloonMii);
+    --balloonSteps;
+    if (plazaMii == nullptr || balloonSteps <= 0)
     {
-        const PlazaMii* plazaMii = plaza.FindMii(*balloonMii);
-        --balloonSteps;
-        if (plazaMii == nullptr || balloonSteps <= 0)
-        {
-            balloonMii.reset();
-        }
-        else
-        {
-            Graphics::Canvas canvas = Canvas();
-            Formats::Vector3 above = {plazaMii->position.x, MiddleHeight * 2, plazaMii->position.y - MiddleHeight * 2};
-            Formats::Vector2 place = services.display.CanvasToRootPaneSpace(plaza.PlaceInPicture(above, canvas.width, canvas.height));
-            balloon.translation.x = place.x;
-            balloon.translation.y = place.y;
-        }
+        balloonMii.reset();
+        return;
     }
 
+    Graphics::Canvas canvas = Canvas();
+    float aboveTheHead = MiiPlaza::MiiMiddleHeight * 2;
+    Formats::Vector3 above = {plazaMii->position.x, aboveTheHead, plazaMii->position.y - aboveTheHead};
+    Formats::Vector2 place = services.display.CanvasToRootPaneSpace(plaza.PlaceInPicture(above, canvas.width, canvas.height));
+    balloon.translation.x = place.x;
+    balloon.translation.y = place.y;
+}
+
+// The load window shows its wait, then the message that ends it.
+void PlazaScreen::UpdateLoadWindow()
+{
     if (loadSteps <= 0)
         return;
 
@@ -653,12 +687,12 @@ void PlazaScreen::UpdateWaits()
 void PlazaScreen::ShowLoadWindow(std::uint32_t messageNumber)
 {
     layout->SetText(LoadText, MessageText(texts, messageNumber));
-    layout->PaneNamed(LoadWindow).alpha = 255;
+    layout->PaneNamed(LoadWindow).alpha = Shown;
 }
 
 void PlazaScreen::HideLoadWindow()
 {
-    layout->PaneNamed(LoadWindow).alpha = 0;
+    layout->PaneNamed(LoadWindow).alpha = Hidden;
 }
 
 bool PlazaScreen::IsPressed(std::string_view buttonPane) const
