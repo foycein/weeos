@@ -20,12 +20,6 @@ void MenuAnimation::Start()
     isPlaying = true;
 }
 
-void MenuAnimation::ShowFirstFrame()
-{
-    player.emplace(layout, animation, mode, panes);
-    isPlaying = false;
-}
-
 void MenuAnimation::ShowLastFrame()
 {
     player.emplace(layout, animation, mode, panes);

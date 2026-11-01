@@ -127,6 +127,7 @@ private:
     void StartFirstPage();
     void RunPageReady();
     void HandleButtonEvents(const std::vector<ButtonEvent>& events);
+    static State ReadyStateOf(Page page);
     bool IsButtonOnCurrentPage(Choice choice) const;
     void PressButton(Choice choice);
     void OpenEditor(ScreenId editor);

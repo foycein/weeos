@@ -75,7 +75,6 @@ KeyboardView::KeyboardView(Display& menuDisplay, const MenuFiles& files, const T
     barButtons = std::make_unique<ButtonController>(*bar, display);
     symbolButtons = std::make_unique<ButtonController>(*symbols, display);
 
-    isCharacterKeyAllowed.fill(true);
     HideWhatWeeOSDoesNotNeed();
     SetFixedTexts();
     RegisterKeys();
@@ -145,9 +144,9 @@ void KeyboardView::RegisterKey(KeyId id, MenuLayout& layout, ButtonController& b
     records.push_back({id, &layout, &buttons, buttonPane, picturePane, animationPrefix});
 }
 
-const KeyboardView::KeyRecord& KeyboardView::RecordOf(KeyId key) const
+KeyboardView::KeyRecord& KeyboardView::RecordOf(KeyId key)
 {
-    for (const KeyRecord& record : records)
+    for (KeyRecord& record : records)
     {
         if (record.id == key)
             return record;
@@ -191,18 +190,18 @@ bool KeyboardView::IsSymbolWindowOpen() const
 void KeyboardView::EnableButtonsThatCanBePressed()
 {
     for (const KeyRecord& record : records)
-        record.buttons->SetEnabled(record.buttonPane, CanBePressed(record.id));
+        record.buttons->SetEnabled(record.buttonPane, CanBePressed(record));
 }
 
-bool KeyboardView::CanBePressed(KeyId key) const
+bool KeyboardView::CanBePressed(const KeyRecord& record) const
 {
-    if (!areButtonsEnabled)
+    if (!areButtonsEnabled || !record.isAllowed)
         return false;
 
+    const KeyId& key = record.id;
     switch (key.kind)
     {
     case KeyKind::Character:
-        return !isSymbolWindowOpen && isCharacterKeyAllowed[key.number];
     case KeyKind::Delete:
     case KeyKind::Enter:
     case KeyKind::Shift:
@@ -233,13 +232,19 @@ void KeyboardView::ShowCharacters(bool isShiftOn, bool isCapsLockOn)
         keys->SetText(std::format("T_key_{:02}", number), OneCharacter(CharacterOfGridKey(number, isShiftOn, isCapsLockOn)));
 }
 
-void KeyboardView::ShowCharacterKeyAllowed(int characterKeyNumber, bool isAllowed)
+void KeyboardView::ShowKeyAllowed(KeyId key, bool isAllowed)
 {
-    isCharacterKeyAllowed.at(characterKeyNumber) = isAllowed;
+    KeyRecord& record = RecordOf(key);
+    record.isAllowed = isAllowed;
 
-    Formats::Pane& picture = keys->PaneNamed(std::format("P_key_{:02}", characterKeyNumber));
-    picture.alpha = isAllowed ? FullAlpha : NotAllowedKeyAlpha;
-    picture.inheritsAlpha = true;
+    // The symbol window lies over the grid, so a symbol key that is dimmed as a whole would let the grid show through. It dims only its character.
+    std::string dimmedPane = record.picturePane;
+    if (key.kind == KeyKind::Symbol)
+        dimmedPane = std::format("T_SGNkey_{:02}", key.number);
+
+    Formats::Pane& dimmed = record.layout->PaneNamed(dimmedPane);
+    dimmed.alpha = isAllowed ? FullAlpha : NotAllowedKeyAlpha;
+    dimmed.inheritsAlpha = true;
     EnableButtonsThatCanBePressed();
 }
 
@@ -267,7 +272,7 @@ void KeyboardView::ShowSymbolPage(const std::u16string& pageSymbols, int pageNum
 
 void KeyboardView::PlayKeyAnimation(KeyId key, KeyAnimation animation)
 {
-    const KeyRecord& record = RecordOf(key);
+    KeyRecord& record = RecordOf(key);
     if (record.animationPrefix.empty())
         return;
 
@@ -279,11 +284,10 @@ void KeyboardView::PlayKeyAnimation(KeyId key, KeyAnimation animation)
 void KeyboardView::StartPictureAnimation(MenuLayout& layout, const std::string& picturePane, const std::string& animationName)
 {
     std::pair<std::string, std::string> identity = {picturePane, animationName};
-    auto known = slotOfAnimation.find(identity);
-    if (known == slotOfAnimation.end())
-        known = slotOfAnimation.insert({identity, layout.BindAnimationToPane(animationName, picturePane, Layout::PlaybackMode::PlayOnce)}).first;
+    if (!slotOfAnimation.contains(identity))
+        slotOfAnimation[identity] = layout.BindAnimationToPane(animationName, picturePane, Layout::PlaybackMode::PlayOnce);
 
-    std::size_t slot = known->second;
+    std::size_t slot = slotOfAnimation[identity];
     auto playing = playingSlotOfPicture.find(picturePane);
     if (playing != playingSlotOfPicture.end() && playing->second != slot)
         layout.StopAnimation(playing->second);

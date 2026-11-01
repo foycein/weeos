@@ -325,11 +325,23 @@ std::optional<WiiOptionsChoicesScreen::Choice> WiiOptionsChoicesScreen::ChoiceOf
     return std::nullopt;
 }
 
+WiiOptionsChoicesScreen::State WiiOptionsChoicesScreen::ReadyStateOf(Page page)
+{
+    switch (page)
+    {
+    case Page::Options:
+        return State::OptionsReady;
+    case Page::DataManagement:
+        return State::DataManagementReady;
+    case Page::SaveData:
+        return State::SaveDataReady;
+    }
+    return State::OptionsReady;
+}
+
 bool WiiOptionsChoicesScreen::IsButtonOnCurrentPage(Choice choice) const
 {
-    Page page = NamesOf(choice).page;
-    return (page == Page::Options && state == State::OptionsReady) || (page == Page::DataManagement && state == State::DataManagementReady)
-        || (page == Page::SaveData && state == State::SaveDataReady);
+    return state == ReadyStateOf(NamesOf(choice).page);
 }
 
 // The pressed button flashes, the other button of its page goes away, and the page, the screen or the editor that the button leads to

@@ -74,11 +74,6 @@ bool MenuLayout::IsAnimationPlaying(std::size_t slot) const
     return animations.at(slot)->IsPlaying();
 }
 
-void MenuLayout::ShowFirstFrameOfAnimation(std::size_t slot)
-{
-    animations.at(slot)->ShowFirstFrame();
-}
-
 void MenuLayout::ShowLastFrameOfAnimation(std::size_t slot)
 {
     animations.at(slot)->ShowLastFrame();

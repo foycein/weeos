@@ -47,6 +47,33 @@ constexpr std::array<SignKey, 5> KeypadSignKeys = {{
     {Ios::UsbKey::KeypadDecimal, u'.', u'.'},
 }};
 
+bool IsLetterOrDigit(char16_t character)
+{
+    bool isDigit = character >= u'0' && character <= u'9';
+    bool isCapital = character >= u'A' && character <= u'Z';
+    bool isSmallLetter = character >= u'a' && character <= u'z';
+    return isDigit || isCapital || isSmallLetter;
+}
+
+// The signs of ASCII, then the signs and letters of Latin-1 from the inverted exclamation mark on.
+std::u16string MakeSymbolList()
+{
+    constexpr char16_t FirstLatinOneSymbol = 0x00A1;
+    constexpr char16_t LastLatinOneSymbol = 0x00FF;
+
+    std::u16string list;
+    for (char16_t character = u'!'; character <= u'~'; ++character)
+    {
+        if (!IsLetterOrDigit(character))
+            list.push_back(character);
+    }
+
+    for (char16_t character = FirstLatinOneSymbol; character <= LastLatinOneSymbol; ++character)
+        list.push_back(character);
+
+    return list;
+}
+
 char16_t CharacterOfSignKey(std::uint8_t usbKey, bool isShiftDown)
 {
     for (const SignKey& signKey : SignKeys)
@@ -104,20 +131,7 @@ char16_t CharacterOfGridKey(int keyNumber, bool isShiftDown, bool isCapsLockOn)
 
 const std::u16string& SymbolsOfTheSymbolWindow()
 {
-    static const std::u16string symbols = [] {
-        std::u16string list;
-        for (char16_t character = u'!'; character <= u'~'; ++character)
-        {
-            bool isLetterOrDigit = (character >= u'0' && character <= u'9') || (character >= u'A' && character <= u'Z') || (character >= u'a' && character <= u'z');
-            if (!isLetterOrDigit)
-                list.push_back(character);
-        }
-
-        for (char16_t character = 0x00A1; character <= 0x00FF; ++character)
-            list.push_back(character);
-
-        return list;
-    }();
+    static const std::u16string symbols = MakeSymbolList();
     return symbols;
 }
 

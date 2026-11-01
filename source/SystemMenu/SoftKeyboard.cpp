@@ -418,8 +418,15 @@ void SoftKeyboard::ShowKeysInView()
     for (int keyNumber = 0; keyNumber < static_cast<int>(CharacterKeyCount); ++keyNumber)
     {
         char16_t character = CharacterOfGridKey(keyNumber, isShiftOn, isCapsLockOn);
-        view.ShowCharacterKeyAllowed(keyNumber, request.rules.allowedCharacters(character));
+        view.ShowKeyAllowed({KeyKind::Character, keyNumber}, request.rules.allowedCharacters(character));
     }
+
+    view.ShowKeyAllowed({KeyKind::Space}, request.rules.allowedCharacters(u' '));
+
+    // A field that takes none of the symbols has no use for the symbol window.
+    const std::u16string& allSymbols = SymbolsOfTheSymbolWindow();
+    bool isAnySymbolAllowed = std::any_of(allSymbols.begin(), allSymbols.end(), request.rules.allowedCharacters);
+    view.ShowKeyAllowed({KeyKind::Symbols}, isAnySymbolAllowed);
 }
 
 void SoftKeyboard::ShowSymbolPageInView()
@@ -428,6 +435,9 @@ void SoftKeyboard::ShowSymbolPageInView()
     std::size_t firstSymbol = static_cast<std::size_t>(symbolPage) * KeyboardView::SymbolsPerPage;
     std::u16string pageSymbols = allSymbols.substr(firstSymbol, KeyboardView::SymbolsPerPage);
     view.ShowSymbolPage(pageSymbols, symbolPage + 1, PageCountOfSymbols());
+
+    for (int symbolNumber = 0; symbolNumber < static_cast<int>(pageSymbols.size()); ++symbolNumber)
+        view.ShowKeyAllowed({KeyKind::Symbol, symbolNumber}, request.rules.allowedCharacters(pageSymbols[symbolNumber]));
 }
 
 void SoftKeyboard::ShowFieldInView()

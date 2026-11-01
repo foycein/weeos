@@ -121,8 +121,8 @@ public:
     // but for the signs.
     void ShowCharacters(bool isShiftOn, bool isCapsLockOn);
 
-    // A key that types no character in the field is dimmed and does not react.
-    void ShowCharacterKeyAllowed(int characterKeyNumber, bool isAllowed);
+    // A key that types nothing that the field would take is dimmed and does not react.
+    void ShowKeyAllowed(KeyId key, bool isAllowed);
 
     // The symbols of the page of the symbol window, at most SymbolsPerPage. The keys without a symbol are hidden.
     void ShowSymbolPage(const std::u16string& symbols, int pageNumber, int pageCount);
@@ -157,6 +157,7 @@ private:
         std::string buttonPane;
         std::string picturePane;
         std::string animationPrefix;
+        bool isAllowed = true;
     };
 
     // A place in the picture of the keyboard, like the marks of the text field.
@@ -172,8 +173,8 @@ private:
     void RegisterKey(KeyId id, MenuLayout& layout, ButtonController& buttons, const std::string& buttonPane, const std::string& picturePane,
         const std::string& animationPrefix);
     void EnableButtonsThatCanBePressed();
-    bool CanBePressed(KeyId key) const;
-    const KeyRecord& RecordOf(KeyId key) const;
+    bool CanBePressed(const KeyRecord& record) const;
+    KeyRecord& RecordOf(KeyId key);
     void StartPictureAnimation(MenuLayout& layout, const std::string& picturePane, const std::string& animationName);
     void ShowScrollArrow(const std::string& picturePane, bool shouldBeShown, bool& isShown);
 
@@ -212,7 +213,6 @@ private:
     bool isSymbolWindowOpen = false;
     bool isFullyShown = false;
     bool isCaretShown = false;
-    std::array<bool, CharacterKeyCount> isCharacterKeyAllowed;
     int symbolCountOfPage = 0;
     int symbolPageCount = 0;
     std::size_t symbolWindowAppearSlot = 0;

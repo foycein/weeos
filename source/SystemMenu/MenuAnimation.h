@@ -23,8 +23,7 @@ public:
     // Plays from the first frame. An animation that plays already starts again.
     void Start();
 
-    // Shows the first or the last frame at once and stands still. The animation is not playing then.
-    void ShowFirstFrame();
+    // Shows the last frame at once and stands still. The animation is not playing then.
     void ShowLastFrame();
 
     // The animation stops where it is. The panes keep what it did to them.

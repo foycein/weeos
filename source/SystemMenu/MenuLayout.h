@@ -50,9 +50,6 @@ public:
 
     bool IsAnimationPlaying(std::size_t slot) const;
 
-    // The animation shows its first frame at once and stands still, as if it had just started and not moved on yet.
-    void ShowFirstFrameOfAnimation(std::size_t slot);
-
     // The animation shows its last frame at once and stands still.
     void ShowLastFrameOfAnimation(std::size_t slot);
 
