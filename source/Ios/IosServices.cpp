@@ -62,6 +62,7 @@ Result<void> IosServices::Start(const IosFolders& folders, const IosProfile& sta
     // The sockets use the network configuration, so they start after it.
     fileSystem = std::make_unique<FileSystemService>(std::move(storage.Value()), startProfile);
     titles = std::make_unique<TitleService>(*fileSystem, *identity, startProfile);
+    titles->SettleInterruptedInstallations();
     discDrive = std::make_unique<DiscDriveService>();
     remote = std::make_unique<RemoteService>();
     sdCard = std::make_unique<SdCardService>(startProfile);

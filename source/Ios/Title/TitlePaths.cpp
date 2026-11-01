@@ -114,6 +114,11 @@ NandPath CertificateFilePath()
     return ParseBuiltPath("/sys/cert.sys");
 }
 
+NandPath ImportsPath()
+{
+    return ParseBuiltPath("/import");
+}
+
 NandPath ImportFamilyPath(std::uint32_t highPart)
 {
     return ParseBuiltPath(std::format("/import/{}", FormatNameNumber(highPart)));

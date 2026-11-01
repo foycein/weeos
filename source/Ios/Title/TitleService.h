@@ -164,6 +164,11 @@ public:
     // The four steps for a WAD file. Cancels the installation when a step fails.
     Result<void> InstallWad(Formats::ByteView wadFile);
 
+    // Settles the installations that were cut off, as ES does when it starts: a title in /import whose title metadata is there
+    // loses the content files that the metadata does not list and moves into /title; a title without metadata is removed.
+    // A title that fails stays in /import and the others are settled anyway.
+    void SettleInterruptedInstallations();
+
     // Removing. The System Menu, boot2 and the IOS versions cannot be removed: TitleInvalidArgument.
 
     // Deletes the folder of the title with its data. The family folder goes too when it is empty then. The tickets stay.
@@ -208,6 +213,9 @@ private:
     Result<void> CheckAllContentsAreThere(const Installation& currentInstallation) const;
     Result<void> PublishInstallation(const Installation& currentInstallation);
     Result<void> MoveImportIntoPlace(TitleId titleId);
+    void SettleInterruptedFamily(std::uint32_t highPart);
+    Result<void> SettleInterruptedInstallation(TitleId titleId);
+    Result<void> DeleteContentsNotInMetadata(TitleId titleId, const Formats::TitleMetadata& metadata);
     Result<void> MakeDataFolder(TitleId titleId, std::uint16_t groupId);
     Result<void> RemoveFolderIfEmpty(const NandPath& folder);
     void CancelInstallationWhileLocked();
