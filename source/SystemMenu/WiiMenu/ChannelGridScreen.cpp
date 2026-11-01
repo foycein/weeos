@@ -10,6 +10,8 @@
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Formats/Ash0.h"
+#include "Formats/FormatError.h"
+#include "Layout/LayoutError.h"
 #include "Formats/U8Archive.h"
 #include "Text/MessageCatalog.h"
 
@@ -196,8 +198,21 @@ std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
     if (!channel.icon)
         return ChannelTile::MakeDamagedChannel(services.display, archives);
 
+    // Some channels of homebrew tools, which an imported Wii can bring, have icons that Nintendo's layout engine does not know:
+    // another name of the layout, or animations of texture patterns. They show as damaged channels.
     const std::u16string& name = channel.names[Formats::EnglishLanguageNumber].firstLine;
-    return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
+    try
+    {
+        return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
+    }
+    catch (const Formats::FormatError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
+    catch (const Layout::LayoutError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
 }
 
 GridState ChannelGridScreen::State() const
