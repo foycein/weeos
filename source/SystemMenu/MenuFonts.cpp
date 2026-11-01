@@ -36,6 +36,12 @@ Formats::Font ReadFontFile(const Formats::U8Archive& archive, std::string_view f
 
 }
 
+Formats::Font ReadLargeMenuFont(const MenuFiles& files)
+{
+    Formats::U8Archive largeFontArchive = Formats::ReadU8Archive(Formats::DecompressAsh0(files.ReadFile(LargeFontArchivePath)));
+    return ReadFontFile(largeFontArchive, LargeFontFile);
+}
+
 MenuFonts::LoadedFont::LoadedFont(Graphics::GraphicsDevice& device, Formats::Font loadedFont)
     : font(std::move(loadedFont))
     , layouter(font)
@@ -51,8 +57,7 @@ MenuFonts::MenuFonts(Graphics::GraphicsDevice& device, TitleContents& titleConte
     AddFont(device, ReadFontFile(smallFonts, SecondSmallFontFile),
         {"RevoIpl_UtrilloProGrecoStd_M_32_I4.brfnt", "WiiBitmapFontType2.brfnt", SecondSmallFontFile});
 
-    Formats::U8Archive largeFontArchive = Formats::ReadU8Archive(Formats::DecompressAsh0(files.ReadFile(LargeFontArchivePath)));
-    AddFont(device, ReadFontFile(largeFontArchive, LargeFontFile), {"RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt"});
+    AddFont(device, ReadLargeMenuFont(files), {"RevoIpl_RodinNTLGPro_DB_48_IA4.brfnt"});
 }
 
 void MenuFonts::AddFont(Graphics::GraphicsDevice& device, Formats::Font font, std::initializer_list<std::string_view> layoutNames)

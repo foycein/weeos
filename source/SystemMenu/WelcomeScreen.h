@@ -41,10 +41,14 @@ protected:
 private:
     void DrawBackground(int opacity);
     void DrawLogoLine(int opacity);
-    void DrawText(std::u16string_view text, const PageRectangle& bounds, float size, Formats::Rgba8Color color, int opacity);
+    void DrawText(PageFont& font, std::u16string_view text, const PageRectangle& bounds, float size, Formats::Rgba8Color color, int opacity);
 
     MenuServices& services;
-    std::unique_ptr<PageFont> font;
+
+    // The logo is drawn with the large font of the menu, which is sharp at its size but has only the letters the menu needs; the texts
+    // with the small font, which has every letter.
+    std::unique_ptr<PageFont> logoFont;
+    std::unique_ptr<PageFont> textFont;
 
     // The steps since the fade in or the fade out began, and the steps since "Press A" began.
     int stepsOfFadeIn = 0;

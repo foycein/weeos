@@ -6,6 +6,7 @@
 #include "SystemMenu/FrontPanel.h"
 #include "SystemMenu/MenuClock.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MenuFonts.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WeeOSVersion.h"
@@ -88,7 +89,8 @@ WelcomeScreen::WelcomeScreen(MenuServices& menuServices)
 
 void WelcomeScreen::Build()
 {
-    font = std::make_unique<PageFont>(services.display.Device(), services.files);
+    logoFont = std::make_unique<PageFont>(services.display.Device(), ReadLargeMenuFont(services.files));
+    textFont = std::make_unique<PageFont>(services.display.Device(), services.files);
 
     services.fader.SetClear();
     services.fader.Calculate();
@@ -102,17 +104,17 @@ void WelcomeScreen::Draw(DrawPass pass)
 
     int opacity = WelcomeOpacity();
     DrawBackground(opacity);
-    DrawText(Logo, LogoBounds, LogoSize, WiiBlue, opacity);
+    DrawText(*logoFont, Logo, LogoBounds, LogoSize, WiiBlue, opacity);
     DrawLogoLine(opacity);
-    DrawText(u"Version " + std::u16string(WeeOSVersion), VersionBounds, VersionSize, QuietGray, opacity);
-    DrawText(Description, DescriptionBounds, DescriptionSize, TextGray, opacity);
-    DrawText(Author, AuthorBounds, AuthorSize, TextGray, opacity);
-    DrawText(Contact, ContactBounds, ContactSize, QuietGray, opacity);
-    DrawText(BreakReminder, BreakBounds, BreakSize, TextGray, opacity);
+    DrawText(*textFont, u"Version " + std::u16string(WeeOSVersion), VersionBounds, VersionSize, QuietGray, opacity);
+    DrawText(*textFont, Description, DescriptionBounds, DescriptionSize, TextGray, opacity);
+    DrawText(*textFont, Author, AuthorBounds, AuthorSize, TextGray, opacity);
+    DrawText(*textFont, Contact, ContactBounds, ContactSize, QuietGray, opacity);
+    DrawText(*textFont, BreakReminder, BreakBounds, BreakSize, TextGray, opacity);
 
     std::optional<int> noticeOpacity = NoticeOpacity();
     if (noticeOpacity)
-        DrawText(Notice, NoticeBounds, NoticeSize, WiiBlue, *noticeOpacity);
+        DrawText(*textFont, Notice, NoticeBounds, NoticeSize, WiiBlue, *noticeOpacity);
 }
 
 bool WelcomeScreen::DrawsWithChildren() const
@@ -228,10 +230,11 @@ void WelcomeScreen::DrawLogoLine(int opacity)
     services.display.Device().DrawQuad(rightHalf, Graphics::Material());
 }
 
-void WelcomeScreen::DrawText(std::u16string_view text, const PageRectangle& bounds, float size, Formats::Rgba8Color color, int opacity)
+void WelcomeScreen::DrawText(PageFont& font, std::u16string_view text, const PageRectangle& bounds, float size, Formats::Rgba8Color color,
+    int opacity)
 {
     Text::TextAlignment centered;
-    font->Draw(std::u16string(text), bounds, centered, WithOpacity(color, opacity), size);
+    font.Draw(std::u16string(text), bounds, centered, WithOpacity(color, opacity), size);
 }
 
 }

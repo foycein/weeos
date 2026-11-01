@@ -1,6 +1,5 @@
 #include "SystemMenu/WiiSettings/PagePainter.h"
 
-#include "SystemMenu/WiiSettings/NumberText.h"
 #include "SystemMenu/WiiSettings/PageLooks.h"
 
 namespace SystemMenu
@@ -28,13 +27,6 @@ constexpr int LargeTabTop = 27;
 constexpr PageRectangle LargeTabSize = {0, 0, 408, 36};
 constexpr int TitleIndent = 8;
 constexpr int TitleWidth = 384;
-
-// The three squares for the page numbers, at the lower right.
-constexpr int PageSquareLeft = 440;
-constexpr int PageSquareDistance = 48;
-constexpr int PageSquareTop = 376;
-constexpr PageRectangle PageSquareSize = {0, 0, 40, 32};
-constexpr float PageNumberTextSize = 24;
 
 std::string TabPicture(const char* fileName)
 {
@@ -112,7 +104,6 @@ void PagePainter::Draw(const Page& page, std::optional<std::size_t> pointedButto
     }
 
     DrawTexts(page);
-    DrawPageNumbers(page);
 }
 
 void PagePainter::DrawBackground(const Graphics::Canvas& canvas)
@@ -144,19 +135,6 @@ void PagePainter::DrawTabs(const Page& page)
 
     PageRectangle titleBounds = {largeTabLeft + TitleIndent, LargeTabTop, TitleWidth, LargeTabSize.height};
     font.Draw(page.title, titleBounds, {Text::HorizontalAlignment::Left, Text::VerticalAlignment::Middle}, DarkText, MessageTextSize);
-}
-
-void PagePainter::DrawPageNumbers(const Page& page)
-{
-    for (int number = 1; number <= page.pageCount; ++number)
-    {
-        std::string pictureName = number == page.pageNumber ? "Icon_Index_Page_on.gif" : "Icon_Index_Page_off.gif";
-        PageRectangle bounds = {PageSquareLeft + (number - 1) * PageSquareDistance, PageSquareTop, PageSquareSize.width, PageSquareSize.height};
-        DrawPicture("FIX/COMMON/List_Icon/" + pictureName, bounds, White);
-
-        Formats::Rgba8Color color = number == page.pageNumber ? DarkText : White;
-        font.Draw(NumberText(number), bounds, {Text::HorizontalAlignment::Center, Text::VerticalAlignment::Middle}, color, PageNumberTextSize);
-    }
 }
 
 void PagePainter::DrawButton(const PageButton& button, bool isPointed)
@@ -200,8 +178,7 @@ void PagePainter::DrawTexts(const Page& page)
         }
 
         float size = text.role == TextRole::BigNumber ? BigNumberTextSize : MessageTextSize;
-        Formats::Rgba8Color color = text.role == TextRole::Label ? DarkText : White;
-        font.Draw(joinedLines, text.bounds, {Text::HorizontalAlignment::Center, Text::VerticalAlignment::Middle}, color, size);
+        font.Draw(joinedLines, text.bounds, {Text::HorizontalAlignment::Center, Text::VerticalAlignment::Middle}, White, size);
     }
 }
 

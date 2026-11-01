@@ -29,7 +29,7 @@ constexpr auto WindowSizes = std::to_array<WindowSizeChoice>({
     {2560, 1440},
 });
 
-// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries.
+// A list has rows of 432 by 56 points below the tabs, and an arrow up and an arrow down at its right, like the list of countries of a Wii.
 constexpr int ListLeft = 88;
 constexpr int ListTop = 76;
 constexpr int RowWidth = 432;
@@ -201,7 +201,7 @@ void PcPages::BuildWindowSize(PageBuilder& builder)
         WindowSizeChoice size = WindowSizes[sizeNumber];
         std::u16string text = SizeText(size.width, size.height);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(static_cast<int>(sizeNumber)), NameOfText(text),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(static_cast<int>(sizeNumber)), NameOfText(text),
             [this, size]
             {
                 Change(
@@ -255,7 +255,7 @@ void PcPages::BuildSoundDevice(PageBuilder& builder)
     {
         std::u16string device = rowNumber == 0 ? u"" : rows[rowNumber];
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(rowNumber - firstRow), NameOfText(rows[rowNumber]),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), NameOfText(rows[rowNumber]),
             [this, device] { Change([device](Settings::PcSettings& changed) { changed.audioDevice = device; }); });
         row.text = rows[rowNumber];
         row.isChosen = pcSettings.Values().audioDevice == device;
@@ -287,7 +287,7 @@ void PcPages::BuildKeys(PageBuilder& builder)
         const Settings::RemoteButtonName& button = buttons[rowNumber];
         int key = Settings::KeyOfButton(pcSettings.Values(), button.button);
 
-        PageButton& row = builder.AddPictureButton(ButtonLook::CountryItem, RowBounds(rowNumber - firstRow), "Key " + NameOfText(button.name),
+        PageButton& row = builder.AddPictureButton(ButtonLook::ListRow, RowBounds(rowNumber - firstRow), "Key " + NameOfText(button.name),
             [this, mask = button.button] { ChangeKey(mask, 1); });
         row.text = std::u16string(button.name) + u":  " + KeyNameOf(key);
         row.repeatsWhenHeld = true;

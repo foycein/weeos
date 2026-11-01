@@ -5,6 +5,7 @@
 #include "Formats/U8Archive.h"
 
 #include <format>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -30,6 +31,13 @@ Formats::Font ReadMenuFont(const MenuFiles& files)
 
 PageFont::PageFont(Graphics::GraphicsDevice& device, const MenuFiles& files)
     : font(ReadMenuFont(files))
+    , layouter(font)
+    , drawer(device, font)
+{
+}
+
+PageFont::PageFont(Graphics::GraphicsDevice& device, Formats::Font otherFont)
+    : font(std::move(otherFont))
     , layouter(font)
     , drawer(device, font)
 {
