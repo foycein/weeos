@@ -309,11 +309,11 @@ std::unique_ptr<ChannelIconLayout> DataEditorScreen::MakeIcon(Formats::ByteView 
 // The icon sits in its place of a layout, as big as that place.
 void DataEditorScreen::PlaceIcon(ChannelIconLayout& icon, MenuLayout& layout, std::string_view placePane)
 {
-    const Formats::Pane& place = layout.PaneNamed(placePane);
+    const Formats::Pane& iconPlace = layout.PaneNamed(placePane);
     Formats::Vector2 stretch = services.display.LayoutStretch();
     std::optional<Formats::Vector2> point = layout.PointOfPaneInPicture(placePane, {0, 0});
     if (point)
-        icon.Place(*point, {place.scale.x * stretch.x, place.scale.y * stretch.y}, {place.width, place.height});
+        icon.Place(*point, {iconPlace.scale.x * stretch.x, iconPlace.scale.y * stretch.y}, {iconPlace.width, iconPlace.height});
 
     icon.Calculate();
 }
