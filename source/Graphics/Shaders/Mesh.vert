@@ -6,6 +6,13 @@
 // Gives the corners of a mesh to the same fragment program as the quads: the raster color is the light at the corner,
 // every texture reads the corner's texture coordinates through its own texture matrix.
 
+// The projection of a mesh covers the canvas, which lies in the middle of the whole picture and covers this share of it.
+layout(push_constant) uniform CanvasSize
+{
+    vec2 halfPictureSize;
+    vec2 canvasShare;
+} canvasSize;
+
 layout(location = 0) out vec4 rasterColor;
 layout(location = 1) out vec2 firstTextureCoordinates;
 layout(location = 2) out vec2 secondTextureCoordinates;
@@ -59,7 +66,8 @@ void main()
         dot(mesh.projection[2], viewPoint), dot(mesh.projection[3], viewPoint));
 
     // The view has y upward and the picture has y downward.
-    gl_Position = vec4(picturePosition.x, -picturePosition.y, picturePosition.z, picturePosition.w);
+    gl_Position = vec4(picturePosition.x * canvasSize.canvasShare.x, -picturePosition.y * canvasSize.canvasShare.y, picturePosition.z,
+        picturePosition.w);
 
     rasterColor = OpaqueWhite;
     if (mesh.hasLight != 0u)

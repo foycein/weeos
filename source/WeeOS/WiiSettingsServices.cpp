@@ -14,30 +14,21 @@ namespace
 // The System Menu reads and writes the settings of the console as its own user.
 constexpr Ios::Caller SystemMenuCaller = {Ios::SystemMenuUserId, Ios::SystemMenuGroupId};
 
-Platform::ScreenShape ShapeOf(Settings::AspectRatio aspectRatio)
-{
-    if (aspectRatio == Settings::AspectRatio::FourByThree)
-        return Platform::ScreenShape::FourByThree;
-
-    return Platform::ScreenShape::SixteenByNine;
-}
-
 }
 
 WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform::Window& programWindow, Input::VirtualRemote& virtualRemote,
-    ProgramSound& programSound, Settings::PcClock pcClock, const std::filesystem::path& pcSettingsFile)
+    ProgramSound& programSound, Settings::PcClock pcClock, Settings::PcSettingsStore& pcSettingsStore)
     : window(programWindow)
     , remote(virtualRemote)
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
     , clock([this] { return systemSettings.GetClockBias(); }, std::move(pcClock))
     , formatter(iosServices.GetFileSystem(), iosServices.GetTitles(), iosServices.GetPower())
-    , pcSettings(pcSettingsFile)
     , flowServices{systemSettings, clock, iosServices.GetNetworkConfig(), SystemMenu::SearchWithRadio(iosServices.GetWireless()), formatter,
-          pcSettings, *this}
+          pcSettingsStore, *this}
 {
-    ApplyPcSettings(pcSettings.Values());
-    remote.SetScreenShape(PictureShape());
+    ApplyControlsAndSound(pcSettingsStore.Values());
+    KeepThePictureWide();
 }
 
 SystemMenu::SettingsFlowServices& WiiSettingsServices::FlowServices()
@@ -45,40 +36,43 @@ SystemMenu::SettingsFlowServices& WiiSettingsServices::FlowServices()
     return flowServices;
 }
 
-Platform::ScreenShape WiiSettingsServices::PictureShape() const
-{
-    return ShapeOf(systemSettings.GetAspectRatio());
-}
-
 Settings::SoundMode WiiSettingsServices::SoundMode() const
 {
     return systemSettings.GetSoundMode();
 }
 
-void WiiSettingsServices::UseDisplay(SystemMenu::Display& menuDisplay)
-{
-    display = &menuDisplay;
-}
-
-// Fullscreen first, so that a window that leaves fullscreen gets its size.
+// A page of PC Settings changed something: the window too.
 void WiiSettingsServices::ApplyPcSettings(const Settings::PcSettings& settings)
 {
     if (window.IsFullscreen() != settings.isFullscreen)
         window.ToggleFullscreen();
 
     window.SetClientSize({settings.windowWidth, settings.windowHeight});
+    ApplyControlsAndSound(settings);
+}
 
+void WiiSettingsServices::ApplyControlsAndSound(const Settings::PcSettings& settings)
+{
     std::vector<Input::MouseBinding> mouseMap = Settings::MouseMapOf(settings);
     remote.SetKeyMap(settings.keyMap);
     remote.SetMouseMap(mouseMap);
     sound.ApplyPcSettings(settings);
 }
 
-void WiiSettingsServices::ApplyPictureShape(Settings::AspectRatio aspectRatio)
+void WiiSettingsServices::ApplyPictureShape(Settings::AspectRatio)
 {
-    remote.SetScreenShape(ShapeOf(aspectRatio));
-    if (display != nullptr)
-        display->SetScreenShape(ShapeOf(aspectRatio));
+    systemSettings.SetAspectRatio(Settings::AspectRatio::SixteenByNine);
+}
+
+// The console of an imported NAND may have been set to 4:3. Its settings say 16:9 from the first start on, as the menu and the
+// channels read them.
+void WiiSettingsServices::KeepThePictureWide()
+{
+    if (systemSettings.GetAspectRatio() == Settings::AspectRatio::SixteenByNine)
+        return;
+
+    systemSettings.SetAspectRatio(Settings::AspectRatio::SixteenByNine);
+    systemSettings.Save();
 }
 
 std::vector<std::u16string> WiiSettingsServices::ListAudioDevices() const

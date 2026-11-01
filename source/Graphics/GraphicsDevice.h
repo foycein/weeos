@@ -5,7 +5,6 @@
 
 #include "Formats/RgbaImage.h"
 #include "Formats/Vectors.h"
-#include "Platform/ScreenShape.h"
 
 #include <array>
 #include <cstddef>
@@ -266,8 +265,14 @@ public:
     virtual void DestroyTexture(TextureHandle texture) = 0;
 
     // Starts a new picture of the screen and clears it to black. Everything drawn until Present is part of it.
-    virtual void BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape) = 0;
+    // The canvas is the 16:9 picture. It lies in the middle of the screen, as large as it fits.
+    virtual void BeginFrame(const Canvas& canvas) = 0;
 
+    // The part of the plane of the canvas that the picture shows, in canvas units: the canvas, and on a screen of another shape also the
+    // space beside it or above and below it. It is the canvas itself in an offscreen picture.
+    virtual ScissorRectangle WholeArea() const = 0;
+
+    // Without a scissor only the canvas is drawn. A scissor may reach beyond the canvas into the whole area.
     // The scissor holds until ClearScissor or until the next picture or offscreen picture starts.
     // Every picture has a scissor of its own: an offscreen picture starts without one, and after EndOffscreen
     // the screen picture goes on with the scissor it had before.

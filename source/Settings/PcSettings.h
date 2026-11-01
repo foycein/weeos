@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,12 +21,19 @@ constexpr int LowestVolume = 0;
 constexpr int HighestVolume = 100;
 
 // The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device and the keys. They are pages inside
-// Wii Settings (docs/DECISIONS.md, Product). The shape of the picture is not here: it is the console's own widescreen setting.
+// Wii Settings (docs/DECISIONS.md, Product). The picture is always 16:9, so its shape is no setting.
 struct PcSettings
 {
+    // The size of the area inside the window when it is not fullscreen.
     std::uint32_t windowWidth = DefaultWindowWidth;
     std::uint32_t windowHeight = DefaultWindowHeight;
-    bool isFullscreen = false;
+
+    // Where the window was when it was last moved, the top left corner of its frame. Nothing until the window has been moved once.
+    std::optional<int> windowLeft;
+    std::optional<int> windowTop;
+
+    // WeeOS starts in borderless fullscreen unless the settings say otherwise (docs/DECISIONS.md, Start).
+    bool isFullscreen = true;
 
     // The name Windows gives the playback device. Empty for the device that Windows uses by default.
     std::u16string audioDevice;

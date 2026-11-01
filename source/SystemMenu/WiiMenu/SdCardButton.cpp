@@ -24,16 +24,13 @@ constexpr std::string_view AreaPane = "Ac";
 constexpr std::string_view CardInsertedPane = "N_Btn_On";
 constexpr std::string_view SlotEmptyPane = "N_Btn_Off";
 
-// The button stands at the left of the bar: x -245 on a 16:9 screen and -152 on a 4:3 screen, y -172 (0x813EAA18).
-constexpr Formats::Vector2 PlaceOnAWideScreen = {-245, -172};
-constexpr Formats::Vector2 PlaceOnANarrowScreen = {-152, -172};
+// The button stands at the left of the bar of the 16:9 picture (0x813EAA18).
+constexpr Formats::Vector2 PlaceOfTheButton = {-245, -172};
 
-// The balloon appears 17 steps after the hand came, 50 units above the button, and keeps 200 units from the edges of a 16:9
-// picture or 110 units from those of a 4:3 picture.
+// The balloon appears 17 steps after the hand came, 50 units above the button, and keeps 200 units from the edges of the 16:9 picture.
 constexpr int StepsBeforeTheBalloonAppears = 17;
 constexpr float BalloonHeightAboveTheButton = 50;
-constexpr float BalloonMarginOnAWideScreen = 200;
-constexpr float BalloonMarginOnANarrowScreen = 110;
+constexpr float BalloonMarginFromTheEdges = 200;
 
 }
 
@@ -56,8 +53,7 @@ SdCardButton::SdCardButton(Display& menuDisplay, const Layout::LayoutArchive& bu
     balloon = std::make_unique<Balloon>(menuDisplay, balloonArchive, StepsBeforeTheBalloonAppears);
     balloon->SetText(balloonText);
 
-    bool isWide = display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
-    MoveLayoutTo(*layout, isWide ? PlaceOnAWideScreen : PlaceOnANarrowScreen);
+    MoveLayoutTo(*layout, PlaceOfTheButton);
 }
 
 void SdCardButton::Appear()
@@ -127,9 +123,8 @@ bool SdCardButton::Calculate()
     press->Step();
     layout->Calculate();
 
-    bool isWide = display.GetScreenShape() == Platform::ScreenShape::SixteenByNine;
     Formats::Vector2 button = Place();
-    balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, isWide ? BalloonMarginOnAWideScreen : BalloonMarginOnANarrowScreen);
+    balloon->PlaceAt({button.x, button.y + BalloonHeightAboveTheButton}, BalloonMarginFromTheEdges);
 
     bool wasBalloonShown = balloon->IsShown();
     balloon->Calculate();

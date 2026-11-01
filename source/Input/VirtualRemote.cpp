@@ -7,11 +7,10 @@
 namespace Input
 {
 
-VirtualRemote::VirtualRemote(Platform::WindowSize initialWindowSize, Platform::ScreenShape initialScreenShape)
+VirtualRemote::VirtualRemote(Platform::WindowSize initialWindowSize)
     : keyMap(DefaultKeyMap.begin(), DefaultKeyMap.end())
     , mouseMap(DefaultMouseMap.begin(), DefaultMouseMap.end())
     , windowSize(initialWindowSize)
-    , screenShape(initialScreenShape)
 {
 }
 
@@ -39,6 +38,15 @@ void VirtualRemote::OnMouseButton(Platform::MouseButton button, bool isPressed)
     HandleButtonsPressed(ButtonsOfMouseButton(button));
 }
 
+// The press is remembered until the next read, as a button that goes down and up between two reads.
+void VirtualRemote::OnMouseWheel(int notches)
+{
+    if (notches > 0)
+        HandleButtonsPressed(WheelAwayButton);
+    if (notches < 0)
+        HandleButtonsPressed(WheelTowardsButton);
+}
+
 void VirtualRemote::OnKey(int virtualKeyCode, bool isPressed)
 {
     if (!isPressed)
@@ -60,11 +68,6 @@ void VirtualRemote::OnFocusLost()
 void VirtualRemote::SetWindowSize(Platform::WindowSize newWindowSize)
 {
     windowSize = newWindowSize;
-}
-
-void VirtualRemote::SetScreenShape(Platform::ScreenShape newScreenShape)
-{
-    screenShape = newScreenShape;
 }
 
 void VirtualRemote::SetPictureAreaRule(PictureAreaRule newPictureAreaRule)
@@ -208,9 +211,9 @@ std::optional<Formats::Vector2> VirtualRemote::PointerOfTheMouse() const
     if (!mouseIsOverWindow)
         return std::nullopt;
 
-    Platform::PixelRectangle pictureArea = Platform::FitPicture(windowSize, screenShape);
+    Platform::PixelRectangle pictureArea = Platform::FitPicture(windowSize);
     if (pictureAreaRule)
-        pictureArea = pictureAreaRule(pictureArea, screenShape);
+        pictureArea = pictureAreaRule(pictureArea);
 
     return PixelToPointer(mousePixel, pictureArea);
 }

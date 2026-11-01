@@ -92,9 +92,9 @@ VkRect2D ToVulkanRectangle(const Platform::PixelRectangle& rectangle)
 
 }
 
-VulkanGraphicsDevice::VulkanGraphicsDevice(const Platform::Window& window)
-    : context(window)
-    , swapchain(context)
+VulkanGraphicsDevice::VulkanGraphicsDevice(const Platform::Window& programWindow)
+    : window(programWindow)
+    , context(programWindow)
     , pipeline(context)
     , textures(context, pipeline.TextureSetLayout())
     , depthBuffers(context)
@@ -102,6 +102,9 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(const Platform::Window& window)
 {
     for (std::size_t frameNumber = 0; frameNumber < FramesInFlight; ++frameNumber)
         frames.push_back(std::make_unique<FrameResources>(context, pipeline.DrawDataSetLayout()));
+
+    if (window.IsShown())
+        swapchain.emplace(context);
 }
 
 VulkanGraphicsDevice::~VulkanGraphicsDevice()
@@ -122,7 +125,7 @@ void VulkanGraphicsDevice::DestroyTexture(TextureHandle texture)
     textures.Retire(texture, lastFrameNumber);
 }
 
-void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShape screenShape)
+void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas)
 {
     if (isFrameActive)
         throw GraphicsError("BeginFrame was called before Present ended the picture before");
@@ -130,15 +133,17 @@ void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShap
     if (offscreenTarget)
         throw GraphicsError("BeginFrame was called while an offscreen picture is being drawn");
 
+    frameCanvas = canvas;
     PrepareFrame();
+    PrepareHiddenScreen();
 
-    if (!swapchain.HasAcquiredImage())
+    if (!HasScreenImage())
     {
         isFrameActive = true;
         return;
     }
 
-    CanvasMapping mapping = MapScreenPicture(canvas, screenShape);
+    CanvasMapping mapping = MapScreenPicture(canvas);
 
     ++lastFrameNumber;
     FrameResources& resources = *frames[frameIndex];
@@ -146,7 +151,7 @@ void VulkanGraphicsDevice::BeginFrame(const Canvas& canvas, Platform::ScreenShap
     StartRecording(frameRecording, resources);
 
     if (pictureSettings.resolution == PictureResolution::Console)
-        StartConsolePicture(mapping, screenShape);
+        StartConsolePicture(mapping);
     else
         StartWindowPicture(mapping);
 
@@ -159,6 +164,19 @@ void VulkanGraphicsDevice::SetPictureSettings(const PictureSettings& settings)
         throw GraphicsError("The picture settings cannot change while a picture is being drawn");
 
     pictureSettings = settings;
+}
+
+ScissorRectangle VulkanGraphicsDevice::WholeArea() const
+{
+    if (offscreenTarget)
+        return offscreenTarget->mapping.WholeCanvasArea();
+
+    if (screenTarget)
+        return screenTarget->mapping.WholeCanvasArea();
+
+    float halfWidth = frameCanvas.width / 2;
+    float halfHeight = frameCanvas.height / 2;
+    return {-halfWidth, halfWidth, -halfHeight, halfHeight};
 }
 
 void VulkanGraphicsDevice::SetScissor(const ScissorRectangle& scissor)
@@ -289,6 +307,17 @@ void VulkanGraphicsDevice::Present()
         FinishScreenPicture();
 }
 
+Formats::RgbaImage VulkanGraphicsDevice::ReadScreenPicture()
+{
+    if (swapchain)
+        throw GraphicsError("The picture of a window that is shown cannot be read back");
+
+    if (!hasShownHiddenPicture)
+        throw GraphicsError("No picture of the screen has been shown yet");
+
+    return ReadTexturePixels(hiddenScreen);
+}
+
 Formats::RgbaImage VulkanGraphicsDevice::ReadTexturePixels(TextureHandle texture)
 {
     Texture& found = textures.Get(texture);
@@ -391,11 +420,69 @@ VkCommandBuffer VulkanGraphicsDevice::CurrentCommandBuffer()
 void VulkanGraphicsDevice::PrepareFrame()
 {
     WaitUntilFinished(*frames[frameIndex]);
+    if (!swapchain)
+        return;
 
-    if (swapchain.IsOutOfDate())
-        swapchain.Recreate();
+    if (swapchain->IsOutOfDate())
+        swapchain->Recreate();
 
-    swapchain.AcquireImage(frameIndex);
+    swapchain->AcquireImage(frameIndex);
+}
+
+// The picture of a hidden window is drawn into a texture as large as the window, which is made again when the window changes its size.
+void VulkanGraphicsDevice::PrepareHiddenScreen()
+{
+    if (swapchain)
+        return;
+
+    Platform::WindowSize clientSize = window.ClientSize();
+    VkExtent2D size = {clientSize.width, clientSize.height};
+    bool hasTheSize = hiddenScreen.IsValid() && hiddenScreenSize.width == size.width && hiddenScreenSize.height == size.height;
+    if (hasTheSize)
+        return;
+
+    if (hiddenScreen.IsValid())
+        textures.Retire(hiddenScreen, lastFrameNumber);
+
+    hiddenScreen = TextureHandle();
+    hiddenScreenSize = size;
+    hasShownHiddenPicture = false;
+    if (size.width == 0 || size.height == 0)
+        return;
+
+    hiddenScreen = textures.CreateDrawTarget(size.width, size.height, FilterMode::Linear);
+}
+
+bool VulkanGraphicsDevice::HasScreenImage() const
+{
+    if (swapchain)
+        return swapchain->HasAcquiredImage();
+
+    return hiddenScreen.IsValid();
+}
+
+VkExtent2D VulkanGraphicsDevice::ScreenSize() const
+{
+    if (swapchain)
+        return swapchain->Extent();
+
+    return hiddenScreenSize;
+}
+
+VkImage VulkanGraphicsDevice::ScreenImage()
+{
+    if (swapchain)
+        return swapchain->AcquiredImage();
+
+    return textures.Get(hiddenScreen).image->Handle();
+}
+
+VkImageView VulkanGraphicsDevice::ScreenView()
+{
+    if (swapchain)
+        return swapchain->AcquiredView();
+
+    return textures.Get(hiddenScreen).image->View();
 }
 
 void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
@@ -408,25 +495,26 @@ void VulkanGraphicsDevice::WaitUntilFinished(FrameResources& resources)
     depthBuffers.ReleaseFinished(finishedFrameNumber);
 }
 
-CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas, Platform::ScreenShape screenShape) const
+CanvasMapping VulkanGraphicsDevice::MapScreenPicture(const Canvas& canvas) const
 {
     if (pictureSettings.resolution == PictureResolution::Console)
         return CanvasMapping(canvas, {0, 0, static_cast<float>(ConsoleFrameWidth), static_cast<float>(ConsoleFrameHeight)});
 
-    VkExtent2D size = swapchain.Extent();
-    return CanvasMapping(canvas, Platform::FitPicture({size.width, size.height}, screenShape));
+    VkExtent2D size = ScreenSize();
+    Platform::PixelRectangle wholeScreen = {0, 0, static_cast<float>(size.width), static_cast<float>(size.height)};
+    return CanvasMapping(canvas, Platform::FitPicture({size.width, size.height}), wholeScreen);
 }
 
 void VulkanGraphicsDevice::StartWindowPicture(const CanvasMapping& mapping)
 {
-    VkImage image = swapchain.AcquiredImage();
+    VkImage image = ScreenImage();
     TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
 
-    screenTarget.emplace(Target{mapping, std::nullopt, image, swapchain.AcquiredView(), swapchain.Extent(), &ScreenDepthBuffer()});
+    screenTarget.emplace(Target{mapping, std::nullopt, image, ScreenView(), ScreenSize(), &ScreenDepthBuffer()});
     BeginPass(*screenTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
 }
 
-void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, Platform::ScreenShape screenShape)
+void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping)
 {
     TextureHandle frameBuffer = textures.CreateDrawTarget(ConsoleFrameWidth, ConsoleFrameHeight, ConsoleScalingFilter);
     Texture& texture = textures.Get(frameBuffer);
@@ -434,8 +522,8 @@ void VulkanGraphicsDevice::StartConsolePicture(const CanvasMapping& mapping, Pla
 
     // The copy to the screen is written now, so the picture always has room for it.
     Material copyMaterial = MakeConsoleFilterMaterial(frameBuffer, pictureSettings.consoleScan);
-    std::uint32_t copyDrawIndex = WriteDrawData(*frameRecording, MakeConsolePictureQuad(screenShape), copyMaterial);
-    consoleFrame = ConsoleFrame{frameBuffer, screenShape, copyMaterial, copyDrawIndex};
+    std::uint32_t copyDrawIndex = WriteDrawData(*frameRecording, MakeConsolePictureQuad(), copyMaterial);
+    consoleFrame = ConsoleFrame{frameBuffer, copyMaterial, copyDrawIndex};
 
     TransitionImage(CurrentCommandBuffer(), texture.image->Handle(), StartDrawing);
 
@@ -506,19 +594,24 @@ void VulkanGraphicsDevice::ApplyTargetState(const Target& target)
 {
     VkCommandBuffer commandBuffer = CurrentCommandBuffer();
     const Platform::PixelRectangle& pictureArea = target.mapping.PictureArea();
+    const Platform::PixelRectangle& wholeArea = target.mapping.WholeArea();
 
-    VkViewport viewport = {pictureArea.left, pictureArea.top, pictureArea.width, pictureArea.height, 0.0f, 1.0f};
+    VkViewport viewport = {wholeArea.left, wholeArea.top, wholeArea.width, wholeArea.height, 0.0f, 1.0f};
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    Platform::PixelRectangle coveredArea = pictureArea;
+    Platform::PixelRectangle coveredArea = target.mapping.CanvasPixels();
     if (target.scissor)
         coveredArea = target.mapping.ScissorToPixels(*target.scissor);
 
     VkRect2D scissor = ToVulkanRectangle(coveredArea);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    const Canvas& canvas = target.mapping.GetCanvas();
-    CanvasConstants canvasConstants = {canvas.width / 2, canvas.height / 2};
+    ScissorRectangle wholeCanvasArea = target.mapping.WholeCanvasArea();
+    CanvasConstants canvasConstants;
+    canvasConstants.halfPictureWidth = (wholeCanvasArea.right - wholeCanvasArea.left) / 2;
+    canvasConstants.halfPictureHeight = (wholeCanvasArea.top - wholeCanvasArea.bottom) / 2;
+    canvasConstants.canvasShareOfWidth = pictureArea.width / wholeArea.width;
+    canvasConstants.canvasShareOfHeight = pictureArea.height / wholeArea.height;
     vkCmdPushConstants(commandBuffer, pipeline.Layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(canvasConstants), &canvasConstants);
 }
 
@@ -554,19 +647,37 @@ void VulkanGraphicsDevice::FinishScreenPicture()
     else
         EndPass();
 
-    TransitionImage(resources.CommandBuffer(), swapchain.AcquiredImage(), FinishDrawingScreen);
-    CheckVulkan(vkEndCommandBuffer(resources.CommandBuffer()), "finishing the picture of the screen");
-
-    VkSemaphore imageAvailable = swapchain.ImageAvailableSemaphore(frameIndex);
-    VkSemaphore renderFinished = swapchain.RenderFinishedSemaphore();
-    Submit(resources.CommandBuffer(), imageAvailable, renderFinished, resources.Fence());
-    swapchain.PresentAcquiredImage();
+    if (swapchain)
+        ShowOnTheDisplay(resources);
+    else
+        KeepHiddenPicture(resources);
 
     frameRecording.reset();
     screenTarget.reset();
 
     frameIndex = (frameIndex + 1) % FramesInFlight;
     PrepareFrame();
+}
+
+void VulkanGraphicsDevice::ShowOnTheDisplay(FrameResources& resources)
+{
+    TransitionImage(resources.CommandBuffer(), swapchain->AcquiredImage(), FinishDrawingScreen);
+    CheckVulkan(vkEndCommandBuffer(resources.CommandBuffer()), "finishing the picture of the screen");
+
+    VkSemaphore imageAvailable = swapchain->ImageAvailableSemaphore(frameIndex);
+    VkSemaphore renderFinished = swapchain->RenderFinishedSemaphore();
+    Submit(resources.CommandBuffer(), imageAvailable, renderFinished, resources.Fence());
+    swapchain->PresentAcquiredImage();
+}
+
+// The picture of a hidden window becomes a texture that ReadScreenPicture reads back.
+void VulkanGraphicsDevice::KeepHiddenPicture(FrameResources& resources)
+{
+    TransitionImage(resources.CommandBuffer(), ScreenImage(), FinishDrawingTexture);
+    CheckVulkan(vkEndCommandBuffer(resources.CommandBuffer()), "finishing the picture of the screen");
+
+    Submit(resources.CommandBuffer(), VK_NULL_HANDLE, VK_NULL_HANDLE, resources.Fence());
+    hasShownHiddenPicture = true;
 }
 
 void VulkanGraphicsDevice::CopyConsoleFrameToScreen()
@@ -577,12 +688,12 @@ void VulkanGraphicsDevice::CopyConsoleFrameToScreen()
     TransitionImage(CurrentCommandBuffer(), frameBuffer.image->Handle(), FinishDrawingTexture);
     frameBuffer.isBeingDrawn = false;
 
-    VkExtent2D size = swapchain.Extent();
-    Platform::PixelRectangle screenArea = Platform::FitPicture({size.width, size.height}, consoleFrame->screenShape);
-    VkImage image = swapchain.AcquiredImage();
+    VkExtent2D size = ScreenSize();
+    Platform::PixelRectangle screenArea = Platform::FitPicture({size.width, size.height});
+    VkImage image = ScreenImage();
     TransitionImage(CurrentCommandBuffer(), image, StartDrawing);
 
-    Target copyTarget{CanvasMapping(ConsoleRasterCanvas, screenArea), std::nullopt, image, swapchain.AcquiredView(), size, &ScreenDepthBuffer()};
+    Target copyTarget{CanvasMapping(ConsoleRasterCanvas, screenArea), std::nullopt, image, ScreenView(), size, &ScreenDepthBuffer()};
     BeginPass(copyTarget, VK_ATTACHMENT_LOAD_OP_CLEAR, OpaqueBlack);
     BindPipeline(*frameRecording, pipeline.QuadPipelineFor(consoleFrame->copyMaterial.blendMode));
     BindTextures(consoleFrame->copyMaterial);
@@ -701,7 +812,7 @@ void VulkanGraphicsDevice::BindPipeline(Recording& recording, VkPipeline drawPip
 
 const GraphicsImage& VulkanGraphicsDevice::ScreenDepthBuffer()
 {
-    VkExtent2D size = swapchain.Extent();
+    VkExtent2D size = ScreenSize();
     if (pictureSettings.resolution == PictureResolution::Console)
     {
         size.width = std::max(size.width, ConsoleFrameWidth);

@@ -67,8 +67,7 @@ void LimitOverScreen::Load()
 void LimitOverScreen::Build()
 {
     layout = std::make_unique<MenuLayout>(services.display, *archive, std::string(LayoutName));
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        FitFramePicturesToWideScreen();
+    FitFramePicturesToWideScreen();
 
     ShowOnlyTheEnglishMessage();
 

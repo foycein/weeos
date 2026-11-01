@@ -132,8 +132,7 @@ void ChannelGridScreen::Build()
     strip = std::make_unique<MenuLayout>(services.display, *selectionArchive, std::string(StripLayout));
     stripSlide = std::make_unique<FramePlayer>(*strip, *selectionArchive, StripAnimation);
     stripSlide->Show(FrameAtRest);
-    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
-        UseTheWideMasks();
+    UseTheWideMasks();
 
     ListTheSlotsOfTheStrip();
     MakeTheTiles();

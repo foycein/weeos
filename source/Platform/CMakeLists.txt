@@ -1,7 +1,7 @@
 add_library(Platform STATIC
     FileLocations.cpp
+    AspectLock.cpp
     FitPicture.cpp
-    HostKeys.cpp
     KeyCodes.cpp
     MessagePump.cpp
     PreciseTimer.cpp
