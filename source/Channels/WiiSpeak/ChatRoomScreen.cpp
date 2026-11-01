@@ -19,11 +19,14 @@ constexpr std::string_view SceneName = "talk";
 
 // The buttons of 02000_button and the panes of the ones WeeOS does not have.
 const std::string WiiMenuButton = "B_dbutton_00";
+const std::string ChooseMiisButton = "B_dbutton_01";
+const std::string ShowPhotosButton = "B_dbutton_02";
 const std::string HelpButton = "B_dbutton_03";
 const std::string SettingsButton = "B_dbutton_04";
+const std::string WiiNumberButton = "B_dbutton_05";
 const std::string CreateMessageButton = "B_dbutton_06";
+const std::string AddressBookButton = "B_dbutton_07";
 const std::string LobbyButton = "B_dbutton_08";
-constexpr std::array<std::string_view, 4> ButtonsNotBuilt = {"N_button_01", "N_button_02", "N_button_05", "N_button_07"};
 
 struct ButtonLabel
 {
@@ -31,8 +34,12 @@ struct ButtonLabel
     std::uint32_t messageId;
 };
 
-constexpr std::array<ButtonLabel, 5> ButtonLabels = {{
+constexpr std::array<ButtonLabel, 9> ButtonLabels = {{
     {"TextBox_00", WiiSpeakText::ChatRoomButtonWiiMenu},
+    {"TextBox_01", WiiSpeakText::ChatRoomButtonChooseMiis},
+    {"TextBox_02", WiiSpeakText::ChatRoomButtonShowPhotos},
+    {"TextBox_05", WiiSpeakText::ChatRoomButtonWiiNumber},
+    {"TextBox_07", WiiSpeakText::ChatRoomButtonAddressBook},
     {"TextBox_03", WiiSpeakText::ChatRoomButtonHelp},
     {"TextBox_04", WiiSpeakText::ChatRoomButtonSettings},
     {"TextBox_06", WiiSpeakText::ChatRoomButtonCreateMessage},
@@ -40,6 +47,10 @@ constexpr std::array<ButtonLabel, 5> ButtonLabels = {{
 }};
 
 const std::string BackgroundWaves = "02000_bg_wait_00";
+const std::string SharedPhotoName = "SharedPhoto";
+
+// The last frame of the photo coming out of the slot.
+constexpr float PrintedPhotoFrame = 65.0f;
 const std::string CircleLightOn = "on_00";
 const std::string CircleLightOff = "off_00";
 const std::string MuteOn = "micOff_00";
@@ -51,6 +62,11 @@ constexpr std::string_view HelpSound = "SE_RIP_CLK_BTN_HELP";
 constexpr std::string_view SettingsSound = "SE_RIP_CLK_BTN_CONFIG";
 constexpr std::string_view CreateMessageSound = "SE_RIP_CLK_BTN_MK_LETTER";
 constexpr std::string_view LobbySound = "SE_RIP_CLK_BTN_LOBBY";
+constexpr std::string_view ChooseMiisSound = "SE_RIP_CLK_BTN_SELECT_MII";
+constexpr std::string_view ShowPhotosSound = "SE_RIP_CLK_BTN_PHOTO";
+constexpr std::string_view WiiNumberSound = "SE_RIP_CLK_BTN_MY_NUMBER";
+constexpr std::string_view AddressBookSound = "SE_RIP_CLK_BTN_ADDRESS";
+constexpr std::string_view PhotoAppearSound = "SE_RIP_PHOTO_APPEAR";
 constexpr std::string_view MuteOnSound = "SE_COM_MUTE_ON";
 constexpr std::string_view MuteOffSound = "SE_COM_MUTE_OFF";
 
@@ -76,17 +92,17 @@ ChatRoomScreen::ChatRoomScreen(WiiSpeakSession& chatSession)
     , muteSign(session.services.display, session.files.SystemLayouts("02100_mute.arc"), "02100_mute")
     , circle(session.services.display, session.files.SystemLayouts("03000_circle.arc"), "03000_circle")
 {
-    for (const std::string& button : {WiiMenuButton, HelpButton, SettingsButton, CreateMessageButton, LobbyButton})
+    for (const std::string& button : {WiiMenuButton, ChooseMiisButton, ShowPhotosButton, HelpButton, SettingsButton, WiiNumberButton,
+             CreateMessageButton, AddressBookButton, LobbyButton})
         buttons.AddButton(button);
-
-    for (std::string_view pane : ButtonsNotBuilt)
-        buttons.SetVisible(pane, false);
 
     std::size_t wavesSlot = background.Layout().BindAnimationToPane(BackgroundWaves, "RootPane", Layout::PlaybackMode::Loop);
     background.Layout().StartAnimation(wavesSlot);
     buttons.PlayAnimation("allbutton_00_in");
     ShowTexts();
     ShowMute();
+    ShowChosenMiis();
+    ShowSharedPhoto();
 }
 
 std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
@@ -114,6 +130,10 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Update()
     ShowClock();
     for (SceneLayout* layout : {&background, &buttons, &clock, &muteSign, &circle})
         layout->Calculate();
+    if (miisInCircle)
+        miisInCircle->Calculate();
+    if (photo)
+        photo->Calculate();
     return nextScreen;
 }
 
@@ -121,6 +141,10 @@ void ChatRoomScreen::Draw()
 {
     background.Draw();
     circle.Draw();
+    if (miisInCircle)
+        miisInCircle->Draw();
+    if (photo)
+        photo->Draw();
     clock.Draw();
     muteSign.Draw();
     buttons.Draw();
@@ -193,6 +217,38 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
         return std::nullopt;
     }
 
+    if (button == ChooseMiisButton && session.consoleMiis.empty())
+    {
+        session.services.sounds.Request(ChooseMiisSound);
+        session.ShowMessage(WiiSpeakText::NoMiisToChoose, {WiiSpeakText::Ok});
+        return std::nullopt;
+    }
+
+    if (button == ChooseMiisButton)
+    {
+        session.services.sounds.Request(ChooseMiisSound);
+        return WiiSpeakScreenName::ChooseMiis;
+    }
+
+    if (button == ShowPhotosButton)
+    {
+        session.services.sounds.Request(ShowPhotosSound);
+        return WiiSpeakScreenName::ShowPhotos;
+    }
+
+    if (button == WiiNumberButton)
+    {
+        session.services.sounds.Request(WiiNumberSound);
+        ShowWiiNumber();
+        return std::nullopt;
+    }
+
+    if (button == AddressBookButton)
+    {
+        session.services.sounds.Request(AddressBookSound);
+        return WiiSpeakScreenName::AddressBook;
+    }
+
     if (button == SettingsButton)
     {
         session.services.sounds.Request(SettingsSound);
@@ -244,6 +300,57 @@ void ChatRoomScreen::FollowTheMessageWindow()
         session.services.wiiMenu.Request();
 
     waiting = Waiting::Nothing;
+}
+
+// The chosen Miis stand in the circle: the layout 03000_mii_0N for N Miis, each Mii on its pane P_mii_01 to P_mii_0N.
+void ChatRoomScreen::ShowChosenMiis()
+{
+    std::vector<Mii::MiiRecord> chosen = session.saveData.ChosenMiis();
+    if (chosen.empty())
+        return;
+
+    std::string layoutName = std::format("03000_mii_{:02}", chosen.size());
+    miisInCircle = std::make_unique<SceneLayout>(session.services.display, session.files.SystemLayouts(layoutName + ".arc"), layoutName);
+    miisInCircle->SetText("T_name_00", u"");
+    for (std::size_t place = 0; place < chosen.size(); ++place)
+    {
+        const Mii::MiiRecord& mii = chosen[place];
+        std::string pane = std::format("P_mii_{:02}", place + 1);
+        miisInCircle->ShowMadeTexture(pane, MiiFaces::TextureNameOf(mii), session.miiFaces.FaceOf(mii));
+    }
+}
+
+// The photo that Show Photos chose comes out of the slot at the bottom (12410_photoap of the scene photoAppre).
+void ChatRoomScreen::ShowSharedPhoto()
+{
+    if (!session.sharedPhoto)
+        return;
+
+    photo = std::make_unique<SceneLayout>(session.services.display, session.files.SceneLayouts("photoAppre", "12410_photoap.arc"),
+        "12410_photoap");
+    photo->ShowMadeTexture("P_photoA_00", SharedPhotoName, *session.sharedPhoto);
+    if (!session.isSharedPhotoNew)
+    {
+        photo->ShowAnimationFrame("all_in", PrintedPhotoFrame);
+        return;
+    }
+
+    photo->PlayAnimation("all_in");
+    session.services.sounds.Request(PhotoAppearSound);
+    session.isSharedPhotoNew = false;
+}
+
+// The Wii number of this console from the friend server, or the WiiConnect24 window while there is no server.
+void ChatRoomScreen::ShowWiiNumber()
+{
+    std::optional<std::uint64_t> wiiNumber = session.friends.OwnWiiNumber();
+    if (!wiiNumber)
+    {
+        session.ShowWiiConnect24Unreachable();
+        return;
+    }
+
+    session.dialog.Show(session.Text(WiiSpeakText::YourWiiNumber, WiiNumberText(*wiiNumber)), {session.Text(WiiSpeakText::Ok)});
 }
 
 void ChatRoomScreen::ToggleMute()

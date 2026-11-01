@@ -69,11 +69,10 @@ constexpr SystemMenu::ButtonSet ChangeVoiceButtons = {Input::RemoteButtons::One,
 
 }
 
-CreateMessageScreen::CreateMessageScreen(WiiSpeakSession& messageSession, std::size_t miiCount)
+CreateMessageScreen::CreateMessageScreen(WiiSpeakSession& messageSession)
     : session(messageSession)
     , letter(session.services.display, session.files.SceneLayouts("letter", "13100_letter.arc"), "13100_letter")
     , comment(session.services.display, session.files.SceneLayouts("letter", "16000_comment.arc"), "16000_comment")
-    , miiCountOfTheConsole(miiCount)
 {
     for (const std::string& button : {VoiceBox, AddresseesBox, MiiBox, SendButton, LetterBackButton, LetterHelpButton})
         letter.AddButton(button);
@@ -217,7 +216,7 @@ std::optional<WiiSpeakScreenName> CreateMessageScreen::UpdateLetter()
         session.services.sounds.Request(FrameSound);
         session.ShowMessage(WiiSpeakText::NoWiiFriends, {WiiSpeakText::Ok});
     }
-    else if (*pressed == MiiBox && miiCountOfTheConsole == 0)
+    else if (*pressed == MiiBox && session.consoleMiis.empty())
     {
         session.services.sounds.Request(FrameSound);
         session.ShowMessage(WiiSpeakText::NoMiisForMessage, {WiiSpeakText::Ok});

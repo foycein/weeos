@@ -2,10 +2,13 @@
 
 #include "Channels/ChannelFiles.h"
 #include "Channels/NativeChannels.h"
+#include "Channels/WiiSpeak/AddressBookScreen.h"
 #include "Channels/WiiSpeak/ChatRoomScreen.h"
 #include "Channels/WiiSpeak/CreateMessageScreen.h"
+#include "Channels/WiiSpeak/MiiChooser.h"
 #include "Channels/WiiSpeak/PerformanceCheckScreen.h"
 #include "Channels/WiiSpeak/SettingsScreens.h"
+#include "Channels/WiiSpeak/ShowPhotosScreen.h"
 #include "Channels/WiiSpeak/WiiSpeakMessageIds.h"
 
 #include "Formats/Font.h"
@@ -15,6 +18,7 @@
 #include "Ios/Title/TitlePaths.h"
 #include "Mii/MiiDatabase.h"
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
@@ -49,7 +53,7 @@ WiiSpeakChannel::WiiSpeakChannel(ChannelServices& channelServices)
     , hands(std::make_unique<SystemMenu::CursorManager>(channelServices.display, ReadHandArchive(channelServices.contents)))
     , dialog(channelServices.display, files)
     , saveFile(channelServices.storage.fileSystem, channelServices.storage.fileSystemCaller, Ios::DataFolderPath(WiiSpeakChannelTitleId))
-    , session(channelServices, files, messages, dialog, saveFile)
+    , session(channelServices, files, messages, dialog, saveFile, friendServer)
 {
     fonts.AddFont(services.display.Device(), Formats::ReadFont(files.LayoutFont()), {LayoutFontName});
     fonts.AddFont(services.display.Device(), Formats::ReadFont(files.LargeLayoutFont()), {LargeLayoutFontName});
@@ -73,6 +77,10 @@ void WiiSpeakChannel::Update()
     HearTheMicrophone();
     if (stage == Stage::Starting)
         Start();
+    else if (stage == Stage::Running && session.keyboard.IsOpen())
+    {
+        session.keyboard.Update();
+    }
     else if (stage == Stage::Running)
     {
         std::optional<WiiSpeakScreenName> nextScreen = screen->Update();
@@ -91,6 +99,8 @@ void WiiSpeakChannel::Draw()
         screen->Draw();
 
     dialog.Draw();
+    if (session.keyboard.IsOpen())
+        session.keyboard.Draw();
 }
 
 SystemMenu::CursorManager& WiiSpeakChannel::Hands()
@@ -120,7 +130,7 @@ WiiSpeakSession& WiiSpeakChannel::Session()
 
 std::size_t WiiSpeakChannel::MiiCount() const
 {
-    return miiCount;
+    return session.consoleMiis.size();
 }
 
 std::optional<Formats::Vector2> WiiSpeakChannel::PlaceOfPane(std::string_view paneName)
@@ -176,11 +186,12 @@ bool WiiSpeakChannel::CheckMiiDatabase()
     try
     {
         Mii::MiiDatabase database = Mii::MiiDatabase::Read(bytes.Value());
-        miiCount = 0;
+        session.consoleMiis.clear();
         for (std::size_t slot = 0; slot < Mii::MiiSlotCount; ++slot)
         {
-            if (database.FindMii(slot))
-                ++miiCount;
+            std::optional<Mii::MiiRecord> mii = database.FindMii(slot);
+            if (mii)
+                session.consoleMiis.push_back(*mii);
         }
     }
     catch (const Formats::FormatError&)
@@ -220,6 +231,13 @@ void WiiSpeakChannel::ReadSaveFile()
     session.saveData = loaded.data;
     services.audio.microphone.SetSensitivity(session.saveData.Sensitivity());
 
+    if (loaded.state == SaveFileState::Read && ForgetDeletedMiis())
+    {
+        session.ShowMessage(WiiSpeakText::ChosenMiiDeleted, {WiiSpeakText::Ok});
+        stage = Stage::TellingBeforeTheChatRoom;
+        return;
+    }
+
     if (loaded.state == SaveFileState::Read)
     {
         stage = Stage::Running;
@@ -237,6 +255,27 @@ void WiiSpeakChannel::ReadSaveFile()
     stage = Stage::Welcoming;
     welcomeNumber = 0;
     ShowNextWelcome();
+}
+
+// A chosen Mii that the Mii Channel has deleted can no longer be used: it leaves the save file. True when one did.
+bool WiiSpeakChannel::ForgetDeletedMiis()
+{
+    std::vector<Mii::MiiRecord> chosen = session.saveData.ChosenMiis();
+    std::vector<Mii::MiiRecord> stillThere;
+    for (const Mii::MiiRecord& mii : chosen)
+    {
+        bool isOnTheConsole = std::any_of(session.consoleMiis.begin(), session.consoleMiis.end(),
+            [&mii](const Mii::MiiRecord& consoleMii) { return IsSameMii(mii, consoleMii); });
+        if (isOnTheConsole)
+            stillThere.push_back(mii);
+    }
+
+    if (stillThere.size() == chosen.size())
+        return false;
+
+    session.saveData.SetChosenMiis(stillThere);
+    saveFile.Save(session.saveData);
+    return true;
 }
 
 void WiiSpeakChannel::FollowTheFirstStart()
@@ -260,7 +299,7 @@ void WiiSpeakChannel::FollowTheFirstStart()
         services.wiiMenu.Request();
     else if (stage == Stage::Welcoming)
         ShowNextWelcome();
-    else if (stage == Stage::TellingSaveCreated)
+    else if (stage == Stage::TellingBeforeTheChatRoom)
     {
         stage = Stage::Running;
         ChangeScreen(WiiSpeakScreenName::ChatRoom);
@@ -288,7 +327,7 @@ void WiiSpeakChannel::FinishFirstStart()
     session.saveData.SetSensitivity(services.audio.microphone.Sensitivity());
     saveFile.Save(session.saveData);
     session.ShowMessage(WiiSpeakText::SaveDataCreated, {WiiSpeakText::Ok});
-    stage = Stage::TellingSaveCreated;
+    stage = Stage::TellingBeforeTheChatRoom;
 }
 
 void WiiSpeakChannel::HearTheMicrophone()
@@ -314,8 +353,14 @@ void WiiSpeakChannel::ChangeScreen(WiiSpeakScreenName name)
         screen = std::make_unique<PerformanceCheckScreen>(session);
     else if (name == WiiSpeakScreenName::Precautions)
         screen = std::make_unique<PrecautionsScreen>(session, WiiSpeakScreenName::SettingsMenu);
+    else if (name == WiiSpeakScreenName::ChooseMiis)
+        screen = std::make_unique<ChooseMiisScreen>(session);
+    else if (name == WiiSpeakScreenName::AddressBook)
+        screen = std::make_unique<AddressBookScreen>(session);
+    else if (name == WiiSpeakScreenName::ShowPhotos)
+        screen = std::make_unique<ShowPhotosScreen>(session);
     else
-        screen = std::make_unique<CreateMessageScreen>(session, miiCount);
+        screen = std::make_unique<CreateMessageScreen>(session);
 
     screenName = name;
 }

@@ -201,6 +201,13 @@ void SceneLayout::SetText(std::string_view paneName, std::u16string_view text)
     textBox.characterSpace *= squeeze;
 }
 
+void SceneLayout::ShowMadeTexture(std::string_view paneName, const std::string& textureName, Layout::LoadedTexture texture)
+{
+    layout.Live().UseMadeTexture(textureName, texture);
+    Layout::LiveMaterial& material = layout.MaterialOf(layout.PaneNamed(paneName));
+    material.textureNames.at(0) = textureName;
+}
+
 void SceneLayout::SetVisible(std::string_view paneName, bool isVisible)
 {
     layout.PaneNamed(paneName).isVisible = isVisible;

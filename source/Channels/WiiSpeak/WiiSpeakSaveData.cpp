@@ -4,6 +4,7 @@
 #include "Formats/ByteWriter.h"
 #include "Ios/FileSystem/OpenFile.h"
 #include "Ios/Microphone/MicrophoneService.h"
+#include "Mii/MiiChecksum.h"
 
 #include <algorithm>
 
@@ -75,6 +76,36 @@ void WiiSpeakSaveData::SetSensitivity(int sensitivity)
 {
     int clamped = std::clamp(sensitivity, Ios::LowestMicrophoneSensitivity, Ios::HighestMicrophoneSensitivity);
     bytes[SensitivityOffset] = static_cast<Formats::Byte>(clamped);
+}
+
+std::vector<Mii::MiiRecord> WiiSpeakSaveData::ChosenMiis() const
+{
+    std::vector<Mii::MiiRecord> miis;
+    for (std::size_t entry = 0; entry < MostChosenMiis; ++entry)
+    {
+        std::size_t start = ChosenMiisOffset + entry * ChosenMiiEntrySize;
+        std::span<const Formats::Byte, Mii::MiiRecordSize> record(bytes.data() + start, Mii::MiiRecordSize);
+        Formats::ByteReader reader(bytes, "Wii Speak save file");
+        reader.MoveTo(start + Mii::MiiRecordSize);
+        bool isFilled = std::any_of(record.begin(), record.end(), [](Formats::Byte value) { return value != 0; });
+        if (isFilled && reader.ReadUint16() == Mii::CalculateMiiChecksum(record))
+            miis.push_back(Mii::ReadMiiRecord(record));
+    }
+    return miis;
+}
+
+void WiiSpeakSaveData::SetChosenMiis(const std::vector<Mii::MiiRecord>& miis)
+{
+    std::fill_n(bytes.begin() + ChosenMiisOffset, MostChosenMiis * ChosenMiiEntrySize, Formats::Byte{0});
+    for (std::size_t entry = 0; entry < miis.size() && entry < MostChosenMiis; ++entry)
+    {
+        std::size_t start = ChosenMiisOffset + entry * ChosenMiiEntrySize;
+        std::span<Formats::Byte, Mii::MiiRecordSize> record(bytes.data() + start, Mii::MiiRecordSize);
+        Mii::WriteMiiRecord(miis[entry], record);
+        std::uint16_t checksum = Mii::CalculateMiiChecksum(record);
+        bytes[start + Mii::MiiRecordSize] = static_cast<Formats::Byte>(checksum >> 8);
+        bytes[start + Mii::MiiRecordSize + 1] = static_cast<Formats::Byte>(checksum & 0xFF);
+    }
 }
 
 WiiSpeakSaveFile::WiiSpeakSaveFile(Ios::FileSystemService& fileSystemService, Ios::Caller titleCaller, Ios::NandPath dataFolder)

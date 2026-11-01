@@ -37,7 +37,7 @@ public:
         Recorded,
     };
 
-    CreateMessageScreen(WiiSpeakSession& session, std::size_t miiCount);
+    explicit CreateMessageScreen(WiiSpeakSession& session);
     ~CreateMessageScreen() override;
 
     std::optional<WiiSpeakScreenName> Update() override;
@@ -63,7 +63,6 @@ private:
     WiiSpeakSession& session;
     SceneLayout letter;
     SceneLayout comment;
-    std::size_t miiCountOfTheConsole;
     Phase phase = Phase::Letter;
     VoiceRecording recording;
     bool isVoiceBoxShown = false;

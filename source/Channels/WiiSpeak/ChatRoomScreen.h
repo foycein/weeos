@@ -13,10 +13,10 @@ namespace Channels
 // The chat room (scene "talk", ChatRippleScene 0x800A89B0 of the program): the water background, the clock, the circle of the player,
 // which lights up while the microphone hears a voice, the mute sign and the buttons on both sides.
 //
-// The buttons WeeOS has: Wii Menu (with the question "Returning to the Wii Menu. Is this OK?"), Help, Settings, Create Message and
-// Lobby. The Lobby connects to Nintendo Wi-Fi Connection, which fails as with an unplugged cable: "Connecting to Nintendo Wi-Fi
-// Connection." until the connection gives up, then "Unable to connect to the Internet." with the support code (CHN-04).
-// Choose Miis, Show Photos, Wii Number and the Address Book are not built and are not shown (docs/audit/WiiSpeak.md).
+// The buttons: Wii Menu (with the question "Returning to the Wii Menu. Is this OK?"), Choose Miis, Show Photos, Help, Settings,
+// Wii Number, Create Message, Address Book and Lobby. The Lobby connects to Nintendo Wi-Fi Connection, which fails as with an
+// unplugged cable: "Connecting to Nintendo Wi-Fi Connection." until the connection gives up, then "Unable to connect to the
+// Internet." with the support code (CHN-04). The chosen Miis stand in the circle; a photo of Show Photos comes out of the slot.
 // The - button mutes the accessory and unmutes it again.
 class ChatRoomScreen : public WiiSpeakScreen
 {
@@ -45,6 +45,9 @@ private:
     void StartConnecting();
     void FollowTheMessageWindow();
     void ToggleMute();
+    void ShowChosenMiis();
+    void ShowSharedPhoto();
+    void ShowWiiNumber();
 
     WiiSpeakSession& session;
     SceneLayout background;
@@ -52,6 +55,8 @@ private:
     SceneLayout clock;
     SceneLayout muteSign;
     SceneLayout circle;
+    std::unique_ptr<SceneLayout> miisInCircle;
+    std::unique_ptr<SceneLayout> photo;
     Waiting waiting = Waiting::Nothing;
     std::optional<ConnectionFailure> connection;
     double connectionStartSeconds = 0.0;

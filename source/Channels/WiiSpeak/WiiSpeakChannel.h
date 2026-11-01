@@ -38,7 +38,7 @@ public:
         AskingForNewData,
         Welcoming,
         ShowingPrecautions,
-        TellingSaveCreated,
+        TellingBeforeTheChatRoom,
         Running,
     };
 
@@ -65,6 +65,7 @@ private:
     bool OpenMicrophone();
     void Refuse(std::uint32_t messageId);
     void ReadSaveFile();
+    bool ForgetDeletedMiis();
     void FollowTheFirstStart();
     void ShowNextWelcome();
     void FinishFirstStart();
@@ -78,12 +79,12 @@ private:
     std::unique_ptr<SystemMenu::CursorManager> hands;
     WiiSpeakDialog dialog;
     WiiSpeakSaveFile saveFile;
+    OfflineFriendServer friendServer;
     WiiSpeakSession session;
     std::unique_ptr<WiiSpeakScreen> screen;
     std::optional<WiiSpeakScreenName> screenName;
     Stage stage = Stage::Starting;
     int welcomeNumber = 0;
-    std::size_t miiCount = 0;
 };
 
 }

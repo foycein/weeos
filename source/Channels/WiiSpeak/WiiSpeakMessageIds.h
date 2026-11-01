@@ -25,7 +25,11 @@ constexpr std::uint32_t AccessoryNotConnected = WiiSpeakMessageId(507, 4);
 
 // Layout 2000: the buttons of the chat room; layout 34000: its help.
 constexpr std::uint32_t ChatRoomButtonWiiMenu = WiiSpeakMessageId(2000, 0);
+constexpr std::uint32_t ChatRoomButtonChooseMiis = WiiSpeakMessageId(2000, 1);
+constexpr std::uint32_t ChatRoomButtonShowPhotos = WiiSpeakMessageId(2000, 2);
 constexpr std::uint32_t ChatRoomButtonHelp = WiiSpeakMessageId(2000, 3);
+constexpr std::uint32_t ChatRoomButtonWiiNumber = WiiSpeakMessageId(2000, 4);
+constexpr std::uint32_t ChatRoomButtonAddressBook = WiiSpeakMessageId(2000, 8);
 constexpr std::uint32_t ChatRoomButtonSettings = WiiSpeakMessageId(2000, 5);
 constexpr std::uint32_t ChatRoomButtonCreateMessage = WiiSpeakMessageId(2000, 6);
 constexpr std::uint32_t ChatRoomButtonLobby = WiiSpeakMessageId(2000, 7);
@@ -114,6 +118,42 @@ constexpr std::uint32_t CheckRunning = WiiSpeakMessageId(19200, 26);
 constexpr std::uint32_t HeadphonesOn = WiiSpeakMessageId(19200, 28);
 constexpr std::uint32_t HeadphonesOff = WiiSpeakMessageId(19200, 29);
 constexpr std::uint32_t SettingsHelpText = WiiSpeakMessageId(19200, 30);
+
+// Layout 5000 and group 41000: choosing the Miis; group 37000: the Mii that the Mii Channel deleted.
+constexpr std::uint32_t ChooseMiisPrompt = WiiSpeakMessageId(5000, 4);
+constexpr std::uint32_t ChooseMiisHelp = WiiSpeakMessageId(5000, 3);
+constexpr std::uint32_t ChooseMiisOk = WiiSpeakMessageId(5000, 20);
+constexpr std::uint32_t NoMiisToChoose = WiiSpeakMessageId(41000, 1);
+constexpr std::uint32_t ChooseMiisHelpText = WiiSpeakMessageId(41000, 3);
+constexpr std::uint32_t ChosenMiiDeleted = WiiSpeakMessageId(37000, 6);
+
+// The Wii number and the address book: layout 6000, groups 506 (what to type), 1030 (what the number is not), 34000 (the Wii number),
+// 38000 (the help) and 503 (WiiConnect24 cannot reach the Internet).
+constexpr std::uint32_t AddressBookTitle = WiiSpeakMessageId(6000, 0);
+constexpr std::uint32_t AddWiiFriend = WiiSpeakMessageId(6000, 1);
+constexpr std::uint32_t AddressBookOk = WiiSpeakMessageId(6000, 2);
+constexpr std::uint32_t AddressBookHelp = WiiSpeakMessageId(6000, 3);
+constexpr std::uint32_t AddressBookHelpText = WiiSpeakMessageId(38000, 3);
+constexpr std::uint32_t EnterWiiNumber = WiiSpeakMessageId(506, 2);
+constexpr std::uint32_t EnterNickname = WiiSpeakMessageId(506, 3);
+constexpr std::uint32_t WiiNumberIncorrect = WiiSpeakMessageId(1030, 22);
+constexpr std::uint32_t AddressBookFull = WiiSpeakMessageId(1030, 26);
+constexpr std::uint32_t WiiNumberAlreadyRegistered = WiiSpeakMessageId(1030, 28);
+constexpr std::uint32_t OwnWiiNumberCannotBeRegistered = WiiSpeakMessageId(1030, 29);
+constexpr std::uint32_t KeyboardBack = WiiSpeakMessageId(1030, 82);
+constexpr std::uint32_t YourWiiNumber = WiiSpeakMessageId(34000, 12);
+constexpr std::uint32_t WiiConnect24CannotReachTheInternet = WiiSpeakMessageId(503, 5);
+
+// Group 50000: Show Photos.
+constexpr std::uint32_t PhotoNotSupported = WiiSpeakMessageId(50000, 3);
+constexpr std::uint32_t FinishPhotoSelection = WiiSpeakMessageId(50000, 14);
+constexpr std::uint32_t InsertTheSdCard = WiiSpeakMessageId(50000, 30);
+constexpr std::uint32_t SdCardUnreadable = WiiSpeakMessageId(50000, 34);
+constexpr std::uint32_t NoPhotosOnTheSdCard = WiiSpeakMessageId(50000, 42);
+constexpr std::uint32_t PhotoPrevious = WiiSpeakMessageId(50000, 84);
+constexpr std::uint32_t PhotoNext = WiiSpeakMessageId(50000, 85);
+constexpr std::uint32_t ShowThisPhoto = WiiSpeakMessageId(50000, 87);
+constexpr std::uint32_t PhotoFinish = WiiSpeakMessageId(50000, 90);
 
 // Layout 20001: the precautions.
 constexpr std::uint32_t PrecautionsBack = WiiSpeakMessageId(20001, 1);

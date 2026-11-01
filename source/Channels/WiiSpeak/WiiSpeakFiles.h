@@ -41,9 +41,19 @@ public:
     // The music of the performance check, eccheckbgm.bns.
     Formats::ByteView CheckMusic() const;
 
+    // The soft keyboard of the scene "keyboard": sofkeybd.arc, whose folders lie in "arc/" as the System Menu's do.
+    std::unique_ptr<Layout::LayoutArchive> KeyboardLayouts() const;
+
+    // The photo viewer of Show Photos: layout.arc.LZ (LZ77), 30 layouts built like the Photo Channel's, in "arc/".
+    std::unique_ptr<Layout::LayoutArchive> PhotoLayouts() const;
+
+    // The parts of the Mii faces, RFL_Res.dat of the shared content 7.
+    Formats::ByteView FaceParts() const;
+
 private:
     Formats::U8Archive resources;
     Formats::U8Archive systemArchive;
+    Formats::U8Archive facePartsContent;
 };
 
 }
