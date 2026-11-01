@@ -79,8 +79,10 @@ constexpr Point DivisionLowerLeft = {10.5f, 59};
 constexpr Point DivisionFirstControl = {34, 54};
 constexpr Point DivisionSecondControl = {58, 34};
 constexpr Point DivisionUpperRight = {58.5f, 9.6f};
-constexpr float DivisionLowerLeftDegrees = 147.2f;
 constexpr float DivisionUpperRightDegrees = -58.7f;
+
+// The rim of the light part goes from the upper right point back over the top and the left side to the lower left point.
+constexpr float DivisionLowerLeftDegreesOverTheTop = 147.2f - 360;
 
 // The bright line a little inside the rim: between a circle inside the edge of the ball and a circle of the same size moved down and
 // right, so it is widest in the upper left and runs out at both ends. It fades in from the inside.
@@ -109,15 +111,18 @@ void DrawButtonBall(VectorCanvas& canvas, float ballRadius)
     VectorPath lightPart;
     lightPart.MoveTo(DivisionLowerLeft);
     lightPart.CurveTo(DivisionFirstControl, DivisionSecondControl, DivisionUpperRight);
-    lightPart.ArcTo(ButtonCenter, ballRadius, ballRadius, DivisionUpperRightDegrees, DivisionLowerLeftDegrees - 360);
+    lightPart.ArcTo(ButtonCenter, ballRadius, ballRadius, DivisionUpperRightDegrees, DivisionLowerLeftDegreesOverTheTop);
     lightPart.Close();
     canvas.Fill(lightPart, RadialGradient(ButtonCenter, ButtonLight, ShadingRadius, ButtonLightRim, LightRimStartRadius));
 
+    constexpr float Radius = RimHighlightRadius;
     VectorPath rimHighlight;
-    rimHighlight.ArcTo(ButtonCenter, RimHighlightRadius, RimHighlightRadius, RimHighlightStartDegrees, RimHighlightEndDegrees);
-    rimHighlight.ArcTo(RimHighlightInnerCenter, RimHighlightRadius, RimHighlightRadius, RimHighlightInnerStartDegrees, RimHighlightInnerEndDegrees);
+    rimHighlight.ArcTo(ButtonCenter, Radius, Radius, RimHighlightStartDegrees, RimHighlightEndDegrees);
+    rimHighlight.ArcTo(RimHighlightInnerCenter, Radius, Radius, RimHighlightInnerStartDegrees, RimHighlightInnerEndDegrees);
     rimHighlight.Close();
-    canvas.Fill(rimHighlight, RadialGradient(ButtonCenter, RimHighlightClear, RimHighlightFadeEndRadius, RimHighlight, RimHighlightFadeStartRadius));
+
+    Paint fadingIn = RadialGradient(ButtonCenter, RimHighlightClear, RimHighlightFadeEndRadius, RimHighlight, RimHighlightFadeStartRadius);
+    canvas.Fill(rimHighlight, fadingIn);
 }
 
 // The glow ring rises from nothing to its brightest, stays there for a while and falls to nothing again, in straight steps along the
@@ -160,7 +165,10 @@ std::vector<Point> CardOutline(float inset)
     constexpr float Bottom = 46;
     constexpr float CutLength = 4.4f;
 
-    float cutInset = inset * 0.41f;
+    // When the outline moves inward, the ends of the cut corner of 45 degrees move along the sides by tan(22.5 degrees) as much.
+    constexpr float CutCornerShift = 0.414f;
+
+    float cutInset = inset * CutCornerShift;
     return {
         {Left + inset, Top + inset},
         {Right - CutLength - cutInset, Top + inset},
