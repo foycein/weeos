@@ -9,6 +9,7 @@
 #include "Layout/LayoutArchive.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -31,6 +32,11 @@ enum class DialogLayout
     // A wide message with two buttons.
     WideTwoButtons,
 };
+
+constexpr std::size_t DialogLayoutCount = 5;
+
+// The most buttons a dialog window has.
+constexpr std::size_t MostButtonsOfADialog = 3;
 
 // What the user did, or what ended the dialog. The buttons are named like the panes of the layouts.
 enum class DialogAnswer
@@ -165,7 +171,7 @@ private:
     Display& display;
     SoundRequests& sounds;
     std::unique_ptr<Layout::LayoutArchive> archive;
-    std::array<DialogWindow, 5> windows;
+    std::array<DialogWindow, DialogLayoutCount> windows;
     DialogWindow* openWindow = nullptr;
     State state = State::Closed;
     std::size_t choiceSlot = 0;
@@ -182,7 +188,7 @@ private:
     int shownPercentage = 0;
 
     // The buttons that a pointer is on.
-    std::array<bool, 3> isButtonFocused = {};
+    std::array<bool, MostButtonsOfADialog> isButtonFocused = {};
 
     // A dialog with pages: the pages, the one shown, the one it turns from, and how far its words have faded in.
     std::vector<DialogPage> pages;

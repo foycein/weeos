@@ -5,7 +5,6 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
 #include "SystemMenu/MenuLayout.h"
-
 #include "SystemMenu/UsKeyboardLayout.h"
 
 #include "Layout/LayoutArchive.h"

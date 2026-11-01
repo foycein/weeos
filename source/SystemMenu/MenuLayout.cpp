@@ -112,7 +112,8 @@ std::size_t MenuLayout::BindAnimation(const std::string& animationName, std::str
 std::size_t MenuLayout::BindAnimationToAllPanes(const std::string& animationName)
 {
     Layout::PlaybackMode mode = ModeOfAnimationFile(animationName);
-    animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, std::vector<Formats::Pane*>{&layout.RootPane()}));
+    std::vector<Formats::Pane*> panes = {&layout.RootPane()};
+    animations.push_back(std::make_unique<MenuAnimation>(layout, archive.ReadAnimation(animationName), mode, panes));
     return animations.size() - 1;
 }
 

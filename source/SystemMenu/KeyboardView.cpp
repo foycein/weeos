@@ -138,7 +138,11 @@ void KeyboardView::RegisterKeys()
 {
     const std::string keyPrefix = "fs_VK_ascii_keytop_a_";
     for (int number = 0; number < static_cast<int>(CharacterKeyCount); ++number)
-        RegisterKey({KeyKind::Character, number}, *keys, *keyButtons, std::format("B_key_{:02}", number), std::format("P_key_{:02}", number), keyPrefix);
+    {
+        std::string buttonPane = std::format("B_key_{:02}", number);
+        std::string picturePane = std::format("P_key_{:02}", number);
+        RegisterKey({KeyKind::Character, number}, *keys, *keyButtons, buttonPane, picturePane, keyPrefix);
+    }
 
     RegisterKey({KeyKind::Delete}, *keys, *keyButtons, "B_key_DELETE", "P_key_DELETE", keyPrefix);
     RegisterKey({KeyKind::Enter}, *keys, *keyButtons, "B_key_LF", "P_key_LF", keyPrefix);
@@ -153,8 +157,11 @@ void KeyboardView::RegisterKeys()
 
     const std::string symbolKeyPrefix = "fs_signWindow_a_SGN_";
     for (int number = 0; number < SymbolsPerPage; ++number)
-        RegisterKey({KeyKind::Symbol, number}, *symbols, *symbolButtons, std::format("B_SGNkey_{:02}", number),
-            std::format("P_SGNkey_{:02}", number), symbolKeyPrefix);
+    {
+        std::string buttonPane = std::format("B_SGNkey_{:02}", number);
+        std::string picturePane = std::format("P_SGNkey_{:02}", number);
+        RegisterKey({KeyKind::Symbol, number}, *symbols, *symbolButtons, buttonPane, picturePane, symbolKeyPrefix);
+    }
 
     const std::string symbolButtonPrefix = "fs_signWindow_a_";
     RegisterKey({KeyKind::CloseSymbols}, *symbols, *symbolButtons, "B_SGNkey_close", "P_SGNkey_close", symbolButtonPrefix);
@@ -332,7 +339,10 @@ std::vector<KeyEvent> KeyboardView::Poll(const InputManager& input)
     for (ButtonController* buttons : {fieldButtons.get(), keyButtons.get(), barButtons.get(), symbolButtons.get()})
     {
         for (const ButtonEvent& event : buttons->Poll(input))
-            events.push_back({event.kind, records[recordOfButtonPane.at(event.buttonName)].id, event.playerIndex});
+        {
+            const KeyRecord& record = records[recordOfButtonPane.at(event.buttonName)];
+            events.push_back({event.kind, record.id, event.playerIndex});
+        }
     }
     return events;
 }
@@ -370,7 +380,8 @@ void KeyboardView::ShowField(const FieldLook& look)
 
     shownText = look.text;
     shownCursor = look.cursor;
-    firstVisibleLine = std::clamp(firstVisibleLine, 0, std::max(0, lineCount - VisibleLineCount));
+    int lastFirstVisibleLine = std::max(0, lineCount - VisibleLineCount);
+    firstVisibleLine = std::clamp(firstVisibleLine, 0, lastFirstVisibleLine);
 
     ShowVisibleLines(look, fullText);
     isCaretShown = look.isCaretShown;
@@ -392,7 +403,8 @@ void KeyboardView::ShowScrollArrow(const std::string& picturePane, bool shouldBe
 
 void KeyboardView::ScrollField(int lineDistance)
 {
-    firstVisibleLine = std::clamp(firstVisibleLine + lineDistance, 0, std::max(0, lineCount - VisibleLineCount));
+    int lastFirstVisibleLine = std::max(0, lineCount - VisibleLineCount);
+    firstVisibleLine = std::clamp(firstVisibleLine + lineDistance, 0, lastFirstVisibleLine);
 }
 
 // The line that holds a character is the last line that starts at or before it. The place behind the last character is on the last line.
@@ -453,8 +465,9 @@ std::vector<KeyboardView::Rectangle> KeyboardView::AreasOfCharactersInPicture(co
     std::vector<Rectangle> areas;
     for (const Text::TextArea& area : Text::AreasOfCharacters(text, first, end))
     {
+        Formats::Vector2 lowerRightInPane = {area.left + area.width, area.top - area.height};
         std::optional<Formats::Vector2> upperLeft = field->PointOfPaneInPicture(FieldTextPane, {area.left, area.top});
-        std::optional<Formats::Vector2> lowerRight = field->PointOfPaneInPicture(FieldTextPane, {area.left + area.width, area.top - area.height});
+        std::optional<Formats::Vector2> lowerRight = field->PointOfPaneInPicture(FieldTextPane, lowerRightInPane);
         if (!upperLeft || !lowerRight)
             continue;
 

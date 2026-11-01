@@ -90,7 +90,7 @@ Ios::NandPath IosNandFiles::MakeSafeSaveFolder(std::string_view pathForErrors)
     if (safeSaveFolderMade.Failed() && safeSaveFolderMade.Error() != Ios::IosError::AlreadyExists)
         throw MakeNandError("prepare the safe save of", pathForErrors, safeSaveFolderMade.Error());
 
-    std::uint32_t folderNumber = nextSafeSaveNumber++;
+    std::uint32_t folderNumber = nextSafeSaveNumber.fetch_add(1);
     Ios::NandPath waitingFolder = safeSaveFolder.Child(std::format("{:08x}", folderNumber)).Value();
     Ios::Result<void> folderMade = fileSystem.CreateDirectory(waitingFolder, OwnerOnly, NoAttributeFlags, CurrentCaller());
     if (folderMade.Failed())

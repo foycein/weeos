@@ -67,6 +67,7 @@ struct MenuServices
 
     // The import of a person's own Wii (ConsoleImport.h). Nothing when the program offers none.
     ConsoleImport* consoleImport = nullptr;
+
     // The database of the Message Board, the faces of its Miis and the day it shows. Nothing when the menu runs without it (the tests
     // of other screens): the envelope of the Wii Menu then does nothing.
     MessageBoardData* messageBoard = nullptr;

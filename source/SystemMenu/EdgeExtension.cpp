@@ -71,7 +71,10 @@ struct Shares
 
 Shares SharesOf(const Box& box, Formats::Vector2 place)
 {
-    return {(place.x - box.left) / (box.right - box.left), (box.top - place.y) / (box.top - box.bottom)};
+    Shares shares;
+    shares.across = (place.x - box.left) / (box.right - box.left);
+    shares.down = (box.top - place.y) / (box.top - box.bottom);
+    return shares;
 }
 
 Formats::Vector2 Blend(Formats::Vector2 first, Formats::Vector2 second, float share)
@@ -95,8 +98,12 @@ std::uint8_t BlendChannel(std::uint8_t first, std::uint8_t second, float share)
 
 Formats::Rgba8Color BlendColor(const Formats::Rgba8Color& first, const Formats::Rgba8Color& second, float share)
 {
-    return {BlendChannel(first.red, second.red, share), BlendChannel(first.green, second.green, share), BlendChannel(first.blue, second.blue, share),
-        BlendChannel(first.alpha, second.alpha, share)};
+    Formats::Rgba8Color blended;
+    blended.red = BlendChannel(first.red, second.red, share);
+    blended.green = BlendChannel(first.green, second.green, share);
+    blended.blue = BlendChannel(first.blue, second.blue, share);
+    blended.alpha = BlendChannel(first.alpha, second.alpha, share);
+    return blended;
 }
 
 // The colors stay those of the nearest edge of the quad.
