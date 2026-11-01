@@ -120,7 +120,7 @@ void LookAlikeScreen::Update(bool acceptsInput)
     if (!isOpen)
         return;
 
-    std::vector<std::pair<std::size_t, Mii::MiiRecord>> shownFaces;
+    std::vector<ShownHead> shownFaces;
     for (std::size_t faceNumber = 0; faceNumber < faces.size(); ++faceNumber)
         shownFaces.push_back({faceNumber, faces[faceNumber]});
     if (isRefining)

@@ -91,6 +91,7 @@ private:
     void DropHeldMii(Formats::Vector2 pointer);
     void ShowNameBalloon(std::size_t slot);
     void UpdateWaits();
+    std::vector<ShownHead> HeadsOfThePlaza() const;
     void ShowLoadWindow(std::uint32_t messageNumber);
     void HideLoadWindow();
     bool IsPressed(std::string_view buttonPane) const;

@@ -13,11 +13,13 @@ namespace
 {
 
 constexpr std::string_view StandingAnimation = "bodyWait";
-constexpr std::string_view WalkingAnimation = "bodyWalk";
 
-// A Mii in the hand dangles and kicks (bodyWallow, 12 frames), lifted above the ground (Assumed, CHN-66).
-constexpr std::string_view HeldAnimation = "bodyWallow";
+// A Mii in the hand is lifted above the ground (Assumed, CHN-66).
 constexpr float HeldLift = 80.0f;
+
+// The shadows lie a unit above the ground, so that the ground's depth does not hide them (Assumed, CHN-80). A held Mii's shadow stays
+// on the ground.
+constexpr float ShadowLift = 1.0f;
 
 // Assumed (MII-20): the camera of the editor's Mii looks at it from the front and shows the tallest one whole.
 constexpr Formats::Vector3 StandingEye = {0.0f, 110.0f, 700.0f};
@@ -40,6 +42,9 @@ constexpr Formats::Vector3 Upward = {0.0f, 1.0f, 0.0f};
 constexpr Formats::Vector3 GroundPlace = {0.0f, 0.0f, -2700.0f};
 constexpr std::uint32_t FaceTextureSize = 128;
 
+// The faces of Mii::MiiExpression, from Normal to OpenMouth.
+constexpr std::size_t ExpressionCount = 7;
+
 std::vector<std::uint8_t> StoredBytes(const Mii::MiiRecord& record)
 {
     std::array<Formats::Byte, Mii::MiiRecordSize> bytes = {};
@@ -55,20 +60,11 @@ const Mii::MiiBodyFile& BodyFileOf(const Mii::MiiBodyFiles& bodies, const Mii::M
     return bodies.male;
 }
 
-std::string_view AnimationOf(PlazaActivity activity)
-{
-    switch (activity)
-    {
-    case PlazaActivity::Walking:
-        return WalkingAnimation;
-    case PlazaActivity::Held:
-        return HeldAnimation;
-    case PlazaActivity::Waiting:
-        return StandingAnimation;
-    }
-    return StandingAnimation;
 }
 
+std::size_t PlazaHeadKey(std::size_t slot, Mii::MiiExpression expression)
+{
+    return slot * ExpressionCount + static_cast<std::size_t>(expression);
 }
 
 Graphics::Matrix4 ProjectIntoRectangle(const Graphics::Matrix4& projection, const PictureRectangle& rectangle, Graphics::Canvas canvas)
@@ -88,10 +84,10 @@ MiiHeads::MiiHeads(Graphics::GraphicsDevice& graphicsDevice, const Mii::MiiResou
 {
 }
 
-void MiiHeads::Prepare(const std::vector<std::pair<std::size_t, Mii::MiiRecord>>& miis)
+void MiiHeads::Prepare(const std::vector<ShownHead>& miis)
 {
     std::map<std::size_t, KeptHead> keptHeads;
-    for (const auto& [key, record] : miis)
+    for (const auto& [key, record, expression] : miis)
     {
         std::vector<std::uint8_t> bytes = StoredBytes(record);
         auto existing = heads.find(key);
@@ -103,7 +99,7 @@ void MiiHeads::Prepare(const std::vector<std::pair<std::size_t, Mii::MiiRecord>>
 
         KeptHead kept;
         kept.recordBytes = bytes;
-        kept.head = std::make_unique<Mii::MiiHead>(device, parts, record, Mii::MiiExpression::Normal, FaceTextureSize);
+        kept.head = std::make_unique<Mii::MiiHead>(device, parts, record, expression, FaceTextureSize);
         keptHeads[key] = std::move(kept);
     }
     heads = std::move(keptHeads);
@@ -134,7 +130,15 @@ void MiiFigures::DrawPlaza(const MiiPlaza& plaza, const PlazaGround& ground, con
 
     for (const PlazaMii& plazaMii : plaza.Miis())
     {
-        const Mii::MiiHead* head = heads.Find(plazaMii.mii.slot);
+        Graphics::MeshPlacement shadowPlacement;
+        shadowPlacement.modelView = view * Graphics::MakeTranslation({plazaMii.position.x, ShadowLift, plazaMii.position.y});
+        shadowPlacement.projection = projection;
+        bodyModels.DrawShadow(plazaMii.mii.record.gender, shadowPlacement);
+    }
+
+    for (const PlazaMii& plazaMii : plaza.Miis())
+    {
+        const Mii::MiiHead* head = heads.Find(PlazaHeadKey(plazaMii.mii.slot, ExpressionOf(plazaMii)));
         if (head == nullptr)
             continue;
 
@@ -197,7 +201,7 @@ void MiiFigures::DrawFigure(const Mii::MiiRecord& record, const Mii::MiiHead& he
     bodyModels.Draw(record, systemId, pose, bodyPlacement);
 
     Graphics::MeshPlacement headPlacement = bodyPlacement;
-    headPlacement.modelView = modelView * Mii::HeadMatrixOf(pose, stance);
+    headPlacement.modelView = modelView * Mii::HeadMatrixOf(pose);
     headPlacement.light = Mii::MakeHeadLight(headPlacement.modelView);
     head.Draw(headPlacement);
 }

@@ -23,8 +23,8 @@ constexpr std::string_view HeadBone = "head";
 const std::set<std::string_view> UnsizedBones = {"all_root", "aslope_root", "position_root", "shadow_model"};
 const std::set<std::string_view> WristAndAnkleBones = {"wrist_l", "wrist_r", "ankle_l", "ankle_r"};
 
-// The lean of aslope_root in the animations of the plaza, about x.
-constexpr float PlazaLeanDegrees = -45.0f;
+// Register 0 of the material mt_shadow, the color of the shadow; its alpha is the brightness of the picture "shadow".
+constexpr Formats::Rgba8Color ShadowColor = {32, 40, 38, 255};
 
 // Height and weight run from 0 to 128.
 constexpr float SizeUnit = 128.0f;
@@ -134,6 +134,37 @@ std::vector<Graphics::MeshVertex> CornersOnBones(const BodyPart& part)
     return corners;
 }
 
+Formats::Vector3 ColumnOf(const Matrix4& matrix, std::size_t column)
+{
+    return {matrix.rows[0][column], matrix.rows[1][column], matrix.rows[2][column]};
+}
+
+Formats::Vector3 Normalized(Formats::Vector3 vector)
+{
+    float length = std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+    return {vector.x / length, vector.y / length, vector.z / length};
+}
+
+Formats::Vector3 Cross(Formats::Vector3 first, Formats::Vector3 second)
+{
+    return {first.y * second.z - first.z * second.y, first.z * second.x - first.x * second.z, first.x * second.y - first.y * second.x};
+}
+
+// The shadow's normals point up; nothing reads them, as the shadow has no light.
+std::vector<Graphics::MeshVertex> ShadowCorners(const BodyShadow& shadow)
+{
+    std::vector<Graphics::MeshVertex> corners;
+    for (std::size_t cornerNumber = 0; cornerNumber < shadow.cornerPositions.size(); ++cornerNumber)
+    {
+        Graphics::MeshVertex vertex = {};
+        vertex.position = shadow.cornerPositions[cornerNumber];
+        vertex.normal = {0, 1, 0};
+        vertex.textureCoordinate = shadow.cornerTextureCoordinates[cornerNumber];
+        corners.push_back(vertex);
+    }
+    return corners;
+}
+
 }
 
 BodySize SizeOf(const MiiRecord& record)
@@ -174,18 +205,25 @@ BodyPose PoseBody(const MiiBodyFile& file, const MiiRecord& record, const BodySt
         pose.boneMatrices[matrixId] = world;
 
         if (bone.name == HeadBone)
+        {
             pose.headPosition = Graphics::TransformPoint(world, {0, 0, 0});
+            pose.headBoneMatrix = world;
+        }
     }
     return pose;
 }
 
-Matrix4 HeadMatrixOf(const BodyPose& pose, const BodyStance& stance)
+Matrix4 HeadMatrixOf(const BodyPose& pose)
 {
-    Matrix4 lean;
-    if (stance.leansBack)
-        lean = Graphics::MakeRotationAroundX(PlazaLeanDegrees);
+    Formats::Vector3 up = Normalized(ColumnOf(pose.headBoneMatrix, 0));
+    Formats::Vector3 front = Normalized(ColumnOf(pose.headBoneMatrix, 1));
+    Formats::Vector3 right = Cross(up, front);
 
-    return Graphics::MakeTranslation(pose.headPosition) * lean * Graphics::MakeRotationAroundY(stance.facingDegrees);
+    Matrix4 head;
+    head.rows[0] = {right.x, up.x, front.x, pose.headPosition.x};
+    head.rows[1] = {right.y, up.y, front.y, pose.headPosition.y};
+    head.rows[2] = {right.z, up.z, front.z, pose.headPosition.z};
+    return head;
 }
 
 PosedBody PoseStandingBody(const MiiBodyFile& file, const MiiRecord& record)
@@ -226,15 +264,24 @@ MiiBodyModels::MiiBodyModels(Graphics::GraphicsDevice& graphicsDevice, const Mii
     description.height = sphere.height;
     description.pixels = sphere.pixels;
     environmentTexture = device.CreateTexture(description);
+
+    const Formats::RgbaImage& shadowPicture = bodyFiles.male.shadow.picture;
+    Graphics::TextureDescription shadowDescription;
+    shadowDescription.width = shadowPicture.width;
+    shadowDescription.height = shadowPicture.height;
+    shadowDescription.pixels = shadowPicture.pixels;
+    shadowTexture = device.CreateTexture(shadowDescription);
 }
 
 MiiBodyModels::~MiiBodyModels()
 {
     device.DestroyTexture(environmentTexture);
+    device.DestroyTexture(shadowTexture);
     for (const GenderModel& model : {male, female})
     {
         device.DestroyMesh(model.shirt);
         device.DestroyMesh(model.pants);
+        device.DestroyMesh(model.shadow);
     }
 }
 
@@ -259,6 +306,7 @@ MiiBodyModels::GenderModel MiiBodyModels::MakeModel(const MiiBodyFile& file)
     GenderModel model;
     model.shirt = device.CreateMesh(CornersOnBones(file.shirt));
     model.pants = device.CreateMesh(CornersOnBones(file.pants));
+    model.shadow = device.CreateMesh(ShadowCorners(file.shadow));
     return model;
 }
 
@@ -268,6 +316,27 @@ const MiiBodyModels::GenderModel& MiiBodyModels::ModelFor(Gender gender) const
         return female;
 
     return male;
+}
+
+void MiiBodyModels::DrawShadow(Gender gender, const Graphics::MeshPlacement& placement) const
+{
+    Graphics::TevStage stage;
+    stage.textureIndex = 0;
+    stage.usesRasterColor = false;
+    stage.color.inputD = TevColorInput::Register0Color;
+    stage.alpha.inputD = TevAlphaInput::TextureAlpha;
+
+    Graphics::Material material;
+    material.blendMode = Graphics::BlendMode::StandardAlpha;
+    material.textures = {{shadowTexture, {}}};
+    material.colorRegisters[0] = {ShadowColor.red, ShadowColor.green, ShadowColor.blue, ShadowColor.alpha};
+    material.stages = {stage};
+
+    Graphics::MeshPlacement shadowPlacement = placement;
+    shadowPlacement.light.reset();
+    shadowPlacement.culling = Graphics::FaceCulling::None;
+    shadowPlacement.depth = Graphics::DepthMode::TestOnly;
+    device.DrawMesh(ModelFor(gender).shadow, shadowPlacement, material);
 }
 
 // color = part color + sphere x sphere, limited to white.

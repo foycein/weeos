@@ -13,6 +13,9 @@ namespace Channels
 namespace
 {
 
+// A Mii that slips on the plaza falls with this sound (8001F7A8, state 10).
+constexpr std::string_view SlipSound = "SEQ_DOOL_KOROBI";
+
 constexpr std::string_view LayoutName = "squareNigaoe_00";
 
 // The animations that bring the buttons of both sides and the bar at the bottom into the picture (bound by 80041024); the plaza shows
@@ -167,11 +170,10 @@ void PlazaScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     plaza.Update();
+    if (plaza.SlipsInLastStep() > 0)
+        services.sounds.Request(SlipSound);
 
-    std::vector<std::pair<std::size_t, Mii::MiiRecord>> shownMiis;
-    for (const PlazaMii& plazaMii : plaza.Miis())
-        shownMiis.push_back({plazaMii.mii.slot, plazaMii.mii.record});
-    heads.Prepare(shownMiis);
+    heads.Prepare(HeadsOfThePlaza());
 
     std::string count = std::format("{:03}", plaza.Miis().size());
     layout->SetText(CountText, std::u16string(count.begin(), count.end()));
@@ -187,6 +189,25 @@ void PlazaScreen::Update(bool acceptsInput)
 
     HandleCamera();
     HandleButtons();
+}
+
+// Every Mii keeps its normal face, and while it talks or sleeps the face of that too, so that its mouth and eyes change without waiting.
+std::vector<ShownHead> PlazaScreen::HeadsOfThePlaza() const
+{
+    std::vector<ShownHead> shownHeads;
+    for (const PlazaMii& plazaMii : plaza.Miis())
+    {
+        std::size_t slot = plazaMii.mii.slot;
+        shownHeads.push_back({PlazaHeadKey(slot, Mii::MiiExpression::Normal), plazaMii.mii.record, Mii::MiiExpression::Normal});
+
+        bool talks = plazaMii.activity == PlazaActivity::Talking || plazaMii.activity == PlazaActivity::Answering;
+        Mii::MiiExpression face = ExpressionOf(plazaMii);
+        if (talks)
+            face = Mii::MiiExpression::OpenMouth;
+        if (face != Mii::MiiExpression::Normal)
+            shownHeads.push_back({PlazaHeadKey(slot, face), plazaMii.mii.record, face});
+    }
+    return shownHeads;
 }
 
 // Beyond the ground the plaza is white, the color its edges fade into (Assumed, CHN-71).
