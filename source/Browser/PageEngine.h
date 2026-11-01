@@ -23,8 +23,8 @@ namespace Browser
 
 // The browser engine in the thread of the page (PageThread): the hidden window that the engine belongs to, the visual of Windows'
 // composition that it draws into, the WebView2 controller with its events, the capture of the visual and the input through the
-// DevTools protocol. Every function runs on
-// that thread, which is a single-threaded COM apartment with a message loop, as WebView2 needs.
+// DevTools protocol. Every function runs on that thread, which is a single-threaded COM apartment with a message loop, as WebView2
+// needs.
 class PageEngine
 {
 public:
@@ -70,6 +70,13 @@ private:
     void ListenToPageEvents();
     void ListenToLoadEvents();
     void ListenToQuestions();
+    void RefuseEdgeQuestions();
+    void OnSourceChanged();
+    void OnTitleChanged();
+    void OnHistoryChanged();
+    void OnNewWindowRequested(ICoreWebView2NewWindowRequestedEventArgs& arguments);
+    void OnWebMessage(ICoreWebView2WebMessageReceivedEventArgs& arguments);
+    void OnScriptDialog(ICoreWebView2ScriptDialogOpeningEventArgs& arguments);
     void ReportStartError(const std::string& message);
     void ReportLoadStep(bool isLoading, double progress);
     void ReportFailure(const std::string& address, LoadError error);
