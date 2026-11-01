@@ -623,6 +623,7 @@ void InternetPages::AskForSecurityKey()
 {
     InputRequest request;
     request.kind = InputKind::Text;
+    request.title = u"Input the password or key.";
     request.initialText = TextOfName(typedKey);
     request.maximumLength = MaximumKeyLength;
 

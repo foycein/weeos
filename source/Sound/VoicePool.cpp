@@ -66,17 +66,17 @@ std::size_t VoicePool::ActiveVoiceCount() const
     return activeCount;
 }
 
-void VoicePool::BeginFrame()
+void VoicePool::BeginFrame(SoundMode mode)
 {
     for (Slot& slot : slots)
-        slot.voice.BeginFrame();
+        slot.voice.BeginFrame(mode);
 }
 
-void VoicePool::Mix(const Resampler& resampler, double deviceSampleRate, std::span<float> left, std::span<float> right,
-    std::size_t firstSampleInFrame, std::size_t frameLength)
+void VoicePool::Mix(const Resampler& resampler, double deviceSampleRate, const MixBuffers& buffers, std::size_t firstSampleInFrame,
+    std::size_t frameLength)
 {
     for (Slot& slot : slots)
-        slot.voice.Mix(resampler, deviceSampleRate, left, right, firstSampleInFrame, frameLength);
+        slot.voice.Mix(resampler, deviceSampleRate, buffers, firstSampleInFrame, frameLength);
 }
 
 }

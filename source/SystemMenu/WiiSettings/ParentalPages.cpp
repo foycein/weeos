@@ -339,7 +339,7 @@ void ParentalPages::BuildCheckPage(PageId page, PageBuilder& builder)
 void ParentalPages::BuildPinChoice(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {u"Choose a 4-digit PIN."});
-    AddField(builder, 0, 1, typedPin, InputKind::Digits, PinLength);
+    AddField(builder, 0, 1, typedPin, InputKind::Digits, PinLength, u"Choose a 4-digit PIN.");
 
     builder.AddBackButton([this] { navigator.GoTo(PageAfterTheSecret(PageId::ParentalGuardianNote)); });
     builder.AddBottomRight(u"OK",
@@ -353,7 +353,7 @@ void ParentalPages::BuildPinChoice(PageBuilder& builder)
 void ParentalPages::BuildPinRepeat(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {u"Please enter the PIN again."});
-    AddField(builder, 0, 1, typedRepeat, InputKind::Digits, PinLength);
+    AddField(builder, 0, 1, typedRepeat, InputKind::Digits, PinLength, u"Please enter the PIN again.");
 
     builder.AddBackButton([this] { navigator.GoTo(PageId::ParentalPinChoice); });
     builder.AddBottomRight(u"OK", [this] { AcceptRepeatedPin(); });
@@ -391,7 +391,7 @@ void ParentalPages::BuildAnswerChoice(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {std::u16string(QuestionText(draft.secretQuestion))});
     builder.AddText({24, 290, 560, 44}, TextRole::Message, {u"Enter the answer to your secret question."});
-    AddField(builder, 0, 1, typedAnswer, InputKind::Text, LongestAnswer);
+    AddField(builder, 0, 1, typedAnswer, InputKind::Text, LongestAnswer, QuestionText(draft.secretQuestion));
 
     builder.AddBackButton([this] { navigator.GoTo(PageId::ParentalQuestionChoice); });
     builder.AddBottomRight(u"OK", [this] { AcceptAnswer(); });
@@ -468,7 +468,7 @@ void ParentalPages::BuildRestriction(PageBuilder& builder)
 void ParentalPages::BuildPinCheck(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {u"Enter your PIN."});
-    AddField(builder, 0, 2, typedCheck, InputKind::Digits, PinLength);
+    AddField(builder, 0, 2, typedCheck, InputKind::Digits, PinLength, u"Enter your PIN.");
     builder.AddChoice(1, 2, u"I forgot", false, [this] { navigator.GoTo(PageId::ParentalAnswerCheck); }).sound = PageSound::Decide;
 
     builder.AddBottomLeft(u"Cancel", [this] { navigator.GoTo(PageId::SecondIndex); }).sound = PageSound::Back;
@@ -478,7 +478,7 @@ void ParentalPages::BuildPinCheck(PageBuilder& builder)
 void ParentalPages::BuildAnswerCheck(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {std::u16string(QuestionText(draft.secretQuestion))});
-    AddField(builder, 0, 2, typedCheck, InputKind::Text, LongestAnswer);
+    AddField(builder, 0, 2, typedCheck, InputKind::Text, LongestAnswer, QuestionText(draft.secretQuestion));
     builder.AddChoice(1, 2, u"I forgot", false, [this] { navigator.GoTo(PageId::ParentalMasterKeyInformation); }).sound = PageSound::Decide;
 
     builder.AddBottomLeft(u"Cancel", [this] { navigator.GoTo(PageId::SecondIndex); }).sound = PageSound::Back;
@@ -498,7 +498,7 @@ void ParentalPages::BuildMasterKeyInformation(PageBuilder& builder)
 void ParentalPages::BuildMasterKeyEntry(PageBuilder& builder)
 {
     builder.AddText(RequestBounds, TextRole::Message, {u"Enter the master key."});
-    AddField(builder, 0, 1, typedCheck, InputKind::Digits, MasterKeyLength);
+    AddField(builder, 0, 1, typedCheck, InputKind::Digits, MasterKeyLength, u"Enter the master key.");
 
     builder.AddBottomLeft(u"Cancel", [this] { navigator.GoTo(PageId::SecondIndex); }).sound = PageSound::Back;
     builder.AddBottomRight(u"OK", [this] { CheckMasterKey(); });
@@ -510,15 +510,17 @@ void ParentalPages::BuildNotice(PageBuilder& builder, std::vector<std::u16string
     builder.AddBottomRight(u"OK", [this, nextPage] { navigator.GoTo(nextPage); });
 }
 
-void ParentalPages::AddField(PageBuilder& builder, int slot, int slotCount, std::u16string& typedText, InputKind kind, std::size_t maximumLength)
+void ParentalPages::AddField(PageBuilder& builder, int slot, int slotCount, std::u16string& typedText, InputKind kind, std::size_t maximumLength,
+    std::u16string_view title)
 {
     std::u16string shownText = kind == InputKind::Digits ? StarsFor(typedText) : typedText;
 
     PageButton& field = builder.AddChoice(slot, slotCount, shownText, false,
-        [this, &typedText, kind, maximumLength]
+        [this, &typedText, kind, maximumLength, title = std::u16string(title)]
         {
             InputRequest request;
             request.kind = kind;
+            request.title = title;
             request.maximumLength = maximumLength;
 
             navigator.RequestInput(request,

@@ -15,7 +15,8 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Sound archive";
-constexpr std::uint16_t SupportedVersion = 0x0101;
+constexpr std::uint16_t FirstVersion = 0x0101;
+constexpr std::uint16_t SecondVersion = 0x0104;
 constexpr std::size_t HeaderSize = 0x40;
 constexpr std::size_t SectionStartSize = 8;
 constexpr std::uint32_t NoName = 0xFFFFFFFF;
@@ -362,7 +363,9 @@ EmbeddedFile SoundArchiveFile::FindFile(std::uint32_t fileId) const&
 
 SoundArchiveFile ReadSoundArchiveFile(Formats::ByteView bytes)
 {
-    SoundFile file = ReadSoundFileHeader(bytes, "RSAR", SupportedVersion, HeaderSize, {"SYMB", "INFO", "FILE"}, DataDescription);
+    const std::vector<std::string_view> sectionTags = {"SYMB", "INFO", "FILE"};
+    const KnownVersion knownVersions[] = {{FirstVersion, sectionTags}, {SecondVersion, sectionTags}};
+    SoundFile file = ReadSoundFileHeader(bytes, "RSAR", knownVersions, HeaderSize, DataDescription);
 
     std::vector<std::string> names = ReadNames(file.sections[0]);
     InformationReader information(file.sections[1], names);

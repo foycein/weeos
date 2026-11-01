@@ -75,12 +75,18 @@ std::bitset<PlayerCount> InputManager::ConnectedPlayers() const
 
 bool InputManager::AnyPlayerPressed(const ButtonSet& buttons) const
 {
-    for (const std::optional<PlayerInput>& player : players)
+    for (int playerIndex = 0; playerIndex < PlayerCount; ++playerIndex)
     {
-        if (player && HasPressed(*player, buttons))
+        if (HasPlayerPressed(playerIndex, buttons))
             return true;
     }
     return false;
+}
+
+bool InputManager::HasPlayerPressed(int playerIndex, const ButtonSet& buttons) const
+{
+    const std::optional<PlayerInput>& player = players.at(playerIndex);
+    return player && HasPressed(*player, buttons);
 }
 
 }

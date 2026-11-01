@@ -53,6 +53,7 @@ void NicknamePage::AskForNickname()
 {
     InputRequest request;
     request.kind = InputKind::Text;
+    request.title = u"Console Nickname";
     request.initialText = nickname;
     request.maximumLength = MaximumNicknameLength;
 

@@ -23,6 +23,9 @@ struct InputRequest
 {
     InputKind kind = InputKind::Text;
 
+    // The words the keyboard shows above its field.
+    std::u16string title;
+
     // The text that is in the field when the keyboard opens.
     std::u16string initialText;
 

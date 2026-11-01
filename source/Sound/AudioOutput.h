@@ -44,15 +44,23 @@ enum class AudioLatency
 // so Windows does not convert the sound again. The device wakes the audio thread through an event; the thread asks the function
 // for the free frames and puts the left sound on the first channel and the right sound on the second.
 //
-// Create, use and destroy an AudioOutput on one thread. When the user changes the default device or its format, the output fails
-// (HasFailed) and the program creates a new AudioOutput and a sound system for the new SampleRate.
+// The output keeps playing when things go wrong around it. When the program is too slow, the device plays silence for a moment
+// and goes on (UnderrunCount). When the user chooses another default device, or the device is unplugged, or its format changes, the
+// audio thread opens the default device again, as often as it takes, until there is one (ReopenCount). It then tells the program
+// the sample rate of the new device. Only a render function that throws stops the output for good (HasFailed).
+//
+// Create, start, stop and destroy an AudioOutput on one thread.
 class AudioOutput
 {
 public:
-    // Fills the buffer with stereo frames (left, right, left, right and so on), at SampleRate(). The audio thread calls it.
+    // Fills the buffer with stereo frames (left, right, left, right and so on), at the sample rate of the device. The audio thread calls it.
     // It must not wait for anything for long: no file, no lock that another thread holds for long, no memory allocation.
     // When it throws, it is not called again and the device gets silence.
     using RenderFunction = std::function<void(std::span<float> interleavedStereo)>;
+
+    // Called on the audio thread with the sample rate of the device when the stream starts, and again each time the output has
+    // opened the device again. The sample rate may be another one now; then the function that makes the sound has to follow.
+    using SampleRateFunction = std::function<void(std::uint32_t sampleRate)>;
 
     // Opens the default playback device and prepares the stream. Nothing is played until Start.
     // Throws a NoPlaybackDeviceError when there is no device, and an AudioOutputError when it does not give the format the output needs.
@@ -62,7 +70,7 @@ public:
     AudioOutput(const AudioOutput&) = delete;
     AudioOutput& operator=(const AudioOutput&) = delete;
 
-    // The sample rate that Windows mixes at for the device.
+    // The sample rate that Windows mixes at for the device that is open now.
     std::uint32_t SampleRate() const;
 
     std::uint32_t ChannelCount() const;
@@ -72,21 +80,31 @@ public:
 
     // Mutes or unmutes only the sound of this program in the volume mixer of Windows. The volume of the device and of the other
     // programs does not change. Windows remembers the setting of a program, so a program that mutes itself must unmute when it is done.
+    // The setting is made again on each device that the output opens later.
     void SetSessionMuted(bool muted);
     bool IsSessionMuted() const;
 
-    // Starts the audio thread and the stream. The function is called on the audio thread until Stop.
-    void Start(RenderFunction renderFunction);
+    // Starts the audio thread and the stream. The functions are called on the audio thread until Stop.
+    void Start(RenderFunction renderFunction, SampleRateFunction sampleRateChanged = nullptr);
 
     // Stops the stream and the audio thread. Does nothing when the output is not playing.
     void Stop();
 
-    // True when the audio thread has stopped because the device failed (for instance it was unplugged), or when the render function
-    // threw an exception.
+    // Makes the audio thread open the default device again, for example because the user has chosen another one in the settings.
+    // It returns at once. A stopped output opens the device again when it starts.
+    void ReopenDevice();
+
+    // True when the render function threw an exception, so that the audio thread has stopped.
     bool HasFailed() const;
 
     // The number of frames handed to the device since the output was opened.
     std::uint64_t DeliveredFrameCount() const;
+
+    // The number of times the device had played all it was given before the audio thread came back with more.
+    std::uint64_t UnderrunCount() const;
+
+    // The number of times the audio thread has opened the device again while it was playing.
+    std::uint32_t ReopenCount() const;
 
 private:
     struct Implementation;

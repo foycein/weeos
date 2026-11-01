@@ -2,9 +2,11 @@
 
 #include "Sound/LoadedFiles.h"
 #include "Sound/Mixer.h"
+#include "Sound/Reverb.h"
 #include "Sound/SequencePlayer.h"
 #include "Sound/SoundArchiveFile.h"
 #include "Sound/SoundCommandQueue.h"
+#include "Sound/SoundMode.h"
 #include "Sound/VoicePool.h"
 
 #include <atomic>
@@ -57,14 +59,24 @@ public:
     // A paused system makes silence and does not move on.
     void SetPaused(bool paused);
 
+    // The sound mode of the console, the setting IPL.SND. The sounds follow it from the next sound frame on.
+    void SetSoundMode(SoundMode mode);
+
+    // The reverb of the effect bus A, which the menu sets up. Without it the sounds are dry.
+    void SetReverbEnabled(bool enabled);
+
+    // Tells the system that the device plays at another sample rate now. Sounds go on, but the tail of the reverb is lost.
+    // Call it on the thread that calls Render.
+    void SetDeviceSampleRate(std::uint32_t sampleRate);
+
     // Fills the buffer with the next stereo samples, left and right alternating, at the sample rate of the device.
     void Render(std::span<float> interleavedStereo);
 
     std::size_t ActiveVoiceCount() const;
     std::size_t RunningSoundCount() const;
 
-    // The number of times a track of a sequence had to be ended because of a command that is not supported (or that went wrong),
-    // among all the sequences that have been played. The sequences of the menu never do.
+    // The number of times something went wrong in a sequence (see SequencePlayer::ErrorCount), among all the sequences that have
+    // been played. The sequences of the menu never do: every note they play has a sound in its bank.
     std::size_t SequenceErrorCount() const;
 
 private:
@@ -89,6 +101,9 @@ private:
     void StopRunningSound(RunningSound& sound);
     void RunSoundFrame();
     void StartNextFrame();
+    void ResizeBuffers(std::uint32_t sampleRate);
+    MixBuffers ClearedBuffers(std::size_t count);
+    void AddReverb(const MixBuffers& buffers);
 
     SoundArchiveFile archive;
     std::map<std::uint32_t, LoadedWaveSoundFile> waveSoundFiles;
@@ -98,6 +113,7 @@ private:
     std::size_t sequenceErrorCount = 0;
     VoicePool voices;
     Mixer mixer;
+    Reverb reverb;
     SoundCommandQueue commands;
     std::vector<RunningSound> runningSounds;
     std::uint64_t soundsStarted = 0;
@@ -105,6 +121,8 @@ private:
     std::atomic<std::uint32_t> lastHandleNumber{0};
     std::atomic<float> masterVolume{1.0f};
     std::atomic<bool> paused{false};
+    std::atomic<SoundMode> soundMode{SoundMode::Stereo};
+    std::atomic<bool> reverbEnabled{true};
 
     // Where the audio is in time. A sound frame lasts 3 milliseconds, which is a whole number of samples only at some rates.
     std::uint64_t framesStarted = 0;
@@ -113,6 +131,8 @@ private:
 
     std::vector<float> leftSamples;
     std::vector<float> rightSamples;
+    std::vector<float> reverbLeftSamples;
+    std::vector<float> reverbRightSamples;
 };
 
 }

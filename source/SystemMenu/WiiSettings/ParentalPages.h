@@ -51,7 +51,8 @@ private:
     void BuildNotice(PageBuilder& builder, std::vector<std::u16string> lines, PageId nextPage);
 
     // The field that opens the keyboard. A PIN shows a star for each digit.
-    void AddField(PageBuilder& builder, int slot, int slotCount, std::u16string& typedText, InputKind kind, std::size_t maximumLength);
+    void AddField(PageBuilder& builder, int slot, int slotCount, std::u16string& typedText, InputKind kind, std::size_t maximumLength,
+        std::u16string_view title);
 
     void AcceptRepeatedPin();
     void AcceptAnswer();

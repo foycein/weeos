@@ -38,6 +38,7 @@ protected:
 private:
     static PageId FirstPageOf(int argument);
 
+    bool IsWaitingForKeyboard();
     void HandlePlayers();
     void PressWithPlayer(int player, std::size_t button);
     void RepeatHeldButton();
@@ -53,6 +54,9 @@ private:
 
     // The button that the pointer of the first remote that points at the screen is on.
     std::optional<std::size_t> pointedButton;
+
+    // The player who pressed a button last: the soft keyboard follows that player's pointer.
+    int pressingPlayer = 0;
 
     // The button that is held down, by which player, and for how many steps.
     std::optional<std::size_t> heldButton;

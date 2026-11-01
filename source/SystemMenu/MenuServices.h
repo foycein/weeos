@@ -15,6 +15,8 @@ class InputManager;
 class MenuClock;
 class MenuFiles;
 class ScreenManager;
+class SoftKeyboard;
+class SoundRequests;
 struct SettingsFlowServices;
 
 // Everything a screen needs from the rest of the menu. The original keeps these objects in global variables,
@@ -29,6 +31,8 @@ struct MenuServices
     InputManager& input;
     CursorManager& cursors;
     ScreenManager& screens;
+    SoundRequests& sounds;
+    SoftKeyboard& keyboard;
 
     // What Wii Settings works with. Nothing when the menu runs without it (the tests of the other screens).
     SettingsFlowServices* wiiSettings;

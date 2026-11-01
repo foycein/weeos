@@ -27,6 +27,7 @@ Application::Application(const Ios::IosFolders& folders)
     , pacer(timer.ElapsedSeconds())
 {
     wiiSettings.UseDisplay(menu.Services().display);
+    menu.UsePhysicalKeyboard(console.Services().GetKeyboard());
     window.SetListener(&keyboard);
 }
 

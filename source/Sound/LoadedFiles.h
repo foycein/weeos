@@ -3,6 +3,7 @@
 #include "Sound/BankFile.h"
 #include "Sound/SequenceFile.h"
 #include "Sound/SoundArchiveFile.h"
+#include "Sound/WaveArchiveFile.h"
 #include "Sound/WaveDecoder.h"
 #include "Sound/WaveSoundFile.h"
 

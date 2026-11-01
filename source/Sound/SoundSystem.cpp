@@ -16,6 +16,15 @@ namespace
 constexpr float HighestNumber = 127.0f;
 constexpr std::uint64_t MillisecondsPerSecond = 1000;
 
+// The AX library plays what an effect makes from a frame of its bus two sound frames later: three buffers take turns, one that the
+// voices fill, one that the effect works on and one that is played (0x81552880, 0x81552690, 0x815526c4).
+constexpr std::uint64_t EffectBusDelayFrames = 2;
+
+std::size_t EffectBusDelaySamples(std::uint32_t sampleRate)
+{
+    return std::size_t(sampleRate * EffectBusDelayFrames * SoundFrameMilliseconds / MillisecondsPerSecond);
+}
+
 // The most samples that one sound frame can have at a sample rate: its length rounded up.
 std::size_t LongestFrameLength(std::uint32_t sampleRate)
 {
@@ -34,6 +43,7 @@ std::uint64_t SamplesBeforeFrame(std::uint64_t frameNumber, std::uint32_t sample
 SoundSystem::SoundSystem(SoundArchiveFile archiveToPlay, std::uint32_t deviceSampleRate)
     : archive(std::move(archiveToPlay))
     , mixer(deviceSampleRate)
+    , reverb(deviceSampleRate, MenuReverbParameters, EffectBusDelaySamples(deviceSampleRate))
 {
     for (const SoundInfo& sound : archive.sounds)
     {
@@ -43,8 +53,7 @@ SoundSystem::SoundSystem(SoundArchiveFile archiveToPlay, std::uint32_t deviceSam
             LoadSequenceFilesOf(sound);
     }
 
-    leftSamples.resize(LongestFrameLength(deviceSampleRate));
-    rightSamples.resize(LongestFrameLength(deviceSampleRate));
+    ResizeBuffers(deviceSampleRate);
 }
 
 void SoundSystem::LoadWaveSoundFileOf(const SoundInfo& sound)
@@ -179,6 +188,7 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
     settings.pan = PanFromNumber(sound.pan) + PanFromNumber(note.pan);
     settings.surroundPan = SurroundPanFromNumber(sound.surroundPan);
     settings.mainSend = float(sound.mainSend) / HighestNumber;
+    settings.effectSend = float(sound.effectSendA) / HighestNumber;
     settings.pitch = sound.pitch * note.tune;
 
     Envelope envelope(note.attack, note.decay, note.sustain, note.release);
@@ -272,7 +282,71 @@ void SoundSystem::RunSoundFrame()
     std::erase_if(runningSounds, [&](const RunningSound& sound) { return HasEnded(sound); });
 
     sequenceGlobals.NextRandomNumber();
-    voices.BeginFrame();
+    voices.BeginFrame(soundMode.load());
+}
+
+MixBuffers SoundSystem::ClearedBuffers(std::size_t count)
+{
+    MixBuffers buffers{
+        std::span<float>(leftSamples.data(), count),
+        std::span<float>(rightSamples.data(), count),
+        std::span<float>(reverbLeftSamples.data(), count),
+        std::span<float>(reverbRightSamples.data(), count),
+    };
+
+    std::fill(buffers.left.begin(), buffers.left.end(), 0.0f);
+    std::fill(buffers.right.begin(), buffers.right.end(), 0.0f);
+    std::fill(buffers.reverbLeft.begin(), buffers.reverbLeft.end(), 0.0f);
+    std::fill(buffers.reverbRight.begin(), buffers.reverbRight.end(), 0.0f);
+    return buffers;
+}
+
+// The reverb gets what the voices send to it, and what comes out is added to the speakers. It also goes on when no voice sends
+// anything, because its tail is still sounding.
+void SoundSystem::AddReverb(const MixBuffers& buffers)
+{
+    if (!reverbEnabled.load())
+        return;
+
+    reverb.Process(buffers.reverbLeft, buffers.reverbRight);
+    for (std::size_t sampleNumber = 0; sampleNumber < buffers.left.size(); ++sampleNumber)
+    {
+        buffers.left[sampleNumber] += buffers.reverbLeft[sampleNumber];
+        buffers.right[sampleNumber] += buffers.reverbRight[sampleNumber];
+    }
+}
+
+void SoundSystem::SetSoundMode(SoundMode mode)
+{
+    soundMode.store(mode);
+}
+
+void SoundSystem::SetReverbEnabled(bool enabled)
+{
+    reverbEnabled.store(enabled);
+}
+
+void SoundSystem::SetDeviceSampleRate(std::uint32_t sampleRate)
+{
+    if (sampleRate == mixer.DeviceSampleRate())
+        return;
+
+    mixer.SetDeviceSampleRate(sampleRate);
+    reverb = Reverb(sampleRate, MenuReverbParameters, EffectBusDelaySamples(sampleRate));
+    ResizeBuffers(sampleRate);
+
+    // The frames start again from the time zero, because the grid of the frames depends on the rate.
+    framesStarted = 0;
+    frameLength = 0;
+    samplesPlayedInFrame = 0;
+}
+
+void SoundSystem::ResizeBuffers(std::uint32_t sampleRate)
+{
+    leftSamples.resize(LongestFrameLength(sampleRate));
+    rightSamples.resize(LongestFrameLength(sampleRate));
+    reverbLeftSamples.resize(LongestFrameLength(sampleRate));
+    reverbRightSamples.resize(LongestFrameLength(sampleRate));
 }
 
 void SoundSystem::Render(std::span<float> interleavedStereo)
@@ -295,13 +369,13 @@ void SoundSystem::Render(std::span<float> interleavedStereo)
             StartNextFrame();
 
         std::size_t count = std::min(totalSampleCount - doneSampleCount, frameLength - samplesPlayedInFrame);
-        std::span<float> left(leftSamples.data(), count);
-        std::span<float> right(rightSamples.data(), count);
-        std::fill(left.begin(), left.end(), 0.0f);
-        std::fill(right.begin(), right.end(), 0.0f);
+        MixBuffers buffers = ClearedBuffers(count);
 
-        mixer.Mix(voices, left, right, samplesPlayedInFrame, frameLength);
+        mixer.Mix(voices, buffers, samplesPlayedInFrame, frameLength);
+        AddReverb(buffers);
 
+        std::span<float> left = buffers.left;
+        std::span<float> right = buffers.right;
         for (std::size_t sampleNumber = 0; sampleNumber < count; ++sampleNumber)
         {
             std::size_t firstChannelIndex = StereoChannelCount * (doneSampleCount + sampleNumber);

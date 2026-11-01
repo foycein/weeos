@@ -6,6 +6,7 @@
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuError.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/SoftKeyboard.h"
 
 namespace SystemMenu
 {
@@ -89,6 +90,9 @@ SettingsFlow& SettingsScreen::Flow()
 
 bool SettingsScreen::RunMain()
 {
+    if (IsWaitingForKeyboard())
+        return false;
+
     HandlePlayers();
     RepeatHeldButton();
     flow->Step();
@@ -102,6 +106,40 @@ bool SettingsScreen::RunClosing()
         return false;
 
     GoToRoot(ScreenId::WiiOptionsBackground, FirstIndexArgument);
+    return true;
+}
+
+// A page that asks for text or digits gets the soft keyboard. While it is open the pages wait, and its answer goes to the page.
+// The parental dialog (screen 0x1b) is not in this menu yet, so a request for it stays open and the page stays where it is.
+bool SettingsScreen::IsWaitingForKeyboard()
+{
+    if (services.keyboard.IsOpen())
+        return true;
+
+    std::optional<KeyboardAnswer> answer = services.keyboard.TakeAnswer();
+    if (answer)
+    {
+        if (answer->wasConfirmed)
+            flow->AnswerInput(answer->text);
+        else
+            flow->CancelInput();
+
+        return false;
+    }
+
+    const std::optional<InputRequest>& request = flow->PendingInput();
+    if (!request || request->kind == InputKind::ParentalPassword)
+        return false;
+
+    KeyboardRequest keyboardRequest;
+    keyboardRequest.title = request->title;
+    keyboardRequest.initialText = request->initialText;
+    keyboardRequest.rules.maximumLength = request->maximumLength;
+    if (request->kind == InputKind::Digits)
+        keyboardRequest.rules.allowedCharacters = IsDigit;
+
+    keyboardRequest.playerIndex = pressingPlayer;
+    services.keyboard.Open(keyboardRequest);
     return true;
 }
 
@@ -146,6 +184,7 @@ std::optional<std::size_t> SettingsScreen::FindButtonAt(float pageX, float pageY
 
 void SettingsScreen::PressWithPlayer(int player, std::size_t button)
 {
+    pressingPlayer = player;
     heldButton.reset();
     stepsHeld = 0;
 

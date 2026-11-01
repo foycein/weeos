@@ -16,11 +16,12 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Wave sound file";
-constexpr std::uint16_t SupportedVersion = 0x0102;
+constexpr std::uint16_t VersionWithWaves = 0x0102;
+constexpr std::uint16_t VersionWithWaveArchive = 0x0103;
 constexpr std::size_t HeaderSize = 0x20;
 constexpr std::size_t SectionStartSize = 8;
 constexpr std::size_t UnusedAfterSendsSize = 2;
-constexpr std::size_t EffectSendCount = 3;
+constexpr std::size_t SendsToOtherBusesSize = 2;
 constexpr std::size_t TablesAfterSendsSize = 20;
 
 // The three parts that make up a wave sound: its description, the list of its tracks and the list of its notes.
@@ -45,7 +46,8 @@ void ReadInfo(Formats::ByteReader& reader, WaveSound& sound)
     sound.pitch = reader.ReadFloat();
     sound.pan = reader.ReadByte();
     sound.surroundPan = reader.ReadByte();
-    reader.Skip(EffectSendCount);
+    sound.effectSendA = reader.ReadByte();
+    reader.Skip(SendsToOtherBusesSize);
     sound.mainSend = reader.ReadByte();
     reader.Skip(UnusedAfterSendsSize);
 
@@ -139,21 +141,30 @@ std::vector<WaveInfo> ReadWaves(Formats::ByteView waveSection)
 
 }
 
+void CheckThatTheWavesExist(const WaveSoundFile& waveSoundFile, std::size_t waveCount)
+{
+    for (const WaveSound& sound : waveSoundFile.sounds)
+    {
+        if (sound.note.waveIndex < 0 || static_cast<std::size_t>(sound.note.waveIndex) >= waveCount)
+        {
+            throw Formats::FormatError(std::format("{}: a sound plays the wave {}, but there are {} waves", DataDescription,
+                sound.note.waveIndex, waveCount));
+        }
+    }
+}
+
 WaveSoundFile ReadWaveSoundFile(Formats::ByteView bytes)
 {
-    SoundFile file = ReadSoundFileHeader(bytes, "RWSD", SupportedVersion, HeaderSize, {"DATA", "WAVE"}, DataDescription);
+    const KnownVersion knownVersions[] = {{VersionWithWaves, {"DATA", "WAVE"}}, {VersionWithWaveArchive, {"DATA"}}};
+    SoundFile file = ReadSoundFileHeader(bytes, "RWSD", knownVersions, HeaderSize, DataDescription);
 
     WaveSoundFile waveSoundFile;
     waveSoundFile.sounds = ReadSounds(file.sections[0]);
-    waveSoundFile.waves = ReadWaves(file.sections[1]);
-
-    for (const WaveSound& sound : waveSoundFile.sounds)
+    waveSoundFile.describesItsWaves = file.version == VersionWithWaves;
+    if (waveSoundFile.describesItsWaves)
     {
-        if (sound.note.waveIndex < 0 || static_cast<std::size_t>(sound.note.waveIndex) >= waveSoundFile.waves.size())
-        {
-            throw Formats::FormatError(std::format("{}: a sound plays the wave {}, but the file has {} waves", DataDescription,
-                sound.note.waveIndex, waveSoundFile.waves.size()));
-        }
+        waveSoundFile.waves = ReadWaves(file.sections[1]);
+        CheckThatTheWavesExist(waveSoundFile, waveSoundFile.waves.size());
     }
 
     return waveSoundFile;
