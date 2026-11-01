@@ -153,6 +153,13 @@ bool CreateMessageScreen::IsPlayingBack()
 
 std::optional<WiiSpeakScreenName> CreateMessageScreen::UpdateLetter()
 {
+    // The coming in of the letter hides the hint of the voice box.
+    if (!isVoiceBoxShown && !letter.IsAnimationPlaying("all_inOut"))
+    {
+        ShowLetterVoice();
+        isVoiceBoxShown = true;
+    }
+
     if (session.dialog.IsOpen() || isAskingToQuit)
     {
         std::optional<int> choice = session.dialog.TakeChoice();
@@ -344,13 +351,13 @@ void CreateMessageScreen::ShowCommentButtons()
     comment.SetButtonEnabled(CommentRightButton, takesButtons);
 }
 
+// The voice box shows the first frame of C_on (grey, with the hint) while it holds no voice, and turns green once it holds one.
 void CreateMessageScreen::ShowLetterVoice()
 {
-    if (!hasKeptVoice)
-        return;
-
-    letter.PlayAnimation("C_on");
-    letter.SetText("T_mic", u"");
+    if (hasKeptVoice)
+        letter.PlayAnimation("C_on");
+    else
+        letter.ShowAnimationFrame("C_on", 0);
 }
 
 }

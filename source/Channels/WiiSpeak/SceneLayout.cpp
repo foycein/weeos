@@ -5,6 +5,13 @@
 namespace Channels
 {
 
+namespace
+{
+
+constexpr float SqueezedTextMargin = 0.99f;
+
+}
+
 SceneLayout::SceneLayout(SystemMenu::Display& display, std::unique_ptr<Layout::LayoutArchive> layoutArchive, const std::string& name)
     : archive(std::move(layoutArchive))
     , layoutName(name)
@@ -72,9 +79,28 @@ void SceneLayout::Draw()
     layout.Draw();
 }
 
+// As the channel does with every text it puts in: a text wider than its box is squeezed sideways until it fits, a little narrower
+// than the box. The squeeze starts again from the width the layout gave the text.
 void SceneLayout::SetText(std::string_view paneName, std::u16string_view text)
 {
     layout.SetText(paneName, text);
+    Formats::Pane& pane = layout.PaneNamed(paneName);
+    Formats::TextBox& textBox = *pane.textBox;
+    std::string name(paneName);
+    if (!widthsGivenByTheLayout.contains(name))
+        widthsGivenByTheLayout[name] = {textBox.fontSize.x, textBox.characterSpace};
+
+    textBox.fontSize.x = widthsGivenByTheLayout[name].fontWidth;
+    textBox.characterSpace = widthsGivenByTheLayout[name].characterSpace;
+
+    float boxWidth = pane.width;
+    float textWidth = layout.WidestLineOfText(paneName);
+    if (textWidth <= boxWidth)
+        return;
+
+    float squeeze = boxWidth / textWidth;
+    textBox.fontSize.x *= SqueezedTextMargin * squeeze;
+    textBox.characterSpace *= squeeze;
 }
 
 void SceneLayout::SetVisible(std::string_view paneName, bool isVisible)

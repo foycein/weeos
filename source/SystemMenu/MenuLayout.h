@@ -82,6 +82,9 @@ public:
     // Throws a MenuError when the layout has no such text box or the display has no fonts.
     Text::LaidOutText LayOutText(std::string_view paneName);
 
+    // How wide the widest line of the text box is when the lines end only at the line feeds, not at the edge of the box.
+    float WidestLineOfText(std::string_view paneName);
+
     // A point in the space of the pane as a point of the picture, in layout units. Nothing while the pane is not shown.
     std::optional<Formats::Vector2> PointOfPaneInPicture(std::string_view paneName, Formats::Vector2 point);
 

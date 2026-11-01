@@ -18,6 +18,7 @@ constexpr std::string_view SceneFolder = "./scene/";
 constexpr std::string_view SceneExtension = ".szs";
 constexpr std::string_view EnglishMessagesPath = "message/WiiMic_us_en.bmg";
 constexpr std::string_view LayoutFontPath = "font/pac_nRodDb_32_I4.brfnt";
+constexpr std::string_view LargeLayoutFontPath = "font/pac_nRodDb_200_IA4.brfnt";
 constexpr std::string_view CheckMusicPath = "./eccheckbgm.bns";
 
 // The bundles keep blyt, anim and timg at their top, without the folder "arc".
@@ -62,6 +63,11 @@ Formats::MessageFile WiiSpeakFiles::EnglishMessages() const
 Formats::ByteView WiiSpeakFiles::LayoutFont() const
 {
     return FindFileOrFail(systemArchive, LayoutFontPath);
+}
+
+Formats::ByteView WiiSpeakFiles::LargeLayoutFont() const
+{
+    return FindFileOrFail(systemArchive, LargeLayoutFontPath);
 }
 
 Formats::ByteView WiiSpeakFiles::CheckMusic() const

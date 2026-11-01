@@ -25,6 +25,7 @@ namespace
 {
 
 constexpr std::string_view LayoutFontName = "pac_nRodDb_32_I4.brfnt";
+constexpr std::string_view LargeLayoutFontName = "pac_nRodDb_200_IA4.brfnt";
 
 // The hands are the ones of the HOME Button Menu in content 3: the channel's own hand (P1_Def.arc of system.szs) has no hands for
 // players 2 to 4 (as for Forecast and News, CHN-26).
@@ -51,6 +52,7 @@ WiiSpeakChannel::WiiSpeakChannel(ChannelServices& channelServices)
     , session(channelServices, files, messages, dialog, saveFile)
 {
     fonts.AddFont(services.display.Device(), Formats::ReadFont(files.LayoutFont()), {LayoutFontName});
+    fonts.AddFont(services.display.Device(), Formats::ReadFont(files.LargeLayoutFont()), {LargeLayoutFontName});
     services.display.SetTextFonts(fonts.Fonts());
 }
 
@@ -61,8 +63,13 @@ WiiSpeakChannel::~WiiSpeakChannel()
     services.audio.microphone.CloseSession();
 }
 
+// The channel system starts with the picture black; the channel fades it in, and leaves it to the fade to the Wii Menu once asked.
 void WiiSpeakChannel::Update()
 {
+    SystemMenu::Fader& fader = services.fader;
+    if (fader.GetStatus() == SystemMenu::FaderStatus::Covered && !services.wiiMenu.IsRequested())
+        fader.StartFadeIn();
+
     HearTheMicrophone();
     if (stage == Stage::Starting)
         Start();

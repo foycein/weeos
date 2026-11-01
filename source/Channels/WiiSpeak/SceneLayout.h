@@ -47,6 +47,7 @@ public:
     void Calculate();
     void Draw();
 
+    // A text wider than its box is squeezed sideways to fit.
     void SetText(std::string_view paneName, std::u16string_view text);
     void SetVisible(std::string_view paneName, bool isVisible);
 
@@ -58,6 +59,13 @@ private:
     SystemMenu::MenuLayout layout;
     SystemMenu::ButtonController buttons;
     std::map<std::string, std::optional<std::size_t>> animationSlots;
+
+    struct TextWidths
+    {
+        float fontWidth;
+        float characterSpace;
+    };
+    std::map<std::string, TextWidths> widthsGivenByTheLayout;
 };
 
 }

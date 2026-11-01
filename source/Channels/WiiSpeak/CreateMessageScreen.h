@@ -66,6 +66,7 @@ private:
     std::size_t miiCountOfTheConsole;
     Phase phase = Phase::Letter;
     VoiceRecording recording;
+    bool isVoiceBoxShown = false;
     bool hasKeptVoice = false;
     bool changesVoice = false;
     bool isAskingToQuit = false;

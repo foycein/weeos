@@ -35,6 +35,9 @@ public:
     // The font of the layouts, pac_nRodDb_32_I4.brfnt: Rodin DB in 32 points, the face of the console's own font.
     Formats::ByteView LayoutFont() const;
 
+    // The large Rodin DB of the countdown before a recording, pac_nRodDb_200_IA4.brfnt.
+    Formats::ByteView LargeLayoutFont() const;
+
     // The music of the performance check, eccheckbgm.bns.
     Formats::ByteView CheckMusic() const;
 
