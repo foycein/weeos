@@ -34,6 +34,9 @@ enum class StartWindowState
     // The menu's message that the channel cannot be used is open, because WeeOS has no program for it yet.
     ShowingCannotBeUsed,
 
+    // The question whether to set up the Internet first is open (0x0C).
+    AskingForInternetSettings,
+
     // The password dialog of the parental controls is open (0x0B).
     WaitingForPin,
 
@@ -44,7 +47,7 @@ enum class StartWindowState
     // The title was handed to the console, which starts it after this step.
     Started,
 
-    // Wii Settings comes next, for the update of an old channel: the picture fades out first (7).
+    // Wii Settings comes next, for the update of an old channel or for the Internet settings: the picture fades out first (7).
     LeavingForSettings,
 
     // Wii Menu was pressed: the grid zooms out, the window fades out inside the television (6).
@@ -93,7 +96,9 @@ private:
     void ReactToButton(const ButtonGroupEvent& event);
     void PressStart();
     void ShowMessage(std::uint16_t messageNumber);
+    void AskForInternetSettings();
     void ReadAnswerOfCannotBeUsed();
+    void ReadAnswerOfInternetQuestion();
     void ReadAnswerOfPinDialog();
     void BeginStart();
     void RunStarting();

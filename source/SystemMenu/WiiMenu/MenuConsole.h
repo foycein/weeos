@@ -64,6 +64,10 @@ public:
 
     virtual LocalTime GetLocalTime() = 0;
 
+    // True when one of the three Internet connections is switched on and has passed its connection test (0x813FB944). A channel that
+    // needs the Internet asks for the Internet settings before it starts when none has.
+    virtual bool HasTestedInternetConnection() = 0;
+
     // Writes the record of the title that starts now, play_rec.dat (the call 0x81536DC4 of the channel start window).
     virtual void WritePlayRecord(const Formats::PlayRecord& record) = 0;
 

@@ -48,7 +48,10 @@ constexpr std::uint16_t InsertDiscMessage = 4;
 constexpr std::uint16_t CannotReadDiscMessage = 6;
 constexpr std::uint16_t CannotBeUsedMessage = 19;
 constexpr std::uint16_t UpdateMessage = 20;
+constexpr std::uint16_t QuitMessage = 37;
 constexpr std::uint16_t OkMessage = 46;
+constexpr std::uint16_t InternetRequiredMessage = 323;
+constexpr std::uint16_t EnterSettingsMessage = 326;
 
 // The banner of a channel and of the Disc Channel.
 constexpr std::string_view BannerFilePath = "meta/banner.bin";
@@ -62,7 +65,8 @@ constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 constexpr std::string_view GraySound = "WIPL_SE_GRAY_BUTTON";
 constexpr std::string_view CloseSound = "WIPL_SE_CH_UNSELECT";
 
-// The page of Wii Settings with the system update (SystemMenuStructure.md 3.4).
+// The pages of Wii Settings that the window leads to (SystemMenuStructure.md 3.4): the Internet settings and the system update.
+constexpr int InternetSettingsPage = 1;
 constexpr int SystemUpdatePage = 3;
 
 // The password dialog says, after a right PIN, that the restrictions are lifted until the user is back at the Wii Menu.
@@ -279,6 +283,10 @@ bool ChannelStartWindowScreen::RunMain()
         ReadAnswerOfCannotBeUsed();
         break;
 
+    case StartWindowState::AskingForInternetSettings:
+        ReadAnswerOfInternetQuestion();
+        break;
+
     case StartWindowState::WaitingForPin:
         ReadAnswerOfPinDialog();
         break;
@@ -338,9 +346,8 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonGroupEvent& event)
     }
 }
 
-// What Start does depends on the channel (0x813B9488 and 0x813B6F10): an old channel asks for the system update, a restricted channel asks
-// for the PIN. The original also asks for the Internet settings for a channel that needs the Internet while no connection has passed its
-// test; WeeOS is offline, no test can pass, so the channel starts and shows its own offline error (SYS-93).
+// What Start does depends on the channel (0x813B9488 and 0x813B6F10): an old channel asks for the system update, a channel that needs the
+// Internet asks for the Internet settings while no connection has passed its test, a restricted channel asks for the PIN.
 void ChannelStartWindowScreen::PressStart()
 {
     if (!CanStart())
@@ -361,6 +368,12 @@ void ChannelStartWindowScreen::PressStart()
     if (!services.titleLaunch.HasProgram(titleId))
     {
         ShowMessage(CannotBeUsedMessage);
+        return;
+    }
+
+    if (banner->needsInternetConnection && !services.wiiMenu.console.HasTestedInternetConnection())
+    {
+        AskForInternetSettings();
         return;
     }
 
@@ -387,9 +400,32 @@ void ChannelStartWindowScreen::ShowMessage(std::uint16_t messageNumber)
     state = StartWindowState::ShowingCannotBeUsed;
 }
 
+void ChannelStartWindowScreen::AskForInternetSettings()
+{
+    DialogRequest request;
+    request.layout = DialogLayout::TwoButtons;
+    request.message = services.messages.Find(InternetRequiredMessage);
+    request.buttonAText = services.messages.Find(EnterSettingsMessage);
+    request.buttonBText = services.messages.Find(QuitMessage);
+    services.dialogs.Open(request);
+    state = StartWindowState::AskingForInternetSettings;
+}
+
 void ChannelStartWindowScreen::ReadAnswerOfCannotBeUsed()
 {
     if (services.dialogs.TakeAnswer())
+        state = StartWindowState::ShowingChannel;
+}
+
+void ChannelStartWindowScreen::ReadAnswerOfInternetQuestion()
+{
+    std::optional<DialogAnswer> answer = services.dialogs.TakeAnswer();
+    if (!answer)
+        return;
+
+    if (answer == DialogAnswer::ButtonA)
+        LeaveForSettings(InternetSettingsPage);
+    else
         state = StartWindowState::ShowingChannel;
 }
 

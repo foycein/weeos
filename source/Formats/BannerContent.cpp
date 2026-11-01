@@ -33,6 +33,9 @@ constexpr int BannerModuleShift = 24;
 constexpr int IconModuleShift = 28;
 constexpr std::uint32_t ContentNumberMask = 0xF;
 
+// The lower half of the word holds flags. This one marks the channels that need the Internet (0x813B9018): Shop, Forecast, News, Internet.
+constexpr std::uint32_t NeedsInternetConnectionFlag = 0x100;
+
 bool HasContentNumber(std::uint32_t scriptContents, int shift)
 {
     return ((scriptContents >> shift) & ContentNumberMask) != 0;
@@ -90,6 +93,7 @@ BannerContent ReadBannerContent(ByteView content)
     std::uint32_t scriptContents = reader.ReadUint32();
     banner.isIconDrivenByCode = HasContentNumber(scriptContents, IconScriptShift) || HasContentNumber(scriptContents, IconModuleShift);
     banner.isBannerDrivenByCode = HasContentNumber(scriptContents, BannerScriptShift) || HasContentNumber(scriptContents, BannerModuleShift);
+    banner.needsInternetConnection = (scriptContents & NeedsInternetConnectionFlag) != 0;
 
     reader.MoveTo(NamesOffset);
     for (ChannelName& name : banner.names)
