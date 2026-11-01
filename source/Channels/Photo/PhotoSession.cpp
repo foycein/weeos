@@ -1,5 +1,6 @@
 #include "Channels/Photo/PhotoSession.h"
 
+#include "Channels/ChannelError.h"
 #include "Channels/ChannelFiles.h"
 #include "Channels/Photo/PhotoPictures.h"
 
@@ -37,6 +38,57 @@ std::unique_ptr<Layout::LayoutArchive> ReadHands(SystemMenu::TitleContents& cont
     Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, HomeMenuContentIndex);
     return std::make_unique<Layout::LayoutArchive>(Formats::ReadU8Archive(ReadPackedFile(homeMenuFiles, HandArchivePath)));
 }
+
+// The board's database as a channel reaches it: cdb.vff lies in the menu's data folder, which only the menu may change, but the file
+// itself may be written by every title (rw rw rw in the dump). So the channel writes into the file as it is and never makes or deletes it.
+class BoardFiles : public SystemMenu::NandFiles
+{
+public:
+    BoardFiles(Ios::FileSystemService& fileSystemService, Ios::Caller channelCaller)
+        : fileSystem(fileSystemService)
+        , caller(channelCaller)
+    {
+    }
+
+    std::optional<Formats::Bytes> ReadFile(std::string_view path) override
+    {
+        Ios::Result<Ios::OpenFile> file = fileSystem.Open(Ios::NandPath::Parse(path).Value(), Ios::OpenMode::Read, caller);
+        if (file.Failed())
+            return std::nullopt;
+
+        Ios::Result<Ios::FileStatistics> statistics = file.Value().GetStatistics();
+        if (statistics.Failed())
+            return std::nullopt;
+
+        Ios::Result<Formats::Bytes> bytes = file.Value().Read(statistics.Value().length);
+        file.Value().Close();
+        if (bytes.Failed())
+            return std::nullopt;
+
+        return bytes.Value();
+    }
+
+    void DeleteFile(std::string_view path) override
+    {
+        throw ChannelError("A channel cannot delete the file " + std::string(path) + " of the Message Board");
+    }
+
+    void WriteFile(std::string_view path, Formats::ByteView bytes) override
+    {
+        Ios::Result<Ios::OpenFile> file = fileSystem.Open(Ios::NandPath::Parse(path).Value(), Ios::OpenMode::Write, caller);
+        if (file.Failed())
+            throw ChannelError("The channel cannot write the file " + std::string(path) + " of the Message Board");
+
+        Ios::Result<std::size_t> written = file.Value().Write(bytes);
+        file.Value().Close();
+        if (written.Failed() || written.Value() != bytes.size())
+            throw ChannelError("The channel could not write all of " + std::string(path));
+    }
+
+private:
+    Ios::FileSystemService& fileSystem;
+    Ios::Caller caller;
+};
 
 bool IsPaneOfAnotherLanguage(std::string_view paneName)
 {
@@ -153,7 +205,7 @@ SystemMenu::MessageStore& PhotoSession::BoardStore()
     Ios::MacAddress address = services.network.GetWirelessMacAddress();
     SystemMenu::WirelessAddress wirelessAddress{};
     std::copy(address.begin(), address.end(), wirelessAddress.begin());
-    boardFiles = std::make_unique<SystemMenu::IosNandFiles>(services.storage.fileSystem, services.storage.fileSystemCaller);
+    boardFiles = std::make_unique<BoardFiles>(services.storage.fileSystem, services.storage.fileSystemCaller);
     boardStore = std::make_unique<SystemMenu::MessageStore>(*boardFiles, wirelessAddress);
     return *boardStore;
 }

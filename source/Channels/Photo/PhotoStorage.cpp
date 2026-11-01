@@ -36,7 +36,9 @@ constexpr Formats::Byte PieceCountMayBeChosenFlag = 0x01;
 constexpr std::size_t ChecksumSize = 4;
 
 
-const Ios::EntryPermissions OwnerReadsAndWrites{Ios::AccessRights::ReadWrite, Ios::AccessRights::None, Ios::AccessRights::None};
+// The rights of the folder noerase and of its files on the reference console: everybody may read them, so that the menu's icon of the
+// channel can show the posted photo.
+const Ios::EntryPermissions SaveFileRights{Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::Read};
 constexpr std::uint8_t NoAttributeFlags = 0;
 
 Ios::NandPath PathOf(std::string_view name)
@@ -101,7 +103,7 @@ PhotoStorage::StartResult PhotoStorage::Start()
     Ios::NandPath folder = PathOf("");
     if (storage.fileSystem.GetAttributes(folder, storage.fileSystemCaller).Failed())
     {
-        if (storage.fileSystem.CreateDirectory(folder, OwnerReadsAndWrites, NoAttributeFlags, storage.fileSystemCaller).Failed())
+        if (storage.fileSystem.CreateDirectory(folder, SaveFileRights, NoAttributeFlags, storage.fileSystemCaller).Failed())
             return StartResult::CannotCreate;
     }
 
@@ -191,7 +193,7 @@ bool PhotoStorage::MakeFileWhenMissing(std::string_view name, std::size_t size)
     if (storage.fileSystem.GetAttributes(path, storage.fileSystemCaller).Succeeded())
         return true;
 
-    if (storage.fileSystem.CreateFile(path, OwnerReadsAndWrites, NoAttributeFlags, storage.fileSystemCaller).Failed())
+    if (storage.fileSystem.CreateFile(path, SaveFileRights, NoAttributeFlags, storage.fileSystemCaller).Failed())
         return false;
 
     return WriteFile(name, Formats::Bytes(size, 0));

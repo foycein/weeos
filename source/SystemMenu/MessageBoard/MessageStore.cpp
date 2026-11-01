@@ -164,6 +164,14 @@ void MessageStore::Save()
     nand.WriteFile(BoardVolumePath, Volume().FileBytes());
 }
 
+void MessageStore::CreateWhenMissing()
+{
+    if (nand.ReadFile(BoardVolumePath))
+        return;
+
+    Save();
+}
+
 std::vector<BoardDay> MessageStore::DaysWithRecords()
 {
     constexpr std::string_view RootFolder = "";

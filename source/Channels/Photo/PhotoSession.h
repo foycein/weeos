@@ -7,7 +7,7 @@
 
 #include "SystemMenu/CursorManager.h"
 #include "SystemMenu/MenuFonts.h"
-#include "SystemMenu/IosNandFiles.h"
+#include "SystemMenu/NandFiles.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MessageBoard/MessageStore.h"
 
@@ -128,7 +128,7 @@ private:
     std::map<int, Formats::RgbaImage> changedPhotos;
     std::vector<Formats::TplTexture> channelTextures;
     std::map<int, Formats::RgbaImage> decodedTextures;
-    std::unique_ptr<SystemMenu::IosNandFiles> boardFiles;
+    std::unique_ptr<SystemMenu::NandFiles> boardFiles;
     std::unique_ptr<SystemMenu::MessageStore> boardStore;
     Sound::WaveHandle decodedSound;
 };

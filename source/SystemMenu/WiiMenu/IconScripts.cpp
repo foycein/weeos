@@ -34,6 +34,12 @@ constexpr std::string_view NewsShownNewsNumber = "send_id";
 constexpr int PhotoDefaultPhotosAnimation = 0;
 constexpr int PhotoPostedPhotoAnimation = 1;
 constexpr std::string_view PostedPhotoTexture = "plate1.tpl";
+constexpr std::string_view PostedPhotoPane = "pic_photo";
+
+// The pane of the posted photo is 1 x 1 in the file; the script gives it the size of the photo on the cork. That size was not read
+// from the byte code: a 4:3 photo as high as the middle photo of the default animation, 55 units (Assumed, CHN-33).
+constexpr float PostedPhotoHeight = 55;
+constexpr float PostedPhotoWidth = PostedPhotoHeight * 4 / 3;
 constexpr int ShopBagAndTitleAnimation = 0;
 constexpr int ForecastLogoAnimation = 0;
 constexpr int NewsHeadlinesAnimation = 1;
@@ -42,9 +48,18 @@ constexpr int NewsBeltsAnimation = 2;
 // Photo.icon: without a photo posted to the Wii Menu (noerase/photo_i.dat), the first run starts animation 0: the three photos
 // come one after the other, the belt with the logo follows, everything fades away and it begins again. With a posted photo it starts
 // animation 1, which shows the pane pic_photo with that photo.
-void RunPhotoChannelScript(ScriptAnimations& animations, bool hasPostedPhoto)
+void RunPhotoChannelScript(MenuLayout& icon, ScriptAnimations& animations, bool hasPostedPhoto)
 {
-    animations.Start(hasPostedPhoto ? PhotoPostedPhotoAnimation : PhotoDefaultPhotosAnimation);
+    if (!hasPostedPhoto)
+    {
+        animations.Start(PhotoDefaultPhotosAnimation);
+        return;
+    }
+
+    Formats::Pane& photo = icon.PaneNamed(PostedPhotoPane);
+    photo.width = PostedPhotoWidth;
+    photo.height = PostedPhotoHeight;
+    animations.Start(PhotoPostedPhotoAnimation);
 }
 
 // The Shop's script ([shopping]): without recommendations (RcmdData.bin, a WiiConnect24 download) it shows the title of the
@@ -177,7 +192,7 @@ void RunIconScript(IconScript script, MenuLayout& icon, ScriptAnimations& animat
     switch (script)
     {
     case IconScript::PhotoChannel:
-        RunPhotoChannelScript(animations, hasPostedPhoto);
+        RunPhotoChannelScript(icon, animations, hasPostedPhoto);
         break;
 
     case IconScript::ShopChannel:
