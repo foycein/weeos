@@ -6,6 +6,7 @@
 #include "Formats/FormatError.h"
 
 #include <algorithm>
+#include <array>
 #include <format>
 
 namespace Mii
@@ -208,6 +209,61 @@ std::vector<MiiRecord> MiiDatabase::HiddenMiis() const
     return hiddenMiis;
 }
 
+void MiiDatabase::AddHiddenMii(MiiRecord record)
+{
+    record.creatorName.clear();
+    record.birthMonth = 0;
+    record.birthDay = 0;
+    record.isFavorite = false;
+
+    std::uint64_t createId = CreateIdOf(record);
+    RemoveFromHiddenList(createId);
+
+    std::optional<std::uint16_t> freeEntry = FreeHiddenEntry();
+    if (!freeEntry)
+    {
+        freeEntry = OldestHiddenEntry();
+        RemoveHiddenEntry(*freeEntry);
+    }
+
+    std::array<Formats::Byte, MiiRecordSize> recordBytes = {};
+    WriteMiiRecord(record, recordBytes);
+    std::size_t recordOffset = FirstHiddenMiiOffset + *freeEntry * HiddenMiiSize;
+    std::fill_n(bytes.begin() + recordOffset, HiddenMiiSize, Formats::Byte(0));
+    std::copy_n(recordBytes.begin(), HiddenMiiRecordPart, bytes.begin() + recordOffset);
+
+    std::uint16_t newest = NewestHiddenEntry();
+    bool isListEmpty = newest == NoListEnd;
+
+    HiddenEntry entry;
+    entry.createId = createId;
+    entry.isFemale = record.gender == Gender::Female;
+    entry.newerEntry = NoNeighbor;
+    entry.olderEntry = isListEmpty ? NoNeighbor : newest;
+    WriteHiddenEntry(*freeEntry, entry);
+
+    if (isListEmpty)
+    {
+        WriteNumber(bytes, OldestHiddenEntryOffset, sizeof(std::uint16_t), *freeEntry);
+    }
+    else
+    {
+        HiddenEntry previousNewest = ReadHiddenEntry(newest);
+        previousNewest.newerEntry = *freeEntry;
+        WriteHiddenEntry(newest, previousNewest);
+    }
+    WriteNumber(bytes, NewestHiddenEntryOffset, sizeof(std::uint16_t), *freeEntry);
+}
+
+void MiiDatabase::RemoveHiddenMii(std::size_t place)
+{
+    std::vector<std::uint16_t> entryNumbers = HiddenEntriesInOrder();
+    if (place >= entryNumbers.size())
+        throw Formats::FormatError(std::format("Mii database: the Mii Parade has no Mii at place {}", place));
+
+    RemoveHiddenEntry(entryNumbers[place]);
+}
+
 std::size_t MiiDatabase::RemoveBrokenMiis()
 {
     std::size_t removedCount = 0;
@@ -254,6 +310,21 @@ MiiRecord MiiDatabase::ReadSlot(std::size_t slot) const
 std::uint16_t MiiDatabase::OldestHiddenEntry() const
 {
     return static_cast<std::uint16_t>(ReadNumber(bytes, OldestHiddenEntryOffset, sizeof(std::uint16_t)));
+}
+
+std::uint16_t MiiDatabase::NewestHiddenEntry() const
+{
+    return static_cast<std::uint16_t>(ReadNumber(bytes, NewestHiddenEntryOffset, sizeof(std::uint16_t)));
+}
+
+std::optional<std::uint16_t> MiiDatabase::FreeHiddenEntry() const
+{
+    for (std::size_t entryNumber = 0; entryNumber < HiddenMiiCapacity; ++entryNumber)
+    {
+        if (ReadHiddenEntry(static_cast<std::uint16_t>(entryNumber)).createId == 0)
+            return static_cast<std::uint16_t>(entryNumber);
+    }
+    return std::nullopt;
 }
 
 MiiDatabase::HiddenEntry MiiDatabase::ReadHiddenEntry(std::uint16_t entryNumber) const

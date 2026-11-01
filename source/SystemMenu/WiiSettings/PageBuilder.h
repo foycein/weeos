@@ -23,9 +23,6 @@ public:
 
     void SetTitle(int tabDepth, std::u16string title);
 
-    // The three squares at the lower right of the first pages. The square of the page that is shown is lit.
-    void SetPageNumbers(int pageCount, int pageNumber);
-
     // A button of a page that is a list of places to go to. The slot counts from the top, from 0.
     PageButton& AddMenuItem(int slot, std::u16string text, std::function<void()> onPress);
 
@@ -38,13 +35,7 @@ public:
     PageButton& AddBottomLeft(std::u16string text, std::function<void()> onPress);
     PageButton& AddBottomRight(std::u16string text, std::function<void()> onPress);
 
-    // The arrows at the sides of the first pages, which turn to the page before or the page after.
-    PageButton& AddPageArrow(ButtonLook look, std::function<void()> onPress);
-
-    // An arrow at the given place that changes a number. It presses again and again while it is held.
-    PageButton& AddStepArrow(ButtonLook look, int left, int top, std::string name, std::function<void()> onPress);
-
-    // A button that is a picture, like the televisions that a page lets the user choose from.
+    // A button that is a picture, like the rows of a list or the plus and minus of a gauge.
     PageButton& AddPictureButton(ButtonLook look, const PageRectangle& bounds, std::string name, std::function<void()> onPress);
 
     // Lines of text in the middle of the page, one below the other.

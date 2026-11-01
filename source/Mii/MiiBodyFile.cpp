@@ -29,6 +29,7 @@ constexpr std::string_view TextureGroupName = "Textures(NW4R)";
 constexpr std::string_view AnimationGroupName = "AnmChr(NW4R)";
 constexpr std::string_view StandingAnimationName = "bodyWait";
 constexpr std::string_view EnvironmentTextureName = "env0";
+constexpr std::string_view ShadowTextureName = "shadow";
 constexpr std::string_view ShirtArraySuffix = "__outer";
 constexpr std::string_view PantsArraySuffix = "__pants";
 
@@ -37,6 +38,7 @@ constexpr std::size_t ModelSectionsPosition = 0x10;
 constexpr std::size_t BoneSection = 1;
 constexpr std::size_t PositionSection = 2;
 constexpr std::size_t NormalSection = 3;
+constexpr std::size_t TextureCoordinateSection = 5;
 constexpr std::size_t ObjectSection = 8;
 
 constexpr std::size_t BoneIndexPosition = 0x0C;
@@ -61,12 +63,17 @@ constexpr std::size_t ObjectListPosition = 0x24;
 constexpr std::size_t ObjectListOffsetPosition = 0x2C;
 constexpr std::size_t ObjectPositionArrayPosition = 0x48;
 constexpr std::size_t ObjectNormalArrayPosition = 0x4A;
+constexpr std::size_t ObjectTextureCoordinateArrayPosition = 0x50;
 
 // Every corner of the body is four bytes: a matrix slot, a texture matrix slot, a position number and a normal number.
 constexpr std::uint32_t BodyCornerDescriptor = 0x1403;
 constexpr std::size_t BodyCornerSize = 4;
 constexpr std::size_t CornerPositionByte = 2;
 constexpr std::size_t CornerNormalByte = 3;
+
+// Every corner of the shadow is two bytes: a position number and a texture coordinate number.
+constexpr std::uint32_t ShadowCornerDescriptor = 0x400;
+constexpr std::size_t ShadowCornerSize = 2;
 
 // The commands of a draw list.
 constexpr std::uint8_t NoOperation = 0x00;
@@ -368,7 +375,60 @@ std::vector<BodyCorner> ReadDrawList(FileView& file, std::size_t listStart, std:
     return triangleCorners;
 }
 
-// Reads the shirt and the pants. The shadow is bound to one bone as a whole and is left out.
+// The texture coordinate array of the model with this number.
+std::vector<Formats::Vector2> ReadTextureCoordinates(FileView& file, std::size_t modelOffset, int arrayNumber)
+{
+    for (const GroupEntry& entry : ReadGroup(file, ModelSectionGroup(file, modelOffset, TextureCoordinateSection)))
+    {
+        std::size_t header = entry.offset;
+        if (static_cast<int>(file.Uint32(header + ArrayIndexPosition)) != arrayNumber)
+            continue;
+        if (file.Uint32(header + ArrayFormatPosition) != FloatFormat)
+            file.Fail(std::format("the array {} does not hold floats", entry.name));
+
+        std::vector<Formats::Vector2> coordinates;
+        std::size_t data = header + file.Int32(header + ArrayDataPosition);
+        std::uint16_t count = file.Uint16(header + ArrayCountPosition);
+        for (std::uint16_t coordinateNumber = 0; coordinateNumber < count; ++coordinateNumber)
+        {
+            std::size_t coordinate = data + coordinateNumber * sizeof(Formats::Vector2);
+            coordinates.push_back({file.Float(coordinate), file.Float(coordinate + sizeof(float))});
+        }
+        return coordinates;
+    }
+    file.Fail("the shadow has no texture coordinates");
+}
+
+// The shadow's draw list is triangles only, each corner a position and a texture coordinate.
+void ReadShadowCorners(FileView& file, std::size_t modelOffset, std::size_t object, const VectorArray& positions, BodyShadow& shadow)
+{
+    if (file.Uint32(object + ObjectDescriptorPosition) != ShadowCornerDescriptor)
+        file.Fail("the shadow does not have the corners of a shadow");
+
+    std::vector<Formats::Vector2> coordinates = ReadTextureCoordinates(file, modelOffset, file.Int16(object + ObjectTextureCoordinateArrayPosition));
+    std::size_t position = object + ObjectListPosition + file.Int32(object + ObjectListOffsetPosition);
+    std::size_t end = position + file.Uint32(object + ObjectListSizePosition);
+    while (position < end)
+    {
+        std::uint8_t command = file.Byte(position);
+        ++position;
+        if (command == NoOperation)
+            continue;
+        if ((command & CommandMask) != TrianglesCommand)
+            file.Fail(std::format("the shadow's draw list has the command {:#x}", command));
+
+        std::uint16_t cornerCount = file.Uint16(position);
+        position += sizeof(std::uint16_t);
+        for (std::uint16_t cornerNumber = 0; cornerNumber < cornerCount; ++cornerNumber)
+        {
+            shadow.cornerPositions.push_back(positions.vectors.at(file.Byte(position)));
+            shadow.cornerTextureCoordinates.push_back(coordinates.at(file.Byte(position + 1)));
+            position += ShadowCornerSize;
+        }
+    }
+}
+
+// Reads the shirt and the pants, and the shadow, the one object that a single bone holds whole.
 void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
 {
     std::map<int, VectorArray> positionArrays = ReadVectorArrays(file, ModelSectionGroup(file, modelOffset, PositionSection));
@@ -379,7 +439,11 @@ void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
         std::size_t object = entry.offset;
         bool isBoundToOneBone = file.Int32(object + ObjectSingleBonePosition) >= 0;
         if (isBoundToOneBone)
+        {
+            const VectorArray& shadowPositions = positionArrays.at(file.Int16(object + ObjectPositionArrayPosition));
+            ReadShadowCorners(file, modelOffset, object, shadowPositions, body.shadow);
             continue;
+        }
 
         if (file.Uint32(object + ObjectDescriptorPosition) != BodyCornerDescriptor)
             file.Fail(std::format("the object {} does not have the corners of a body", entry.name));
@@ -401,6 +465,8 @@ void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
 
     if (body.shirt.triangleCorners.empty() || body.pants.triangleCorners.empty())
         file.Fail("the model has no shirt or no pants");
+    if (body.shadow.cornerPositions.empty())
+        file.Fail("the model has no shadow");
 }
 
 int SignedTwelveBits(std::uint32_t bits)
@@ -556,7 +622,7 @@ Formats::RgbaImage ReadTexture(FileView& file, std::size_t texture)
     std::uint16_t height = file.Uint16(texture + TextureHeightPosition);
     std::optional<Formats::TextureFormat> format = Formats::TextureFormatFromNumber(file.Uint32(texture + TextureFormatPosition));
     if (!format || Formats::IsPaletteFormat(*format))
-        file.Fail("the environment texture has a format that is not expected");
+        file.Fail("a texture of the body has a format that is not expected");
 
     std::size_t data = texture + file.Uint32(texture + TextureDataPosition);
     Formats::ByteView pixels = file.Bytes(data, Formats::EncodedImageSize(*format, width, height));
@@ -589,6 +655,9 @@ MiiBodyFile ReadMiiBodyFile(Formats::ByteView brres)
 
     std::size_t texture = FindInGroup(file, FindInGroup(file, rootGroup, TextureGroupName), EnvironmentTextureName);
     body.environmentTexture = ReadTexture(file, texture);
+
+    std::size_t shadowTexture = FindInGroup(file, FindInGroup(file, rootGroup, TextureGroupName), ShadowTextureName);
+    body.shadow.picture = ReadTexture(file, shadowTexture);
     return body;
 }
 

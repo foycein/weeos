@@ -90,6 +90,15 @@ struct BodyAnimation
     std::map<std::string, BoneAnimation> bones;
 };
 
+// The shadow under a Mii (the object of the material mt_shadow): a square on the ground, held whole by the bone shadow_model, in
+// triangles, and its picture, whose brightness is how dark the shadow is.
+struct BodyShadow
+{
+    std::vector<Formats::Vector3> cornerPositions;
+    std::vector<Formats::Vector2> cornerTextureCoordinates;
+    Formats::RgbaImage picture;
+};
+
 // What the Mii Channel's body model holds that a standing Mii needs (docs/research/Mii.md section 10): the bones, the shirt
 // (with hands and neck), the pants (with shoes), the first frame of the standing animation and the lit sphere that shades both.
 struct MiiBodyFile
@@ -105,6 +114,7 @@ struct MiiBodyFile
     std::map<std::string, BodyAnimation> animations;
 
     Formats::RgbaImage environmentTexture;
+    BodyShadow shadow;
 };
 
 struct MiiBodyFiles

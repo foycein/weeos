@@ -21,6 +21,10 @@ enum class ScreenId : int
     BottomBar = 0x05,
     BarOverlay = 0x06,
 
+    // The calendar of the Message Board, and the screen that writes a memo.
+    Calendar = 0x07,
+    MemoWriter = 0x0a,
+
     // The editors of Data Management: the channels, and the save data of the Wii.
     ChannelDataEditor = 0x0c,
     WiiSaveDataEditor = 0x0d,
@@ -32,8 +36,12 @@ enum class ScreenId : int
     WiiOptionsBackground = 0x15,
     WiiOptionsBar = 0x16,
 
+    // Health and Safety on a Wii; WeeOS shows its welcome here (WelcomeScreen).
     HealthAndSafety = 0x1a,
-    ParentalDialog = 0x1b,
+
+    // The list of the Miis of the console, from which the memo writer takes the Mii of a memo.
+    MiiChooser = 0x1c,
+
     BackToWiiMenu = 0x1e,
     LimitOver = 0x1f,
     StartupRouter = 0x20,

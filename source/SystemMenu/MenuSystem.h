@@ -15,7 +15,6 @@
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/MenuSettings.h"
 #include "SystemMenu/NandFiles.h"
-#include "SystemMenu/ParentalAnswer.h"
 #include "SystemMenu/ProgramImage.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoftKeyboard.h"
@@ -74,6 +73,7 @@ public:
 private:
     void RunStep();
     HomeButtonConnections ConnectHomeButton();
+    void SaveRumble(bool isRumbleOn);
 
     Display display;
     MenuFiles files;
@@ -94,7 +94,6 @@ private:
     FrontPanel frontPanel;
     HomeButton homeButton;
     NandFiles& nand;
-    ParentalAnswer parentalAnswer = ParentalAnswer::None;
     TitleLaunchRequest titleLaunch;
     MenuServices services;
     std::optional<std::string> fatalErrorMessage;

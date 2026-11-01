@@ -73,6 +73,10 @@ public:
     // Throws a LayoutError when the picture source does not have the file.
     LoadedTexture ObtainTexture(const std::string& textureFileName, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap);
 
+    // A picture that something else drew on the graphics device, for example the face of a Mii, shown under a texture name of its
+    // own. The layout does not destroy it: the one who made it does, after the layout is gone or no longer shows it.
+    void ProvideTexture(const std::string& textureFileName, LoadedTexture texture);
+
 private:
     using TextureKey = std::tuple<std::string, Graphics::WrapMode, Graphics::WrapMode>;
 
@@ -86,6 +90,7 @@ private:
     Formats::Pane rootPane;
     std::optional<Formats::Group> rootGroup;
     std::map<TextureKey, LoadedTexture> loadedTextures;
+    std::map<std::string, LoadedTexture, std::less<>> providedTextures;
 };
 
 }

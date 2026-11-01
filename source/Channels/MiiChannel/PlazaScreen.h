@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Channels/ChannelServices.h"
+#include "Channels/MiiChannel/ButtonFocus.h"
 #include "Channels/MiiChannel/MessageWindow.h"
 #include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/MiiChannel/MiiFigures.h"
@@ -24,6 +25,9 @@ enum class PlazaRequest
 
     // A Mii was dropped on "Edit Mii".
     EditMii,
+
+    // "Mii Parade": the parade scene.
+    ShowParade,
 };
 
 // The Mii Plaza (squareNigaoe_00 over the 3D plaza, 80041024 and the plaza scene): the buttons on both sides and at the bottom, the Miis
@@ -82,6 +86,7 @@ private:
         BeginDs,
         ParadeWelcome,
         ParadeExplained,
+        SendToParade,
     };
 
     void HandleButtons();
@@ -91,6 +96,7 @@ private:
     void DropHeldMii(Formats::Vector2 pointer);
     void ShowNameBalloon(std::size_t slot);
     void UpdateWaits();
+    void ShowWhistleBar(bool showsSortButtons);
     void ShowLoadWindow(std::uint32_t messageNumber);
     void HideLoadWindow();
     bool IsPressed(std::string_view buttonPane) const;
@@ -103,12 +109,14 @@ private:
     MessageWindow& message;
     MiiChannelData& data;
     std::unique_ptr<SystemMenu::MenuLayout> layout;
+    std::unique_ptr<ButtonFocus> focus;
     MiiHeads heads;
     MiiPlaza plaza;
 
     std::optional<PlazaRequest> request;
     std::optional<std::size_t> miiToEdit;
     std::optional<std::size_t> miiToErase;
+    std::optional<std::size_t> miiToSend;
     Pending pending = Pending::Nothing;
     bool areSortButtonsShown = false;
     bool isArranged = false;

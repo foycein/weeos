@@ -16,6 +16,7 @@ public:
     void WriteUint16(std::uint16_t value);
     void WriteUint32(std::uint32_t value);
     void WriteUint64(std::uint64_t value);
+    void WriteFloat(float value);
     void WriteBytes(ByteView moreBytes);
 
     // Writes zero bytes.

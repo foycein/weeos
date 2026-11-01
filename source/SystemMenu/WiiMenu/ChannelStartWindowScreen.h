@@ -46,9 +46,6 @@ enum class StartWindowState
     // The question whether to set up the Internet first is open (0x0C).
     AskingForInternetSettings,
 
-    // The password dialog of the parental controls is open (0x0B).
-    WaitingForPin,
-
     // Start was pressed and the channel may start: a moment passes, then the picture fades to black (4, 5).
     Starting,
     FadingOutToStart,
@@ -56,7 +53,7 @@ enum class StartWindowState
     // The title was handed to the console, which starts it after this step.
     Started,
 
-    // Wii Settings comes next, for the update of an old channel or for the Internet settings: the picture fades out first (7).
+    // Wii Settings comes next, for the Internet settings: the picture fades out first (7).
     LeavingForSettings,
 
     // Wii Menu was pressed: the grid zooms out, the window fades out inside the television (6).
@@ -122,14 +119,12 @@ private:
     void AskForInternetSettings();
     void ReadAnswerOfCannotBeUsed();
     void ReadAnswerOfInternetQuestion();
-    void ReadAnswerOfPinDialog();
     void BeginStart();
     void RunStarting();
     void RunFadingOutToStart();
     void LeaveForSettings(int settingsPage);
     void CloseTowardsTheGrid();
 
-    bool IsRestrictedByParentalControls();
     ChannelGridScreen* Grid();
     BottomBarScreen* Bar();
     bool IsTheGridZooming();
@@ -145,7 +140,6 @@ private:
     std::optional<Formats::BannerContent> banner;
     BannerAnimations bannerAnimations;
     std::u16string startButtonText;
-    bool isOldVersion = false;
     std::uint16_t makerCode = 0;
 
     std::unique_ptr<Layout::LayoutArchive> windowArchive;
@@ -165,12 +159,9 @@ private:
     std::size_t grayStart = 0;
     std::size_t brightStart = 0;
 
-    // The change to another channel, and the words of Start fading out and in when they change between Start and Update.
+    // The change to another channel. WeeOS has no system update, so the words of Start never change to Update.
     std::size_t changeIn = 0;
     std::size_t changeOut = 0;
-    std::size_t wordsOfStartOut = 0;
-    std::size_t wordsOfStartIn = 0;
-    bool areWordsOfStartChanging = false;
 
     // The banner plays its start once and then its loop, or the first animation of its script, from the moment it is started.
     std::optional<std::size_t> bannerStart;

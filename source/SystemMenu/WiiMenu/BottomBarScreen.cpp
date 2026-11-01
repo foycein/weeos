@@ -28,9 +28,45 @@ constexpr std::string_view AnimationName = "my_IplTop_e";
 
 // One animation file holds every state of the bar, each in its own frames. The groups below show frame 0, the look of the Wii Menu.
 // The groups of the buttons that answer to the hands are in FocusButtons.
-constexpr std::array<std::string_view, 8> StillGroupsOfTheBar = {
-    "G_SeenChange", "G_Ch", "G_Cal", "G_Add", "G_CalExit", "G_AddExit", "G_Cmn_R", "G_Dust"};
+constexpr std::array<std::string_view, 1> StillGroupsOfTheBar = {"G_AddExit"};
 constexpr float FrameOfTheWiiMenu = 0;
+
+// The group that moves the buttons of the bar from one look into another, and the parts of the file for each change (0x8160F7B8).
+constexpr std::string_view LookGroup = "G_SeenChange";
+
+struct ChangeFrames
+{
+    BarChange change;
+    float firstFrame;
+    float lastFrame;
+};
+
+constexpr std::array<ChangeFrames, 13> FramesOfTheChanges = {{
+    {BarChange::ToTheBoard, 1000, 1040},
+    {BarChange::ToTheChannels, 6000, 6040},
+    {BarChange::CalendarOpens, 2000, 2050},
+    {BarChange::CalendarClosesWithBack, 3000, 3050},
+    {BarChange::CalendarClosesWithADay, 3500, 3550},
+    {BarChange::CreateMessageOpens, 4000, 4026},
+    {BarChange::LetterOpens, 3100, 3113},
+    {BarChange::BackToTheBoard, 3426, 3439},
+    {BarChange::PlayLogShows, 3113, 3126},
+    {BarChange::LetterShowsWithoutButton, 3600, 3613},
+    {BarChange::MemoWriterShows, 3313, 3326},
+    {BarChange::MemoWriterCloses, 3413, 3426},
+    {BarChange::LetterShowsWithButton, 3640, 3653},
+}};
+
+// The number of the messages of today on the envelope blinks in frames 1 to 400 of its group (0x8139D004).
+constexpr std::string_view MessageSignalGroup = "G_BbsSignal";
+constexpr std::string_view MessageCountText = "T_BbsMark1";
+constexpr float FirstFrameOfTheSignal = 1;
+constexpr float LastFrameOfTheSignal = 400;
+constexpr int LargestMessageCount = 99;
+
+constexpr std::string_view BackText = "T_CalExit";
+constexpr std::string_view RightText = "T_CalAdd_R";
+constexpr std::string_view TrashText = "T_Dust";
 
 // A button that a hand comes onto grows to 110 percent in the first frames of its part of the file and shrinks back in the second
 // (the table 0x8160F918 of the original), on the panes of its group.
@@ -48,11 +84,17 @@ struct FocusButton
     std::optional<std::uint16_t> balloonMessage;
 };
 
-constexpr std::array<FocusButton, 4> FocusButtons = {{
+constexpr std::array<FocusButton, 10> FocusButtons = {{
     {BarButton::MessageBoardButton, "B_Bbs", "G_Bbs", 900, 906, 930, 938, 15},
     {BarButton::WiiButton, "B_Set", "G_Set", 6900, 6906, 6930, 6938, 14},
     {BarButton::NextPage, "B_ArwR", "G_ArwR_Focus", 10600, 10615, 10800, 10815, std::nullopt},
     {BarButton::PreviousPage, "B_ArwL", "G_ArwL_Focus", 10600, 10615, 10800, 10815, std::nullopt},
+    {BarButton::ChannelsButton, "B_Ch", "G_Ch", 5900, 5906, 5930, 5938, std::nullopt},
+    {BarButton::CalendarButton, "B_Cal", "G_Cal", 1900, 1906, 1930, 1938, std::nullopt},
+    {BarButton::CreateMessageButton, "B_Add", "G_Add", 3900, 3906, 3930, 3938, std::nullopt},
+    {BarButton::BackButton, "B_CalExit", "G_CalExit", 2900, 2906, 2930, 2938, std::nullopt},
+    {BarButton::RightButton, "B_Add_R", "G_Cmn_R", 2900, 2906, 2930, 2938, std::nullopt},
+    {BarButton::TrashButton, "B_Dust", "G_Dust", 2900, 2909, 2930, 2938, std::nullopt},
 }};
 
 // The arrows bob sideways in frames 10000 to 10055 of the file, again and again.
@@ -93,6 +135,12 @@ constexpr std::string_view CardOutSound = "WIPL_SE_SDCARD_OUT";
 // The message "SD Card Menu" (0x81694BA0).
 constexpr std::uint16_t SdCardMenuMessage = 161;
 
+std::u16string NumberText(int number)
+{
+    std::string digits = std::to_string(number);
+    return std::u16string(digits.begin(), digits.end());
+}
+
 std::size_t NumberOf(BarButton button)
 {
     for (std::size_t number = 0; number < FocusButtons.size(); ++number)
@@ -127,6 +175,11 @@ void BottomBarScreen::Build()
         stillGroups.back()->Show(FrameOfTheWiiMenu);
     }
     MakeTheFocusStates();
+
+    seenChange = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(LookGroup));
+    seenChange->Show(FrameOfTheWiiMenu);
+    messageSignal = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(MessageSignalGroup));
+    messageSignal->Show(FrameOfTheWiiMenu);
 
     arrowLoop = std::make_unique<FramePlayer>(*layout, *archive, AnimationName, layout->Live().PanesOfGroup(ArrowLoopGroup));
     arrowLoop->Loop(FirstFrameOfTheArrowLoop, LastFrameOfTheArrowLoop);
@@ -175,7 +228,8 @@ void BottomBarScreen::Draw(DrawPass pass)
 
     services.display.LookThroughCamera();
     layout->Draw();
-    sdCardButton->Draw();
+    if (mode == BarMode::WiiMenu)
+        sdCardButton->Draw();
     services.display.StopMovingAreas();
 }
 
@@ -293,20 +347,114 @@ bool BottomBarScreen::IsShown(BarButton button) const
     return true;
 }
 
+bool BottomBarScreen::HasButtonInThisMode(BarButton button) const
+{
+    bool isPageArrow = button == BarButton::PreviousPage || button == BarButton::NextPage;
+    switch (mode)
+    {
+    case BarMode::WiiMenu:
+        return isPageArrow || button == BarButton::WiiButton || button == BarButton::MessageBoardButton || button == BarButton::SdCardButton;
+
+    case BarMode::MessageBoard:
+        return isPageArrow || button == BarButton::CalendarButton || button == BarButton::CreateMessageButton ||
+            button == BarButton::ChannelsButton;
+
+    case BarMode::Letter:
+        return button == BarButton::BackButton || button == BarButton::TrashButton;
+
+    case BarMode::LetterWithRightButton:
+        return button == BarButton::BackButton || button == BarButton::TrashButton || button == BarButton::RightButton;
+
+    case BarMode::PlayLog:
+        return button == BarButton::BackButton;
+
+    case BarMode::Calendar:
+        return isPageArrow || button == BarButton::BackButton;
+
+    case BarMode::MemoWriter:
+        return button == BarButton::BackButton || button == BarButton::RightButton;
+    }
+    return false;
+}
+
+// A bar that is changing its look has no buttons.
 std::optional<BarButton> BottomBarScreen::ButtonAt(Formats::Vector2 place)
 {
-    if (sdCardButton->IsAt(place))
+    if (IsChanging())
+        return std::nullopt;
+
+    if (HasButtonInThisMode(BarButton::SdCardButton) && sdCardButton->IsAt(place))
         return BarButton::SdCardButton;
 
     for (const Formats::Pane* pane : layout->BoundingPanesAt(place))
     {
         for (const FocusButton& focusButton : FocusButtons)
         {
-            if (pane->name == focusButton.paneName && IsShown(focusButton.button))
+            bool isThisButton = pane->name == focusButton.paneName && HasButtonInThisMode(focusButton.button);
+            if (isThisButton && IsShown(focusButton.button))
                 return focusButton.button;
         }
     }
     return std::nullopt;
+}
+
+void BottomBarScreen::SetMode(BarMode newMode)
+{
+    mode = newMode;
+}
+
+BarMode BottomBarScreen::Mode() const
+{
+    return mode;
+}
+
+void BottomBarScreen::Change(BarChange change)
+{
+    waitingChanges.push_back(change);
+}
+
+bool BottomBarScreen::IsChanging() const
+{
+    return seenChange->IsPlaying() || !waitingChanges.empty();
+}
+
+void BottomBarScreen::SetBackText(std::u16string_view text)
+{
+    layout->SetText(BackText, text);
+}
+
+void BottomBarScreen::SetRightText(std::u16string_view text)
+{
+    layout->SetText(RightText, text);
+}
+
+void BottomBarScreen::SetTrashText(std::u16string_view text)
+{
+    layout->SetText(TrashText, text);
+}
+
+void BottomBarScreen::ShowMessageCount(int count)
+{
+    int shownCount = std::min(count, LargestMessageCount);
+    layout->SetText(MessageCountText, shownCount > 0 ? NumberText(shownCount) : std::u16string());
+    if (shownCount == 0)
+        messageSignal->Show(FrameOfTheWiiMenu);
+    else if (!messageSignal->IsPlaying())
+        messageSignal->Loop(FirstFrameOfTheSignal, LastFrameOfTheSignal);
+}
+
+void BottomBarScreen::StartTheNextChange()
+{
+    if (seenChange->IsPlaying() || waitingChanges.empty())
+        return;
+
+    BarChange next = waitingChanges.front();
+    waitingChanges.pop_front();
+    for (const ChangeFrames& frames : FramesOfTheChanges)
+    {
+        if (frames.change == next)
+            seenChange->PlayOnce(frames.firstFrame, frames.lastFrame);
+    }
 }
 
 Formats::Vector2 BottomBarScreen::PlaceOfButton(BarButton button)
@@ -320,6 +468,9 @@ Formats::Vector2 BottomBarScreen::PlaceOfButton(BarButton button)
 
 bool BottomBarScreen::RunMain()
 {
+    StartTheNextChange();
+    seenChange->Step();
+    messageSignal->Step();
     FocusTheButtonsUnderThePointers();
     PlaceTheBalloons();
     FollowTheSdCard();
