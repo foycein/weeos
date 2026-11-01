@@ -42,25 +42,6 @@ WaveEncoding ReadEncoding(Formats::ByteReader& reader)
     return static_cast<WaveEncoding>(number);
 }
 
-AdpcmParameters ReadAdpcmParameters(Formats::ByteReader& reader)
-{
-    AdpcmParameters parameters;
-    for (std::int16_t& coefficient : parameters.coefficients)
-        coefficient = reader.ReadInt16();
-
-    std::uint16_t gain = reader.ReadUint16();
-    if (gain != 0)
-        reader.Fail(std::format("the ADPCM gain {} is not zero", gain));
-
-    parameters.initialPredictorAndScale = reader.ReadUint16();
-    parameters.initialHistory1 = reader.ReadInt16();
-    parameters.initialHistory2 = reader.ReadInt16();
-    parameters.loopPredictorAndScale = reader.ReadUint16();
-    parameters.loopHistory1 = reader.ReadInt16();
-    parameters.loopHistory2 = reader.ReadInt16();
-    return parameters;
-}
-
 // A channel is described by its own record, which the table of channels points to. The ADPCM parameters
 // lie somewhere else in the wave info and are pointed to as well.
 WaveChannel ReadChannel(Formats::ByteView sectionBytes, std::size_t waveInfoOffset, std::uint32_t channelOffset, WaveEncoding encoding,
@@ -82,6 +63,25 @@ WaveChannel ReadChannel(Formats::ByteView sectionBytes, std::size_t waveInfoOffs
     return channel;
 }
 
+}
+
+AdpcmParameters ReadAdpcmParameters(Formats::ByteReader& reader)
+{
+    AdpcmParameters parameters;
+    for (std::int16_t& coefficient : parameters.coefficients)
+        coefficient = reader.ReadInt16();
+
+    std::uint16_t gain = reader.ReadUint16();
+    if (gain != 0)
+        reader.Fail(std::format("the ADPCM gain {} is not zero", gain));
+
+    parameters.initialPredictorAndScale = reader.ReadUint16();
+    parameters.initialHistory1 = reader.ReadInt16();
+    parameters.initialHistory2 = reader.ReadInt16();
+    parameters.loopPredictorAndScale = reader.ReadUint16();
+    parameters.loopHistory1 = reader.ReadInt16();
+    parameters.loopHistory2 = reader.ReadInt16();
+    return parameters;
 }
 
 std::uint32_t WaveInfo::SampleCount() const
