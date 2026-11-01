@@ -30,7 +30,7 @@ namespace WeeOS
 std::optional<std::filesystem::path> PickNandWithWindows();
 
 // What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows,
-// the file WeeOS.settings.txt and the Wii files beside the program, and the file picker of Windows, and shows its window; a test gives
+// the file WeeOS.settings.txt and the Wii files beside the program, the file picker and the connection of Windows, and shows its window; a test gives
 // its own, and its window is never shown (docs/HelperRules.md).
 struct HostEnvironment
 {
@@ -44,6 +44,8 @@ struct HostEnvironment
     // Who picks the NAND of a Wii to import.
     NandPicker pickNand = PickNandWithWindows;
 
+    // Whether the PC is connected: the console is online through it (docs/DECISIONS.md, Online).
+    Ios::PcConnectionCheck isPcConnected = Ios::IsWindowsConnected;
     Platform::WindowVisibility windowVisibility = Platform::WindowVisibility::Hidden;
 };
 

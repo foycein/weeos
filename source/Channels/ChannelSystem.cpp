@@ -80,7 +80,7 @@ private:
 };
 
 ChannelSystem::ChannelSystem(Graphics::GraphicsDevice& device, SystemMenu::TitleContents& contents,
-    SystemMenu::TitleContents& systemMenuContents, Ios::RemoteService& remoteService, Ios::NetworkConfigService& network,
+    SystemMenu::TitleContents& systemMenuContents, Ios::RemoteService& remoteService, const ChannelNetwork& network,
     const ChannelStorage& storage, const ChannelAudio& audio, Ios::PowerService& powerService, Ios::TitleId titleId, Settings::PcClock consoleTime,
     std::optional<Formats::Bytes> consoleFontArchive)
     : runningTitle(titleId)

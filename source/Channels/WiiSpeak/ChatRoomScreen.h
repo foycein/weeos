@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Channels/OfflineConnection.h"
+#include "SystemMenu/NetworkStart.h"
+#include "SystemMenu/OwnServer.h"
 #include "Channels/WiiSpeak/SceneLayout.h"
 #include "Channels/WiiSpeak/WiiSpeakSession.h"
 
@@ -43,6 +44,7 @@ private:
     void ShowMute();
     std::optional<WiiSpeakScreenName> Press(const std::string& button);
     void StartConnecting();
+    std::optional<std::uint32_t> FindConnectionFailure();
     void FollowTheMessageWindow();
     void ToggleMute();
     void ShowChosenMiis();
@@ -58,7 +60,8 @@ private:
     std::unique_ptr<SceneLayout> miisInCircle;
     std::unique_ptr<SceneLayout> photo;
     Waiting waiting = Waiting::Nothing;
-    std::optional<ConnectionFailure> connection;
+    SystemMenu::NetworkStart networkStart;
+    std::unique_ptr<SystemMenu::ServerContact> server;
     double connectionStartSeconds = 0.0;
     bool isCircleLit = false;
 };

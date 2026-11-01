@@ -39,6 +39,18 @@ constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
 // The label in front of the code is a text of the program (0x8000B9C8 of the Forecast, "%ls %ls%06d").
 constexpr std::u16string_view ErrorCodeLabel = u"Error Code: ";
 
+// The code of the WiiConnect24 module (KD 0x13DB3760): 100000, plus 1000 for each step of its work (7 is the download), plus 100 for
+// each kind of error, and then minus the error of the sockets (kind 2) or plus the error of the HTTP library (kind 3).
+constexpr std::uint32_t DownloadSocketErrorCodeBase = 107200;
+constexpr std::uint32_t DownloadHttpErrorCodeBase = 107300;
+
+// The errors of the HTTP library (NHTTP) of the download. KD turns a name that is not found into a network error, which the channel
+// shows as the Internet that cannot be reached, and a connection that fails and a reply it cannot read into a server error, which the
+// channel shows as the service that is unavailable (0x13DB37E0; the Forecast's 0x800358A8 and 0x8000B46C).
+constexpr std::uint32_t HttpNameNotFoundError = 4;
+constexpr std::uint32_t HttpConnectError = 5;
+constexpr std::uint32_t HttpReplyNotUnderstoodError = 7;
+
 // The sounds of the error, by their names in rev_wtr.brsar and rev_news.brsar (CHN-26, Assumed).
 constexpr std::string_view ErrorSound = "WTR_SE_COM_ERROR";
 constexpr std::string_view ButtonSound = "WTR_SE_COM_BUTTON";
@@ -56,6 +68,19 @@ void HideOtherLanguages(SystemMenu::MenuLayout& layout)
     }
 }
 
+// The data formats of the downloads are not built; they come with the owner's server. A server that answers gives the download a reply
+// it cannot read.
+std::uint32_t HttpErrorOf(SystemMenu::ServerAnswer answer)
+{
+    if (answer == SystemMenu::ServerAnswer::NameNotFound)
+        return HttpNameNotFoundError;
+
+    if (answer == SystemMenu::ServerAnswer::NoAnswer)
+        return HttpConnectError;
+
+    return HttpReplyNotUnderstoodError;
+}
+
 std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents& contents, std::uint16_t homeMenuContentIndex)
 {
     Formats::U8Archive homeMenuFiles = ReadArchiveContent(contents, homeMenuContentIndex);
@@ -65,11 +90,24 @@ std::unique_ptr<Layout::LayoutArchive> ReadHandArchive(SystemMenu::TitleContents
 
 }
 
+std::uint32_t DownloadErrorCodeOfStart(int startupError)
+{
+    return DownloadSocketErrorCodeBase + static_cast<std::uint32_t>(-startupError);
+}
+
+std::uint32_t DownloadErrorCodeOfServer(SystemMenu::ServerAnswer answer)
+{
+    return DownloadHttpErrorCodeBase + HttpErrorOf(answer);
+}
+
 WiiConnect24Channel::WiiConnect24Channel(ChannelServices& channelServices, const WiiConnect24ChannelFiles& files)
     : services(channelServices)
-    , failure(TryToConnect(channelServices.network))
+    , networkStart(SystemMenu::StartNetwork(channelServices.network.configuration, channelServices.network.sockets))
     , errorMessageCount(files.errorMessageCount)
 {
+    if (networkStart.isOnline)
+        server = std::make_unique<SystemMenu::ServerContact>(services.network.sockets, services.network.serverAddress);
+
     Formats::U8Archive resources = ReadArchiveContent(services.contents, files.resourceContentIndex);
     Formats::U8Archive layoutFiles = Formats::ReadU8Archive(ReadPackedFile(resources, files.layoutArchivePath));
 
@@ -88,7 +126,6 @@ WiiConnect24Channel::WiiConnect24Channel(ChannelServices& channelServices, const
         downloadingMessage->isVisible = false;
 
     HideOtherLanguages(*errorLayout);
-    ShowErrorLayout();
 }
 
 void WiiConnect24Channel::Update()
@@ -114,11 +151,42 @@ WiiConnect24Channel::Stage WiiConnect24Channel::CurrentStage() const
     return stage;
 }
 
+std::optional<int> WiiConnect24Channel::ShownMessage() const
+{
+    if (!failure)
+        return std::nullopt;
+
+    return failure->message;
+}
+
 std::u16string WiiConnect24Channel::ErrorCodeText() const
 {
+    if (!failure)
+        return u"";
+
     std::u16string text(ErrorCodeLabel);
-    text += AsciiToText(std::format("{:06}", DownloadErrorCodeOf(failure.startupError)));
+    text += AsciiToText(std::format("{:06}", failure->code));
     return text;
+}
+
+// While the PC is not connected the sockets do not start and the download fails after the time-out; else it fails with the error of
+// the HTTP library as soon as the server could not be reached.
+std::optional<WiiConnect24Channel::DownloadFailure> WiiConnect24Channel::FindDownloadFailure()
+{
+    if (!networkStart.isOnline)
+    {
+        if (services.clock.Seconds() < networkStart.secondsUntilFailure)
+            return std::nullopt;
+
+        return DownloadFailure{CannotConnectMessage, DownloadErrorCodeOfStart(networkStart.startupError)};
+    }
+
+    std::optional<SystemMenu::ServerAnswer> answer = server->Answer();
+    if (!answer)
+        return std::nullopt;
+
+    int message = HttpErrorOf(*answer) == HttpNameNotFoundError ? CannotConnectMessage : ServiceUnavailableMessage;
+    return DownloadFailure{message, DownloadErrorCodeOfServer(*answer)};
 }
 
 void WiiConnect24Channel::UpdateStage()
@@ -137,10 +205,14 @@ void WiiConnect24Channel::UpdateOneMoment()
     if (fader.GetStatus() == SystemMenu::FaderStatus::Covered)
         fader.StartFadeIn();
 
-    bool hasDownloadFailed = services.clock.Seconds() >= failure.secondsUntilFailure;
-    if (fader.GetStatus() != SystemMenu::FaderStatus::Clear || !hasDownloadFailed)
+    if (fader.GetStatus() != SystemMenu::FaderStatus::Clear)
         return;
 
+    failure = FindDownloadFailure();
+    if (!failure)
+        return;
+
+    ShowErrorLayout();
     fader.StartFadeOut();
     stage = Stage::LeavingOneMoment;
 }
@@ -172,7 +244,7 @@ void WiiConnect24Channel::ShowErrorLayout()
     for (int message = 0; message < errorMessageCount; ++message)
     {
         Formats::Pane& pane = errorLayout->PaneNamed(std::string(EnglishMessagePrefix) + std::to_string(message));
-        pane.isVisible = message == CannotConnectMessage;
+        pane.isVisible = message == failure->message;
     }
     errorLayout->SetText(ErrorCodePane, ErrorCodeText());
 }

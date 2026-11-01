@@ -17,6 +17,10 @@ namespace
 
 constexpr std::string_view SceneName = "talk";
 
+// The code that the Wii Speak Channel shows when the login server of Nintendo Wi-Fi Connection, whose place the owner's server takes,
+// cannot be reached while the Internet works. The codes of the SDK's Wi-Fi Connection library were not read (CHN-04, Assumed).
+constexpr std::uint32_t LoginServerUnreachableCode = 20100;
+
 // The buttons of 02000_button and the panes of the ones WeeOS does not have.
 const std::string WiiMenuButton = "B_dbutton_00";
 const std::string ChooseMiisButton = "B_dbutton_01";
@@ -266,27 +270,51 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
     return std::nullopt;
 }
 
-// The lobby logs in to Nintendo Wi-Fi Connection first. The connection fails as every connection of WeeOS does (CHN-04).
+// The lobby logs in to Nintendo Wi-Fi Connection first, whose place the owner's server takes (CHN-04). While the PC is not connected the
+// network does not start; else the try reaches for the server beside the program.
 void ChatRoomScreen::StartConnecting()
 {
-    connection = TryToConnect(session.services.network);
+    ChannelNetwork& network = session.services.network;
+    server.reset();
+    networkStart = SystemMenu::StartNetwork(network.configuration, network.sockets);
+    if (networkStart.isOnline)
+        server = std::make_unique<SystemMenu::ServerContact>(network.sockets, network.serverAddress);
+
     connectionStartSeconds = session.services.clock.Seconds();
     session.ShowMessage(WiiSpeakText::ConnectingToWiFiConnection, {});
     waiting = Waiting::Connecting;
+}
+
+// The code of the failed login: the support code of SOStartup after its time-out, or the code of a login server that cannot be reached.
+std::optional<std::uint32_t> ChatRoomScreen::FindConnectionFailure()
+{
+    if (!networkStart.isOnline)
+    {
+        double waitedSeconds = session.services.clock.Seconds() - connectionStartSeconds;
+        if (waitedSeconds < networkStart.secondsUntilFailure)
+            return std::nullopt;
+
+        return networkStart.supportCode;
+    }
+
+    if (!server->Answer())
+        return std::nullopt;
+
+    return LoginServerUnreachableCode;
 }
 
 void ChatRoomScreen::FollowTheMessageWindow()
 {
     if (waiting == Waiting::Connecting)
     {
-        double waitedSeconds = session.services.clock.Seconds() - connectionStartSeconds;
-        if (waitedSeconds >= connection->secondsUntilFailure)
+        std::optional<std::uint32_t> failureCode = FindConnectionFailure();
+        if (failureCode)
             session.dialog.Close();
 
-        if (session.dialog.IsOpen())
+        if (session.dialog.IsOpen() || !failureCode)
             return;
 
-        std::u16string code = AsciiToText(std::to_string(connection->supportCode));
+        std::u16string code = AsciiToText(std::to_string(*failureCode));
         session.dialog.Show(session.Text(WiiSpeakText::UnableToConnectToTheInternet, code), {session.Text(WiiSpeakText::Ok)});
         waiting = Waiting::ConnectionError;
         return;

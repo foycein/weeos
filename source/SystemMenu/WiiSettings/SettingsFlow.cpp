@@ -28,7 +28,7 @@ void SettingsFlow::MakeGroups(const SettingsFlowServices& services)
     groups.push_back(std::make_unique<IndexPages>(*this));
     groups.push_back(std::make_unique<NicknamePage>(*this, services.settings));
     groups.push_back(std::make_unique<SensorBarPages>(*this, services.settings));
-    groups.push_back(std::make_unique<ConnectionPages>(*this, services.networkConfig));
+    groups.push_back(std::make_unique<ConnectionPages>(*this, services.networkConfig, services.sockets, services.pcSettings));
     bool canImport = services.consoleImport != nullptr;
     groups.push_back(std::make_unique<PcPages>(*this, services.settings, services.pcSettings, services.pcTarget, canImport));
     groups.push_back(std::make_unique<SoundPage>(*this, services.settings));

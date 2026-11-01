@@ -21,7 +21,7 @@ WiiSettingsServices::WiiSettingsServices(Ios::IosServices& iosServices, Platform
     , remotes(iosServices.GetRemote())
     , sound(programSound)
     , systemSettings(iosServices.GetFileSystem(), SystemMenuCaller)
-    , flowServices{systemSettings, iosServices.GetNetworkConfig(), pcSettingsStore, *this}
+    , flowServices{systemSettings, iosServices.GetNetworkConfig(), iosServices.GetSockets(), pcSettingsStore, *this}
 {
     TakeTheCountryOfThePc(regionalSettings);
     ApplyControlsAndSound(pcSettingsStore.Values());

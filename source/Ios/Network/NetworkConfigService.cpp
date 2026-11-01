@@ -2,9 +2,9 @@
 
 #include "Ios/FileSystem/NewEntryDefaults.h"
 
-#include <algorithm>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace Ios
 {
@@ -86,9 +86,11 @@ std::span<const std::string_view> FolderPathsOf(NetworkConfigurationKind kind)
 
 }
 
-NetworkConfigService::NetworkConfigService(FileSystemService& fileSystemToUse, const MacAddress& macAddress, const IosProfile& iosProfile)
+NetworkConfigService::NetworkConfigService(FileSystemService& fileSystemToUse, const MacAddress& macAddress, PcConnectionCheck pcConnectionCheck,
+    const IosProfile& iosProfile)
     : fileSystem(fileSystemToUse)
     , wirelessMacAddress(macAddress)
+    , isPcConnected(std::move(pcConnectionCheck))
     , profile(iosProfile)
 {
     Result<NetworkConfiguration> stored = ReadConfiguration();
@@ -166,46 +168,25 @@ Result<void> NetworkConfigService::ApplyConfiguration(const NetworkConfiguration
     return Result<void>();
 }
 
-// The caller holds the lock. The module takes the kind of connection that the program asked for, but only when
-// one of the three connections of that kind is enabled.
-NetworkInterface NetworkConfigService::ChooseInterface() const
-{
-    if (!hasBeenAskedToConnect)
-        return NetworkInterface::None;
-
-    const auto& profiles = currentConfiguration.profiles;
-    bool hasWiredConnection = std::any_of(profiles.begin(), profiles.end(), IsUsableWiredConnection);
-    bool hasWirelessConnection = std::any_of(profiles.begin(), profiles.end(), IsUsableWirelessConnection);
-
-    if (currentConfiguration.selectedMedia == SelectedMedia::Wired && hasWiredConnection)
-        return NetworkInterface::Wired;
-
-    if (currentConfiguration.selectedMedia == SelectedMedia::Wireless && hasWirelessConnection)
-        return NetworkInterface::Wireless;
-
-    return NetworkInterface::None;
-}
-
 LinkStatus NetworkConfigService::GetLinkStatus() const
 {
     std::lock_guard<std::mutex> lock(mutex);
     if (!hasBeenAskedToConnect)
         return LinkStatus::Busy;
 
-    NetworkInterface interfaceToUse = ChooseInterface();
-    if (interfaceToUse == NetworkInterface::Wired)
-        return LinkStatus::WiredInterfaceReady;
+    if (isPcConnected())
+        return LinkStatus::LinkUp;
 
-    if (interfaceToUse == NetworkInterface::Wireless)
-        return LinkStatus::Busy;
-
-    return LinkStatus::NoInterface;
+    return LinkStatus::WiredInterfaceReady;
 }
 
 NetworkInterface NetworkConfigService::GetChosenInterface() const
 {
     std::lock_guard<std::mutex> lock(mutex);
-    return ChooseInterface();
+    if (!hasBeenAskedToConnect)
+        return NetworkInterface::None;
+
+    return NetworkInterface::Wired;
 }
 
 MacAddress NetworkConfigService::GetWirelessMacAddress() const

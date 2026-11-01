@@ -83,6 +83,27 @@ enum class IosError : int
     // The address lookup failed. The original reports it as EAI_AGAIN (-0x12E).
     NameLookupFailed = -302,
 
+    // The errors of a socket, which Windows reports for a real network (Sockets/SocketService.cpp). Several share their number with an
+    // error of another device: each device numbers its own errors.
+    AddressInUse = -3,
+    AddressFamilyNotSupported = -5,
+    BadSocket = -8,
+    ConnectionAborted = -13,
+    ConnectionRefused = -14,
+    ConnectionReset = -15,
+    HostUnreachable = -23,
+    InvalidSocketArgument = -28,
+    SocketFailed = -29,
+    AlreadyConnected = -30,
+    TooManySockets = -33,
+    MessageTooLong = -35,
+    NetworkDown = -38,
+    NetworkUnreachable = -40,
+    NotConnected = -56,
+    ProtocolNotSupported = -68,
+    WrongProtocolType = -69,
+    TimedOut = -76,
+
     // The secure sockets. Codes of /dev/net/ssl. The module has four contexts and numbers its errors like OpenSSL does:
     // the code is minus the answer of SSL_get_error. A few numbers are the module's own.
 
@@ -95,6 +116,13 @@ enum class IosError : int
 
     // The number is not a context of the module.
     InvalidSecureContext = -8,
+
+    // The certificate of the server failed a check that the context asked for: its common name, its root certificate, the signatures
+    // of its chain, its dates.
+    CommonNameMismatch = -9,
+    RootCertificateNotTrusted = -10,
+    CertificateChainBroken = -11,
+    CertificateOutOfDate = -12,
 
     // The module has four root certificates built in and one client certificate.
     BuiltinRootCertificateNotFound = -14,

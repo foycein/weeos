@@ -191,6 +191,17 @@ void ChannelManager::RememberChannelThatStarts(SlotPosition position)
     Save();
 }
 
+bool ChannelManager::IsSdCardMenuIntroPending() const
+{
+    return SystemMenu::IsSdCardMenuIntroPending(saveData);
+}
+
+void ChannelManager::MarkSdCardMenuIntroSeen()
+{
+    SystemMenu::MarkSdCardMenuIntroSeen(saveData);
+    Save();
+}
+
 void ChannelManager::Save()
 {
     console.WriteNandFile(SaveDataPath, WriteSaveData(saveData));

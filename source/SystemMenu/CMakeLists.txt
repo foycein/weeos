@@ -1,7 +1,6 @@
 add_library(SystemMenu STATIC
     BackToWiiMenuScreen.cpp
     ButtonController.cpp
-    ButtonGroup.cpp
     ContinueWatcher.cpp
     CursorManager.cpp
     DialogManager.cpp
@@ -25,8 +24,10 @@ add_library(SystemMenu STATIC
     MenuSettings.cpp
     MenuSound.cpp
     MenuStateFile.cpp
+    NetworkStart.cpp
     MenuSystem.cpp
     InstalledTitleContents.cpp
+    OwnServer.cpp
     OwnTitleContents.cpp
     PhysicalKeyboard.cpp
     ProgramImage.cpp

@@ -26,6 +26,13 @@ constexpr std::size_t SlotsPerButton = 3;
 constexpr int ProgressPerStep = 2;
 constexpr int FullProgress = 100;
 
+// The words of a page fade out in 10 steps and the next ones fade in as fast (0x81346C14 gets 10, 0x81345880).
+constexpr int FullAlpha = 255;
+constexpr int PageFadeSteps = 10;
+constexpr int AlphaPerPageStep = (FullAlpha + PageFadeSteps - 1) / PageFadeSteps;
+
+constexpr std::size_t BackButtonIndex = 1;
+
 struct WindowDescription
 {
     std::string_view layoutName;
@@ -57,6 +64,16 @@ std::size_t FocusOffSlot(std::size_t buttonIndex)
 std::size_t SelectSlot(std::size_t buttonIndex)
 {
     return FocusOnSlot(buttonIndex) + 2;
+}
+
+// Sets the alpha of every pane below the pane, as 0x81345718 does.
+void SetAlphaOfPanesBelow(Formats::Pane& pane, std::uint8_t alpha)
+{
+    for (Formats::Pane& child : pane.children)
+    {
+        child.alpha = alpha;
+        SetAlphaOfPanesBelow(child, alpha);
+    }
 }
 
 const std::u16string& TextOfButton(const DialogRequest& request, std::size_t buttonIndex)
@@ -110,7 +127,7 @@ void DialogManager::MakeWindow(DialogLayout kind)
         window.layout->BindAnimation(layoutName + "_SelectBtn_Ac", "G_SelectBtn" + letter);
         buttonPaneNames.push_back("B_Btn" + letter);
     }
-    window.buttons = std::make_unique<ButtonGroup>(*window.layout, display, buttonPaneNames);
+    window.buttons = std::make_unique<ButtonController>(*window.layout, display, buttonPaneNames);
 }
 
 bool DialogManager::IsOpen() const
@@ -123,7 +140,9 @@ bool DialogManager::Open(const DialogRequest& request)
     if (state != State::Closed)
         return false;
 
-    openWindow = &windows[static_cast<std::size_t>(request.layout)];
+    pages = request.pages;
+    DialogLayout layout = pages.empty() ? request.layout : DialogLayout::TwoButtons;
+    openWindow = &windows[static_cast<std::size_t>(layout)];
     answer.reset();
     closeRequested = false;
     stepsBeforeClosing = request.stepsBeforeClosing;
@@ -135,12 +154,20 @@ bool DialogManager::Open(const DialogRequest& request)
     shownPercentage = 0;
     sounds.Request(soundsBusy ? SoundName::Busy : SoundName::InfoWindow);
 
-    ShowTexts(request);
-    if (request.layout == DialogLayout::Message)
-        ShowMessageExtras(request);
-
+    isButtonFocused = {};
     if (openWindow->buttons)
-        openWindow->buttons->Reset();
+        openWindow->buttons->ForgetPointers();
+
+    if (layout == DialogLayout::TwoButtons)
+        ShowBackButton(true);
+
+    if (!pages.empty())
+        OpenPage(0);
+    else
+        ShowTexts(request);
+
+    if (layout == DialogLayout::Message)
+        ShowMessageExtras(request);
 
     openWindow->layout->StartAnimation(DialogInSlot);
     openWindow->layout->Calculate();
@@ -154,6 +181,39 @@ void DialogManager::ShowTexts(const DialogRequest& request)
 
     for (std::size_t buttonIndex = 0; buttonIndex < openWindow->buttonCount; ++buttonIndex)
         openWindow->layout->SetText(std::format("T_Btn{}", ButtonLetters[buttonIndex]), TextOfButton(request, buttonIndex));
+}
+
+void DialogManager::OpenPage(std::size_t pageIndex)
+{
+    shownPage = pageIndex;
+    previousPage = pageIndex;
+    pageAlpha = FullAlpha;
+
+    const DialogPage& page = pages[pageIndex];
+    ShowPageTexts(page);
+    ShowBackButton(page.hasBackButton);
+    FadePage(page, page, FullAlpha);
+    if (page.picture != nullptr && page.playsPictureAnimation)
+        page.picture->StartAnimation(0);
+}
+
+void DialogManager::ShowPageTexts(const DialogPage& page)
+{
+    MenuLayout& layout = *openWindow->layout;
+    layout.SetText("T_Dialog", page.message);
+    layout.SetText("T_BtnB", page.nextText);
+    layout.SetText("T_BtnA", page.backText);
+}
+
+// The button A of the window with two buttons, which a page of a dialog with pages may hide.
+void DialogManager::ShowBackButton(bool isShown)
+{
+    MenuLayout& layout = *openWindow->layout;
+    layout.PaneNamed("N_BtnA").isVisible = isShown;
+    SetAlphaOfPanesBelow(layout.PaneNamed("N_BtnA_Pic"), FullAlpha);
+    openWindow->buttons->SetEnabled("B_BtnA", isShown);
+    if (!isShown)
+        isButtonFocused[BackButtonIndex] = false;
 }
 
 void DialogManager::ShowMessageExtras(const DialogRequest& request)
@@ -206,7 +266,11 @@ void DialogManager::Update(const InputManager& input, bool isActive)
 
     case State::ShowingChoice:
         if (!openWindow->layout->IsAnimationPlaying(choiceSlot))
-            StartClosing(closingAnswer);
+            EndTheChoice();
+        break;
+
+    case State::TurningPage:
+        UpdateTurningPage();
         break;
 
     case State::Closing:
@@ -219,7 +283,10 @@ void DialogManager::Update(const InputManager& input, bool isActive)
     }
 
     if (state != State::Closed)
+    {
         openWindow->layout->Calculate();
+        UpdatePicture();
+    }
 }
 
 void DialogManager::UpdateWaiting(const InputManager& input, bool isActive)
@@ -236,7 +303,7 @@ void DialogManager::UpdateWaiting(const InputManager& input, bool isActive)
         return;
     }
 
-    for (const ButtonGroupEvent& event : openWindow->buttons->Update(input, isActive))
+    for (const ButtonEvent& event : openWindow->buttons->Poll(input, isActive))
     {
         ReactToButton(event);
         if (state != State::Waiting)
@@ -265,20 +332,25 @@ void DialogManager::UpdateMessageWindow()
         StartClosing(DialogAnswer::ProgressDone);
 }
 
-void DialogManager::ReactToButton(const ButtonGroupEvent& event)
+void DialogManager::ReactToButton(const ButtonEvent& event)
 {
     MenuLayout& layout = *openWindow->layout;
 
-    if (event.kind == ButtonGroupEventKind::Focused)
+    if (event.kind == ButtonEventKind::FocusGained)
     {
+        isButtonFocused[event.buttonIndex] = true;
         sounds.Request(SoundName::ButtonTargeted);
         layout.StartAnimation(FocusOnSlot(event.buttonIndex));
     }
 
-    if (event.kind == ButtonGroupEventKind::Unfocused)
+    // A button that a page hid while a pointer was on it has lost its focus already.
+    if (event.kind == ButtonEventKind::FocusLost && isButtonFocused[event.buttonIndex])
+    {
+        isButtonFocused[event.buttonIndex] = false;
         layout.StartAnimation(FocusOffSlot(event.buttonIndex));
+    }
 
-    if (event.kind == ButtonGroupEventKind::Pressed)
+    if (event.kind == ButtonEventKind::Pressed)
     {
         closingAnswer = ButtonAnswers[event.buttonIndex];
         sounds.Request(SoundOfPress(closingAnswer));
@@ -286,6 +358,114 @@ void DialogManager::ReactToButton(const ButtonGroupEvent& event)
         layout.StartAnimation(choiceSlot);
         state = State::ShowingChoice;
     }
+}
+
+// The chosen button has flashed. A dialog with pages turns its page unless it was the last page or the first (0x8134753C); a button
+// that a pointer is still on shows its focus again (0x81345778).
+void DialogManager::EndTheChoice()
+{
+    if (pages.empty())
+    {
+        StartClosing(closingAnswer);
+        return;
+    }
+
+    bool turnsForward = closingAnswer == DialogAnswer::ButtonB;
+    bool isPastTheLastPage = turnsForward && shownPage + 1 == pages.size();
+    bool isBeforeTheFirstPage = !turnsForward && shownPage == 0;
+    if (isPastTheLastPage || isBeforeTheFirstPage)
+    {
+        StartClosing(closingAnswer);
+        return;
+    }
+
+    const DialogPage& page = pages[shownPage];
+    if (page.picture != nullptr && page.playsPictureAnimation)
+        page.picture->StopAnimation(0);
+
+    previousPage = shownPage;
+    shownPage = turnsForward ? shownPage + 1 : shownPage - 1;
+    isFadingOut = true;
+    state = State::TurningPage;
+
+    for (std::size_t buttonIndex = 0; buttonIndex < openWindow->buttonCount; ++buttonIndex)
+    {
+        if (isButtonFocused[buttonIndex])
+            openWindow->layout->StartAnimation(FocusOnSlot(buttonIndex));
+    }
+}
+
+// The parts of the page that the next page changes fade out; at nothing the words change and fade in (0x81345880).
+void DialogManager::UpdateTurningPage()
+{
+    const DialogPage& oldPage = pages[previousPage];
+    const DialogPage& newPage = pages[shownPage];
+
+    if (isFadingOut)
+    {
+        pageAlpha = std::max(pageAlpha - AlphaPerPageStep, 0);
+        FadePage(oldPage, newPage, static_cast<std::uint8_t>(pageAlpha));
+        if (pageAlpha > 0)
+            return;
+
+        isFadingOut = false;
+        ShowPageTexts(newPage);
+        if (!newPage.hasBackButton)
+            ShowBackButton(false);
+        return;
+    }
+
+    if (newPage.hasBackButton && !oldPage.hasBackButton && pageAlpha == 0)
+        ShowBackButton(true);
+
+    pageAlpha = std::min(pageAlpha + AlphaPerPageStep, FullAlpha);
+    FadePage(newPage, oldPage, static_cast<std::uint8_t>(pageAlpha));
+    if (pageAlpha < FullAlpha)
+        return;
+
+    if (newPage.picture != nullptr && newPage.playsPictureAnimation)
+        newPage.picture->StartAnimation(0);
+    state = State::Waiting;
+}
+
+// The words of the page fade, and of its buttons and its picture what the other page does not share.
+void DialogManager::FadePage(const DialogPage& page, const DialogPage& otherPage, std::uint8_t alpha)
+{
+    MenuLayout& layout = *openWindow->layout;
+    layout.PaneNamed("T_Dialog").alpha = alpha;
+
+    if (page.nextText != otherPage.nextText)
+        layout.PaneNamed("T_BtnB").alpha = alpha;
+
+    bool backButtonComesOrGoes = page.hasBackButton != otherPage.hasBackButton;
+    if (backButtonComesOrGoes)
+        SetAlphaOfPanesBelow(layout.PaneNamed("N_BtnA_Pic"), alpha);
+    else if (page.backText != otherPage.backText)
+        layout.PaneNamed("T_BtnA").alpha = alpha;
+
+    if (page.picture != nullptr && page.picture != otherPage.picture)
+        SetAlphaOfPanesBelow(page.picture->PaneNamed("RootPane"), alpha);
+}
+
+const DialogPage* DialogManager::PageOfPicture() const
+{
+    if (pages.empty())
+        return nullptr;
+
+    bool showsTheOldPage = state == State::TurningPage && isFadingOut;
+    return &pages[showsTheOldPage ? previousPage : shownPage];
+}
+
+// The picture of the page lies over the middle of the dialog, raised by its height (0x81345EE8).
+void DialogManager::UpdatePicture()
+{
+    const DialogPage* page = PageOfPicture();
+    if (page == nullptr || page->picture == nullptr)
+        return;
+
+    const Formats::Vector3& middle = openWindow->layout->PaneNamed("N_Dialog").translation;
+    page->picture->PaneNamed("RootPane").translation = {middle.x, middle.y + page->pictureHeight, middle.z};
+    page->picture->Calculate();
 }
 
 // A window with one button has nothing to cancel.
@@ -308,8 +488,14 @@ void DialogManager::StartClosing(DialogAnswer reason)
 
 void DialogManager::Draw()
 {
-    if (state != State::Closed)
-        openWindow->layout->Draw();
+    if (state == State::Closed)
+        return;
+
+    openWindow->layout->Draw();
+
+    const DialogPage* page = PageOfPicture();
+    if (page != nullptr && page->picture != nullptr)
+        page->picture->Draw();
 }
 
 }

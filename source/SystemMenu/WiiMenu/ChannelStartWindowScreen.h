@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SystemMenu/ButtonGroup.h"
+#include "SystemMenu/ButtonController.h"
 #include "SystemMenu/MenuLayout.h"
 #include "SystemMenu/MenuServices.h"
 #include "SystemMenu/Screen.h"
@@ -43,18 +43,12 @@ enum class StartWindowState
     // The menu's message that the channel cannot be used is open, because WeeOS has no program for it yet.
     ShowingCannotBeUsed,
 
-    // The question whether to set up the Internet first is open (0x0C).
-    AskingForInternetSettings,
-
     // Start was pressed and the channel may start: a moment passes, then the picture fades to black (4, 5).
     Starting,
     FadingOutToStart,
 
     // The title was handed to the console, which starts it after this step.
     Started,
-
-    // Wii Settings comes next, for the Internet settings: the picture fades out first (7).
-    LeavingForSettings,
 
     // Wii Menu was pressed: the grid zooms out, the window fades out inside the television (6).
     ZoomingOut,
@@ -113,16 +107,13 @@ private:
     void ShowTheNewChannel();
     void RunArrivingAtTheNewChannel();
 
-    void ReactToButton(const ButtonGroupEvent& event);
+    void ReactToButton(const ButtonEvent& event);
     void PressStart();
     void ShowMessage(std::uint16_t messageNumber);
-    void AskForInternetSettings();
     void ReadAnswerOfCannotBeUsed();
-    void ReadAnswerOfInternetQuestion();
     void BeginStart();
     void RunStarting();
     void RunFadingOutToStart();
-    void LeaveForSettings(int settingsPage);
     void CloseTowardsTheGrid();
 
     ChannelGridScreen* Grid();
@@ -147,7 +138,7 @@ private:
     std::unique_ptr<Layout::LayoutArchive> bannerArchive;
     std::unique_ptr<MenuLayout> frame;
     std::unique_ptr<MenuLayout> bannerLayout;
-    std::unique_ptr<ButtonGroup> buttons;
+    std::unique_ptr<ButtonController> buttons;
 
     // The animations of the buttons, by the slots of the frame: the focus comes and goes, a press, Start in gray and back.
     std::size_t focusOnOfWiiMenu = 0;
@@ -175,7 +166,6 @@ private:
 
     StartWindowState state = StartWindowState::WaitingForTheZoom;
     int stepsWaited = 0;
-    int settingsPageToOpen = 0;
 };
 
 }

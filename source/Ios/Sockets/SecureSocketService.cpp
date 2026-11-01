@@ -1,6 +1,9 @@
 #include "Ios/Sockets/SecureSocketService.h"
 
+#include "Ios/Sockets/CertificateCheck.h"
+
 #include <algorithm>
+#include <vector>
 
 namespace Ios
 {
@@ -11,106 +14,207 @@ namespace
 // The contexts are numbered from 1. The number 0 is no context.
 constexpr SecureContextId FirstContextId = 1;
 
+bool AsksFor(std::uint32_t verifyFlags, std::uint32_t check)
+{
+    return (verifyFlags & check) != 0;
 }
 
-SecureSocketService::ContextState* SecureSocketService::FindOpenContext(SecureContextId context)
+bool AreAllInDate(const std::vector<Formats::Bytes>& certificates)
+{
+    return std::ranges::all_of(certificates, [](const Formats::Bytes& certificate) { return IsInDate(certificate); });
+}
+
+}
+
+SecureSocketService::SecureSocketService(SocketService& socketService)
+    : sockets(socketService)
+{
+}
+
+SecureSocketService::~SecureSocketService() = default;
+
+SecureSocketService::Context* SecureSocketService::FindOpenContext(SecureContextId context)
 {
     bool isNumberOfAContext = context >= FirstContextId && context <= static_cast<SecureContextId>(SecureContextCount);
     if (!isNumberOfAContext)
         return nullptr;
 
-    ContextState& state = states[context - FirstContextId];
-    if (state == ContextState::Free)
-        return nullptr;
-
-    return &state;
+    return contexts[context - FirstContextId].get();
 }
 
-Result<SecureContextId> SecureSocketService::NewContext(std::uint32_t, std::string_view commonName)
+Result<SecureContextId> SecureSocketService::NewContext(std::uint32_t verifyFlags, std::string_view commonName)
 {
     if (commonName.size() > MaximumCommonNameLength)
         return IosError::SecureLibraryFailure;
 
     std::lock_guard<std::mutex> lock(mutex);
-    auto freeContext = std::find(states.begin(), states.end(), ContextState::Free);
-    if (freeContext == states.end())
+    auto freeSlot = std::find(contexts.begin(), contexts.end(), nullptr);
+    if (freeSlot == contexts.end())
         return IosError::SecureLibraryFailure;
 
-    *freeContext = ContextState::New;
-    return static_cast<SecureContextId>(freeContext - states.begin()) + FirstContextId;
+    *freeSlot = std::make_unique<Context>();
+    (*freeSlot)->verifyFlags = verifyFlags;
+    (*freeSlot)->commonName = std::string(commonName);
+    return static_cast<SecureContextId>(freeSlot - contexts.begin()) + FirstContextId;
 }
 
-Result<void> SecureSocketService::Connect(SecureContextId context, SocketId)
+Result<void> SecureSocketService::Connect(SecureContextId contextId, SocketId socket)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    ContextState* state = FindOpenContext(context);
-    if (state == nullptr)
+    Context* context = FindOpenContext(contextId);
+    if (context == nullptr)
         return IosError::InvalidSecureContext;
 
-    *state = ContextState::Connected;
+    context->connection = std::make_unique<TlsConnection>(sockets, socket, context->commonName);
+    context->state = ContextState::Connected;
     return Result<void>();
 }
 
-IosError SecureSocketService::TryToSetTheConnectionUp(SecureContextId context)
+// The checks in the order of the verify flags. The built-in roots are not carried, so a context without a root of its own
+// trusts no server (SecureSocketService.h).
+Result<void> SecureSocketService::CheckServerCertificates(const Context& context) const
 {
-    std::lock_guard<std::mutex> lock(mutex);
-    ContextState* state = FindOpenContext(context);
-    if (state == nullptr)
-        return IosError::InvalidSecureContext;
+    std::vector<Formats::Bytes> certificates = context.connection->ServerCertificates();
+    if (certificates.empty())
+        return IosError::SecureConnectionFailed;
 
-    if (*state == ContextState::New)
+    if (AsksFor(context.verifyFlags, VerifyCommonName) && CommonNameOf(certificates.front()) != context.commonName)
+        return IosError::CommonNameMismatch;
+
+    if (AsksFor(context.verifyFlags, VerifyRootCa) && !IsTrustedByRoot(certificates, context.rootCertificate))
+        return IosError::RootCertificateNotTrusted;
+
+    if (AsksFor(context.verifyFlags, VerifyChain) && !IsChainUnbroken(certificates, context.rootCertificate))
+        return IosError::CertificateChainBroken;
+
+    if (AsksFor(context.verifyFlags, VerifyDate) && !AreAllInDate(certificates))
+        return IosError::CertificateOutOfDate;
+
+    return Result<void>();
+}
+
+Result<void> SecureSocketService::SetTheConnectionUp(Context& context)
+{
+    if (context.state == ContextState::Established)
+        return Result<void>();
+
+    if (context.state == ContextState::New)
         return IosError::SecureLibraryFailure;
 
-    *state = ContextState::Failed;
-    return IosError::SecureConnectionFailed;
+    if (context.state == ContextState::Failed)
+        return IosError::SecureConnectionFailed;
+
+    if (!context.connection->Handshake())
+    {
+        context.state = ContextState::Failed;
+        return IosError::SecureConnectionFailed;
+    }
+
+    Result<void> checked = CheckServerCertificates(context);
+    if (checked.Failed())
+    {
+        context.state = ContextState::Failed;
+        return checked;
+    }
+
+    context.state = ContextState::Established;
+    return Result<void>();
 }
 
-Result<void> SecureSocketService::Handshake(SecureContextId context)
+// The network calls run without the lock, so that the other contexts are not held up.
+Result<void> SecureSocketService::Handshake(SecureContextId contextId)
 {
-    return TryToSetTheConnectionUp(context);
-}
-
-Result<Formats::Bytes> SecureSocketService::Read(SecureContextId context, std::size_t)
-{
-    return TryToSetTheConnectionUp(context);
-}
-
-Result<std::size_t> SecureSocketService::Write(SecureContextId context, Formats::ByteView)
-{
-    return TryToSetTheConnectionUp(context);
-}
-
-Result<void> SecureSocketService::Shutdown(SecureContextId context)
-{
-    std::lock_guard<std::mutex> lock(mutex);
-    ContextState* state = FindOpenContext(context);
-    if (state == nullptr)
+    Context* context = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        context = FindOpenContext(contextId);
+    }
+    if (context == nullptr)
         return IosError::InvalidSecureContext;
 
-    bool couldSayGoodbye = *state == ContextState::Connected;
-    *state = ContextState::Free;
+    return SetTheConnectionUp(*context);
+}
+
+Result<Formats::Bytes> SecureSocketService::Read(SecureContextId contextId, std::size_t maximumLength)
+{
+    Context* context = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        context = FindOpenContext(contextId);
+    }
+    if (context == nullptr)
+        return IosError::InvalidSecureContext;
+
+    Result<void> setUp = SetTheConnectionUp(*context);
+    if (setUp.Failed())
+        return setUp.Error();
+
+    std::optional<Formats::Bytes> data = context->connection->Read(maximumLength);
+    if (!data)
+        return IosError::SecureConnectionFailed;
+
+    return *data;
+}
+
+Result<std::size_t> SecureSocketService::Write(SecureContextId contextId, Formats::ByteView data)
+{
+    Context* context = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        context = FindOpenContext(contextId);
+    }
+    if (context == nullptr)
+        return IosError::InvalidSecureContext;
+
+    Result<void> setUp = SetTheConnectionUp(*context);
+    if (setUp.Failed())
+        return setUp.Error();
+
+    if (!context->connection->Write(data))
+        return IosError::SecureConnectionFailed;
+
+    return data.size();
+}
+
+Result<void> SecureSocketService::Shutdown(SecureContextId contextId)
+{
+    std::unique_ptr<Context> context;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (FindOpenContext(contextId) == nullptr)
+            return IosError::InvalidSecureContext;
+
+        context = std::move(contexts[contextId - FirstContextId]);
+    }
+
+    if (context->state == ContextState::Established)
+        context->connection->SayGoodbye();
+
+    bool couldSayGoodbye = context->state == ContextState::Connected || context->state == ContextState::Established;
     if (!couldSayGoodbye)
         return IosError::SecureLibraryFailure;
 
     return Result<void>();
 }
 
-Result<void> SecureSocketService::SetRootCa(SecureContextId context, Formats::ByteView certificate)
+Result<void> SecureSocketService::SetRootCa(SecureContextId contextId, Formats::ByteView certificate)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (FindOpenContext(context) == nullptr)
+    Context* context = FindOpenContext(contextId);
+    if (context == nullptr)
         return IosError::InvalidSecureContext;
 
     if (certificate.size() > MaximumRootCertificateSize)
         return IosError::SecureLibraryFailure;
 
+    context->rootCertificate.assign(certificate.begin(), certificate.end());
     return Result<void>();
 }
 
-Result<void> SecureSocketService::SetClientCertificate(SecureContextId context, Formats::ByteView certificate, Formats::ByteView privateKey)
+Result<void> SecureSocketService::SetClientCertificate(SecureContextId contextId, Formats::ByteView certificate, Formats::ByteView privateKey)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (FindOpenContext(context) == nullptr)
+    if (FindOpenContext(contextId) == nullptr)
         return IosError::InvalidSecureContext;
 
     if (certificate.size() > MaximumClientCertificateSize || privateKey.size() > MaximumPrivateKeySize)
@@ -119,10 +223,10 @@ Result<void> SecureSocketService::SetClientCertificate(SecureContextId context, 
     return Result<void>();
 }
 
-Result<void> SecureSocketService::SetBuiltinRootCa(SecureContextId context, std::uint32_t index)
+Result<void> SecureSocketService::SetBuiltinRootCa(SecureContextId contextId, std::uint32_t index)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (FindOpenContext(context) == nullptr)
+    if (FindOpenContext(contextId) == nullptr)
         return IosError::InvalidSecureContext;
 
     if (index >= BuiltinRootCertificateCount)
@@ -131,10 +235,10 @@ Result<void> SecureSocketService::SetBuiltinRootCa(SecureContextId context, std:
     return Result<void>();
 }
 
-Result<void> SecureSocketService::SetBuiltinClientCertificate(SecureContextId context, std::uint32_t index)
+Result<void> SecureSocketService::SetBuiltinClientCertificate(SecureContextId contextId, std::uint32_t index)
 {
     std::lock_guard<std::mutex> lock(mutex);
-    if (FindOpenContext(context) == nullptr)
+    if (FindOpenContext(contextId) == nullptr)
         return IosError::InvalidSecureContext;
 
     if (index >= BuiltinClientCertificateCount)
