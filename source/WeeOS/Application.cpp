@@ -152,7 +152,8 @@ private:
     {
         Channels::ChannelStorage storage{iosServices.GetSdCard(), iosServices.GetFileSystem(), iosServices.GetTitles().GetCaller()};
         channel = std::make_unique<Channels::ChannelSystem>(graphicsDevice, titleContents, iosServices.GetRemote(),
-            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle);
+            iosServices.GetNetworkConfig(), storage, iosServices.GetPower(), wiiSettings.PictureShape(), runningTitle,
+            Channels::ReadConsoleFontArchive(iosServices.GetTitles()));
 
         for (const Formats::Bytes& archive : Channels::ReadSoundArchives(runningTitle, titleContents))
         {
