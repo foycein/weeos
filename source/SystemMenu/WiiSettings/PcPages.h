@@ -19,8 +19,9 @@ class PcPages : public PageGroup
 {
 public:
     // The navigator, the settings of the console, the settings of the PC and the program that applies them must outlive the pages.
+    // The page "Import a Wii NAND" is offered only when the program can import (canImport).
     PcPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings, Settings::PcSettingsStore& pcSettingsStore,
-        Settings::PcSettingsTarget& pcSettingsTarget);
+        Settings::PcSettingsTarget& pcSettingsTarget, bool canImport);
 
     bool Owns(PageId page) const override;
     void EnterPage(PageId page) override;
@@ -50,6 +51,7 @@ private:
     Settings::SystemSettings& settings;
     Settings::PcSettingsStore& pcSettings;
     Settings::PcSettingsTarget& pcTarget;
+    bool isImportOffered;
 
     // The playback devices of the PC, asked for when the user opens their list, and the page of each list that is shown.
     std::vector<std::u16string> audioDevices;

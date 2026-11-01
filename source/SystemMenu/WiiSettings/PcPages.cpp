@@ -104,11 +104,12 @@ PageRectangle RowBounds(int rowOnPage)
 }
 
 PcPages::PcPages(PageNavigator& pageNavigator, Settings::SystemSettings& systemSettings, Settings::PcSettingsStore& pcSettingsStore,
-    Settings::PcSettingsTarget& pcSettingsTarget)
+    Settings::PcSettingsTarget& pcSettingsTarget, bool canImport)
     : navigator(pageNavigator)
     , settings(systemSettings)
     , pcSettings(pcSettingsStore)
     , pcTarget(pcSettingsTarget)
+    , isImportOffered(canImport)
 {
 }
 
@@ -175,6 +176,8 @@ void PcPages::BuildPcIndex(PageBuilder& builder)
     builder.AddMenuItem(0, u"Window", [this] { navigator.GoTo(PageId::PcWindow); });
     builder.AddMenuItem(1, u"Sound", [this] { navigator.GoTo(PageId::PcSound); });
     builder.AddMenuItem(2, u"Controls", [this] { navigator.GoTo(PageId::PcControls); });
+    if (isImportOffered)
+        builder.AddMenuItem(3, u"Import a Wii NAND", [this] { navigator.GoTo(PageId::PcImport); });
     builder.AddBackButton([this] { navigator.GoTo(PageId::Index); });
 }
 

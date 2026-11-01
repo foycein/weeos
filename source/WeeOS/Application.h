@@ -10,6 +10,7 @@
 #include "Platform/Window.h"
 #include "Settings/ConsoleClock.h"
 #include "SystemMenu/MenuSystem.h"
+#include "WeeOS/ConsoleImporter.h"
 #include "WeeOS/ProgramSound.h"
 
 #include <filesystem>
@@ -24,23 +25,34 @@ class ChannelSystem;
 namespace WeeOS
 {
 
-// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows
-// and the file WeeOS.settings.txt beside the program; a test gives its own.
+// The file picker of Windows, for nand.bin of a BootMii backup.
+std::optional<std::filesystem::path> PickNandWithWindows();
+
+// What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of Windows,
+// the file WeeOS.settings.txt and the Wii files beside the program, and the file picker of Windows; a test gives its own.
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
     Platform::RegionalSettings regionalSettings = Platform::ReadRegionalSettings();
     std::filesystem::path pcSettingsFile = Platform::ExecutableFolder() / "WeeOS.settings.txt";
+
+    // The Wii files from which the first start makes a new console (tools/PrepareWiiFiles).
+    std::filesystem::path wiiFilesFolder = Platform::ExecutableFolder() / "WiiFiles";
+
+    // Who picks the NAND of a Wii to import.
+    NandPicker pickNand = PickNandWithWindows;
 };
 
-// WeeOS.exe: the console starts, a window opens and the System Menu runs in it. When the menu starts a channel, IOS restarts with the IOS
+// WeeOS.exe: the console starts, a window opens and the System Menu runs in it. A NAND folder without a console gets a new console
+// first, made from the Wii files (NewConsole.h), and its first start offers the import of the person's own Wii. When the menu starts a channel, IOS restarts with the IOS
 // of the channel and the channel's program runs in the window, until it asks for the Wii Menu (Boot::ConsoleStartup::LaunchTitle).
 // The mouse over the window is the hand of remote 1, the left mouse button is A and the right one is B.
 // Ctrl+Q is the POWER button (and so is closing the window), Ctrl+R is the RESET button and Ctrl+S puts the SD card in or takes it out.
 class Application : private Platform::HostCommandListener
 {
 public:
-    // Powers the console on. Throws when the console cannot start or the window cannot open.
+    // Makes the folder of the SD card and, when there is none, a new console; then powers the console on.
+    // Throws when the console cannot be made or cannot start, or the window cannot open.
     // A silent application gives its sound output only silence.
     Application(const Ios::IosFolders& folders, bool isSilent, HostEnvironment hostEnvironment = HostEnvironment());
     ~Application();
@@ -81,7 +93,9 @@ private:
 
     void OnHostCommand(Platform::HostCommand command) override;
 
+    void PrepareConsoleFolders();
     void StartSession();
+    void StartImportedConsole();
     void StopOnTheKeyOfKoreanConsoles();
     void ReportCloseOfTheWindowAsPowerButton();
     void RunDueSteps();
@@ -95,6 +109,7 @@ private:
 
     Ios::IosFolders folders;
     HostEnvironment host;
+    ConsoleImporter importer;
     Boot::ConsoleStartup console;
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;

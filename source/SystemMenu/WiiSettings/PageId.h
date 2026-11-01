@@ -35,6 +35,11 @@ enum class PageId
     PcKeys,
     PcMouse,
 
+    // PC Settings: the import of the person's own Wii.
+    PcImport,
+    PcImporting,
+    PcImportFailed,
+
     // The sound mode of the console: mono, stereo or surround. It is a page of PC Settings.
     SoundSet,
 };

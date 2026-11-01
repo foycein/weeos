@@ -59,4 +59,7 @@ struct ConsoleKeys
 // Throws a FormatError for a missing or unknown name, a value of the wrong size, or a line that is not of this shape.
 ConsoleKeys ReadConsoleKeys(ByteView keysTextBytes);
 
+// Writes keys.txt in the order and the shape of a BootMii backup: "name = HEXADECIMAL DIGITS", one line for each value.
+Bytes WriteConsoleKeys(const ConsoleKeys& keys);
+
 }

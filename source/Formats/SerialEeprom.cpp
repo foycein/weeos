@@ -1,6 +1,7 @@
 #include "Formats/SerialEeprom.h"
 
 #include "Formats/ByteReader.h"
+#include "Formats/ByteWriter.h"
 #include "Formats/FormatError.h"
 
 #include <format>
@@ -41,6 +42,21 @@ SerialEeprom ReadSerialEeprom(ByteView bytes)
     reader.MoveTo(KoreanKeyOffset);
     eeprom.koreanKey = reader.ReadByteArray<KoreanKeySize>();
     return eeprom;
+}
+
+Bytes WriteSerialEeprom(const SerialEeprom& eeprom)
+{
+    ByteWriter writer;
+    writer.WriteUint32(eeprom.manufacturingSignerId);
+    writer.WriteUint32(eeprom.certificateAuthorityId);
+    writer.WriteUint32(eeprom.ngKeyId);
+    writer.WriteBytes(eeprom.ngSignature);
+    writer.WriteZeros(BootTwoVersionOffset - writer.GetBytes().size());
+    writer.WriteByte(eeprom.bootTwoVersion);
+    writer.WriteZeros(KoreanKeyOffset - writer.GetBytes().size());
+    writer.WriteBytes(eeprom.koreanKey);
+    writer.WriteZeros(SerialEepromSize - writer.GetBytes().size());
+    return writer.GetBytes();
 }
 
 }

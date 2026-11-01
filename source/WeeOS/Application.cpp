@@ -4,6 +4,7 @@
 #include "Channels/NativeChannels.h"
 #include "Input/VirtualRemote.h"
 #include "Ios/Keyboard/PcKeyboard.h"
+#include "Platform/FilePicker.h"
 #include "Platform/MessagePump.h"
 #include "SystemMenu/BackgroundServices/StartServices.h"
 #include "SystemMenu/DataManagement/DataManagementServices.h"
@@ -14,6 +15,7 @@
 #include "SystemMenu/OwnTitleContents.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/WiiMenu/IosMenuConsole.h"
+#include "WeeOS/NewConsole.h"
 #include "WeeOS/WiiSettingsServices.h"
 
 #include <format>
@@ -29,6 +31,8 @@ namespace
 {
 
 constexpr std::wstring_view WindowTitle = L"WeeOS";
+constexpr std::wstring_view NandPickerTitle = L"Import your Wii: choose nand.bin of its BootMii backup";
+constexpr std::wstring_view NandImageFileName = L"nand.bin";
 
 SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regionalSettings)
 {
@@ -40,6 +44,31 @@ SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regional
 
 }
 
+namespace
+{
+
+// A channel starts when WeeOS has a program for it and its IOS is installed. A new console without the IOS of a channel
+// (docs/audit/Portable.md) shows the menu's message that the channel cannot be used, as for a channel without a program.
+bool CanStart(const Ios::TitleService& titles, Ios::TitleId titleId)
+{
+    if (!Channels::HasNativeProgram(titleId))
+        return false;
+
+    Ios::Result<Formats::TitleMetadata> metadata = titles.ReadTitleMetadata(titleId);
+    if (metadata.Failed())
+        return false;
+
+    Ios::TitleId iosTitleId = Ios::TitleId::FromValue(metadata.Value().requiredSystemVersion);
+    return titles.ReadTitleMetadata(iosTitleId).Succeeded();
+}
+
+}
+
+std::optional<std::filesystem::path> PickNandWithWindows()
+{
+    return Platform::PickFile(std::wstring(NandPickerTitle), std::wstring(NandImageFileName));
+}
+
 // The program of the title that runs, the menu or a channel, with everything it reads through the services of the IOS that runs, and
 // the keys of the PC that go to those services.
 // The window sends its events to the keys, the keys to the keyboard service, and the keyboard service to the virtual remote.
@@ -48,8 +77,9 @@ class Application::Session
 public:
     Session(Ios::IosServices& iosServices, Ios::TitleId runningTitle, Platform::Window& programWindow,
         Graphics::GraphicsDevice& graphicsDevice, Platform::HostCommandListener& commandListener, ProgramSound& programSound,
-        const HostEnvironment& host)
+        const HostEnvironment& host, SystemMenu::ConsoleImport& importOfAWii)
         : window(programWindow)
+        , consoleImport(importOfAWii)
         , sound(programSound)
         , titleContents(iosServices.GetTitles())
         , nandFiles(iosServices.GetFileSystem(), iosServices.GetTitles())
@@ -130,11 +160,13 @@ public:
 private:
     void StartMenu(Ios::IosServices& iosServices, Graphics::GraphicsDevice& graphicsDevice)
     {
+        wiiSettings.FlowServices().consoleImport = &consoleImport;
         menu = std::make_unique<SystemMenu::MenuSystem>(graphicsDevice, titleContents, nandFiles, iosServices.GetRemote(),
-            iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices());
+            iosServices.GetPower(), wiiSettings.PictureShape(), wiiMenuConsole, &wiiSettings.FlowServices(), &consoleImport);
         SystemMenu::RunStartServices(iosServices.GetFileSystem(), iosServices.GetTitles());
         menu->UsePhysicalKeyboard(iosServices.GetKeyboard());
-        menu->Services().titleLaunch.SetProgramCheck(Channels::HasNativeProgram);
+        Ios::TitleService& titles = iosServices.GetTitles();
+        menu->Services().titleLaunch.SetProgramCheck([&titles](Ios::TitleId titleId) { return CanStart(titles, titleId); });
 
         dataManagement = std::make_unique<SystemMenu::DataManagementServices>(SystemMenu::DataManagementServices{iosServices.GetTitles(),
             iosServices.GetFileSystem(), iosServices.GetSdCard(), iosServices.GetConsoleIdentity(),
@@ -183,6 +215,7 @@ private:
     }
 
     Platform::Window& window;
+    SystemMenu::ConsoleImport& consoleImport;
     ProgramSound& sound;
     SystemMenu::OwnTitleContents titleContents;
     SystemMenu::IosNandFiles nandFiles;
@@ -203,14 +236,31 @@ private:
 Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostEnvironment hostEnvironment)
     : folders(iosFolders)
     , host(std::move(hostEnvironment))
+    , importer(iosFolders, host.pickNand)
     , console(iosFolders)
     , window(WindowTitle)
     , device(window)
     , sound(isSilent)
     , pacer(timer.ElapsedSeconds())
 {
+    PrepareConsoleFolders();
     console.PowerOn();
     StartSession();
+}
+
+// The SD card is always in its slot: its folder is made when it is not there. A NAND folder without a console gets a new one,
+// whose first start offers the import of the person's own Wii.
+void Application::PrepareConsoleFolders()
+{
+    if (!folders.sdCardFolder.empty())
+        std::filesystem::create_directories(folders.sdCardFolder);
+
+    if (HasConsole(folders))
+        return;
+
+    std::cout << "This is the first start: WeeOS makes a new console.\n";
+    MakeNewConsole(folders, host.wiiFilesFolder);
+    importer.OfferAtStart();
 }
 
 Application::~Application() = default;
@@ -218,7 +268,7 @@ Application::~Application() = default;
 void Application::StartSession()
 {
     Platform::HostCommandListener& commandListener = *this;
-    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host);
+    session = std::make_unique<Session>(console.GetServices(), RunningTitle(), window, device, commandListener, sound, host, importer);
     StopOnTheKeyOfKoreanConsoles();
 }
 
@@ -252,6 +302,7 @@ void Application::ShowNextPicture()
 
     RunDueSteps();
     CarryOutRequestsOfTheMenu();
+    StartImportedConsole();
     ReportProblems();
     ShowPicture();
 }
@@ -267,6 +318,7 @@ void Application::RunOneStep()
     session->VirtualRemote().SetWindowSize(window.ClientSize());
     session->Update();
     CarryOutRequestsOfTheMenu();
+    StartImportedConsole();
     ReportProblems();
 }
 
@@ -328,6 +380,20 @@ void Application::ResetConsole()
 {
     session.reset();
     console.PowerOff();
+    console.PowerOn();
+    StartSession();
+    ForgetReportedProblems();
+}
+
+// An import of a Wii that has finished takes the place of the console: IOS stops, the folders change and the console powers on again.
+void Application::StartImportedConsole()
+{
+    if (isPoweredOff || !importer.TakeFinishedImport())
+        return;
+
+    session.reset();
+    console.PowerOff();
+    importer.PutImportInPlace();
     console.PowerOn();
     StartSession();
     ForgetReportedProblems();

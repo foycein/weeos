@@ -145,9 +145,18 @@ Formats::Bytes ContentToImport(Formats::NandFileSystem& source, const ImportPlan
 ImportPlan PlanSystemImport(Formats::NandFileSystem& source)
 {
     Formats::NandTitles titles(source);
+    return PlanImport(source, BuildImportRules(FindHomebrewChannelIds(titles)));
+}
 
+ImportPlan PlanCompleteImport(Formats::NandFileSystem& source)
+{
+    return PlanImport(source, BuildCompleteImportRules());
+}
+
+ImportPlan PlanImport(Formats::NandFileSystem& source, std::vector<ImportRule> rules)
+{
     ImportPlan plan;
-    plan.rules = BuildImportRules(FindHomebrewChannelIds(titles));
+    plan.rules = std::move(rules);
     plan.totals.resize(plan.rules.size());
 
     for (const Formats::NandEntry& entry : source.Entries())

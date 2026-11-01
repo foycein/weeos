@@ -11,6 +11,7 @@ add_library(SystemMenu STATIC
     Fader.cpp
     FirstScreen.cpp
     FrontPanel.cpp
+    ConsoleImportScreen.cpp
     InputManager.cpp
     IosNandFiles.cpp
     KeyboardView.cpp

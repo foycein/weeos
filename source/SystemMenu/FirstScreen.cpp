@@ -85,6 +85,9 @@ FirstScreen ChooseByBootType(const StartFacts& facts)
     switch (facts.bootType)
     {
     case BootType::ColdStart:
+        if (facts.offersConsoleImport)
+            return {ScreenId::ConsoleImport, 0};
+
         return {ScreenId::HealthAndSafety, 0};
 
     case BootType::ReturnFromTitle:
@@ -124,7 +127,7 @@ FirstScreen ChooseFirstScreen(const StartFacts& facts)
 
 bool IsMenuReachedAtStart(ScreenId firstScreen)
 {
-    return firstScreen != ScreenId::HealthAndSafety && firstScreen != ScreenId::WiiSettings;
+    return firstScreen != ScreenId::HealthAndSafety && firstScreen != ScreenId::WiiSettings && firstScreen != ScreenId::ConsoleImport;
 }
 
 StartFacts ReadStartFacts(NandFiles& nand, MenuSettings& settings)

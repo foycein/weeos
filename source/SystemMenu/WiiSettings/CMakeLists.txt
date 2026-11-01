@@ -1,5 +1,6 @@
 target_sources(SystemMenu PRIVATE
     ConnectionPages.cpp
+    ImportPages.cpp
     IndexPages.cpp
     NicknamePage.cpp
     PageBuilder.cpp

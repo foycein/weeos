@@ -38,6 +38,9 @@ struct StartFacts
 
     // Launch with arguments only: what the title that started the menu wants (1 for a page of the settings, 2 for Wii Options).
     int launchCode = 0;
+
+    // WeeOS: the first start of a new console offers the import of a person's own Wii before Health and Safety.
+    bool offersConsoleImport = false;
 };
 
 // The arguments of the start-up router: where it takes the user.
