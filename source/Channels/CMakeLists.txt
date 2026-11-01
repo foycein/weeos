@@ -39,6 +39,7 @@ add_library(Channels STATIC
     Photo/TitleScreens.cpp
     Photo/ViewScreen.cpp
     ShopChannel.cpp
+    WaitingMark.cpp
     WiiConnect24Channel.cpp
     WiiSpeak/AddressBookScreen.cpp
     WiiSpeak/ChatRoomScreen.cpp

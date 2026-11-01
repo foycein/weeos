@@ -19,13 +19,18 @@ namespace Channels
 namespace
 {
 
+// The waiting marks under "One moment, please...": the Forecast's six suns (picture 15 of TPLWeather for the USA and Europe, 0x80179358)
+// at 0.6 of their size 40 pixels apart, 0x8000B6B0; the News' six newspapers (picture 77 of TPLNews) at 0.75, 35 apart, 0x80009710.
+constexpr WaitingMarkLook ForecastWaitingMark = {"./TPLWeather.tpl.LZ", 15, 40, 280, 0.6f, 72, false, false};
+constexpr WaitingMarkLook NewsWaitingMark = {"./TPLNews.tpl.LZ", 77, 35, 280, 0.75f, 71, true, true};
+
 // The Forecast Channel 7 (HAFE): content 9 holds the layouts, content 6 is the shared HOME Button Menu.
 constexpr WiiConnect24ChannelFiles ForecastFiles = {
-    9, "./weather_layout.arc.LZ", "arc/font/font_weather.brfnt", "font_weather.brfnt", 8, 6};
+    9, "./weather_layout.arc.LZ", "arc/font/font_weather.brfnt", "font_weather.brfnt", 8, 6, ForecastWaitingMark};
 
 // The News Channel 7 (HAGE): the same places, its own layouts and font, and one more message, the update the News Channel needs.
 constexpr WiiConnect24ChannelFiles NewsFiles = {
-    9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6};
+    9, "./news_layout.arc.LZ", "arc/font/font_news.brfnt", "font_news.brfnt", 9, 6, NewsWaitingMark};
 
 // The fonts and the HOME menu of each channel: the Forecast and the News open HomeButton3 (0x8019B978 and 0x801B2488 of their programs),
 // the Shop HomeButton2 (0x802F75B8).

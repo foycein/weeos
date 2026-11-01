@@ -3,6 +3,8 @@
 #include "Channels/ChannelFiles.h"
 #include "Channels/ChannelText.h"
 
+#include "SystemMenu/Display.h"
+
 #include "Formats/Font.h"
 #include "Formats/Lz77.h"
 
@@ -72,6 +74,7 @@ WiiConnect24Channel::WiiConnect24Channel(ChannelServices& channelServices, const
 {
     Formats::U8Archive resources = ReadArchiveContent(services.contents, files.resourceContentIndex);
     Formats::U8Archive layoutFiles = Formats::ReadU8Archive(ReadPackedFile(resources, files.layoutArchivePath));
+    waitingMark = std::make_unique<WaitingMark>(services.display.Device(), resources, files.waitingMark);
 
     Graphics::GraphicsDevice& device = services.display.Device();
     fonts.AddFont(device, Formats::ReadFont(FindFileOrFail(layoutFiles, files.fontPath)), {files.fontName});
@@ -96,12 +99,17 @@ void WiiConnect24Channel::Update()
     if (!services.wiiMenu.IsRequested())
         UpdateStage();
 
+    if (stage != Stage::ShowingError)
+        waitingMark->Update();
+
     ShownLayout().Calculate();
 }
 
 void WiiConnect24Channel::Draw()
 {
     ShownLayout().Draw();
+    if (stage != Stage::ShowingError)
+        waitingMark->Draw(SystemMenu::WideCanvas.width);
 }
 
 SystemMenu::CursorManager& WiiConnect24Channel::Hands()
@@ -112,6 +120,11 @@ SystemMenu::CursorManager& WiiConnect24Channel::Hands()
 WiiConnect24Channel::Stage WiiConnect24Channel::CurrentStage() const
 {
     return stage;
+}
+
+const WaitingMark& WiiConnect24Channel::Mark() const
+{
+    return *waitingMark;
 }
 
 std::u16string WiiConnect24Channel::ErrorCodeText() const
