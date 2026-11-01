@@ -104,7 +104,38 @@ ShaderDrawRecord MakeDrawRecord(const Quad& quad, const Material& material, std:
 
     record.firstStage = firstStage;
     record.stageCount = stageCount;
+    record.skipsTransparentPixels = material.skipsTransparentPixels ? 1 : 0;
     return record;
+}
+
+ShaderMeshRecord MakeMeshRecord(const MeshPlacement& placement)
+{
+    ShaderMeshRecord record = {};
+
+    Matrix4 normalMatrix = MakeNormalMatrix(placement.modelView);
+    for (std::size_t row = 0; row < record.modelView.size(); ++row)
+    {
+        record.modelView[row] = placement.modelView.rows[row];
+        record.normalMatrix[row] = normalMatrix.rows[row];
+    }
+    record.projection = placement.projection.rows;
+
+    if (placement.light)
+    {
+        const Formats::Vector3& position = placement.light->position;
+        record.lightPosition = {position.x, position.y, position.z, 1};
+        record.lightColor = ToShaderColor(placement.light->color);
+        record.ambientColor = ToShaderColor(placement.light->ambientColor);
+        record.hasLight = 1;
+    }
+
+    record.textureCoordinatesFromNormal = placement.textureCoordinatesFromNormal ? 1 : 0;
+    return record;
+}
+
+ShaderMeshCorner MakeMeshCorner(const MeshVertex& vertex)
+{
+    return {vertex.position, vertex.textureCoordinate.x, vertex.normal, vertex.textureCoordinate.y};
 }
 
 }

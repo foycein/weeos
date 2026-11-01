@@ -85,6 +85,13 @@ void MenuSystem::RunStep()
         homeButton.HoldForFrontPanel();
 
     homeButton.Update();
+
+    // The HOME menu pauses the music and the sounds while it is open (the sound events 0 and 4 of 0x81347AD0).
+    if (homeButton.IsOpen() && !isHomeMenuOpen)
+        sounds.PauseAllSounds();
+    if (!homeButton.IsOpen() && isHomeMenuOpen)
+        sounds.ResumeAllSounds();
+
     cursors.Update(input);
     fader.Calculate();
 }
@@ -116,6 +123,7 @@ void MenuSystem::ShowFatalError(FatalError reason)
     if (frontPanel.IsWorking())
         return;
 
+    sounds.StopAllSounds(ErrorStopFadeSteps);
     errorScreen.Show(reason);
 }
 
@@ -145,7 +153,12 @@ HomeButtonConnections MenuSystem::ConnectHomeButton()
     HomeButtonConnections connections;
     connections.playSound = [this](HomeMenuSound sound) { sounds.Request(NameOfHomeMenuSound(sound)); };
     connections.textFonts = &fonts.Fonts();
-    connections.startReset = [this]() { frontPanel.PressReset(); };
+    // A reset from the HOME menu stops every sound at once (0x8136BC14).
+    connections.startReset = [this]()
+    {
+        sounds.StopAllSounds(0);
+        frontPanel.PressReset();
+    };
     return connections;
 }
 

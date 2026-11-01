@@ -1,6 +1,9 @@
 #include "Graphics/FrameResources.h"
 
+#include "Graphics/DrawPipelines.h"
 #include "Graphics/VulkanSupport.h"
+
+#include <array>
 
 namespace Graphics
 {
@@ -16,6 +19,9 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
     : context(graphicsContext)
     , drawRecordBuffer(context, MaximumDrawsPerPicture * sizeof(ShaderDrawRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
     , stageBuffer(context, MaximumStagesPerPicture * sizeof(ShaderStage), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
+    , meshRecordBuffer(context, MaximumMeshesPerPicture * sizeof(ShaderMeshRecord), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
+    , meshCornerBuffer(
+          context, MaximumMeshCornersPerPicture * sizeof(ShaderMeshCorner), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, ReachableByTheProgram)
 {
     VkCommandBufferAllocateInfo allocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -28,7 +34,7 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
     VkFenceCreateInfo fenceInfo = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
     CheckVulkan(vkCreateFence(context.Device(), &fenceInfo, nullptr, &fence), "creating a fence");
 
-    VkDescriptorPoolSize poolSize = {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 2};
+    VkDescriptorPoolSize poolSize = {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = DrawDataBindingCount};
     VkDescriptorPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = 1,
@@ -47,23 +53,25 @@ FrameResources::FrameResources(const VulkanContext& graphicsContext, VkDescripto
     CheckVulkan(vkAllocateDescriptorSets(context.Device(), &setInfo, &descriptorSet),
         "allocating the descriptor set of the draw data");
 
-    VkDescriptorBufferInfo drawRecordInfo = {.buffer = drawRecordBuffer.Handle(), .offset = 0, .range = VK_WHOLE_SIZE};
-    VkDescriptorBufferInfo stageInfo = {.buffer = stageBuffer.Handle(), .offset = 0, .range = VK_WHOLE_SIZE};
-    VkWriteDescriptorSet writes[] = {
-        {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+    // The buffers in the order of their bindings.
+    std::array<VkBuffer, DrawDataBindingCount> buffers = {
+        drawRecordBuffer.Handle(), stageBuffer.Handle(), meshRecordBuffer.Handle(), meshCornerBuffer.Handle()};
+
+    std::array<VkDescriptorBufferInfo, DrawDataBindingCount> bufferInfos;
+    std::array<VkWriteDescriptorSet, DrawDataBindingCount> writes;
+    for (std::uint32_t binding = 0; binding < DrawDataBindingCount; ++binding)
+    {
+        bufferInfos[binding] = {.buffer = buffers[binding], .offset = 0, .range = VK_WHOLE_SIZE};
+        writes[binding] = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet = descriptorSet,
-            .dstBinding = 0,
+            .dstBinding = binding,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &drawRecordInfo},
-        {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = descriptorSet,
-            .dstBinding = 1,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &stageInfo},
-    };
-    vkUpdateDescriptorSets(context.Device(), 2, writes, 0, nullptr);
+            .pBufferInfo = &bufferInfos[binding],
+        };
+    }
+    vkUpdateDescriptorSets(context.Device(), DrawDataBindingCount, writes.data(), 0, nullptr);
 }
 
 FrameResources::~FrameResources()
@@ -96,6 +104,16 @@ ShaderDrawRecord* FrameResources::DrawRecords() const
 ShaderStage* FrameResources::Stages() const
 {
     return static_cast<ShaderStage*>(stageBuffer.MappedBytes());
+}
+
+ShaderMeshRecord* FrameResources::MeshRecords() const
+{
+    return static_cast<ShaderMeshRecord*>(meshRecordBuffer.MappedBytes());
+}
+
+ShaderMeshCorner* FrameResources::MeshCorners() const
+{
+    return static_cast<ShaderMeshCorner*>(meshCornerBuffer.MappedBytes());
 }
 
 std::uint64_t FrameResources::FrameNumber() const

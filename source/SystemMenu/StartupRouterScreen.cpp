@@ -4,6 +4,7 @@
 #include "SystemMenu/FirstScreen.h"
 #include "SystemMenu/HomeMenu/HomeButton.h"
 #include "SystemMenu/ScreenManager.h"
+#include "SystemMenu/SoundRequests.h"
 
 namespace SystemMenu
 {
@@ -33,6 +34,7 @@ bool StartupRouterScreen::RunMain()
     if (argument == RouterToWiiOptions)
         services.screens.ReplaceScreen(*this, ScreenId::WiiOptionsBackground, WiiOptionsChoices);
 
+    services.sounds.StartMusic();
     services.fader.StartFadeIn();
     return true;
 }

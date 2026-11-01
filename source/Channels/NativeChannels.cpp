@@ -1,8 +1,14 @@
 #include "Channels/NativeChannels.h"
 
+#include "Channels/ChannelFiles.h"
 #include "Channels/InternetChannel.h"
 #include "Channels/ShopChannel.h"
 #include "Channels/WiiConnect24Channel.h"
+
+#include "Formats/Huffman.h"
+
+#include <array>
+#include <span>
 
 namespace Channels
 {
@@ -28,6 +34,50 @@ constexpr ChannelSharedFiles ShopSharedFiles = {9, 7, "./HomeButton2", true, Wii
 // The Internet Channel keeps its own HOME menu, not packed, in its content 5 (/cnt/00000005/homebutton/ of its program).
 constexpr ChannelSharedFiles InternetSharedFiles = {8, 5, "homebutton", false, WiiMenuAndReset};
 
+// A sound archive of a channel: the content that holds it, its path there, and whether it is packed with Huffman.
+struct ChannelSoundArchive
+{
+    std::uint16_t contentIndex;
+    std::string_view path;
+    bool isHuffmanPacked;
+};
+
+// Forecast and News play their own archive and the sounds of HomeButton3; the Shop's archive holds the sounds of its HOME menu too.
+// The Internet Channel's sounds of its HOME menu are wave tables of the browser (HomeButtonSe.arc), which WeeOS does not read.
+constexpr ChannelSoundArchive HomeButton3Sounds = {6, "./HomeButton3/Huf8_HomeButtonSe.brsar", true};
+constexpr std::array<ChannelSoundArchive, 2> ForecastSounds = {{{9, "./rev_wtr.brsar", false}, HomeButton3Sounds}};
+constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsar", false}, HomeButton3Sounds}};
+constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSound.brsar", false}}};
+
+std::span<const ChannelSoundArchive> SoundArchivesOf(Ios::TitleId titleId)
+{
+    if (titleId == ForecastChannelTitleId)
+        return ForecastSounds;
+
+    if (titleId == NewsChannelTitleId)
+        return NewsSounds;
+
+    if (titleId == WiiShopChannelTitleId)
+        return ShopSounds;
+
+    return {};
+}
+
+}
+
+std::vector<Formats::Bytes> ReadSoundArchives(Ios::TitleId titleId, SystemMenu::TitleContents& contents)
+{
+    std::vector<Formats::Bytes> archives;
+    for (const ChannelSoundArchive& soundArchive : SoundArchivesOf(titleId))
+    {
+        Formats::U8Archive content = ReadArchiveContent(contents, soundArchive.contentIndex);
+        Formats::ByteView file = FindFileOrFail(content, soundArchive.path);
+        if (soundArchive.isHuffmanPacked)
+            archives.push_back(Formats::DecompressHuffman(file));
+        else
+            archives.emplace_back(file.begin(), file.end());
+    }
+    return archives;
 }
 
 std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId)

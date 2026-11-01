@@ -47,6 +47,7 @@ private:
     void OpenParentalDialog();
     void TakeAnswerOfParentalDialog();
     void RequestSoundsOfThePages();
+    void FadeMusicOnTheSoundPage(PageId pageBefore);
     void HandlePlayers();
     void PressWithPlayer(int player, std::size_t button);
     void RepeatHeldButton();

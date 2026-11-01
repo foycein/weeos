@@ -3,6 +3,9 @@
 #include "Channels/Channel.h"
 #include "Channels/ChannelServices.h"
 
+#include "SystemMenu/TitleContents.h"
+
+#include "Formats/Bytes.h"
 #include "Ios/Title/TitleId.h"
 
 #include <cstddef>
@@ -10,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 namespace Channels
 {
@@ -35,6 +39,10 @@ struct ChannelSharedFiles
 };
 
 std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId);
+
+// The sound archives that a channel plays: its own and the one of its HOME menu, each read from a content of its title (CHN-30).
+// A channel asks for its sounds by name (ChannelServices::sounds), and the program plays each name from the archive that has it.
+std::vector<Formats::Bytes> ReadSoundArchives(Ios::TitleId titleId, SystemMenu::TitleContents& contents);
 
 // True when WeeOS has a program for the title. The menu shows its message for a title that cannot start for the others.
 bool HasNativeProgram(Ios::TitleId titleId);

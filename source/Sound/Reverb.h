@@ -53,6 +53,9 @@ public:
     // The reverb goes on with the tail of what it heard before, so that the next call continues the sound.
     void Process(std::span<float> left, std::span<float> right);
 
+    // Forgets everything it heard, so that the tail ends at once and the next sound starts in an empty room.
+    void Clear();
+
 private:
     static constexpr std::size_t CombCount = 3;
     static constexpr std::size_t AllPassCount = 2;
@@ -91,7 +94,6 @@ private:
     static float AllPass(DelayLine& line, float input, float gain);
 
     float ProcessChannel(Channel& channel, float input);
-    void Clear();
 
     ReverbParameters parameters;
     std::array<Channel, ChannelCount> channels;

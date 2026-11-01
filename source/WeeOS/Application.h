@@ -7,6 +7,7 @@
 #include "Platform/PreciseTimer.h"
 #include "Platform/Window.h"
 #include "SystemMenu/MenuSystem.h"
+#include "WeeOS/ProgramSound.h"
 
 #include <memory>
 #include <optional>
@@ -22,7 +23,8 @@ class Application : private Platform::HostCommandListener
 {
 public:
     // Powers the console on. Throws when the console cannot start or the window cannot open.
-    explicit Application(const Ios::IosFolders& folders);
+    // A silent application gives its sound output only silence.
+    Application(const Ios::IosFolders& folders, bool isSilent);
     ~Application();
 
     Application(const Application&) = delete;
@@ -40,6 +42,7 @@ public:
     Graphics::VulkanGraphicsDevice& GetDevice();
     // The menu. Throws std::logic_error while a channel runs.
     SystemMenu::MenuSystem& GetMenu();
+    ProgramSound& GetSound();
 
     // The virtual remote 1 of the session that runs, which the mouse of the window moves. A test moves it too.
     Input::VirtualRemote& GetVirtualRemote();
@@ -67,6 +70,7 @@ private:
     Boot::ConsoleStartup console;
     Platform::Window window;
     Graphics::VulkanGraphicsDevice device;
+    ProgramSound sound;
     std::unique_ptr<Session> session;
     Platform::PreciseTimer timer;
     Graphics::FramePacer pacer;
