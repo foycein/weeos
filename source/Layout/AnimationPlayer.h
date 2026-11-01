@@ -32,8 +32,8 @@ enum class PaneReach
 // Plays an animation on the panes and the materials of a live layout.
 //
 // The animation changes the panes and materials it names. It is bound to the panes given to the player (all panes of a group,
-// for example), to all the panes below them unless the reach says otherwise, and to the materials that those panes use. A name that none of these panes has,
-// and no material of these panes has, is left out.
+// for example), to all the panes below them unless the reach says otherwise, and to the materials that those panes use.
+// A name that none of these panes has, and no material of these panes has, is left out.
 //
 // The animation has as many frames as its frame count says: the frame numbers go from 0 up to one below the frame count.
 // The player starts at frame 0 and shows it at once. Each step shows the next frame.

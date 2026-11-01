@@ -13,6 +13,8 @@ namespace
 constexpr Formats::Byte FullAlpha = 255;
 constexpr int FullAlphaDivisor = 255;
 constexpr Formats::Rgba8Color OpaqueWhite = {255, 255, 255, 255};
+constexpr Formats::SignedColor TransparentBlackRegister = {0, 0, 0, 0};
+constexpr Formats::SignedColor OpaqueWhiteRegister = {255, 255, 255, 255};
 
 using VertexColors = std::array<Formats::Rgba8Color, Formats::CornerCount>;
 
@@ -21,9 +23,6 @@ bool IsOpaqueWhite(const Formats::Rgba8Color& color)
     return color.red == OpaqueWhite.red && color.green == OpaqueWhite.green
         && color.blue == OpaqueWhite.blue && color.alpha == OpaqueWhite.alpha;
 }
-
-constexpr Formats::SignedColor TransparentBlackRegister = {0, 0, 0, 0};
-constexpr Formats::SignedColor OpaqueWhiteRegister = {255, 255, 255, 255};
 
 bool IsSameColor(const Formats::SignedColor& color, const Formats::SignedColor& expected)
 {

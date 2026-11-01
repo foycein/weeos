@@ -1,10 +1,12 @@
 #include "Layout/TevStageConversion.h"
 
-#include "Formats/BitFields.h"
 #include "Layout/LayoutError.h"
 
+#include "Formats/BitFields.h"
 #include "Graphics/GraphicsDevice.h"
 
+#include <array>
+#include <cstdint>
 #include <format>
 
 namespace Layout
@@ -50,10 +52,16 @@ constexpr int LowHalfBit = 0;
 constexpr int HighHalfBit = 4;
 constexpr int HalfByteBitCount = 4;
 
-// The bits of the byte with the texture map and the swap tables.
+// The bits of the byte with the texture map and the swap tables: the raster table in two bits and the texture table in the next two.
 constexpr int TextureMapHighBit = 0;
-constexpr int SwapTablesBit = 1;
-constexpr int SwapTablesBitCount = 4;
+constexpr int RasterSwapTableBit = 1;
+constexpr int TextureSwapTableBit = 3;
+constexpr int SwapTableNumberBitCount = 2;
+
+// A swap table byte holds two bits for each channel, red in the lowest bits.
+constexpr std::size_t ColorChannelCount = 4;
+constexpr int SwapChannelBitCount = 2;
+using ChannelSwap = std::array<std::uint8_t, ColorChannelCount>;
 
 // The bits of the operation byte.
 constexpr int OperationBit = 0;
@@ -91,22 +99,21 @@ unsigned HighHalf(Formats::Byte byte)
     return Formats::ExtractBits(byte, HighHalfBit, HalfByteBitCount);
 }
 
-// A swap table byte holds two bits for each channel, red in the lowest bits.
-std::array<std::uint8_t, 4> ReadSwapTable(Formats::Byte table)
+ChannelSwap ReadSwapTable(Formats::Byte table)
 {
-    constexpr int BitsPerChannel = 2;
-    std::array<std::uint8_t, 4> swap = {};
-    for (std::size_t channel = 0; channel < swap.size(); ++channel)
-        swap[channel] = static_cast<std::uint8_t>(Formats::ExtractBits(table, static_cast<int>(channel) * BitsPerChannel, BitsPerChannel));
+    ChannelSwap swap = {};
+    for (std::size_t channel = 0; channel < ColorChannelCount; ++channel)
+    {
+        int firstBit = static_cast<int>(channel) * SwapChannelBitCount;
+        swap[channel] = static_cast<std::uint8_t>(Formats::ExtractBits(table, firstBit, SwapChannelBitCount));
+    }
     return swap;
 }
 
-// The stage names its raster table in two bits and its texture table in the next two.
 void ReadSwaps(const Formats::TevStage& record, const std::optional<Formats::TevSwapTable>& swapTables, Graphics::TevStage& stage)
 {
-    constexpr int TableNumberBits = 2;
-    unsigned rasterTable = Formats::ExtractBits(record[TextureMapAndSwapByte], SwapTablesBit, TableNumberBits);
-    unsigned textureTable = Formats::ExtractBits(record[TextureMapAndSwapByte], SwapTablesBit + TableNumberBits, TableNumberBits);
+    unsigned rasterTable = Formats::ExtractBits(record[TextureMapAndSwapByte], RasterSwapTableBit, SwapTableNumberBitCount);
+    unsigned textureTable = Formats::ExtractBits(record[TextureMapAndSwapByte], TextureSwapTableBit, SwapTableNumberBitCount);
     if (!swapTables)
     {
         if (rasterTable != 0 || textureTable != 0)
@@ -169,7 +176,8 @@ Graphics::TevOperation ReadOperation(unsigned number, bool isAlpha)
     bool isAlphaCompare = number == static_cast<unsigned>(Graphics::TevOperation::EachGreater)
         || number == static_cast<unsigned>(Graphics::TevOperation::EachEqual);
 
-    bool isKnown = isAddOrSubtract || (isCompare && (!isAlpha || isAlphaCompare));
+    bool isCompareOfThisCalculation = isAlpha ? isAlphaCompare : isCompare;
+    bool isKnown = isAddOrSubtract || isCompareOfThisCalculation;
     if (!isKnown)
         FailStage(std::format("a stage uses the operation {}", number));
 
