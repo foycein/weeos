@@ -417,17 +417,21 @@ Result<void> SdCardService::Format()
     if (state->isWriteProtected)
         return IosError::AccessDenied;
 
-    std::error_code error;
-    std::filesystem::directory_iterator iterator(state->cardFolder, error);
+    std::error_code listingError;
+    std::filesystem::directory_iterator iterator(state->cardFolder, listingError);
     const std::filesystem::directory_iterator endOfDirectory;
-    while (!error && iterator != endOfDirectory)
+    while (!listingError && iterator != endOfDirectory)
     {
-        std::filesystem::remove_all(iterator->path(), error);
-        iterator.increment(error);
+        std::error_code removalError;
+        std::filesystem::remove_all(iterator->path(), removalError);
+        if (removalError)
+            return ErrorFromHost(removalError);
+
+        iterator.increment(listingError);
     }
 
-    if (error)
-        return ErrorFromHost(error);
+    if (listingError)
+        return ErrorFromHost(listingError);
 
     return Result<void>();
 }

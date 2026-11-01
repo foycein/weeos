@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <deque>
 #include <functional>
 #include <string>
 #include <vector>
@@ -130,7 +131,8 @@ struct Page
     int pageCount = 0;
     int pageNumber = 0;
 
-    std::vector<PageButton> buttons;
+    // A deque keeps every button in its place when another one is added, so the page builder can hand out references.
+    std::deque<PageButton> buttons;
     std::vector<PageText> texts;
     std::vector<PagePicture> pictures;
 };
