@@ -189,6 +189,7 @@ std::vector<const Formats::Pane*> MenuLayout::BoundingPanesAt(Formats::Vector2 p
 void MenuLayout::Draw()
 {
     Layout::DrawLayout(display.Device(), layout, placementSettings, display.TextFonts());
+    display.NoteDrawnLayout(layout, placementSettings);
 }
 
 // On a wide screen the root pane stretches the whole layout to fill the picture, and the panes that adjust their location are
