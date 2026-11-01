@@ -47,8 +47,14 @@ enum class GridState
     // The window closes, and the grid zooms out of the television.
     ZoomingOutOfChannel,
 
-    // The Wii button was pressed: the picture fades out, then the menu goes to Wii Options.
-    LeavingForWiiOptions,
+    // The Wii button or the SD card button was pressed: the picture fades out, then the menu goes to Wii Options or to the SD Card Menu.
+    LeavingTheWiiMenu,
+
+    // The envelope was pressed: the televisions fly away and the grid ends; the Message Board comes in its place.
+    LeavingForTheBoard,
+
+    // The grid comes back from the Message Board: the televisions fly in.
+    ComingFromTheBoard,
 };
 
 // The channel grid of the Wii Menu (screen 0x02, docs/research/SystemMenuStructure.md 4.3): four pages of twelve televisions on a
@@ -61,11 +67,13 @@ class ChannelGridScreen : public Screen
 {
 public:
     // The original also knows the arguments 1 and 2, with which the Message Board opens the grid; they are not built.
-    explicit ChannelGridScreen(MenuServices& menuServices);
+    // The argument 1 brings the grid back from the Message Board (0x813935D4 opens it so), 0 is the start of the Wii Menu.
+    ChannelGridScreen(MenuServices& menuServices, int argument);
 
     void Load() override;
     void Build() override;
     void Draw(DrawPass pass) override;
+    void OnClose() override;
 
     GridState State() const;
     int CurrentPage() const;
@@ -74,8 +82,9 @@ public:
     // The place of the picture where the middle of a television of the page that shows lies, in layout units.
     Formats::Vector2 PlaceOfSlot(int slotIndex);
 
-    // The channel start window asks for the zoom into the television of the pressed channel when it is ready (0x813ADC08), and for the
-    // zoom back out when it closes (0x813ADCE8).
+    // The channel start window asks for the zoom into the television of the pressed channel when it is built (0x813ADC08), and for the
+    // zoom back out when it closes (0x813ADCE8). While the grid zooms, the camera of the display shows the part of the Wii Menu that
+    // the zoom looks at.
     void ZoomIntoPressedChannel();
     void ZoomOutOfPressedChannel();
 
@@ -111,6 +120,8 @@ private:
     void RunTurningOfThePage();
     void RunHolding();
     void RunZoom();
+    void ShowTheZoom();
+    PictureArea TelevisionOfThePressedChannel();
     void DrawTheGrid();
     bool RunLeaving();
 
@@ -119,6 +130,8 @@ private:
     bool HandlePageButtons();
     bool HandlePressOfPlayer(int playerIndex, Formats::Vector2 place);
     void HandleBarButton(BarButton button);
+    void LeaveFor(ScreenId nextScreen);
+    void LeaveForTheBoard();
 
     void TurnToPreviousPage();
     void TurnToNextPage();
@@ -131,9 +144,10 @@ private:
     std::optional<int> SlotIndexAt(Formats::Vector2 place);
     std::optional<Formats::Vector2> PointerPlaceOf(int playerIndex) const;
     BottomBarScreen* Bar();
+    void SetBarButtonsEnabled(bool shouldBeEnabled);
     ChannelTile& Tile(SlotPosition position);
     void DrawTiles(const PlacedPanes& placedPanes);
-    Graphics::ScissorRectangle AreaOfTheTelevisionAt(Formats::Vector2 place) const;
+    PictureArea AreaOfTheTelevisionAt(Formats::Vector2 place) const;
 
     MenuServices& services;
     std::unique_ptr<Layout::LayoutArchive> selectionArchive;
@@ -151,6 +165,7 @@ private:
     std::unique_ptr<TelevisionZoom> zoom;
 
     GridState state = GridState::Idle;
+    ScreenId screenAfterLeaving = ScreenId::WiiOptionsBackground;
     GridState stateAfterTurning = GridState::Idle;
     int holdingPlayer = 0;
     SlotPosition heldChannel;

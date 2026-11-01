@@ -29,6 +29,7 @@ constexpr std::string_view TextureGroupName = "Textures(NW4R)";
 constexpr std::string_view AnimationGroupName = "AnmChr(NW4R)";
 constexpr std::string_view StandingAnimationName = "bodyWait";
 constexpr std::string_view EnvironmentTextureName = "env0";
+constexpr std::string_view ShadowTextureName = "shadow";
 constexpr std::string_view ShirtArraySuffix = "__outer";
 constexpr std::string_view PantsArraySuffix = "__pants";
 
@@ -37,6 +38,7 @@ constexpr std::size_t ModelSectionsPosition = 0x10;
 constexpr std::size_t BoneSection = 1;
 constexpr std::size_t PositionSection = 2;
 constexpr std::size_t NormalSection = 3;
+constexpr std::size_t TextureCoordinateSection = 5;
 constexpr std::size_t ObjectSection = 8;
 
 constexpr std::size_t BoneIndexPosition = 0x0C;
@@ -61,12 +63,17 @@ constexpr std::size_t ObjectListPosition = 0x24;
 constexpr std::size_t ObjectListOffsetPosition = 0x2C;
 constexpr std::size_t ObjectPositionArrayPosition = 0x48;
 constexpr std::size_t ObjectNormalArrayPosition = 0x4A;
+constexpr std::size_t ObjectTextureCoordinateArrayPosition = 0x50;
 
 // Every corner of the body is four bytes: a matrix slot, a texture matrix slot, a position number and a normal number.
 constexpr std::uint32_t BodyCornerDescriptor = 0x1403;
 constexpr std::size_t BodyCornerSize = 4;
 constexpr std::size_t CornerPositionByte = 2;
 constexpr std::size_t CornerNormalByte = 3;
+
+// Every corner of the shadow is two bytes: a position number and a texture coordinate number.
+constexpr std::uint32_t ShadowCornerDescriptor = 0x400;
+constexpr std::size_t ShadowCornerSize = 2;
 
 // The commands of a draw list.
 constexpr std::uint8_t NoOperation = 0x00;
@@ -83,6 +90,8 @@ constexpr std::uint32_t MatrixSlotStep = 3;
 
 // The animation (CHR0, version 3): a group of nodes, one per bone.
 constexpr std::size_t AnimationNodesPosition = 0x10;
+constexpr std::size_t AnimationFrameCountPosition = 0x1C;
+constexpr std::size_t AnimationLoopPosition = 0x20;
 constexpr std::size_t NodeCodePosition = 4;
 constexpr std::size_t NodeValuesPosition = 8;
 constexpr int HasScaleBit = 22;
@@ -98,7 +107,11 @@ constexpr std::uint32_t RotationFormatMask = 3;
 constexpr std::size_t AxisCount = 3;
 
 // A track: a count, then keys from 8 on. The keys come in three sizes.
+constexpr std::size_t KeyCountPosition = 0;
 constexpr std::size_t FirstKeyPosition = 8;
+constexpr std::size_t SmallKeySize = 4;
+constexpr std::size_t MiddleKeySize = 6;
+constexpr std::size_t FloatKeySize = 12;
 constexpr std::uint32_t SmallRotationKeys = 1;
 constexpr std::uint32_t MiddleRotationKeys = 2;
 constexpr std::uint32_t FloatKeys = 3;
@@ -110,6 +123,10 @@ constexpr int SmallKeyAngleShift = 12;
 constexpr std::uint32_t SmallKeyAngleMask = 0xFFF;
 constexpr std::uint32_t SmallKeyAngleSignBit = 0x800;
 constexpr int SmallKeyAngleRange = 0x1000;
+constexpr std::uint32_t SmallKeySlopeMask = 0xFFF;
+constexpr float SmallKeySlopeStepsPerDegree = 32.0f;
+constexpr float MiddleKeyFrameSteps = 32.0f;
+constexpr float MiddleKeySlopeStepsPerDegree = 256.0f;
 
 constexpr std::size_t TextureDataPosition = 0x10;
 constexpr std::size_t TextureWidthPosition = 0x1C;
@@ -358,7 +375,60 @@ std::vector<BodyCorner> ReadDrawList(FileView& file, std::size_t listStart, std:
     return triangleCorners;
 }
 
-// Reads the shirt and the pants. The shadow is bound to one bone as a whole and is left out.
+// The texture coordinate array of the model with this number.
+std::vector<Formats::Vector2> ReadTextureCoordinates(FileView& file, std::size_t modelOffset, int arrayNumber)
+{
+    for (const GroupEntry& entry : ReadGroup(file, ModelSectionGroup(file, modelOffset, TextureCoordinateSection)))
+    {
+        std::size_t header = entry.offset;
+        if (static_cast<int>(file.Uint32(header + ArrayIndexPosition)) != arrayNumber)
+            continue;
+        if (file.Uint32(header + ArrayFormatPosition) != FloatFormat)
+            file.Fail(std::format("the array {} does not hold floats", entry.name));
+
+        std::vector<Formats::Vector2> coordinates;
+        std::size_t data = header + file.Int32(header + ArrayDataPosition);
+        std::uint16_t count = file.Uint16(header + ArrayCountPosition);
+        for (std::uint16_t coordinateNumber = 0; coordinateNumber < count; ++coordinateNumber)
+        {
+            std::size_t coordinate = data + coordinateNumber * sizeof(Formats::Vector2);
+            coordinates.push_back({file.Float(coordinate), file.Float(coordinate + sizeof(float))});
+        }
+        return coordinates;
+    }
+    file.Fail("the shadow has no texture coordinates");
+}
+
+// The shadow's draw list is triangles only, each corner a position and a texture coordinate.
+void ReadShadowCorners(FileView& file, std::size_t modelOffset, std::size_t object, const VectorArray& positions, BodyShadow& shadow)
+{
+    if (file.Uint32(object + ObjectDescriptorPosition) != ShadowCornerDescriptor)
+        file.Fail("the shadow does not have the corners of a shadow");
+
+    std::vector<Formats::Vector2> coordinates = ReadTextureCoordinates(file, modelOffset, file.Int16(object + ObjectTextureCoordinateArrayPosition));
+    std::size_t position = object + ObjectListPosition + file.Int32(object + ObjectListOffsetPosition);
+    std::size_t end = position + file.Uint32(object + ObjectListSizePosition);
+    while (position < end)
+    {
+        std::uint8_t command = file.Byte(position);
+        ++position;
+        if (command == NoOperation)
+            continue;
+        if ((command & CommandMask) != TrianglesCommand)
+            file.Fail(std::format("the shadow's draw list has the command {:#x}", command));
+
+        std::uint16_t cornerCount = file.Uint16(position);
+        position += sizeof(std::uint16_t);
+        for (std::uint16_t cornerNumber = 0; cornerNumber < cornerCount; ++cornerNumber)
+        {
+            shadow.cornerPositions.push_back(positions.vectors.at(file.Byte(position)));
+            shadow.cornerTextureCoordinates.push_back(coordinates.at(file.Byte(position + 1)));
+            position += ShadowCornerSize;
+        }
+    }
+}
+
+// Reads the shirt and the pants, and the shadow, the one object that a single bone holds whole.
 void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
 {
     std::map<int, VectorArray> positionArrays = ReadVectorArrays(file, ModelSectionGroup(file, modelOffset, PositionSection));
@@ -369,7 +439,11 @@ void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
         std::size_t object = entry.offset;
         bool isBoundToOneBone = file.Int32(object + ObjectSingleBonePosition) >= 0;
         if (isBoundToOneBone)
+        {
+            const VectorArray& shadowPositions = positionArrays.at(file.Int16(object + ObjectPositionArrayPosition));
+            ReadShadowCorners(file, modelOffset, object, shadowPositions, body.shadow);
             continue;
+        }
 
         if (file.Uint32(object + ObjectDescriptorPosition) != BodyCornerDescriptor)
             file.Fail(std::format("the object {} does not have the corners of a body", entry.name));
@@ -391,89 +465,154 @@ void ReadParts(FileView& file, std::size_t modelOffset, MiiBodyFile& body)
 
     if (body.shirt.triangleCorners.empty() || body.pants.triangleCorners.empty())
         file.Fail("the model has no shirt or no pants");
+    if (body.shadow.cornerPositions.empty())
+        file.Fail("the model has no shadow");
 }
 
-// The value of a track at frame 0, which is its first key.
-float FirstKeyValue(FileView& file, std::size_t track, std::uint32_t keyFormat)
+int SignedTwelveBits(std::uint32_t bits)
 {
+    int value = static_cast<int>(bits & SmallKeyAngleMask);
+    if ((value & SmallKeyAngleSignBit) != 0)
+        value -= SmallKeyAngleRange;
+    return value;
+}
+
+// A 4-byte key: the frame in the top byte, then the angle and the slope in twelve bits each.
+AnimationKey ReadSmallKey(FileView& file, std::size_t key)
+{
+    std::uint32_t word = file.Uint32(key);
+    AnimationKey animationKey;
+    animationKey.frame = static_cast<float>(word >> SmallKeyFrameShift);
+    animationKey.value = SignedTwelveBits(word >> SmallKeyAngleShift) * DegreesPerTurn / SmallKeyStepsPerTurn;
+    animationKey.slope = SignedTwelveBits(word & SmallKeySlopeMask) / SmallKeySlopeStepsPerDegree;
+    return animationKey;
+}
+
+// A 6-byte key: the frame in 1/32, the angle in 1/65536 of a turn and the slope in 1/256 degree per frame.
+AnimationKey ReadMiddleKey(FileView& file, std::size_t key)
+{
+    AnimationKey animationKey;
+    animationKey.frame = file.Uint16(key) / MiddleKeyFrameSteps;
+    animationKey.value = file.Int16(key + sizeof(std::uint16_t)) * DegreesPerTurn / MiddleKeyStepsPerTurn;
+    animationKey.slope = file.Int16(key + 2 * sizeof(std::uint16_t)) / MiddleKeySlopeStepsPerDegree;
+    return animationKey;
+}
+
+AnimationKey ReadFloatKey(FileView& file, std::size_t key)
+{
+    return {file.Float(key), file.Float(key + sizeof(float)), file.Float(key + 2 * sizeof(float))};
+}
+
+// A packed angle holds less than one turn, so an angle that goes past half a turn comes back from the other side: 171 degrees, then
+// -178 for 182. The slopes of the keys go on in the same direction, so each angle is put within half a turn of the angle before it.
+void UnwrapAngles(std::vector<AnimationKey>& keys)
+{
+    for (std::size_t keyNumber = 1; keyNumber < keys.size(); ++keyNumber)
+    {
+        float previousAngle = keys[keyNumber - 1].value;
+        float& angle = keys[keyNumber].value;
+        while (angle - previousAngle > DegreesPerTurn / 2)
+            angle -= DegreesPerTurn;
+        while (previousAngle - angle > DegreesPerTurn / 2)
+            angle += DegreesPerTurn;
+    }
+}
+
+std::vector<AnimationKey> ReadKeys(FileView& file, std::size_t track, std::uint32_t keyFormat)
+{
+    std::uint16_t keyCount = file.Uint16(track + KeyCountPosition);
     std::size_t key = track + FirstKeyPosition;
 
-    if (keyFormat == SmallRotationKeys)
+    std::vector<AnimationKey> keys;
+    for (std::uint16_t keyNumber = 0; keyNumber < keyCount; ++keyNumber)
     {
-        std::uint32_t word = file.Uint32(key);
-        int angle = static_cast<int>((word >> SmallKeyAngleShift) & SmallKeyAngleMask);
-        if ((angle & SmallKeyAngleSignBit) != 0)
-            angle -= SmallKeyAngleRange;
-        if ((word >> SmallKeyFrameShift) != 0)
-            file.Fail("a track has no key at frame 0");
-        return angle * DegreesPerTurn / SmallKeyStepsPerTurn;
+        if (keyFormat == SmallRotationKeys)
+        {
+            keys.push_back(ReadSmallKey(file, key));
+            key += SmallKeySize;
+        }
+        else if (keyFormat == MiddleRotationKeys)
+        {
+            keys.push_back(ReadMiddleKey(file, key));
+            key += MiddleKeySize;
+        }
+        else
+        {
+            keys.push_back(ReadFloatKey(file, key));
+            key += FloatKeySize;
+        }
     }
+    if (keys.empty())
+        file.Fail("an animation track has no keys");
 
-    if (keyFormat == MiddleRotationKeys)
-    {
-        if (file.Uint16(key) != 0)
-            file.Fail("a track has no key at frame 0");
-        return file.Int16(key + sizeof(std::uint16_t)) * DegreesPerTurn / MiddleKeyStepsPerTurn;
-    }
-
-    if (file.Float(key) != 0.0f)
-        file.Fail("a track has no key at frame 0");
-    return file.Float(key + sizeof(float));
+    bool hasPackedAngles = keyFormat == SmallRotationKeys || keyFormat == MiddleRotationKeys;
+    if (hasPackedAngles)
+        UnwrapAngles(keys);
+    return keys;
 }
 
-// The values of one kind (scale, turn or move) of a node: each is a fixed number or the offset of a track.
-std::vector<float> ReadNodeValues(FileView& file, std::size_t node, std::size_t& position, std::uint32_t code, int firstFixedBit,
+// The tracks of one kind (scale, turn or move) of a node: each is a fixed number or the offset of a track. A uniform scale has one
+// track for all three axes.
+AnimationTracks ReadNodeTracks(FileView& file, std::size_t node, std::size_t& position, std::uint32_t code, int firstFixedBit,
     std::size_t count, std::uint32_t keyFormat)
 {
-    std::vector<float> values;
+    AnimationTracks tracks;
     for (std::size_t axis = 0; axis < count; ++axis)
     {
         bool isFixed = (code & (1u << (firstFixedBit + axis))) != 0;
         if (isFixed)
-            values.push_back(file.Float(position));
+            tracks[axis].fixedValue = file.Float(position);
         else
-            values.push_back(FirstKeyValue(file, node + file.Int32(position), keyFormat));
+            tracks[axis].keys = ReadKeys(file, node + file.Int32(position), keyFormat);
         position += sizeof(std::uint32_t);
     }
-    return values;
+
+    for (std::size_t axis = count; axis < AxisCount; ++axis)
+        tracks[axis] = tracks[0];
+    return tracks;
 }
 
-Formats::Vector3 ToVector(const std::vector<float>& values)
+BodyAnimation ReadAnimation(FileView& file, std::size_t animationOffset)
 {
-    if (values.size() == 1)
-        return {values[0], values[0], values[0]};
-    return {values[0], values[1], values[2]};
-}
+    BodyAnimation animation;
+    animation.frameCount = file.Uint16(animationOffset + AnimationFrameCountPosition);
+    animation.isLooping = file.Uint32(animationOffset + AnimationLoopPosition) != 0;
 
-std::map<std::string, BoneTransform> ReadStandingPose(FileView& file, std::size_t animationOffset)
-{
-    std::map<std::string, BoneTransform> pose;
     for (const GroupEntry& entry : ReadGroup(file, animationOffset + file.Int32(animationOffset + AnimationNodesPosition)))
     {
         std::size_t node = entry.offset;
         std::uint32_t code = file.Uint32(node + NodeCodePosition);
         std::size_t position = node + NodeValuesPosition;
 
-        BoneTransform transform;
-        transform.undoesParentScale = (code & UndoesParentScaleFlag) != 0;
+        BoneAnimation bone;
+        bone.undoesParentScale = (code & UndoesParentScaleFlag) != 0;
 
         if ((code & (1u << HasScaleBit)) != 0)
         {
             std::size_t count = AxisCount;
             if ((code & UniformScaleFlag) != 0)
                 count = 1;
-            transform.scale = ToVector(ReadNodeValues(file, node, position, code, FirstFixedScaleBit, count, FloatKeys));
+            bone.scale = ReadNodeTracks(file, node, position, code, FirstFixedScaleBit, count, FloatKeys);
         }
         if ((code & (1u << HasRotationBit)) != 0)
         {
             std::uint32_t keyFormat = (code >> RotationFormatShift) & RotationFormatMask;
-            transform.rotationDegrees = ToVector(ReadNodeValues(file, node, position, code, FirstFixedRotationBit, AxisCount, keyFormat));
+            bone.rotation = ReadNodeTracks(file, node, position, code, FirstFixedRotationBit, AxisCount, keyFormat);
         }
         if ((code & (1u << HasTranslationBit)) != 0)
-            transform.translation = ToVector(ReadNodeValues(file, node, position, code, FirstFixedTranslationBit, AxisCount, FloatKeys));
+            bone.translation = ReadNodeTracks(file, node, position, code, FirstFixedTranslationBit, AxisCount, FloatKeys);
 
-        pose[entry.name] = transform;
+        animation.bones[entry.name] = bone;
     }
+    return animation;
+}
+
+// Frame 0 of the standing animation, where every track of bodyWait has a key.
+std::map<std::string, BoneTransform> StandingPoseOf(const BodyAnimation& standingAnimation)
+{
+    std::map<std::string, BoneTransform> pose;
+    for (const auto& [boneName, bone] : standingAnimation.bones)
+        pose[boneName] = AnimatedTransform(bone, BoneTransform(), 0);
     return pose;
 }
 
@@ -483,7 +622,7 @@ Formats::RgbaImage ReadTexture(FileView& file, std::size_t texture)
     std::uint16_t height = file.Uint16(texture + TextureHeightPosition);
     std::optional<Formats::TextureFormat> format = Formats::TextureFormatFromNumber(file.Uint32(texture + TextureFormatPosition));
     if (!format || Formats::IsPaletteFormat(*format))
-        file.Fail("the environment texture has a format that is not expected");
+        file.Fail("a texture of the body has a format that is not expected");
 
     std::size_t data = texture + file.Uint32(texture + TextureDataPosition);
     Formats::ByteView pixels = file.Bytes(data, Formats::EncodedImageSize(*format, width, height));
@@ -506,11 +645,19 @@ MiiBodyFile ReadMiiBodyFile(Formats::ByteView brres)
     body.bones = ReadBones(file, modelOffset);
     ReadParts(file, modelOffset, body);
 
-    std::size_t animation = FindInGroup(file, FindInGroup(file, rootGroup, AnimationGroupName), StandingAnimationName);
-    body.standingPose = ReadStandingPose(file, animation);
+    for (const GroupEntry& entry : ReadGroup(file, FindInGroup(file, rootGroup, AnimationGroupName)))
+        body.animations[entry.name] = ReadAnimation(file, entry.offset);
+
+    auto standing = body.animations.find(std::string(StandingAnimationName));
+    if (standing == body.animations.end())
+        file.Fail("there is no standing animation bodyWait");
+    body.standingPose = StandingPoseOf(standing->second);
 
     std::size_t texture = FindInGroup(file, FindInGroup(file, rootGroup, TextureGroupName), EnvironmentTextureName);
     body.environmentTexture = ReadTexture(file, texture);
+
+    std::size_t shadowTexture = FindInGroup(file, FindInGroup(file, rootGroup, TextureGroupName), ShadowTextureName);
+    body.shadow.picture = ReadTexture(file, shadowTexture);
     return body;
 }
 

@@ -8,8 +8,8 @@
 #include "Ios/Title/ContentTypes.h"
 
 #include <algorithm>
-#include <ctime>
 #include <format>
+#include <utility>
 
 namespace SystemMenu
 {
@@ -23,9 +23,6 @@ constexpr std::uint16_t BannerContentIndex = 0;
 // The menu keeps its files private: the owner reads and writes them, nobody else does.
 constexpr Ios::EntryPermissions MenuFilePermissions = {Ios::AccessRights::ReadWrite, Ios::AccessRights::None, Ios::AccessRights::None};
 constexpr std::uint8_t NoFileFlags = 0;
-
-constexpr int FirstYearOfTheCalendar = 1900;
-constexpr int FirstMonthNumber = 1;
 
 [[noreturn]] void FailWith(const std::string& problem, Ios::IosError error)
 {
@@ -56,9 +53,11 @@ bool AreAllContentsPresent(const Ios::TitleMetadataView& view, const std::vector
 
 }
 
-IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices)
+IosMenuConsole::IosMenuConsole(Ios::IosServices& iosServices, Settings::PcClock clockOfThePc, ClockFormat clockFormatOfThePc)
     : titles(iosServices.GetTitles())
     , fileSystem(iosServices.GetFileSystem())
+    , pcClock(std::move(clockOfThePc))
+    , clockFormat(clockFormatOfThePc)
     , networkConfig(iosServices.GetNetworkConfig())
 {
 }
@@ -189,18 +188,21 @@ void IosMenuConsole::WritePlayRecord(const Formats::PlayRecord& record)
 
 LocalTime IosMenuConsole::GetLocalTime()
 {
-    std::time_t now = std::time(nullptr);
-    std::tm calendar = {};
-    localtime_s(&calendar, &now);
+    Settings::CalendarTime now = Settings::ConsoleClock::ToCalendarTime(pcClock());
 
     LocalTime time;
-    time.year = calendar.tm_year + FirstYearOfTheCalendar;
-    time.month = calendar.tm_mon + FirstMonthNumber;
-    time.day = calendar.tm_mday;
-    time.hour = calendar.tm_hour;
-    time.minute = calendar.tm_min;
-    time.second = calendar.tm_sec;
+    time.year = now.year;
+    time.month = now.month;
+    time.day = now.day;
+    time.hour = now.hour;
+    time.minute = now.minute;
+    time.second = now.second;
     return time;
+}
+
+ClockFormat IosMenuConsole::GetClockFormat()
+{
+    return clockFormat;
 }
 
 void IosMenuConsole::UpdateSharedFlags()

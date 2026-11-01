@@ -8,9 +8,8 @@ namespace SystemMenu
 {
 
 // Draws through another device with every quad and every scissor moved and scaled so that one area of the picture lands on another,
-// and with the alpha of every quad scaled. The channel grid is drawn so that the part that its zoom looks at fills the picture (the
-// camera of the layouts that 0x813AB0E8 sets), and the window of a channel so that the whole picture fits into the television and
-// shows as much as the zoom has come.
+// and with the alpha of every quad scaled. The screens of the Wii Menu are drawn so that the part of the layouts that the camera looks at
+// fills the picture (the camera of the layouts that 0x813AB0E8 sets, Display::LookThroughCamera).
 class ZoomedDevice : public Graphics::GraphicsDevice
 {
 public:
@@ -33,6 +32,9 @@ public:
     // The lists of channels draw no meshes; a mesh is drawn as it is.
     void DrawMesh(std::span<const Graphics::MeshVertex> triangleCorners, const Graphics::MeshPlacement& placement,
         const Graphics::Material& material) override;
+    Graphics::MeshHandle CreateMesh(std::span<const Graphics::MeshVertex> triangleCorners) override;
+    void DestroyMesh(Graphics::MeshHandle mesh) override;
+    void DrawMesh(Graphics::MeshHandle mesh, const Graphics::MeshPlacement& placement, const Graphics::Material& material) override;
     Graphics::TextureHandle BeginOffscreen(const Graphics::Canvas& canvas, std::uint32_t width, std::uint32_t height) override;
     void EndOffscreen() override;
     void Present() override;

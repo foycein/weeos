@@ -1,7 +1,8 @@
 #include "FolderFiles.h"
 
+#include "Formats/FileBytes.h"
+
 #include <format>
-#include <fstream>
 #include <stdexcept>
 
 void PrepareEmptyFolder(const std::filesystem::path& folder)
@@ -17,9 +18,5 @@ void PrepareEmptyFolder(const std::filesystem::path& folder)
 
 void WriteBytesToFile(const std::filesystem::path& filePath, const Formats::Bytes& bytes)
 {
-    std::ofstream file(filePath, std::ios::binary);
-    file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-    file.close();
-    if (!file)
-        throw std::runtime_error(std::format("Cannot write the file {}", filePath.string()));
+    Formats::WriteFileBytes(filePath, bytes);
 }

@@ -79,6 +79,7 @@ void DrawPanes(MenuLayout& layout, Display& display, const PlacedPanes& placedPa
         if (isDrawn(*placement.pane))
             Layout::DrawPlacedPane(display.Device(), layout.Live(), placement, display.TextFonts());
     }
+    display.NoteDrawnLayout(layout.Live(), layout.Placement());
 }
 
 void MoveLayoutTo(MenuLayout& layout, Formats::Vector2 place)
@@ -100,6 +101,19 @@ Layout::PlaybackMode ModeOfAnimationFile(const Layout::LayoutArchive& archive, s
 {
     bool isLooping = archive.ReadAnimation(std::string(animationName)).isLooping;
     return isLooping ? Layout::PlaybackMode::Loop : Layout::PlaybackMode::PlayOnce;
+}
+
+const Formats::Group* FindTopGroup(const Formats::Layout& file, std::string_view groupName)
+{
+    if (!file.rootGroup)
+        return nullptr;
+
+    for (const Formats::Group& group : file.rootGroup->children)
+    {
+        if (group.name == groupName)
+            return &group;
+    }
+    return nullptr;
 }
 
 }

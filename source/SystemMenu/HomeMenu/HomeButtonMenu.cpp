@@ -172,6 +172,7 @@ void HomeButtonMenu::Update()
 void HomeButtonMenu::Draw()
 {
     Layout::DrawLayout(display.Device(), layout, placementSettings, fonts);
+    display.NoteDrawnLayout(layout, placementSettings);
     cursors.Draw();
 
     if (fadeSteps == 0)
@@ -187,6 +188,14 @@ void HomeButtonMenu::Draw()
     quad.positions = {{{-halfWidth, halfHeight}, {halfWidth, halfHeight}, {halfWidth, -halfHeight}, {-halfWidth, -halfHeight}}};
     quad.colors = {{color, color, color, color}};
     display.Device().DrawQuad(quad, Graphics::Material());
+}
+
+float HomeButtonMenu::SoundVolume() const
+{
+    if (step != Step::FadingOut)
+        return 1.0f;
+
+    return 1.0f - float(fadeSteps) / float(FadeOutSteps);
 }
 
 HomeMenuOutcome HomeButtonMenu::Outcome() const

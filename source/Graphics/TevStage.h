@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 namespace Graphics
@@ -172,6 +173,11 @@ struct TevStage
 
     TevColorCalculation color;
     TevAlphaCalculation alpha;
+
+    // The swap tables of the stage: for red, green, blue and alpha, the channel of the raster color and of the texture that the stage reads
+    // in their place (0 red, 1 green, 2 blue, 3 alpha). The Mii Channel's icons of eyes and mouths read one channel of a texture as gray.
+    std::array<std::uint8_t, 4> rasterSwap = {0, 1, 2, 3};
+    std::array<std::uint8_t, 4> textureSwap = {0, 1, 2, 3};
 };
 
 }

@@ -12,6 +12,7 @@
 #include "Ios/SdCard/SdCardService.h"
 #include "Sound/PcmStream.h"
 #include "Layout/TextFonts.h"
+#include "Settings/ConsoleClock.h"
 
 namespace Channels
 {
@@ -43,8 +44,8 @@ struct ChannelStorage
     Ios::SdCardService& sdCard;
     Ios::FileSystemService& fileSystem;
 
-    // The running title as the file system sees it: the owner of the channel's data folder.
-    Ios::Caller caller;
+    // Who the channel is to the file system: the user and the group of its title.
+    Ios::Caller fileSystemCaller;
 };
 
 struct ChannelServices
@@ -65,6 +66,9 @@ struct ChannelServices
 
     // Sound that the channel decoded itself (the sound of a movie). The program mixes it into its output.
     Sound::PcmStream& stream;
+
+    // The time of the console's clock as the PC gives it: what a channel seeds its chances with and the time a Mii is made.
+    Settings::PcClock consoleTime;
 };
 
 }

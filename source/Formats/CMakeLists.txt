@@ -7,6 +7,8 @@ add_library(Formats STATIC
     BootMiiKeyBlock.cpp
     ByteReader.cpp
     ByteWriter.cpp
+    BoardMessageFile.cpp
+    CdbRecordFile.cpp
     Certificate.cpp
     Crc32.cpp
     ConsoleKeys.cpp
@@ -30,9 +32,12 @@ add_library(Formats STATIC
     NandFileSystem.cpp
     NandImage.cpp
     NandTitles.cpp
+    NumberedMessageFile.cpp
     OneTimeProgrammable.cpp
+    PlayLogAttachment.cpp
     PlayRecordFile.cpp
     PngImage.cpp
+    ResourceFile.cpp
     RgbaImage.cpp
     RsaSignature.cpp
     SaveBanner.cpp
@@ -54,6 +59,7 @@ add_library(Formats STATIC
     TplTexture.cpp
     U8Archive.cpp
     Vectors.cpp
+    VirtualFatVolume.cpp
     WadFile.cpp
     Yaz0.cpp
 )

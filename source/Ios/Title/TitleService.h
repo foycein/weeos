@@ -112,6 +112,10 @@ public:
     // AccessRightsIncorrect when the running title is not the System Menu.
     Result<void> BecomeTitle(TitleId titleId);
 
+    // A title without a data folder gets one, owned by the title, when it starts: ES makes the folder of a title that has none at its launch,
+    // as DIVerify does for a disc (WiiBrew). The titles that NandTool imports from the dump come without their data folders.
+    Result<void> EnsureDataFolder(TitleId titleId);
+
     // Checks that the program may start, as the console does before it reloads IOS for a title, and works out who it runs as.
     //  - TicketInvalid: the view belongs to another title. A view with the low half 0 belongs to every title of its family.
     //  - TicketNotFound: the NAND has no ticket with the id of the view.
@@ -146,6 +150,9 @@ public:
     //  - TitleInvalidArgument: no installation was started, or the title metadata has no content with this id.
     //  - ContentHashMismatch: the content is not the one of the title metadata.
     Result<void> AddContent(std::uint32_t contentId, Formats::ByteView encryptedContent);
+
+    // The same for a content that was decrypted before, as WeeOS's prepared Wii files keep it. The hash is checked the same way.
+    Result<void> AddDecryptedContent(std::uint32_t contentId, Formats::ByteView content);
 
     // Makes the title available. The system titles must have all their contents that are not optional (TitleInvalidArgument).
     // Installing over an older version replaces the contents and keeps the data folder of the title.

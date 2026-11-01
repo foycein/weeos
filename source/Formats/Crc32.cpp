@@ -11,21 +11,21 @@ constexpr std::uint32_t AllOnes = 0xFFFFFFFF;
 
 }
 
-std::uint32_t Crc32(ByteView bytes)
+std::uint32_t ComputeCrc32(ByteView data)
 {
-    std::uint32_t checksum = AllOnes;
-    for (Byte value : bytes)
+    std::uint32_t crc = AllOnes;
+    for (Byte byte : data)
     {
-        checksum ^= value;
+        crc ^= byte;
         for (int bit = 0; bit < BitsPerByte; ++bit)
         {
-            bool lowestBitIsSet = (checksum & 1) != 0;
-            checksum >>= 1;
+            bool lowestBitIsSet = (crc & 1) != 0;
+            crc >>= 1;
             if (lowestBitIsSet)
-                checksum ^= Polynomial;
+                crc ^= Polynomial;
         }
     }
-    return ~checksum;
+    return crc ^ AllOnes;
 }
 
 }

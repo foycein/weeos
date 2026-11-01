@@ -1,6 +1,5 @@
 #include "Settings/ConsoleClock.h"
 
-#include <utility>
 
 namespace Settings
 {
@@ -17,30 +16,6 @@ local_seconds ReadLocalTimeOfWindows()
     return now.get_local_time();
 }
 
-}
-
-ConsoleClock::ConsoleClock(ClockBiasSource clockBias, PcClock pcClock)
-    : clockBias(std::move(clockBias))
-    , pcClock(std::move(pcClock))
-{
-}
-
-CalendarTime ConsoleClock::Now() const
-{
-    return ToCalendarTime(pcClock() + std::chrono::seconds(clockBias()));
-}
-
-std::int32_t ConsoleClock::BiasForTime(const CalendarTime& time) const
-{
-    std::chrono::seconds bias = ToLocalSeconds(time) - pcClock();
-    return static_cast<std::int32_t>(bias.count());
-}
-
-int ConsoleClock::DaysInMonth(int year, int month)
-{
-    using namespace std::chrono;
-    year_month_day_last lastDay(std::chrono::year(year) / std::chrono::month(static_cast<unsigned>(month)) / last);
-    return static_cast<int>(unsigned(lastDay.day()));
 }
 
 CalendarTime ConsoleClock::ToCalendarTime(local_seconds time)

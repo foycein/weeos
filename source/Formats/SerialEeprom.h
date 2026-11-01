@@ -39,4 +39,7 @@ struct SerialEeprom
 // Throws a FormatError when the data does not have exactly 256 bytes.
 SerialEeprom ReadSerialEeprom(ByteView bytes);
 
+// The 256 bytes with the fields above at their offsets and zeros everywhere else.
+Bytes WriteSerialEeprom(const SerialEeprom& eeprom);
+
 }

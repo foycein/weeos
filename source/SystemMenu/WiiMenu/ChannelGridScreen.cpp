@@ -4,12 +4,15 @@
 #include "SystemMenu/Fader.h"
 #include "SystemMenu/InputManager.h"
 #include "SystemMenu/MenuFiles.h"
+#include "SystemMenu/MessageBoard/MessageBoardData.h"
 #include "SystemMenu/ScreenManager.h"
 #include "SystemMenu/SoundRequests.h"
 #include "SystemMenu/WiiMenu/BottomBarScreen.h"
 #include "SystemMenu/WiiMenu/WiiMenuData.h"
 
 #include "Formats/Ash0.h"
+#include "Formats/FormatError.h"
+#include "Layout/LayoutError.h"
 #include "Formats/U8Archive.h"
 #include "Text/MessageCatalog.h"
 
@@ -30,12 +33,21 @@ constexpr std::string_view StripLayout = "my_IplTop_a";
 constexpr std::string_view StripAnimation = "my_IplTop_a";
 
 // The strip slides one page to the left in frames 0 to 20 of its animation and one page to the right in frames 40 to 60.
-// Frame 0 is the strip at rest.
+// Frame 0 is the strip at rest. While the grid zooms into a television, ChMask darkens the whole grid in frames 200 to 228.
 constexpr float FrameAtRest = 0;
+constexpr float FirstFrameOfTheDarkening = 200;
 constexpr float FirstFrameToPreviousPage = 0;
 constexpr float LastFrameToPreviousPage = 20;
 constexpr float FirstFrameToNextPage = 40;
 constexpr float LastFrameToNextPage = 60;
+
+// The televisions fly away to make room for the Message Board in frames 70 to 90, and fly in from it in frames 100 to 120
+// (0x813AD980, 0x813AB6C4).
+constexpr float FirstFrameOfLeaving = 70;
+constexpr float LastFrameOfLeaving = 90;
+constexpr float FirstFrameOfComingBack = 100;
+constexpr float LastFrameOfComingBack = 120;
+constexpr int ComingFromTheBoardArgument = 1;
 
 // The columns of pages of the strip, from the left, and which page each shows, counted from the page that shows.
 constexpr std::array<char, 5> ColumnLetters = {'a', 'b', 'c', 'd', 'e'};
@@ -53,9 +65,11 @@ constexpr std::string_view WideEdgePicture = "Picture_16";
 constexpr std::array<std::string_view, 5> MaskPictures = {"Picture_00", "Picture_01", "Picture_02", "Picture_03", "Picture_04"};
 constexpr std::array<std::string_view, 5> EdgePictures = {"Edge0", "Edge1", "Edge2", "Edge3", "Edge4"};
 
-// A television of the grid is 128 by 96 units, the size of the panes of its places.
-constexpr float TelevisionWidth = 128;
-constexpr float TelevisionHeight = 96;
+// Half the size of a television of the grid, in the units of the picture (the constructor 0x813AA4CC takes them from a table by the
+// shape of the screen): 128 by 96 units on a 4:3 screen, 170 by 96 on a 16:9 screen.
+constexpr float HalfWidthOfAStandardTelevision = 64;
+constexpr float HalfWidthOfAWideTelevision = 85;
+constexpr float HalfHeightOfATelevision = 48;
 
 // The clock stands below the page that shows and below its neighbors, so that it slides with the strip.
 constexpr std::array<std::string_view, 3> ClockPanes = {"N_Clock0", "N_Clock1", "N_Clock2"};
@@ -85,7 +99,6 @@ constexpr std::string_view StartSound = "WIPL_SE_WII_START";
 
 // While the window of a channel covers the picture, the grid paints it black (0x813AB0E8).
 constexpr Formats::Rgba8Color Black = {0, 0, 0, 255};
-constexpr std::uint8_t FullyShown = 255;
 
 bool WentDown(const PlayerInput& player, const ButtonSet& buttons)
 {
@@ -114,10 +127,12 @@ std::unique_ptr<Layout::LayoutArchive> OpenArchiveOfFile(const MenuFiles& files,
 
 }
 
-ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices)
+ChannelGridScreen::ChannelGridScreen(MenuServices& menuServices, int argument)
     : Screen(ScreenId::ChannelGrid)
     , services(menuServices)
 {
+    if (argument == ComingFromTheBoardArgument)
+        state = GridState::ComingFromTheBoard;
 }
 
 void ChannelGridScreen::Load()
@@ -132,6 +147,8 @@ void ChannelGridScreen::Build()
     strip = std::make_unique<MenuLayout>(services.display, *selectionArchive, std::string(StripLayout));
     stripSlide = std::make_unique<FramePlayer>(*strip, *selectionArchive, StripAnimation);
     stripSlide->Show(FrameAtRest);
+    if (state == GridState::ComingFromTheBoard)
+        stripSlide->PlayOnce(FirstFrameOfComingBack, LastFrameOfComingBack);
     if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
         UseTheWideMasks();
 
@@ -178,7 +195,7 @@ void ChannelGridScreen::MakeTheTiles()
     }
 
     TileArchives archives = {*selectionArchive, *discArchive, *damagedIconArchive};
-    emptyPlace = ChannelTile::MakeEmptySlot(services.display, archives);
+    emptyPlace = ChannelTile::MakeEmptySlot(services.display, archives, services.wiiMenu.random.Next());
 }
 
 std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
@@ -190,14 +207,27 @@ std::unique_ptr<ChannelTile> ChannelGridScreen::MakeTile(SlotPosition position)
         return ChannelTile::MakeDiscChannel(services.display, archives, services.messages.Find(DiscChannelMessage));
 
     if (slot.kind != SavedSlotKind::Title)
-        return ChannelTile::MakeEmptySlot(services.display, archives);
+        return ChannelTile::MakeEmptySlot(services.display, archives, services.wiiMenu.random.Next());
 
     const LoadedChannel& channel = services.wiiMenu.channels.LoadChannel(position);
     if (!channel.icon)
         return ChannelTile::MakeDamagedChannel(services.display, archives);
 
+    // Some channels of homebrew tools, which an imported Wii can bring, have icons that Nintendo's layout engine does not know:
+    // another name of the layout, or animations of texture patterns. They show as damaged channels.
     const std::u16string& name = channel.names[Formats::EnglishLanguageNumber].firstLine;
-    return ChannelTile::MakeChannel(services.display, archives, channel, name);
+    try
+    {
+        return ChannelTile::MakeChannel(services.display, archives, channel, name, services.wiiMenu.random.Next());
+    }
+    catch (const Formats::FormatError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
+    catch (const Layout::LayoutError&)
+    {
+        return ChannelTile::MakeDamagedChannel(services.display, archives);
+    }
 }
 
 GridState ChannelGridScreen::State() const
@@ -264,9 +294,22 @@ bool ChannelGridScreen::RunMain()
     case GridState::ShowingChannel:
         break;
 
-    case GridState::LeavingForWiiOptions:
+    case GridState::LeavingTheWiiMenu:
         if (RunLeaving())
             return true;
+        break;
+
+    case GridState::LeavingForTheBoard:
+        if (!stripSlide->IsPlaying())
+            return true;
+        break;
+
+    case GridState::ComingFromTheBoard:
+        if (!stripSlide->IsPlaying())
+        {
+            stripSlide->Show(FrameAtRest);
+            state = GridState::Idle;
+        }
         break;
     }
 
@@ -388,7 +431,6 @@ bool ChannelGridScreen::HandlePressOfPlayer(int playerIndex, Formats::Vector2 pl
     return true;
 }
 
-// The Message Board is not built yet, so its button does nothing.
 void ChannelGridScreen::HandleBarButton(BarButton button)
 {
     int page = CurrentPage();
@@ -396,23 +438,57 @@ void ChannelGridScreen::HandleBarButton(BarButton button)
     {
     case BarButton::PreviousPage:
         if (page > 0)
+        {
+            Bar()->FlashPageArrow(button);
             TurnToPreviousPage();
+        }
         break;
 
     case BarButton::NextPage:
         if (page < PageCount - 1)
+        {
+            Bar()->FlashPageArrow(button);
             TurnToNextPage();
+        }
         break;
 
     case BarButton::WiiButton:
-        services.sounds.Request(DecideSound);
-        services.fader.StartFadeOut();
-        state = GridState::LeavingForWiiOptions;
+        LeaveFor(ScreenId::WiiOptionsBackground);
+        break;
+
+    case BarButton::SdCardButton:
+        Bar()->PressSdCardButton();
+        LeaveFor(ScreenId::SdCardMenuBar);
         break;
 
     case BarButton::MessageBoardButton:
+        LeaveForTheBoard();
+        break;
+
+    default:
         break;
     }
+}
+
+// The envelope: the bar takes the look of the Message Board and the televisions fly away (0x813B0444, 0x813AD980). When the grid has
+// ended, the main frame shows the board.
+void ChannelGridScreen::LeaveForTheBoard()
+{
+    if (services.messageBoard == nullptr)
+        return;
+
+    services.sounds.Request(DecideSound);
+    if (BottomBarScreen* bar = Bar())
+    {
+        bar->ShowPageArrows(false, false);
+        bar->Change(BarChange::ToTheBoard);
+    }
+    for (std::unique_ptr<ChannelTile>& tile : tiles)
+        tile->SetFocused(false);
+
+    stripSlide->PlayOnce(FirstFrameOfLeaving, LastFrameOfLeaving);
+    services.messageBoard->isComingFromTheChannels = true;
+    state = GridState::LeavingForTheBoard;
 }
 
 void ChannelGridScreen::TurnToPreviousPage()
@@ -503,6 +579,8 @@ void ChannelGridScreen::DropChannel()
 void ChannelGridScreen::PressChannel(SlotPosition position)
 {
     services.wiiMenu.pressedChannel = position;
+    Tile(position).ShowPressed();
+    SetBarButtonsEnabled(false);
     services.sounds.Request(PressSound);
     services.sounds.StopMusic(MusicStopStepsOfAChannel);
     Tile(position).SetFocused(false);
@@ -516,19 +594,36 @@ void ChannelGridScreen::PressChannel(SlotPosition position)
 
 void ChannelGridScreen::ZoomIntoPressedChannel()
 {
-    int slotIndex = services.wiiMenu.pressedChannel.value_or(SlotPosition{}).index;
-    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), AreaOfTheTelevisionAt(PlaceOfSlot(slotIndex)));
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), TelevisionOfThePressedChannel());
     zoom->StartZoomingIn();
+    ShowTheZoom();
     services.sounds.Request(ZoomSound);
 }
 
+// The window may have changed to a channel of another page meanwhile: the grid shows that page and zooms out of its television
+// (0x813ADC8C, 0x813ADCE8).
 void ChannelGridScreen::ZoomOutOfPressedChannel()
 {
-    if (!zoom)
-        return;
+    SlotPosition channel = services.wiiMenu.pressedChannel.value_or(SlotPosition{});
+    services.wiiMenu.channels.ShowPage(channel.page);
 
+    zoom = std::make_unique<TelevisionZoom>(services.display.WholePicture(), TelevisionOfThePressedChannel());
     zoom->StartZoomingOut();
+    ShowTheZoom();
     state = GridState::ZoomingOutOfChannel;
+}
+
+PictureArea ChannelGridScreen::TelevisionOfThePressedChannel()
+{
+    int slotIndex = services.wiiMenu.pressedChannel.value_or(SlotPosition{}).index;
+    return AreaOfTheTelevisionAt(PlaceOfSlot(slotIndex));
+}
+
+// The screens of the Wii Menu look through the camera of the zoom, and the grid darkens as much as the zoom has come.
+void ChannelGridScreen::ShowTheZoom()
+{
+    services.display.SetCamera(zoom->VisibleArea());
+    stripSlide->Show(FirstFrameOfTheDarkening + static_cast<float>(zoom->StepsTowardsTheTelevision()));
 }
 
 const TelevisionZoom* ChannelGridScreen::Zoom() const
@@ -546,13 +641,15 @@ bool ChannelGridScreen::DrawsWithChildren() const
     return true;
 }
 
-// When the grid has zoomed out again, it is as it was before the press, and the music of the menu starts again (0x813AC7D8).
+// When the grid has zoomed out again and the window is gone, the grid is as it was before the press, and the music of the menu
+// starts again (0x813AC7D8).
 void ChannelGridScreen::RunZoom()
 {
     if (!zoom)
         return;
 
     zoom->Step();
+    ShowTheZoom();
     if (zoom->IsMoving())
         return;
 
@@ -562,10 +659,32 @@ void ChannelGridScreen::RunZoom()
         return;
     }
 
+    if (HasChildren())
+        return;
+
     zoom.reset();
+    services.display.ResetCamera();
+    stripSlide->Show(FrameAtRest);
     state = GridState::Idle;
+    SetBarButtonsEnabled(true);
     ShowTheArrowsOfThePage();
     services.sounds.StartMusic();
+}
+
+// The camera belongs to the grid: whatever comes after it sees the whole picture again.
+void ChannelGridScreen::OnClose()
+{
+    services.display.ResetCamera();
+}
+
+// The bar stops answering, the menu says yes, and the picture fades out before the new screen comes (0x813B0444, 0x813B0728).
+void ChannelGridScreen::LeaveFor(ScreenId nextScreen)
+{
+    Bar()->SetButtonsEnabled(false);
+    services.sounds.Request(DecideSound);
+    services.fader.StartFadeOut();
+    screenAfterLeaving = nextScreen;
+    state = GridState::LeavingTheWiiMenu;
 }
 
 bool ChannelGridScreen::RunLeaving()
@@ -573,7 +692,7 @@ bool ChannelGridScreen::RunLeaving()
     if (services.fader.GetStatus() != FaderStatus::Covered)
         return false;
 
-    GoToRoot(ScreenId::WiiOptionsBackground, 0);
+    GoToRoot(screenAfterLeaving, 0);
     return true;
 }
 
@@ -620,6 +739,13 @@ BottomBarScreen* ChannelGridScreen::Bar()
     return dynamic_cast<BottomBarScreen*>(services.screens.FindScreen(ScreenId::BottomBar));
 }
 
+void ChannelGridScreen::SetBarButtonsEnabled(bool shouldBeEnabled)
+{
+    BottomBarScreen* bar = Bar();
+    if (bar != nullptr)
+        bar->SetButtonsEnabled(shouldBeEnabled);
+}
+
 void ChannelGridScreen::Draw(DrawPass pass)
 {
     if (pass != DrawPass::Main || !strip)
@@ -631,9 +757,7 @@ void ChannelGridScreen::Draw(DrawPass pass)
         return;
     }
 
-    if (zoom)
-        services.display.MoveArea(zoom->VisibleArea(), services.display.WholePicture(), FullyShown);
-
+    services.display.LookThroughCamera();
     DrawTheGrid();
     services.display.StopMovingAreas();
 }
@@ -694,18 +818,19 @@ void ChannelGridScreen::DrawTiles(const PlacedPanes& placedPanes)
     services.display.Device().ClearScissor();
 }
 
-// A tile draws only inside its television. Some icons have parts beside the picture, which their own script moves into view.
-Graphics::ScissorRectangle ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
+// A tile draws only inside its television (0x813ADFDC), also while the grid zooms. Some icons have parts beside the picture, which
+// their own script moves into view.
+PictureArea ChannelGridScreen::AreaOfTheTelevisionAt(Formats::Vector2 place) const
 {
-    Formats::Vector2 stretch = services.display.LayoutStretch();
-    float halfWidth = TelevisionWidth / 2 * stretch.x;
-    float halfHeight = TelevisionHeight / 2 * stretch.y;
+    float halfWidth = HalfWidthOfAStandardTelevision;
+    if (services.display.GetScreenShape() == Platform::ScreenShape::SixteenByNine)
+        halfWidth = HalfWidthOfAWideTelevision;
 
-    Graphics::ScissorRectangle area;
+    PictureArea area;
     area.left = place.x - halfWidth;
     area.right = place.x + halfWidth;
-    area.bottom = place.y - halfHeight;
-    area.top = place.y + halfHeight;
+    area.bottom = place.y - HalfHeightOfATelevision;
+    area.top = place.y + HalfHeightOfATelevision;
     return area;
 }
 

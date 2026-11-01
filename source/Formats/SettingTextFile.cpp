@@ -28,6 +28,19 @@ std::string DecryptText(ByteView encryptedBytes)
     return text;
 }
 
+Bytes EncryptText(const std::string& text)
+{
+    Bytes encryptedBytes;
+    std::uint32_t key = FirstKey;
+
+    for (char character : text)
+    {
+        encryptedBytes.push_back(static_cast<Byte>(static_cast<Byte>(character) ^ (key & ByteMask)));
+        key = std::rotl(key, 1);
+    }
+    return encryptedBytes;
+}
+
 // The console fills the file up with zero bytes that it never encrypted. They would decrypt to junk behind the text,
 // so they are cut off first. A file that was encrypted up to its end has no zeros there, and nothing is cut.
 ByteView WithoutTrailingZeros(ByteView bytes)
@@ -87,6 +100,20 @@ SettingTextFile ReadSettingTextFile(ByteView encryptedBytes)
         file.entries.push_back(ParseLine(line));
 
     return file;
+}
+
+Bytes WriteSettingTextFile(const SettingTextFile& file)
+{
+    std::string text;
+    for (const SettingTextEntry& entry : file.entries)
+        text += entry.name + "=" + entry.value + "\r\n";
+
+    if (text.size() >= FileSize)
+        throw FormatError(std::format("Setting text file: the text has {} characters, more than the file holds", text.size()));
+
+    Bytes bytes = EncryptText(text);
+    bytes.resize(FileSize, 0);
+    return bytes;
 }
 
 std::optional<std::string> SettingTextFile::FindValue(std::string_view name) const

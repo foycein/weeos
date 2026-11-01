@@ -25,7 +25,7 @@ constexpr std::string_view SecondHourDigitPane = "Clock2";
 constexpr std::string_view FirstMinuteDigitPane = "Clock1";
 constexpr std::string_view SecondMinuteDigitPane = "Clock0";
 
-// A console of the USA shows AM and PM on the right of the digits. Japan shows them on the left, Europe shows 24 hours.
+// A console of the USA shows AM and PM on the right of the digits. Japan shows them on the left, Europe shows 24 hours without them.
 constexpr std::string_view LeftAfternoonPane = "AM_PM";
 constexpr std::string_view RightAfternoonPane = "AM_PM_R";
 
@@ -43,6 +43,11 @@ constexpr int SecondsBetweenBlinks = 2;
 bool IsBlinkSecond(const LocalTime& time)
 {
     return time.second % SecondsBetweenBlinks == 0;
+}
+
+bool IsSecondBetweenBlinks(const LocalTime& time)
+{
+    return !IsBlinkSecond(time);
 }
 
 }
@@ -73,7 +78,7 @@ ClockDisplay::ClockDisplay(MenuServices& menuServices, const Layout::LayoutArchi
         change->Show(lastFrameOfTheChange);
     }
 
-    ShowTheFace(MakeClockFace(services.wiiMenu.console.GetLocalTime()));
+    ShowTheFace(MakeClockFace(services.wiiMenu.console.GetLocalTime(), services.wiiMenu.console.GetClockFormat()));
 }
 
 bool ClockDisplay::ShowsTheLabel() const
@@ -85,7 +90,7 @@ void ClockDisplay::Calculate()
 {
     LocalTime time = services.wiiMenu.console.GetLocalTime();
 
-    ClockFace face = MakeClockFace(time);
+    ClockFace face = MakeClockFace(time, services.wiiMenu.console.GetClockFormat());
     if (face != shownFace)
         ShowTheFace(face);
 
@@ -110,18 +115,18 @@ void ClockDisplay::ShowTheFace(const ClockFace& face)
     CopyFirstTexture(*layout, SecondMinuteDigitPane, DigitPictures[face.minuteOnes]);
     CopyFirstTexture(*layout, RightAfternoonPane, face.isAfternoon ? AfternoonPicture : MorningPicture);
 
-    // A clock does not show a 0 in front of the hours.
-    layout->PaneNamed(FirstHourDigitPane).isVisible = face.hourTens != 0;
+    layout->PaneNamed(FirstHourDigitPane).isVisible = face.showsHourTens;
+    layout->PaneNamed(RightAfternoonPane).isVisible = face.showsMorningOrAfternoon;
     shownFace = face;
 }
 
-// The label changes to the time on a second that the colon would blink on, so that the two do not start at different times.
+// The label changes to the time on a second between two blinks, so that the colon starts its first blink after the change.
 void ClockDisplay::StartTheChangeWhenItIsTime(const LocalTime& time)
 {
     if (phase == Phase::ShowingTheLabel)
     {
         bool hasShownLongEnough = services.clock.Seconds() - labelStartedSeconds >= SecondsOfTheLabel;
-        if (hasShownLongEnough && IsBlinkSecond(time))
+        if (hasShownLongEnough && IsSecondBetweenBlinks(time))
         {
             change->PlayOnce(0, lastFrameOfTheChange);
             phase = Phase::ChangingToTheTime;

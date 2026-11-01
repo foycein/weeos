@@ -100,7 +100,7 @@ Formats::Bytes MakePostedPictureFile(const Formats::RgbaImage& picture)
     Formats::ByteWriter file;
     file.WriteUint32(PictureFileCode);
     file.WriteUint32(static_cast<std::uint32_t>(PictureHeaderSize + pixels.GetBytes().size()));
-    file.WriteUint32(Formats::Crc32(checkedPart.GetBytes()));
+    file.WriteUint32(Formats::ComputeCrc32(checkedPart.GetBytes()));
     file.WriteBytes(checkedPart.GetBytes());
     return file.GetBytes();
 }
@@ -114,7 +114,7 @@ std::optional<Formats::RgbaImage> ReadPostedPictureFile(Formats::ByteView bytes,
     bool isRightFile = reader.ReadUint32() == PictureFileCode && reader.ReadUint32() == bytes.size();
     std::uint32_t checksum = reader.ReadUint32();
     bool hasRightSize = reader.ReadUint32() == static_cast<std::uint32_t>(width) && reader.ReadUint32() == static_cast<std::uint32_t>(height);
-    if (!isRightFile || !hasRightSize || checksum != Formats::Crc32(bytes.subspan(CheckedPartStart)))
+    if (!isRightFile || !hasRightSize || checksum != Formats::ComputeCrc32(bytes.subspan(CheckedPartStart)))
         return std::nullopt;
 
     return Formats::DecodeTexture(Formats::TextureFormat::Rgb565, width, height, bytes.subspan(PictureHeaderSize), std::nullopt);
@@ -134,7 +134,7 @@ Formats::Bytes MakeSaveFile(const PhotoSettings& settings)
     std::copy(records.GetBytes().begin(), records.GetBytes().end(), bytes.begin() + PuzzleRecordsPlace);
 
     Formats::ByteWriter checksum;
-    checksum.WriteUint32(Formats::Crc32(Formats::ByteView(bytes).first(SaveFileSize - ChecksumSize)));
+    checksum.WriteUint32(Formats::ComputeCrc32(Formats::ByteView(bytes).first(SaveFileSize - ChecksumSize)));
     std::copy(checksum.GetBytes().begin(), checksum.GetBytes().end(), bytes.end() - ChecksumSize);
     return bytes;
 }
@@ -146,7 +146,7 @@ std::optional<PhotoSettings> ReadSaveFile(Formats::ByteView bytes)
 
     Formats::ByteReader reader(bytes, "Photo Channel save file");
     reader.MoveTo(SaveFileSize - ChecksumSize);
-    if (reader.ReadUint32() != Formats::Crc32(bytes.first(SaveFileSize - ChecksumSize)))
+    if (reader.ReadUint32() != Formats::ComputeCrc32(bytes.first(SaveFileSize - ChecksumSize)))
         return std::nullopt;
 
     PhotoSettings settings;
@@ -169,9 +169,9 @@ PhotoStorage::PhotoStorage(const ChannelStorage& channelStorage)
 PhotoStorage::StartResult PhotoStorage::Start()
 {
     Ios::NandPath folder = PathOf("");
-    if (storage.fileSystem.GetAttributes(folder, storage.caller).Failed())
+    if (storage.fileSystem.GetAttributes(folder, storage.fileSystemCaller).Failed())
     {
-        if (storage.fileSystem.CreateDirectory(folder, OwnerReadsAndWrites, NoAttributeFlags, storage.caller).Failed())
+        if (storage.fileSystem.CreateDirectory(folder, OwnerReadsAndWrites, NoAttributeFlags, storage.fileSystemCaller).Failed())
             return StartResult::CannotCreate;
     }
 
@@ -228,7 +228,7 @@ bool PhotoStorage::RemoveWiiMenuPhoto()
 
 std::optional<Formats::Bytes> PhotoStorage::ReadFile(std::string_view name)
 {
-    Ios::Result<Ios::OpenFile> file = storage.fileSystem.Open(PathOf(name), Ios::OpenMode::Read, storage.caller);
+    Ios::Result<Ios::OpenFile> file = storage.fileSystem.Open(PathOf(name), Ios::OpenMode::Read, storage.fileSystemCaller);
     if (file.Failed())
         return std::nullopt;
 
@@ -246,7 +246,7 @@ std::optional<Formats::Bytes> PhotoStorage::ReadFile(std::string_view name)
 
 bool PhotoStorage::WriteFile(std::string_view name, Formats::ByteView bytes)
 {
-    Ios::Result<Ios::OpenFile> file = storage.fileSystem.Open(PathOf(name), Ios::OpenMode::Write, storage.caller);
+    Ios::Result<Ios::OpenFile> file = storage.fileSystem.Open(PathOf(name), Ios::OpenMode::Write, storage.fileSystemCaller);
     if (file.Failed())
         return false;
 
@@ -258,10 +258,10 @@ bool PhotoStorage::WriteFile(std::string_view name, Formats::ByteView bytes)
 bool PhotoStorage::MakeFileWhenMissing(std::string_view name, std::size_t size)
 {
     Ios::NandPath path = PathOf(name);
-    if (storage.fileSystem.GetAttributes(path, storage.caller).Succeeded())
+    if (storage.fileSystem.GetAttributes(path, storage.fileSystemCaller).Succeeded())
         return true;
 
-    if (storage.fileSystem.CreateFile(path, OwnerReadsAndWrites, NoAttributeFlags, storage.caller).Failed())
+    if (storage.fileSystem.CreateFile(path, OwnerReadsAndWrites, NoAttributeFlags, storage.fileSystemCaller).Failed())
         return false;
 
     return WriteFile(name, Formats::Bytes(size, 0));

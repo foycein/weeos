@@ -4,8 +4,10 @@
 #include "Formats/RgbaImage.h"
 #include "Formats/Vectors.h"
 
+#include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,6 +55,50 @@ struct BodyPart
     std::vector<BodyCorner> triangleCorners;
 };
 
+// One key of an animation track: at this frame the value is this, and it changes by the slope per frame.
+struct AnimationKey
+{
+    float frame = 0;
+    float value = 0;
+    float slope = 0;
+};
+
+// One number of a bone over the frames: a fixed value when there are no keys, otherwise a smooth curve through the keys.
+struct AnimationTrack
+{
+    float fixedValue = 0;
+    std::vector<AnimationKey> keys;
+};
+
+// The x, y and z of a scale, a turn (in degrees) or a move.
+using AnimationTracks = std::array<AnimationTrack, 3>;
+
+// What an animation does to one bone. A kind that the animation leaves out keeps the value of the bone's rest pose.
+struct BoneAnimation
+{
+    std::optional<AnimationTracks> scale;
+    std::optional<AnimationTracks> rotation;
+    std::optional<AnimationTracks> translation;
+    bool undoesParentScale = false;
+};
+
+// A skeleton animation of the body (CHR0), for example bodyWalk: the bones it moves, by name.
+struct BodyAnimation
+{
+    float frameCount = 0;
+    bool isLooping = false;
+    std::map<std::string, BoneAnimation> bones;
+};
+
+// The shadow under a Mii (the object of the material mt_shadow): a square on the ground, held whole by the bone shadow_model, in
+// triangles, and its picture, whose brightness is how dark the shadow is.
+struct BodyShadow
+{
+    std::vector<Formats::Vector3> cornerPositions;
+    std::vector<Formats::Vector2> cornerTextureCoordinates;
+    Formats::RgbaImage picture;
+};
+
 // What the Mii Channel's body model holds that a standing Mii needs (docs/research/Mii.md section 10): the bones, the shirt
 // (with hands and neck), the pants (with shoes), the first frame of the standing animation and the lit sphere that shades both.
 struct MiiBodyFile
@@ -64,7 +110,11 @@ struct MiiBodyFile
     // The bones' transforms in frame 0 of the animation bodyWait, by bone name.
     std::map<std::string, BoneTransform> standingPose;
 
+    // Every animation of the file by its name: bodyWait, bodyWalk, bodyRun and the others of the Mii Plaza.
+    std::map<std::string, BodyAnimation> animations;
+
     Formats::RgbaImage environmentTexture;
+    BodyShadow shadow;
 };
 
 struct MiiBodyFiles
@@ -72,6 +122,13 @@ struct MiiBodyFiles
     MiiBodyFile male;
     MiiBodyFile female;
 };
+
+// The value of a track at a frame: between two keys the curve that meets both keys with their slopes (a Hermite curve), before the
+// first key the first value and after the last key the last value.
+float TrackValueAt(const AnimationTrack& track, float frame);
+
+// The transform of a bone at a frame of an animation. The rest transform fills in what the animation leaves out.
+BoneTransform AnimatedTransform(const BoneAnimation& animation, const BoneTransform& restTransform, float frame);
 
 // Reads maleBody.brres or femaleBody.brres. Throws a FormatError when the file does not hold what the body needs.
 MiiBodyFile ReadMiiBodyFile(Formats::ByteView brres);

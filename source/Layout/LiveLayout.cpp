@@ -106,6 +106,11 @@ std::vector<Formats::Pane*> LiveLayout::AllPanes()
     return PaneWithDescendants(rootPane);
 }
 
+const std::optional<Formats::Group>& LiveLayout::RootGroup() const
+{
+    return rootGroup;
+}
+
 std::vector<Formats::Pane*> LiveLayout::PanesOfGroup(std::string_view groupName)
 {
     const Formats::Group* group = rootGroup ? FindGroupInTree(*rootGroup, groupName) : nullptr;
@@ -147,6 +152,10 @@ const std::string& LiveLayout::FontNameAt(std::size_t fontIndex) const
 
 LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap)
 {
+    auto provided = providedTextures.find(textureFileName);
+    if (provided != providedTextures.end())
+        return provided->second;
+
     TextureKey key(textureFileName, horizontalWrap, verticalWrap);
     auto alreadyLoaded = loadedTextures.find(key);
     if (alreadyLoaded != loadedTextures.end())
@@ -171,6 +180,11 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
 
     loadedTextures.emplace(key, texture);
     return texture;
+}
+
+void LiveLayout::ProvideTexture(const std::string& textureFileName, LoadedTexture texture)
+{
+    providedTextures[textureFileName] = texture;
 }
 
 }

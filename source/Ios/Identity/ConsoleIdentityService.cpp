@@ -8,6 +8,7 @@
 #include "Formats/SerialEeprom.h"
 #include "Formats/Sha1.h"
 #include "Formats/SignatureVerification.h"
+#include "Ios/Identity/IdentityFiles.h"
 
 #include <algorithm>
 #include <optional>
@@ -21,9 +22,6 @@ namespace Ios
 namespace
 {
 
-constexpr const char* KeysFileName = "keys.txt";
-constexpr const char* DeviceCertificateFileName = "device.cert";
-constexpr const char* SerialEepromFileName = "seeprom.bin";
 
 constexpr std::size_t DeviceCertificateSize = 0x180;
 
@@ -78,14 +76,33 @@ bool IsZero(Formats::Byte byte)
     return byte == 0;
 }
 
+// A console that WeeOS made has the certificate of its own authority. A real console has none.
+Result<std::optional<Formats::Certificate>> ReadAuthorityCertificate(const std::filesystem::path& identityFolder)
+{
+    std::filesystem::path path = identityFolder / AuthorityCertificateFileName;
+    if (!std::filesystem::exists(path))
+        return std::optional<Formats::Certificate>();
+
+    Result<Formats::Bytes> bytes = ReadIdentityFile(path);
+    if (bytes.Failed())
+        return bytes.Error();
+
+    std::vector<Formats::Certificate> certificates = Formats::ReadCertificateChain(bytes.Value());
+    if (certificates.size() != 1 || certificates.front().keyType != Formats::PublicKeyType::EllipticCurve)
+        return IosError::ShortRead;
+
+    return std::optional<Formats::Certificate>(certificates.front());
+}
+
 }
 
 ConsoleIdentityService::ConsoleIdentityService(Formats::ConsoleKeys consoleKeys, Formats::Bytes certificate,
-    std::uint8_t consoleBootTwoVersion, bool consoleHasKoreanKey)
+    std::uint8_t consoleBootTwoVersion, bool consoleHasKoreanKey, std::optional<Formats::Certificate> ownAuthority)
     : keys(consoleKeys)
     , deviceCertificate(std::move(certificate))
     , bootTwoVersion(consoleBootTwoVersion)
     , hasKoreanKey(consoleHasKoreanKey)
+    , authority(std::move(ownAuthority))
 {
 }
 
@@ -114,8 +131,12 @@ Result<ConsoleIdentityService> ConsoleIdentityService::Open(const std::filesyste
         if (!certificateBelongsToTheKeys || !hasCertificateSize)
             return IosError::ShortRead;
 
+        Result<std::optional<Formats::Certificate>> authority = ReadAuthorityCertificate(identityFolder);
+        if (authority.Failed())
+            return authority.Error();
+
         bool hasKoreanKey = !std::all_of(serialEeprom.koreanKey.begin(), serialEeprom.koreanKey.end(), IsZero);
-        return ConsoleIdentityService(keys, certificateBytes.Value(), serialEeprom.bootTwoVersion, hasKoreanKey);
+        return ConsoleIdentityService(keys, certificateBytes.Value(), serialEeprom.bootTwoVersion, hasKoreanKey, authority.Value());
     }
     catch (const Formats::FormatError&)
     {
@@ -166,7 +187,7 @@ Result<void> ConsoleIdentityService::VerifySignature(Formats::ByteView data, For
     if (signer.keyType != Formats::PublicKeyType::EllipticCurve)
         return IosError::PublicKeyTypeInvalid;
 
-    Formats::SignatureCheck chainCheck = Formats::VerifyCertificate(signer, certificates);
+    Formats::SignatureCheck chainCheck = CheckCertificate(signer, certificates);
     if (chainCheck == Formats::SignatureCheck::SignerNotFound)
         return IosError::IssuerNotFound;
 
@@ -177,6 +198,21 @@ Result<void> ConsoleIdentityService::VerifySignature(Formats::ByteView data, For
         return IosError::SignatureInvalid;
 
     return Result<void>();
+}
+
+// A certificate that the own authority issued is checked with the key of the authority, and the chain ends there.
+Formats::SignatureCheck ConsoleIdentityService::CheckCertificate(const Formats::Certificate& certificate,
+    std::span<const Formats::Certificate> certificates) const
+{
+    bool isIssuedByOwnAuthority = authority && certificate.issuer == authority->issuer + "-" + authority->name;
+    if (!isIssuedByOwnAuthority)
+        return Formats::VerifyCertificate(certificate, certificates);
+
+    Formats::Sha1Digest hash = Formats::ComputeSha1(certificate.signedBytes);
+    if (!Formats::VerifyHashSignature(authority->publicKey, hash, certificate.signature.bytes))
+        return Formats::SignatureCheck::Invalid;
+
+    return Formats::SignatureCheck::Valid;
 }
 
 Result<CipherResult> ConsoleIdentityService::Encrypt(std::uint32_t keyNumber, const Formats::AesBlock& initializationVector,

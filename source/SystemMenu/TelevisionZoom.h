@@ -34,6 +34,10 @@ public:
     // 0 shows the whole list, 1 only the television, which then fills the picture.
     float Closeness() const;
 
+    // How many steps the view has come from the whole picture towards the television: 0 at the whole picture, StepCount at the
+    // television. The animations that go with the zoom show this frame of their part (the darkening of the channel grid).
+    int StepsTowardsTheTelevision() const;
+
     // The part of the list that fills the picture now.
     PictureArea VisibleArea() const;
 

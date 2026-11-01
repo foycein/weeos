@@ -7,6 +7,7 @@ namespace
 {
 
 constexpr float Half = 0.5f;
+constexpr std::uint8_t FullyShown = 255;
 
 }
 
@@ -30,6 +31,22 @@ void Display::MoveArea(const PictureArea& seenArea, const PictureArea& shownArea
 void Display::StopMovingAreas()
 {
     zoomedDevice.StopMoving();
+}
+
+void Display::SetCamera(const PictureArea& visibleArea)
+{
+    camera = visibleArea;
+}
+
+void Display::ResetCamera()
+{
+    camera.reset();
+}
+
+void Display::LookThroughCamera()
+{
+    if (camera)
+        MoveArea(*camera, WholePicture(), FullyShown);
 }
 
 void Display::SetTextFonts(const Layout::TextFonts& fonts)
@@ -100,6 +117,21 @@ Formats::Vector2 Display::CanvasToRootPaneSpace(Formats::Vector2 canvasPoint) co
 {
     Formats::Vector2 stretch = LayoutStretch();
     return {canvasPoint.x / stretch.x, canvasPoint.y / stretch.y};
+}
+
+void Display::NoteDrawnLayout(const Layout::LiveLayout& layout, const Layout::PlacementSettings& placement)
+{
+    drawnLayouts.push_back({&layout, placement});
+}
+
+void Display::ForgetDrawnLayouts()
+{
+    drawnLayouts.clear();
+}
+
+const std::vector<DrawnLayout>& Display::DrawnLayouts() const
+{
+    return drawnLayouts;
 }
 
 }

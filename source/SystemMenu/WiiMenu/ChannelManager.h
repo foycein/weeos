@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SystemMenu/WiiMenu/IconScripts.h"
 #include "SystemMenu/WiiMenu/MenuConsole.h"
 #include "SystemMenu/WiiMenu/SaveData.h"
 
@@ -11,6 +12,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace SystemMenu
 {
@@ -46,16 +48,17 @@ struct LoadedChannel
     // True when a script or a module of the channel drives the icon (docs/research/Channels.md 1.6).
     bool isIconDrivenByCode = false;
 
-    // The first animation of the script, icon_Rso0, when the icon has it. The script plays it while the channel has no data.
-    std::optional<std::string> scriptAnimation;
+    // What WeeOS does instead of the script, and the numbers of the animations icon_Rso0 to icon_Rso15 that the icon has for it.
+    IconScript iconScript = IconScript::None;
+    std::vector<int> scriptAnimationNumbers;
 };
 
 // The animation of an icon, as the grid chooses it: an icon that a script drives plays icon_Start, when it has it, and the script
 // does the rest. Any other icon plays icon, or icon_Whole when it has no icon. The files are the files of icon.bin.
 std::optional<std::string> ChooseIconAnimation(const Formats::U8Archive& iconFiles, bool isIconDrivenByCode);
 
-// The animation that a script plays on an icon of a channel without data: icon_Rso0, when the icon has it.
-std::optional<std::string> ChooseScriptAnimation(const Formats::U8Archive& iconFiles, bool isIconDrivenByCode);
+// The numbers of the animations icon_Rso0 to icon_Rso15 that the files of icon.bin hold.
+std::vector<int> ListScriptAnimations(const Formats::U8Archive& iconFiles);
 
 // The channel grid as the menu keeps it (the ChannelManager and the SaveDataManager of the original, docs/research/SystemMenuStructure.md 5.1):
 // four pages of twelve places, the page that is shown, and the files of the channels in the places.

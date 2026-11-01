@@ -39,20 +39,14 @@ enum class ButtonLook
     BottomLeft,
     BottomRight,
 
-    // A smaller button for a list of countries (432 by 56).
-    CountryItem,
-
-    // The pictures of a television, of 4:3 (200 by 140) and of 16:9 (264 by 140), that are buttons.
-    TelevisionFourByThree,
-    TelevisionSixteenByNine,
+    // A smaller button for a row of a list (432 by 56), as the list of countries of the original has.
+    ListRow,
 
     // The round buttons of the gauge of the sensitivity (32 by 32).
     MinusCircle,
     PlusCircle,
 
-    // An arrow to the left or right to turn to another page, or one to change a number.
-    ArrowLeft,
-    ArrowRight,
+    // An arrow up or down that shows other rows of a list.
     ArrowUp,
     ArrowDown,
 };
@@ -64,9 +58,6 @@ enum class TextRole
 
     // Large white digits, like those of the date.
     BigNumber,
-
-    // Dark text on a white background that the page draws itself.
-    Label,
 };
 
 // The sounds that the pages play. The names are the ones of the sound archive of the menu.
@@ -123,13 +114,9 @@ struct PagePicture
 // One page: the tabs at the top, the buttons, the texts and the pictures.
 struct Page
 {
-    // How many small tabs are in front of the large one that holds the title: 0 for the first pages, 1 for the pages they lead to, and so on.
+    // How many small tabs are in front of the large one that holds the title: 0 for the index page, 1 for the pages it leads to, and so on.
     int tabDepth = 0;
     std::u16string title;
-
-    // The page numbers at the lower right of the first pages: 3 squares, the one for the page that is shown is lit. Nothing when 0.
-    int pageCount = 0;
-    int pageNumber = 0;
 
     // A deque keeps every button in its place when another one is added, so the page builder can hand out references.
     std::deque<PageButton> buttons;
