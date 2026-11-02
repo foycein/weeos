@@ -34,7 +34,7 @@ LogoLineWidthPart = 0.42
 LogoLineHeightPart = 0.02
 LetterSizePart = 0.66
 LetterMiddlePart = 0.47
-LogoSizePart = 0.3
+LogoSizePart = 0.23
 LogoMiddlePart = 0.45
 LogoLineTopPart = 0.64
 

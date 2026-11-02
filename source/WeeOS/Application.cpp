@@ -41,6 +41,8 @@ namespace
 constexpr std::wstring_view WindowTitle = L"WeeOS";
 constexpr std::wstring_view NandPickerTitle = L"Import your Wii: choose nand.bin of its BootMii backup";
 constexpr std::wstring_view NandImageFileName = L"nand.bin";
+constexpr std::string_view NoBackupChosenMessage =
+    "WeeOS runs the system of your own Wii. Choose nand.bin of its BootMii backup (keys.bin beside it) at the first start.";
 
 // One step of the console, 1001/60000 of a second, in whole microseconds.
 constexpr std::chrono::microseconds StepOfAHiddenWindow(16683);
@@ -361,8 +363,9 @@ Application::Application(const Ios::IosFolders& iosFolders, bool isSilent, HostE
     StartSession();
 }
 
-// The SD card is always in its slot: its folder is made when it is not there. A NAND folder without a console gets a new one,
-// whose first start offers the import of the person's own Wii.
+// The SD card is always in its slot: its folder is made when it is not there. A NAND folder without a console gets one: a new one
+// from the Wii files beside WeeOS.exe, whose first start offers the import of the person's own Wii, or, without Wii files (the public
+// download carries none), the person's own Wii at once.
 void Application::PrepareConsoleFolders()
 {
     if (!folders.sdCardFolder.empty())
@@ -371,9 +374,25 @@ void Application::PrepareConsoleFolders()
     if (HasConsole(folders))
         return;
 
+    if (!std::filesystem::exists(host.wiiFilesFolder))
+    {
+        ImportTheOwnWii();
+        return;
+    }
+
     std::cout << "This is the first start: WeeOS makes a new console.\n";
     MakeNewConsole(folders, host.wiiFilesFolder);
     importer.OfferAtStart();
+}
+
+void Application::ImportTheOwnWii()
+{
+    std::cout << "This is the first start: WeeOS imports your Wii.\n";
+    std::optional<std::filesystem::path> nandImage = host.pickNand();
+    if (!nandImage)
+        throw std::runtime_error(std::string(NoBackupChosenMessage));
+
+    ImportConsole(*nandImage, folders);
 }
 
 Application::~Application() = default;

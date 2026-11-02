@@ -3,8 +3,8 @@
 python -I tools/Release/MakeRelease.py [--to-release]
 
 Everything goes into the staging folder out/Release of this repository:
-    WeeOS/                      the portable folder as the owner gets it: WeeOS.exe, the shaders, the prepared Wii files (WiiFiles)
-                                and an empty SDCard folder. No NAND and no identity: the first start makes a new console.
+    WeeOS/                      the portable folder as people get it: WeeOS.exe, the shaders and an empty SDCard folder. No Wii
+                                files, no NAND and no identity: the first start imports the person's own Wii from its BootMii backup.
     WeeOS-<version>-portable.zip   that folder as a zip
     weeossetup.exe              the installer, which carries the zip (tools/Setup)
 
@@ -42,8 +42,8 @@ ProgramFiles = ["WeeOS.exe", "Mesh.vert.spv", "Quad.frag.spv", "Quad.vert.spv", 
 WiiFilesFolderName = "WiiFiles"
 SdCardFolderName = "SDCard"
 
-# A console never goes into the release: the first start of every install makes its own.
-ConsoleNames = ["NAND", "Identity", "WeeOS.settings.txt"]
+# Neither Nintendo's files nor a console ever go into the release: the first start of every install imports the person's own Wii.
+ConsoleNames = ["NAND", "Identity", "WeeOS.settings.txt", WiiFilesFolderName]
 
 # Names that must never be in the clean source. external/Chromium (the WebView2 SDK) is part of it: the source does not build without it.
 NamesNeverInTheSource = ["assets", "reference", "Worktrees", "data", "out", "build", "build-release"]
@@ -92,7 +92,6 @@ def StageProgramFolder(programFolder):
 
     for fileName in ProgramFiles:
         shutil.copy2(builtFolder / fileName, programFolder / fileName)
-    shutil.copytree(builtFolder / WiiFilesFolderName, programFolder / WiiFilesFolderName)
     (programFolder / SdCardFolderName).mkdir()
 
     for name in ConsoleNames:

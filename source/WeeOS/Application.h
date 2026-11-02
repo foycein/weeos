@@ -118,6 +118,7 @@ private:
     class Session;
 
     void PrepareConsoleFolders();
+    void ImportTheOwnWii();
     void StartSession();
     void AttachMicrophone();
     void StartImportedConsole();
