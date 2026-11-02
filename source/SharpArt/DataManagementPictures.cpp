@@ -4,6 +4,7 @@
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
 
+#include <array>
 #include <vector>
 
 namespace SharpArt
@@ -208,7 +209,7 @@ constexpr Color ChannelLine = Gray(240);
 constexpr Color ChannelWord = Gray(107);
 constexpr float ChannelLeft = 90;
 constexpr float ChannelTop = 59;
-constexpr float ChannelRight = 165;
+constexpr float ChannelRight = 163;
 constexpr float ChannelBottom = 113.5f;
 constexpr float ChannelRimWidth = 2.5f;
 constexpr float FirstChannelLineY = 63;
@@ -231,6 +232,46 @@ void DrawChannel(VectorCanvas& canvas, const Placement& placement)
 }
 
 constexpr Placement AtItsSize = {{0, 0}, 1};
+
+// ---- The outlines that float around the channel on the button of Channels: thin rounded frames, drawn in a black so faint that the
+// background shows through. The places are the middles of their lines.
+
+struct FloatingFrame
+{
+    float left = 0;
+    float top = 0;
+    float right = 0;
+    float bottom = 0;
+    Formats::Byte alpha = 0;
+};
+
+constexpr float FloatingFrameLineWidth = 1.3f;
+constexpr float FloatingFrameCornerRadius = 4.5f;
+
+// Behind the channel, then in front of it.
+constexpr std::array FramesBehindTheChannel = {
+    FloatingFrame{44, 26.1f, 72.5f, 46.5f, 31},
+    FloatingFrame{82.3f, 20.8f, 128, 53.3f, 46},
+    FloatingFrame{63.8f, 37.5f, 109.7f, 69.3f, 51},
+    FloatingFrame{177.2f, 33.8f, 205.8f, 53.8f, 41},
+    FloatingFrame{23.7f, 82.8f, 52.4f, 103.9f, 56},
+    FloatingFrame{66.3f, 104, 95.6f, 124.2f, 38},
+    FloatingFrame{179.3f, 77.3f, 225.2f, 110.7f, 66},
+};
+constexpr FloatingFrame FrameInFrontOfTheChannel = {148, 97.6f, 193.8f, 130, 66};
+
+void DrawFloatingFrame(VectorCanvas& canvas, const FloatingFrame& frame)
+{
+    constexpr float HalfLine = FloatingFrameLineWidth / 2;
+    float outerWidth = frame.right - frame.left + FloatingFrameLineWidth;
+    float outerHeight = frame.bottom - frame.top + FloatingFrameLineWidth;
+
+    VectorPath outline;
+    outline.AddRoundedRectangle(frame.left - HalfLine, frame.top - HalfLine, outerWidth, outerHeight, FloatingFrameCornerRadius + HalfLine);
+    outline.AddRoundedRectangle(frame.left + HalfLine, frame.top + HalfLine, outerWidth - 2 * FloatingFrameLineWidth,
+        outerHeight - 2 * FloatingFrameLineWidth, FloatingFrameCornerRadius - HalfLine);
+    canvas.Fill(outline, SolidPaint({0, 0, 0, frame.alpha}));
+}
 
 }
 
@@ -258,6 +299,15 @@ void DrawWiiSaveDataButton(VectorCanvas& canvas)
     DrawBigOptionButtonFrame(canvas);
     DrawConsole(canvas, AtItsSize);
     DrawSdCard(canvas, AtItsSize);
+}
+
+void DrawChannelsButton(VectorCanvas& canvas)
+{
+    DrawBigOptionButtonFrame(canvas);
+    for (const FloatingFrame& frame : FramesBehindTheChannel)
+        DrawFloatingFrame(canvas, frame);
+    DrawChannel(canvas, AtItsSize);
+    DrawFloatingFrame(canvas, FrameInFrontOfTheChannel);
 }
 
 }

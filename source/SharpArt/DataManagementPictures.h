@@ -17,4 +17,7 @@ void DrawSaveDataButton(VectorCanvas& canvas);
 // Wii in Save Data: the console and an SD card.
 void DrawWiiSaveDataButton(VectorCanvas& canvas);
 
+// Channels in Data Management: a channel among faint floating frames.
+void DrawChannelsButton(VectorCanvas& canvas);
+
 }
