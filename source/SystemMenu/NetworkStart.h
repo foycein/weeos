@@ -8,12 +8,12 @@
 namespace SystemMenu
 {
 
-// The errors that the SDK's SOStartup gives a program when the network cannot be started (docs/research/Channels.md section 9).
+// The errors that the SDK's SOStartup gives a program when the network cannot be started.
 constexpr int StartupErrorNoInterface = -45;
 constexpr int StartupErrorNoAddress = -76;
 
 // The last two digits of a support code tell which connection failed: 20 to 22 for a wired connection in slot 1 to 3.
-// The PC's connection is the console's one wired connection, in slot 1 (docs/audit/OpenPoints/Channels.md CHN-04).
+// The PC's connection is the console's one wired connection, in slot 1.
 constexpr int PcConnectionNumber = 20;
 
 // How long SOStartup waits for an address before it gives up (CHN-04, Assumed: the 45 seconds of the menu's connection test).

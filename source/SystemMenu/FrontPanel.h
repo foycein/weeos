@@ -13,7 +13,7 @@
 namespace SystemMenu
 {
 
-// The POWER and RESET buttons of the console, as the menu handles them (0x81356904, docs/audit/OpenPoints/SystemMenu.md SYS-07).
+// The POWER and RESET buttons of the console, as the menu handles them (0x81356904).
 // After a press the menu waits until every screen can stop, tells the screens to stop and fades the picture to black with a fader
 // of its own. When the picture is black and every screen has stopped, it writes how it left into state.dat and asks for:
 //  - POWER: the console switches off.

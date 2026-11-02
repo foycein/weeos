@@ -9,7 +9,7 @@ namespace SystemMenu
 {
 
 // Decides when a screen that shows "Press A to continue" goes on: when a player presses A or B, when another remote connects,
-// or when nobody does anything for a long time (the screens 0x1a and 0x1f of the original, docs/audit/SystemMenu.md).
+// or when nobody does anything for a long time (the screens 0x1a and 0x1f of the original).
 class ContinueWatcher
 {
 public:

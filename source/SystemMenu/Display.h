@@ -22,8 +22,8 @@ struct DrawnLayout
     Layout::PlacementSettings placement;
 };
 
-// The layouts of the menu are made for a 4:3 picture of 608 by 456 layout units. WeeOS always shows the 16:9 picture of 832 by 456 units
-// (docs/DECISIONS.md, Settings), into which the layouts are stretched. Content that only exists in 4:3 lies in the middle of it.
+// The layouts of the menu are made for a 4:3 picture of 608 by 456 layout units. WeeOS always shows the 16:9 picture of 832 by 456 units,
+// into which the layouts are stretched. Content that only exists in 4:3 lies in the middle of it.
 constexpr Graphics::Canvas StandardCanvas = {608, 456};
 constexpr Graphics::Canvas WideCanvas = {832, 456};
 

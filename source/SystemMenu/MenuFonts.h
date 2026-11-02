@@ -21,7 +21,7 @@ namespace SystemMenu
 Formats::Font ReadLargeMenuFont(const MenuFiles& files);
 
 // The three fonts of the menu, ready to draw the text boxes of the layouts. A layout names its font by a file name, and several
-// names mean one font (docs/audit/OpenPoints/Text.md TXT-04).
+// names mean one font.
 class MenuFonts
 {
 public:

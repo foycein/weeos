@@ -6,7 +6,7 @@
 namespace SystemMenu
 {
 
-// The import of a person's own Wii (docs/DECISIONS.md, Start): the page of the first start and the page of PC Settings ask the program
+// The import of a person's own Wii: the page of the first start and the page of PC Settings ask the program
 // for it. The program lets the person pick the NAND of the Wii (nand.bin of a BootMii backup, with its keys), imports everything of that
 // console while the page shows that it works, and then starts again with the imported Wii in place of the console that ran.
 class ConsoleImport

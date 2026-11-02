@@ -20,8 +20,8 @@
 namespace SystemMenu
 {
 
-// The names of the sound effects of the soft keyboard in the sound archive (docs/research/SystemMenuStructure.md 4.12).
-// The moment of each sound is ours: the original code was not read for it (docs/audit/OpenPoints/SystemMenu.md SYS-44).
+// The names of the sound effects of the soft keyboard in the sound archive.
+// The moment of each sound is ours: the original code was not read for it.
 namespace KeyboardSoundName
 {
 
@@ -69,7 +69,7 @@ struct KeyboardAnswer
 // whether the answer is there. The keyboard draws over the screens, takes the pointer of one player and the keys of a USB keyboard,
 // and closes with OK or Cancel.
 //
-// Without prediction (docs/audit/OpenPoints/SystemMenu.md SYS-10): the keys type what they show.
+// Without prediction: the keys type what they show.
 class SoftKeyboard
 {
 public:

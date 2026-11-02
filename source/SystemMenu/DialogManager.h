@@ -102,7 +102,7 @@ struct DialogRequest
     std::vector<DialogPage> pages;
 };
 
-// The dialog windows of the menu (the DialogManager of the original, docs/audit/SystemMenu.md). One dialog is open at a time: it opens
+// The dialog windows of the menu (the DialogManager of the original). One dialog is open at a time: it opens
 // with an animation, waits for a button, a time or a command, shows the button that was chosen and closes with an animation.
 // A screen that waits for a dialog looks at IsOpen and at TakeAnswer.
 // The sounds are the original's: a window opens with WIPL_SE_INFO_WINDOW, or with WIPL_SE_COPYING when it shows that the console is busy

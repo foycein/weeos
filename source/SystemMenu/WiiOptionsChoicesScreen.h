@@ -24,7 +24,7 @@ namespace SystemMenu
 //     Data Management page:  Save Data, Channels (opens the editor of the channels)
 //     Save Data page:        Wii (opens the editor of the save data of the Wii)
 //
-// The button of the GameCube on the Save Data page is not part of WeeOS (docs/audit/OpenPoints/SystemMenu.md SYS-13).
+// The button of the GameCube on the Save Data page is not part of WeeOS.
 //
 // The argument is 0 when the screen starts with the Options page. Any other number starts it with the Data Management page.
 class WiiOptionsChoicesScreen : public Screen

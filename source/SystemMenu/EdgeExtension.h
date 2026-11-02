@@ -8,7 +8,7 @@
 namespace SystemMenu
 {
 
-// How a 16:9 picture fills a screen of another shape (docs/DECISIONS.md, Settings): every screen keeps its 16:9 layout in the middle,
+// How a 16:9 picture fills a screen of another shape: every screen keeps its 16:9 layout in the middle,
 // and the backgrounds go on to the edges of the screen, so that there are no black bars and nothing is stretched.
 //
 // A background is a quad that reaches across the whole canvas: from its left edge to its right edge, or from the top to the bottom.

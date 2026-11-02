@@ -40,7 +40,7 @@ constexpr ButtonSet SelectButtons = {
     Input::ClassicButtons::A,
 };
 
-// Reads the four remotes once in every step, the way the menu's controller update does (docs/research/Engines.md 5.2).
+// Reads the four remotes once in every step, the way the menu's controller update does.
 class InputManager
 {
 public:

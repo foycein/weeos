@@ -22,7 +22,7 @@ enum class BootType
     LaunchWithArguments,
 };
 
-// What decides which screen shows first (docs/audit/OpenPoints/SystemMenu.md SYS-16).
+// What decides which screen shows first.
 struct StartFacts
 {
     // The first-time setup of the console is done.

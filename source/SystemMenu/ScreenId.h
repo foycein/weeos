@@ -3,7 +3,7 @@
 namespace SystemMenu
 {
 
-// The screens of the menu, with the numbers the original gives them (docs/research/SystemMenuStructure.md 3.3).
+// The screens of the menu, with the numbers the original gives them.
 // The screens that are built are listed, and the screens that a built screen asks for.
 enum class ScreenId : int
 {

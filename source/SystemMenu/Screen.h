@@ -45,7 +45,7 @@ enum class ScreenState
     Finished,
 };
 
-// One screen of the menu, as the original builds it (docs/research/SystemMenuStructure.md 3.1 and 3.2).
+// One screen of the menu, as the original builds it.
 // The screens form a tree. The manager makes a screen, calls Load, attaches it to the tree and calls Build.
 // From then on it calls Step in every step and Draw in every pass.
 class Screen
@@ -93,7 +93,7 @@ public:
         return false;
     }
 
-    // The POWER or RESET button was pressed (the front panel, docs/audit/SystemMenu.md SYS-07). The menu waits until every screen
+    // The POWER or RESET button was pressed (the front panel). The menu waits until every screen
     // can stop, tells every screen to stop, and waits until every screen has stopped. Most screens can stop at any time.
     virtual bool CanStopForFrontPanel()
     {

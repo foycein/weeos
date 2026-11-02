@@ -12,8 +12,8 @@
 namespace SystemMenu
 {
 
-// The owner's own server takes the place of every Nintendo service: the Shop, the Forecast, the News, the connection test
-// (docs/DECISIONS.md, Online). Until it exists its address is empty, and every program shows the error of a server that cannot be
+// WeeOS's own server takes the place of every Nintendo service: the Shop, the Forecast, the News, the connection test.
+// Until it exists its address is empty, and every program shows the error of a server that cannot be
 // reached, as the originals do when the Internet works and the server does not answer.
 //
 // What a try to reach it found.
@@ -39,7 +39,7 @@ struct ServerReply
 
 constexpr std::uint16_t DefaultServerPort = 80;
 
-// The owner's server, reached through the sockets of IOS as a program of the console reaches its servers. The address is a host
+// WeeOS's own server, reached through the sockets of IOS as a program of the console reaches its servers. The address is a host
 // name or an IPv4 address, with ":port" when the port is not 80.
 //
 // Every call blocks until the server answered or the try failed; Cancel ends it from another thread.
@@ -78,7 +78,7 @@ private:
     bool isCancelled = false;
 };
 
-// A try to reach the owner's server that runs beside the program, so that the picture goes on while it waits. A program that leaves
+// A try to reach WeeOS's own server that runs beside the program, so that the picture goes on while it waits. A program that leaves
 // before the answer came ends the try.
 class ServerContact
 {

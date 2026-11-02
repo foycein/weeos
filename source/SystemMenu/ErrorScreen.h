@@ -15,7 +15,7 @@
 namespace SystemMenu
 {
 
-// The screen that tells the user that the console cannot go on (the ErrorScreen of the original, docs/audit/SystemMenu.md).
+// The screen that tells the user that the console cannot go on (the ErrorScreen of the original).
 // Its layout, its font and its texts are not in files of the title but inside the main program, so it works when the files fail.
 // It is not a screen of the tree: it stops the whole menu. The picture fades to black, the text fades in, and the user switches the
 // console off or resets it.

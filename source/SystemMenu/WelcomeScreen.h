@@ -13,7 +13,7 @@ namespace SystemMenu
 
 // The first screen of a cold start (screen 0x1a): where a Wii shows its health and safety warning, WeeOS welcomes the user. In the calm
 // white and blue of the Wii it says what WeeOS is, who made it, its version and a friendly word about breaks, with our own words drawn
-// by our own text code, and "Press A" below (docs/DECISIONS.md, Start, welcome and identity).
+// by our own text code, and "Press A" below.
 //
 // The flow is the one of the original's warning: the welcome fades in, a second later "Press A" starts to blink, and the screen goes on
 // when a player presses A or B, when another remote connects, or after 60 seconds. Then the welcome fades out, the picture fades to

@@ -15,7 +15,7 @@ namespace SystemMenu
 // Makes the screen with this id. Gives back nothing when that screen is not built yet.
 using ScreenFactory = std::function<std::unique_ptr<Screen>(ScreenId screen, int argument)>;
 
-// The tree of screens and the requests that change it (docs/research/SystemMenuStructure.md 3.1).
+// The tree of screens and the requests that change it.
 //
 // The root of the tree is a launcher screen that opens the first screen. Everything else is a child or a grandchild.
 // In every step the manager updates the screens, meets one request, and removes the screens that have finished.

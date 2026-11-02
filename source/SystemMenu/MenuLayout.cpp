@@ -222,7 +222,7 @@ void MenuLayout::Draw()
 }
 
 // On a wide screen the root pane stretches the whole layout to fill the picture, and the panes that adjust their location are
-// squeezed by the opposite so that they keep their shape. On a 4:3 screen nothing is stretched (docs/audit/OpenPoints/SystemMenu.md SYS-17).
+// squeezed by the opposite so that they keep their shape. On a 4:3 screen nothing is stretched.
 void MenuLayout::FitToScreenShape()
 {
     Formats::Vector2 stretch = display.LayoutStretch();

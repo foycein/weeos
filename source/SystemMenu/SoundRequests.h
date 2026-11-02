@@ -10,8 +10,7 @@
 namespace SystemMenu
 {
 
-// The names of the sounds that the screens ask for, as they are named in the sound archive IplSound.brsar
-// (docs/research/SystemMenuStructure.md 6.5).
+// The names of the sounds that the screens ask for, as they are named in the sound archive IplSound.brsar.
 namespace SoundName
 {
 

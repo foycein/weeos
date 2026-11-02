@@ -9,7 +9,7 @@
 namespace SystemMenu
 {
 
-// The question "Turn off WeeOS?" that comes when the user closes the window (docs/DECISIONS.md, PC controls). It is a dialog window of
+// The question "Turn off WeeOS?" that comes when the user closes the window. It is a dialog window of
 // the menu with Yes and No, with a dialog manager of its own, so that it can lie over every screen and every dialog of a screen. The
 // menu or the channel stands still while it is open. Yes switches the console off the way the POWER button does.
 class TurnOffQuestion

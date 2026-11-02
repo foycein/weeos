@@ -37,7 +37,7 @@ namespace SystemMenu
 {
 
 // The System Menu: it makes the managers that the screens work with and runs one step and one picture at a time.
-// This is the System object of the original (iplSystem.cpp, docs/research/SystemMenuStructure.md 2.3 and 2.5).
+// This is the System object of the original (iplSystem.cpp).
 class MenuSystem
 {
 public:

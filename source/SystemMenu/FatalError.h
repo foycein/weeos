@@ -5,7 +5,7 @@
 namespace SystemMenu
 {
 
-// The reasons for which the menu shows the error screen and stops (docs/audit/SystemMenu.md). The number of a reason is the number
+// The reasons for which the menu shows the error screen and stops. The number of a reason is the number
 // of its text among the error texts of the main program, and the code that the original passes to its error screen (0x81356514).
 enum class FatalError
 {
