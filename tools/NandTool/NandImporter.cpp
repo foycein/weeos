@@ -124,7 +124,7 @@ std::string BuildIndexText(const Formats::NandEntry& root, const std::vector<con
     return text;
 }
 
-// What is written for a file: the bytes the NAND holds, except for a system configuration, which loses the settings of the owner, and
+// What is written for a file: the bytes the NAND holds, except for a system configuration, which loses its personal settings, and
 // the network configuration, which holds WeeOS's connection.
 Formats::Bytes ContentToImport(Formats::NandFileSystem& source, const ImportPlan& plan, const Formats::NandEntry& file)
 {

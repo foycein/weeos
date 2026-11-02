@@ -61,7 +61,7 @@ ImportRule ImportOnlyThisEntry(std::string pattern, std::string reason)
     return {std::move(pattern), ImportScope::OnlyThisEntry, ImportAction::Import, std::move(reason)};
 }
 
-// The rules of the owner. Personal data stays out, and so does everything that is not clear.
+// The fixed rules. Personal data stays out, and so does everything that is not clear.
 std::vector<ImportRule> FixedImportRules()
 {
     return {
@@ -82,7 +82,7 @@ std::vector<ImportRule> FixedImportRules()
         ImportOnlyThisEntry("/title/00000001/00000002/data/setting.txt", "the facts about the console: serial number, model, region, video mode"),
         SkipEverythingInside("/title/*/*/data/*", "what a title keeps in its data folder: save data, caches, logs, played-game history, downloads"),
 
-        // The Internet Channel belongs to the system the owner wants (docs/DECISIONS.md). The other downloaded channels do not.
+        // The Internet Channel is part of the system. The other downloaded channels are not.
         ImportOnlyThisEntry("/title/00010001", "the folder of the downloaded channels, which holds the Internet Channel"),
         ImportOnlyThisEntry("/ticket/00010001", "the folder of the tickets of the downloaded channels"),
         ImportEverythingInside("/title/00010001/48414445", "the Internet Channel, without its data (the rule above skips it)"),

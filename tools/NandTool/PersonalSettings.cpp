@@ -31,7 +31,6 @@ constexpr std::size_t CountryCodeSize = 1;
 // 27 channels, which is the 28 in its file. The menu counts the tiles again whenever it builds the grid and writes both numbers when
 // they differ (0x81339ABC), so these values only hold until the first start.
 // Likely: the tiles of the system the import keeps are the Disc Channel, Photo, Mii, Wii Shop, Forecast, News and the Internet Channel.
-// See docs/audit/OpenPoints/Formats.md.
 constexpr std::uint64_t ChannelGridSlotCount = 48;
 constexpr std::uint64_t FactoryTileCount = 7;
 

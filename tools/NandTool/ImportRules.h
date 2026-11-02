@@ -12,10 +12,10 @@ enum class ImportAction
 {
     Import,
 
-    // The entry is a system configuration (SYSCONF). It is imported with the settings of the owner set back to the factory values.
+    // The entry is a system configuration (SYSCONF). It is imported with its personal settings set back to the factory values.
     ImportWithPersonalSettingsReset,
 
-    // The entry is the network configuration (config.dat). The owner's networks stay out; WeeOS's one connection takes their place.
+    // The entry is the network configuration (config.dat). The console's own networks stay out; WeeOS's one connection takes their place.
     ImportWithWeeOSConnection,
 
     Skip,
@@ -49,11 +49,11 @@ std::vector<std::string> SplitPath(std::string_view path);
 // IOS are not looked at. A patched IOS is still a part of the system.
 std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles);
 
-// The rules in the order they are tried: first the rules for the homebrew channels, then the fixed rules of the owner.
+// The rules in the order they are tried: first the rules for the homebrew channels, then the fixed rules.
 // The last rule covers every path, so every path follows a rule, and a path that no other rule names is not imported.
 std::vector<ImportRule> BuildImportRules(const std::vector<std::uint64_t>& homebrewChannelIds);
 
-// The rules of the complete import, which brings a person's own Wii into WeeOS (docs/DECISIONS.md, Start): everything of that console,
+// The rules of the complete import, which brings a person's own Wii into WeeOS: everything of that console,
 // its Miis, saves, channels and Message Board included. Only what WeeOS has no place for stays out: BC and MIOS (no GameCube), and the
 // networks of the console, whose place WeeOS's connection through the PC takes (config.dat).
 std::vector<ImportRule> BuildCompleteImportRules();
