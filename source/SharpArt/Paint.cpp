@@ -1,5 +1,6 @@
 #include "SharpArt/Paint.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace SharpArt
@@ -59,6 +60,14 @@ float ShareOfTurn(Point center, Point point)
     return degrees / FullTurnDegrees;
 }
 
+// How far the point lies outside the rectangle, in units; 0 on its edge and inside it.
+float DistanceFromRectangle(Point topLeft, Point bottomRight, Point point)
+{
+    float outsideX = std::max({topLeft.x - point.x, 0.0f, point.x - bottomRight.x});
+    float outsideY = std::max({topLeft.y - point.y, 0.0f, point.y - bottomRight.y});
+    return std::hypot(outsideX, outsideY);
+}
+
 Color ColorOfStopsAt(const std::vector<ColorStop>& stops, float share)
 {
     if (share <= stops.front().share)
@@ -89,6 +98,8 @@ Color Paint::ColorAt(Point point) const
         share = ShareAlongLine(start, end, point);
     else if (kind == PaintKind::RadialGradient)
         share = ShareOfRadius(start, end, point);
+    else if (kind == PaintKind::RectangleGradient)
+        share = DistanceFromRectangle(start, end, point);
     else
         share = ShareOfTurn(start, point);
 
@@ -137,6 +148,16 @@ Paint ConicGradientByDegrees(Point center, const std::vector<ColorStop>& stopsBy
     paint.start = center;
     for (const ColorStop& stop : stopsByDegrees)
         paint.stops.push_back({stop.share / FullTurnDegrees, stop.color});
+    return paint;
+}
+
+Paint RectangleGradientByDistance(Point topLeft, Point bottomRight, const std::vector<ColorStop>& stopsByDistance)
+{
+    Paint paint;
+    paint.kind = PaintKind::RectangleGradient;
+    paint.start = topLeft;
+    paint.end = bottomRight;
+    paint.stops = stopsByDistance;
     return paint;
 }
 

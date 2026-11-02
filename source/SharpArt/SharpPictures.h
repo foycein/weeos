@@ -27,7 +27,8 @@ enum class PictureChannels
 // because it was made for a television.
 struct SharpPicture
 {
-    // The name of the texture file it replaces, for example "my_Clock_a0.tpl".
+    // The name of the texture file it replaces, for example "my_Clock_a0.tpl", or of the picture of a particle effect file (.breft), which
+    // has no ".tpl", for example "defcursor_final64_a".
     std::string_view textureFileName;
 
     // The size of the original in pixels. The drawing uses the same units, so it lands exactly where the original does.

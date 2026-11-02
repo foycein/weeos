@@ -2,6 +2,7 @@
 
 #include "Formats/Vectors.h"
 
+#include <functional>
 #include <initializer_list>
 #include <vector>
 
@@ -57,6 +58,12 @@ public:
 
     // A straight stroke of the width from one point to the other, with round ends, as a pen draws it.
     void AddStroke(Point from, Point to, float width);
+
+    // Adds the outlines of the other path to this one.
+    void AddPath(const VectorPath& other);
+
+    // Moves every point of the path to where the placement puts it, for example onto a card seen in perspective.
+    void PlaceEveryPoint(const std::function<Point(Point)>& placement);
 
     // The closed outlines of the path. An outline that was not closed is closed here.
     const std::vector<Outline>& Outlines() const;

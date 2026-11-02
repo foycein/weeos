@@ -11,6 +11,8 @@
 #include "SharpArt/MessageBoardPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/SettingsPictures.h"
+#include "SharpArt/ShopChannelPictures.h"
+#include "SharpArt/WaitingMarkPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
@@ -52,6 +54,9 @@ constexpr Color TransparentDiscGray = {160, 160, 160, 0};
 constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 constexpr Color TransparentScrollGray = {102, 102, 102, 0};
+constexpr Color TransparentCardGray = {238, 238, 238, 0};
+constexpr Color TransparentHandleBlue = {0, 187, 255, 0};
+constexpr Color TransparentSmallHandleBlue = {0, 119, 255, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, 0xFD378172, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -148,6 +153,19 @@ constexpr std::array AllPictures = {
     SharpPicture{"fs_scrollAllow_a.tpl", 48, 48, 0x77E9B61E, ShownAtItsSize, ColorAndAlpha, DrawScrollArrowSign, TransparentScrollGray},
     SharpPicture{"fs_ComBtn_c.tpl", 180, 54, 0x6B9CB140, ShownAtItsSize, ColorAndAlpha, DrawPillButton, TransparentCardBlue},
     SharpPicture{"fs_windowPlate_a.tpl", 184, 48, 0x9170AF52, ShownAtItsSize, ColorAndAlpha, DrawTextFieldPlate},
+    SharpPicture{"fs_toolButton_a.tpl", 200, 96, 0xFDC630D6, ShownAtItsSize, ColorAndAlpha, DrawToolButton},
+    SharpPicture{"my_ComBtn_d.tpl", 80, 80, 0x24B11088, ShownAtItsSize, ColorAndAlpha, DrawPadButtonLowerArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_e.tpl", 80, 80, 0x77BFA19C, ShownAtItsSize, ColorAndAlpha, DrawPadButtonUpperArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_d.tpl", 80, 80, 0xF1900F05, ShownAtItsSize, ColorAndAlpha, DrawPadButtonLowerArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_e.tpl", 80, 80, 0xC6815F53, ShownAtItsSize, ColorAndAlpha, DrawPadButtonUpperArmLit, TransparentCardBlue},
+    SharpPicture{"it_Waiting_a.tpl", 32, 32, 0x1FD33D8D, ShownAtItsSize, Intensity, DrawWaitingMarkStepOne},
+    SharpPicture{"it_Waiting_b.tpl", 32, 32, 0xCE5B8AA2, ShownAtItsSize, Intensity, DrawWaitingMarkStepTwo},
+    SharpPicture{"it_Waiting_c.tpl", 32, 32, 0x628D7B4A, ShownAtItsSize, Intensity, DrawWaitingMarkStepThree},
+    SharpPicture{"it_Waiting_d.tpl", 32, 32, 0xE20D556E, ShownAtItsSize, Intensity, DrawWaitingMarkStepFour},
+    SharpPicture{"it_Waiting_e.tpl", 32, 32, 0x69A98266, ShownAtItsSize, Intensity, DrawWaitingMarkStepFive},
+    SharpPicture{"it_Waiting_f.tpl", 32, 32, 0xFD1FB433, ShownAtItsSize, Intensity, DrawWaitingMarkStepSix},
+    SharpPicture{"it_Waiting_g.tpl", 32, 32, 0x001A6997, ShownAtItsSize, Intensity, DrawWaitingMarkStepSeven},
+    SharpPicture{"it_Waiting_h.tpl", 32, 32, 0x811E5109, ShownAtItsSize, Intensity, DrawWaitingMarkStepEight},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},
@@ -156,6 +174,15 @@ constexpr std::array AllPictures = {
     SharpPicture{"defcursor_final_p2.tpl", 64, 64, 0xCFD81A13, HandMagnification, Intensity, DrawHandShadeOfPlayerTwo},
     SharpPicture{"defcursor_final_p3.tpl", 64, 64, 0xC137D4C3, HandMagnification, Intensity, DrawHandShadeOfPlayerThree},
     SharpPicture{"defcursor_final_p4.tpl", 64, 64, 0x594936FB, HandMagnification, Intensity, DrawHandShadeOfPlayerFour},
+    SharpPicture{"defcursor_final_p0.tpl", 32, 32, 0xCBBCD97A, HandMagnification, Intensity, DrawHandShadeWithoutNumber},
+    SharpPicture{"defcursor_final64_a", 64, 64, 0x4993490C, HandMagnification, ColorAndAlpha, DrawPointingHand},
+    SharpPicture{"defcursor_final64_b", 64, 64, 0x5A179C62, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
+    SharpPicture{"defcursor_final64_c", 64, 64, 0x8036D428, HandMagnification, ColorAndAlpha, DrawOpenHand},
+    SharpPicture{"defcursor_final_p0", 32, 32, 0xF85277E7, HandMagnification, Intensity, DrawHandShadeWithoutNumber},
+    SharpPicture{"defcursor_final_p1", 64, 64, 0x84BD8510, HandMagnification, Intensity, DrawHandShadeOfPlayerOne},
+    SharpPicture{"defcursor_final_p2", 64, 64, 0x0641CCA4, HandMagnification, Intensity, DrawHandShadeOfPlayerTwo},
+    SharpPicture{"defcursor_final_p3", 64, 64, 0xCD3281A5, HandMagnification, Intensity, DrawHandShadeOfPlayerThree},
+    SharpPicture{"defcursor_final_p4", 64, 64, 0x93FFBA80, HandMagnification, Intensity, DrawHandShadeOfPlayerFour},
     SharpPicture{"ist_sphere_00.tpl", 56, 56, 0xD8D2A26E, ChannelMagnification, ColorAndAlpha, DrawInternetBall, TransparentWhite},
     SharpPicture{"ist_rectangle_00.tpl", 56, 128, 0x4CD2A296, ChannelMagnification, ColorAndAlpha, DrawInternetBar, TransparentWhite},
     SharpPicture{"ist_icon_000.tpl", 64, 64, 0x5691FDEC, ChannelMagnification, ColorAndAlpha, DrawInternetBinoculars, TransparentWhite},
@@ -171,6 +198,15 @@ constexpr std::array AllPictures = {
     SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
     SharpPicture{"sk_MiiLogo_00.tpl", 72, 48, 0x33D2EED2, ChannelMagnification, ColorAndAlpha, DrawMiiLogoColors},
     SharpPicture{"sk_MiiLogo_01.tpl", 72, 48, 0x9CC69756, ChannelMagnification, Intensity, DrawMiiLogoShape},
+    SharpPicture{"banner_handle.tpl", 104, 134, 0xF0EECF01, ChannelMagnification, ColorAndAlpha, DrawShopHandle, TransparentHandleBlue},
+    SharpPicture{"banner_handle02.tpl", 88, 93, 0xC52FC46F, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandle, TransparentSmallHandleBlue},
+    SharpPicture{"banner_handle_white.tpl", 116, 145, 0xD3376710, ChannelMagnification, ColorAndAlpha, DrawShopHandleEdge, TransparentWhite},
+    SharpPicture{"banner_handle_white02.tpl", 96, 101, 0x04745AFC, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandleEdge, TransparentWhite},
+    SharpPicture{"banner_bg05.tpl", 943, 565, 0x73A0B8D5, ChannelMagnification, ColorAndAlpha, DrawShopBackground, TransparentWhite},
+    SharpPicture{"banner_bg07.tpl", 187, 138, 0x4EE644F2, ChannelMagnification, ColorAndAlpha, DrawShopSmallBackground, TransparentWhite},
+    SharpPicture{"logo_pic01.tpl", 131, 127, 0xE37F7EC8, ChannelMagnification, ColorAndAlpha, DrawShopLogoCard, TransparentWhite},
+    SharpPicture{"logo_pic02.tpl", 131, 127, 0x8F06960A, ChannelMagnification, ColorAndAlpha, DrawShopDarkLogoCard, TransparentWhite},
+    SharpPicture{"frame.tpl", 208, 148, 0x64CF1EF6, ChannelMagnification, ColorAndAlpha, DrawPhotoFrame, TransparentCardGray},
 };
 
 constexpr float FullByte = 255;

@@ -185,6 +185,21 @@ void VectorPath::AddStroke(Point from, Point to, float width)
     Close();
 }
 
+void VectorPath::AddPath(const VectorPath& other)
+{
+    Close();
+    outlines.insert(outlines.end(), other.outlines.begin(), other.outlines.end());
+}
+
+void VectorPath::PlaceEveryPoint(const std::function<Point(Point)>& placement)
+{
+    for (Outline& outline : outlines)
+    {
+        for (Point& point : outline)
+            point = placement(point);
+    }
+}
+
 const std::vector<Outline>& VectorPath::Outlines() const
 {
     return outlines;

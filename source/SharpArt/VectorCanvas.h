@@ -56,6 +56,7 @@ private:
     float scale;
     Formats::RgbaImage picture;
     std::vector<float> rowCoverage;
+    std::vector<float> fullCoverageChanges;
 };
 
 }

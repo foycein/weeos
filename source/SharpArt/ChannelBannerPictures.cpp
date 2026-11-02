@@ -111,6 +111,41 @@ void FillSmile(VectorCanvas& canvas, Point center, float radiusX, float radiusY)
     canvas.Fill(smile, SolidPaint(FaceColor));
 }
 
+// ---- The frame of the Photo Channel's banner: a light gray card with a soft dark shadow to the right and below.
+
+constexpr float CardLeft = 3;
+constexpr float CardTop = 2;
+constexpr float CardRight = 199;
+constexpr float CardBottom = 138;
+constexpr Color CardGray = {238, 238, 238, 255};
+
+// The shadow is dark around a rectangle that lies under the card, a little lower and further right, and fades within six units.
+constexpr Point ShadowTopLeft = {10, 9};
+constexpr Point ShadowBottomRight = {199, 139};
+constexpr float ShadowFadeWidth = 6.5f;
+
+constexpr Color ShadowGray(Formats::Byte level, Formats::Byte alpha)
+{
+    return {level, level, level, alpha};
+}
+
+}
+
+void DrawPhotoFrame(VectorCanvas& canvas)
+{
+    float shadowLeft = ShadowTopLeft.x - ShadowFadeWidth;
+    float shadowTop = ShadowTopLeft.y - ShadowFadeWidth;
+    float shadowRight = ShadowBottomRight.x + ShadowFadeWidth;
+    float shadowBottom = ShadowBottomRight.y + ShadowFadeWidth;
+    VectorPath shadow;
+    shadow.AddRectangle(shadowLeft, shadowTop, shadowRight - shadowLeft, shadowBottom - shadowTop);
+    canvas.Fill(shadow, RectangleGradientByDistance(ShadowTopLeft, ShadowBottomRight,
+        {{0, ShadowGray(17, 187)}, {0.5f, ShadowGray(17, 170)}, {1.5f, ShadowGray(34, 153)}, {2.5f, ShadowGray(51, 119)},
+            {3.5f, ShadowGray(51, 68)}, {4.5f, ShadowGray(68, 34)}, {5.5f, ShadowGray(85, 17)}, {ShadowFadeWidth, ShadowGray(85, 0)}}));
+
+    VectorPath card;
+    card.AddRectangle(CardLeft, CardTop, CardRight - CardLeft, CardBottom - CardTop);
+    canvas.Fill(card, SolidPaint(CardGray));
 }
 
 void DrawMiiLogoShape(VectorCanvas& canvas)

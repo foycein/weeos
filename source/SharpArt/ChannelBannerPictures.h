@@ -13,4 +13,7 @@ void DrawMiiLogoShape(VectorCanvas& canvas);
 // green towards the bottom, with smiling faces on the dots of the i.
 void DrawMiiLogoColors(VectorCanvas& canvas);
 
+// The frame behind the photographs of the Photo Channel's banner (208 by 148): a light gray card with a soft shadow to the right and below.
+void DrawPhotoFrame(VectorCanvas& canvas);
+
 }

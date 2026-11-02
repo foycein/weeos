@@ -1,4 +1,5 @@
 add_library(SharpArt STATIC
+    CardPerspective.cpp
     ChannelBannerPictures.cpp
     ClockPictures.cpp
     CursorPictures.cpp
@@ -12,9 +13,11 @@ add_library(SharpArt STATIC
     RemotePictures.cpp
     SettingsPictures.cpp
     SharpPictures.cpp
+    ShopChannelPictures.cpp
     SmallWords.cpp
     VectorCanvas.cpp
     VectorPath.cpp
+    WaitingMarkPictures.cpp
     WiiLogoPictures.cpp
     WiiMenuPictures.cpp
     WiiOptionsPictures.cpp

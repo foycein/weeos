@@ -9,4 +9,4 @@ add_library(Effects STATIC
     VectorMath.cpp
 )
 
-target_link_libraries(Effects PUBLIC Formats Graphics)
+target_link_libraries(Effects PUBLIC Formats Graphics SharpArt)
