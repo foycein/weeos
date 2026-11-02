@@ -15,7 +15,10 @@ void DrawInternetHouseWithQuestionMark(VectorCanvas& canvas);
 void DrawInternetArrowLeft(VectorCanvas& canvas);
 void DrawInternetStar(VectorCanvas& canvas);
 void DrawInternetInformation(VectorCanvas& canvas);
+void DrawInternetRingWithHouse(VectorCanvas& canvas);
 void DrawInternetArrowRight(VectorCanvas& canvas);
+void DrawInternetTurningArrows(VectorCanvas& canvas);
+void DrawInternetWrench(VectorCanvas& canvas);
 void DrawInternetQuestionMark(VectorCanvas& canvas);
 void DrawInternetLock(VectorCanvas& canvas);
 

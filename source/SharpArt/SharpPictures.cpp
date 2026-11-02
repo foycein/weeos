@@ -123,7 +123,10 @@ constexpr std::array AllPictures = {
     SharpPicture{"ist_icon_002.tpl", 64, 64, 0x5F50EB5D, ChannelMagnification, ColorAndAlpha, DrawInternetArrowLeft, TransparentWhite},
     SharpPicture{"ist_icon_003.tpl", 64, 64, 0x61D22ECF, ChannelMagnification, ColorAndAlpha, DrawInternetStar, TransparentWhite},
     SharpPicture{"ist_icon_004.tpl", 64, 64, 0x47E9FECB, ChannelMagnification, ColorAndAlpha, DrawInternetInformation, TransparentWhite},
+    SharpPicture{"ist_icon_005.tpl", 64, 64, 0xF60A65F9, ChannelMagnification, ColorAndAlpha, DrawInternetRingWithHouse, TransparentWhite},
     SharpPicture{"ist_icon_006.tpl", 64, 64, 0x2D4F5E84, ChannelMagnification, ColorAndAlpha, DrawInternetArrowRight, TransparentWhite},
+    SharpPicture{"ist_icon_008.tpl", 64, 64, 0xE9F23942, ChannelMagnification, ColorAndAlpha, DrawInternetTurningArrows, TransparentWhite},
+    SharpPicture{"ist_icon_009.tpl", 64, 64, 0x9067C68B, ChannelMagnification, ColorAndAlpha, DrawInternetWrench, TransparentWhite},
     SharpPicture{"ist_icon_010.tpl", 64, 64, 0x5BBAE1A6, ChannelMagnification, ColorAndAlpha, DrawInternetQuestionMark, TransparentWhite},
     SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
 };

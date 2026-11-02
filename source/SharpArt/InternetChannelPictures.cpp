@@ -1,5 +1,6 @@
 #include "SharpArt/InternetChannelPictures.h"
 
+#include <initializer_list>
 #include <vector>
 
 namespace SharpArt
@@ -32,6 +33,23 @@ void FillRoundPolygon(VectorCanvas& canvas, const std::vector<RoundCorner>& corn
     FillWhite(canvas, polygon);
 }
 
+void FillPolygon(VectorCanvas& canvas, std::initializer_list<Point> corners)
+{
+    VectorPath polygon;
+    polygon.AddPolygon(corners);
+    FillWhite(canvas, polygon);
+}
+
+// A part of a thick ring between two directions, going clockwise from the first one.
+void FillRingPart(VectorCanvas& canvas, Point center, float outerRadius, float innerRadius, float fromDegrees, float toDegrees)
+{
+    VectorPath ringPart;
+    ringPart.ArcTo(center, outerRadius, outerRadius, fromDegrees, toDegrees);
+    ringPart.ArcTo(center, innerRadius, innerRadius, toDegrees, fromDegrees);
+    ringPart.Close();
+    FillWhite(canvas, ringPart);
+}
+
 void FillCircle(VectorCanvas& canvas, Point center, float radius)
 {
     VectorPath circle;
@@ -45,6 +63,25 @@ std::vector<RoundCorner> Mirrored(const std::vector<RoundCorner>& corners)
     for (const RoundCorner& corner : corners)
         mirrored.push_back({{MirrorX - corner.place.x, corner.place.y}, corner.cut});
     return mirrored;
+}
+
+// An oval made of four curves. With a curve share of 0.55 it is an ellipse; a larger share makes it more like a rectangle with round corners.
+void AddSquarishEllipse(VectorPath& path, Point center, float radiusX, float radiusY, float curveShare)
+{
+    float handleX = radiusX * curveShare;
+    float handleY = radiusY * curveShare;
+    Point top = {center.x, center.y - radiusY};
+    Point right = {center.x + radiusX, center.y};
+    Point bottom = {center.x, center.y + radiusY};
+    Point left = {center.x - radiusX, center.y};
+
+    path.Close();
+    path.MoveTo(top);
+    path.CurveTo({top.x + handleX, top.y}, {right.x, right.y - handleY}, right);
+    path.CurveTo({right.x, right.y + handleY}, {bottom.x + handleX, bottom.y}, bottom);
+    path.CurveTo({bottom.x - handleX, bottom.y}, {left.x, left.y + handleY}, left);
+    path.CurveTo({left.x, left.y - handleY}, {top.x - handleX, top.y}, top);
+    path.Close();
 }
 
 // The places of the question mark are those of the big one (64 by 64); a placement moves and scales it into the house.
@@ -195,9 +232,107 @@ void DrawInternetInformation(VectorCanvas& canvas)
     canvas.Cut(letter);
 }
 
+// A tall ring and, over its lower right part, a house with a door; a clear margin runs around the house.
+void DrawInternetRingWithHouse(VectorCanvas& canvas)
+{
+    constexpr Point RingCenter = {25.6f, 29.9f};
+    constexpr Point HoleCenter = {25.6f, 29.4f};
+    constexpr float HouseMargin = 2.7f;
+    constexpr float EavesY = 45.6f;
+    constexpr float WallLeft = 28.2f;
+    constexpr float WallRight = 56.8f;
+    constexpr float WallBottom = 61.4f;
+
+    VectorPath ring;
+    AddSquarishEllipse(ring, RingCenter, 23.2f, 28.1f, 0.62f);
+    AddSquarishEllipse(ring, HoleCenter, 10.6f, 25.6f, 0.72f);
+    FillWhite(canvas, ring);
+
+    VectorPath house;
+    house.AddPolygonWithRoundCorners({{{42.5f, 25.1f}, 1}, {{63, EavesY}, 1}, {{WallRight, EavesY}, 0}, {{WallRight, WallBottom}, 0.5f},
+        {{WallLeft, WallBottom}, 0.5f}, {{WallLeft, EavesY}, 0}, {{22, EavesY}, 1}});
+    canvas.Cut(house);
+    const Outline& outline = house.Outlines().front();
+    for (std::size_t index = 0; index < outline.size(); ++index)
+    {
+        VectorPath margin;
+        margin.AddStroke(outline[index], outline[(index + 1) % outline.size()], 2 * HouseMargin);
+        canvas.Cut(margin);
+    }
+    FillWhite(canvas, house);
+
+    VectorPath door;
+    door.AddRectangle(37.6f, 47.5f, 10.2f, 10);
+    canvas.Cut(door);
+}
+
 void DrawInternetArrowRight(VectorCanvas& canvas)
 {
     FillRoundPolygon(canvas, Mirrored(ArrowLeftCorners));
+}
+
+// Two arrows that chase each other around a circle: the upper one ends pointing down on the right, the lower one pointing up on the left.
+// Each arrow is a crescent: the circle of the outside minus a smaller circle moved towards the arrow's tail, so the arrow is thick at
+// its head and runs out thin at its tail.
+void DrawInternetTurningArrows(VectorCanvas& canvas)
+{
+    constexpr Point OuterCenter = {32, 32.67f};
+    constexpr float OuterRadius = 22.8f;
+    constexpr Point UpperInnerCenter = {27.4f, 32.8f};
+    constexpr float UpperInnerRadius = 17.1f;
+    constexpr Point LowerInnerCenter = {36.3f, 32.2f};
+    constexpr float LowerInnerRadius = 17.3f;
+    constexpr float UpperTailDegrees = 223;
+    constexpr float LowerTailDegrees = 43;
+    constexpr float HeadCornerCut = 1;
+
+    VectorPath upperArrow;
+    upperArrow.ArcTo(OuterCenter, OuterRadius, OuterRadius, UpperTailDegrees, RightDegrees);
+    upperArrow.ArcTo(UpperInnerCenter, UpperInnerRadius, UpperInnerRadius, RightDegrees, UpperTailDegrees);
+    upperArrow.Close();
+    FillWhite(canvas, upperArrow);
+    FillRoundPolygon(canvas, {{{38.2f, 31.6f}, HeadCornerCut}, {{62.4f, 31.6f}, HeadCornerCut}, {{62.4f, 33.8f}, HeadCornerCut},
+                                 {{50.2f, 46}, HeadCornerCut}, {{38.2f, 34}, HeadCornerCut}});
+
+    VectorPath lowerArrow;
+    lowerArrow.ArcTo(OuterCenter, OuterRadius, OuterRadius, LowerTailDegrees, LeftDegrees);
+    lowerArrow.ArcTo(LowerInnerCenter, LowerInnerRadius, LowerInnerRadius, LeftDegrees, LowerTailDegrees);
+    lowerArrow.Close();
+    FillWhite(canvas, lowerArrow);
+    FillRoundPolygon(canvas, {{{25.8f, 33.6f}, HeadCornerCut}, {{1.4f, 33.6f}, HeadCornerCut}, {{1.4f, 31.4f}, HeadCornerCut},
+                                 {{13.6f, 19.2f}, HeadCornerCut}, {{25.8f, 31.4f}, HeadCornerCut}});
+}
+
+// A wrench lying from the lower left to the upper right: a round handle end with a hole, and a round head with its jaw open to the
+// upper right.
+void DrawInternetWrench(VectorCanvas& canvas)
+{
+    constexpr Point HeadCenter = {45.1f, 20.6f};
+    constexpr float HeadRadiusX = 16.7f;
+    constexpr float HeadRadiusY = 15.2f;
+    constexpr Point HandleEnd = {9.5f, 54.5f};
+    constexpr float HandleWidth = 14.7f;
+
+    VectorPath head;
+    head.AddEllipse(HeadCenter, HeadRadiusX, HeadRadiusY);
+    FillWhite(canvas, head);
+
+    VectorPath handle;
+    handle.AddStroke({40, 24}, HandleEnd, HandleWidth);
+    FillWhite(canvas, handle);
+
+    VectorPath jaw;
+    jaw.AddPolygonWithRoundCorners({{{47.8f, -1}, 0}, {{47.8f, 1.7f}, 0}, {{40.4f, 11}, 0}, {{41.5f, 14.5f}, 2}, {{43.2f, 19}, 2},
+        {{46, 21.3f}, 2}, {{50.5f, 23.3f}, 1.5f}, {{53.3f, 23.5f}, 1.5f}, {{65, 11.8f}, 0}, {{65, -1}, 0}});
+    canvas.Cut(jaw);
+
+    VectorPath upperJaw;
+    upperJaw.AddPolygonWithRoundCorners({{{40, 18}, 0}, {{29.3f, 16.5f}, 0}, {{29.7f, 12.5f}, 2}, {{32, 8.5f}, 2}, {{36.6f, 4.5f}, 2}, {{42.2f, 1.7f}, 1}, {{47.8f, 1.7f}, 0.5f}, {{40.4f, 11}, 0}});
+    FillWhite(canvas, upperJaw);
+
+    VectorPath hole;
+    hole.AddCircle(HandleEnd, 2.7f);
+    canvas.Cut(hole);
 }
 
 void DrawInternetQuestionMark(VectorCanvas& canvas)
