@@ -26,7 +26,7 @@ constexpr int CountdownStart = 3;
 // playback. Redo records again, OK keeps the voice in the message.
 //
 // The addressees say that there are no Wii Friends (10240005) and Send asks for an addressee (10240012). The original refuses
-// the whole screen without Wii Friends; WeeOS opens it so that a voice can be recorded and heard, a written deviation (CHN-36).
+// the whole screen without Wii Friends; WeeOS opens it so that a voice can be recorded and heard, unlike the original.
 // The photo box is hidden; Add Mii says that there is no Mii when the console has none.
 class CreateMessageScreen : public WiiSpeakScreen
 {

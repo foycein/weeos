@@ -54,7 +54,7 @@ const std::string PreviousButton = "prevB";
 const std::string NextButton = "nextB";
 const std::string ShowButton = "todayB";
 
-// The list of the thumbnails as the Photo Channel draws it: the original draws it itself, so these numbers are Assumed (CHN-100).
+// The list of the thumbnails as the Photo Channel draws it: the original draws it itself, so these numbers are Assumed.
 constexpr float ListTop = 150;
 constexpr float ListBottom = -150;
 constexpr float ListSideMargin = 40;

@@ -18,7 +18,7 @@ namespace
 constexpr std::string_view SceneName = "talk";
 
 // The code that the Wii Speak Channel shows when the login server of Nintendo Wi-Fi Connection, whose place WeeOS's own server takes,
-// cannot be reached while the Internet works (CHN-99, Assumed).
+// cannot be reached while the Internet works (Assumed).
 constexpr std::uint32_t LoginServerUnreachableCode = 20100;
 
 // The buttons of 02000_button and the panes of the ones WeeOS does not have.
@@ -68,7 +68,7 @@ constexpr std::string_view MuteOnSound = "SE_COM_MUTE_ON";
 constexpr std::string_view MuteOffSound = "SE_COM_MUTE_OFF";
 
 // The ripples of the clock come in the last three seconds before a full hour and at the full hour, at the clock (0x80093B80). The
-// pane they come from is the hour of the clock (ClockRipplePane, EFF-14, Assumed).
+// pane they come from is the hour of the clock (ClockRipplePane, Assumed).
 constexpr std::string_view ClockRipplePane = "T_time_02";
 constexpr int LastMinuteOfTheHour = 59;
 constexpr int FirstSecondOfTheRipples = 57;
@@ -287,7 +287,7 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
     return std::nullopt;
 }
 
-// The lobby logs in to Nintendo Wi-Fi Connection first, whose place WeeOS's own server takes (CHN-04). While the PC is not connected the
+// The lobby logs in to Nintendo Wi-Fi Connection first, whose place WeeOS's own server takes. While the PC is not connected the
 // network does not start; else the try reaches for the server beside the program.
 void ChatRoomScreen::StartConnecting()
 {

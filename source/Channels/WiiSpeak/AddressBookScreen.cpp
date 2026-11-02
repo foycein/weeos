@@ -19,7 +19,7 @@ constexpr std::size_t FriendsPerPage = 5;
 constexpr std::size_t MostFriends = 100;
 constexpr std::size_t DigitBase = 10;
 
-// Assumed (CHN-38): a nickname takes as many characters as the nicknames of the Wii's address book.
+// Assumed: a nickname takes as many characters as the nicknames of the Wii's address book.
 constexpr std::size_t NicknameLength = 10;
 
 const std::string AddButton = "nbutton_03";

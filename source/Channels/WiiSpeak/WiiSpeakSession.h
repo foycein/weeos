@@ -93,7 +93,7 @@ struct WiiSpeakSession
     // Opens the message window with a text of the channel and the labels of its buttons, all by message id.
     void ShowMessage(std::uint32_t messageId, const std::vector<std::uint32_t>& buttonMessageIds);
 
-    // "An Internet connection cannot be established, so WiiConnect24 cannot be used." with the code of the failed connection (CHN-04),
+    // "An Internet connection cannot be established, so WiiConnect24 cannot be used." with the code of the failed connection,
     // when the friend server does not answer.
     void ShowWiiConnect24Unreachable();
     static SystemMenu::ServerAnswer WiiConnect24ServerAnswerOf(const std::string& serverAddress);

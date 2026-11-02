@@ -18,11 +18,11 @@ namespace Channels
 constexpr double CheckMusicDelaySeconds = 2.0;
 
 // The part of the music that is measured: 10 seconds from the second second on ("your TV will emit sounds for 10 seconds",
-// 4915204; the start of the part is CHN-10, Assumed).
+// 4915204; the start of the part is Assumed).
 constexpr double MeasureStartInMusicSeconds = 1.0;
 constexpr double MeasureSeconds = 10.0;
 
-// How late the heard music may come: the time from the speakers to the microphone and through the PC (CHN-98, Assumed).
+// How late the heard music may come: the time from the speakers to the microphone and through the PC (Assumed).
 constexpr double LongestEchoDelaySeconds = 0.4;
 
 // Wii Speak Performance Check (scene echoCheck, kiuchiMicEchoCancelCheckScene 0x800A16E8 and 0x800A1B60 of the program).

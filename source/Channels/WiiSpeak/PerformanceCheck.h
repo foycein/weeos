@@ -34,7 +34,7 @@ constexpr float LoudHeardLevel = 2758.6f;
 constexpr std::array<float, 5> ScoreLimitsInDecibels = {10.0f, 18.5f, 20.0f, 21.5f, 27.0f};
 
 // The original reads the levels from the signal processor of the accessory, in units that are not known. WeeOS takes the mean size
-// of the 16 bit samples (CHN-10, Assumed).
+// of the 16 bit samples (Assumed).
 constexpr float LevelUnitsPerSampleUnit = 1.0f;
 
 // Sorts the two levels of the check: the level of what the microphone heard while the music played and the level that is left after
@@ -46,7 +46,7 @@ float LevelOf(std::span<const std::int16_t> samples);
 
 // WeeOS's echo reduction for the check: the music that was played is the far end. The delay at which the heard sound looks most like
 // the music is searched up to the longest delay, and a short filter around it, fitted by least squares, takes the echo away; what is
-// left is the reduced sound. The original does this in the signal processor of the accessory (CHN-10).
+// left is the reduced sound. The original does this in the signal processor of the accessory.
 std::vector<std::int16_t> RemoveEcho(std::span<const std::int16_t> heard, std::span<const std::int16_t> played, std::size_t longestDelay);
 
 }

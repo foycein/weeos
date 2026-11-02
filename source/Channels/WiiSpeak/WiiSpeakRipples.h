@@ -17,7 +17,7 @@
 namespace Channels
 {
 
-// The ripples on the water of the Wii Speak Channel (ef/ripple_effect of system.szs, CHN-94): the rings of the clock at the full hour,
+// The ripples on the water of the Wii Speak Channel (ef/ripple_effect of system.szs): the rings of the clock at the full hour,
 // the drops that fall on the water, the ring of a photo that lands, the Miis that appear in the circle and the sparkle of a Mii that
 // is put into a circle. They are drawn over the water and under the buttons, in the box of the channel's projection: 810.7 by 456
 // units around the middle (4/3 of 608 by 456 in 16:9, 0x800BF6E4).

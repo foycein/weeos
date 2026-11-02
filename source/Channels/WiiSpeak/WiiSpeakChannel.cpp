@@ -31,7 +31,7 @@ constexpr std::string_view LayoutFontName = "pac_nRodDb_32_I4.brfnt";
 constexpr std::string_view LargeLayoutFontName = "pac_nRodDb_200_IA4.brfnt";
 
 // The hands are the ones of the HOME Button Menu in content 3: the channel's own hand (P1_Def.arc of system.szs) has no hands for
-// players 2 to 4 (as for Forecast and News, CHN-26).
+// players 2 to 4 (as for Forecast and News).
 constexpr std::uint16_t HomeMenuContentIndex = 3;
 constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
 

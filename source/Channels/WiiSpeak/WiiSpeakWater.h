@@ -14,7 +14,7 @@ namespace Channels
 //
 // The chat room has its own water (02000_bg of the scene talk) with its moving waves. Settings and Create Message lie on the water of
 // the menus (01020_bg of system.szs) in one of its five colors (0x8006E568, 0x8006EA50), and a drop falls on it every 30 steps
-// (0x800A6600). A scene without water of its own, as Choose Miis, lies on the water of the scene it came from (CHN-95).
+// (0x800A6600). A scene without water of its own, as Choose Miis, lies on the water of the scene it came from.
 class WiiSpeakWater
 {
 public:

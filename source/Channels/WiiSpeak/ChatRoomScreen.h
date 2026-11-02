@@ -19,7 +19,7 @@ namespace Channels
 // The buttons: Wii Menu (with the question "Returning to the Wii Menu. Is this OK?"), Choose Miis, Show Photos, Help, Settings,
 // Wii Number, Create Message, Address Book and Lobby. The Lobby logs in to Nintendo Wi-Fi Connection, whose place WeeOS's
 // own server takes: "Connecting to Nintendo Wi-Fi Connection." until the network gives up or the server does not answer, then
-// "Unable to connect to the Internet." with the code (CHN-04, CHN-99). The chosen Miis stand in the circle; a photo of Show Photos comes out of the slot.
+// "Unable to connect to the Internet." with the code. The chosen Miis stand in the circle; a photo of Show Photos comes out of the slot.
 // The - button mutes the accessory and unmutes it again.
 class ChatRoomScreen : public WiiSpeakScreen
 {

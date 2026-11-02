@@ -26,7 +26,7 @@ public:
     // A layout bundle of the system archive, for example "01030_dialog.arc".
     std::unique_ptr<Layout::LayoutArchive> SystemLayouts(std::string_view bundleName) const;
 
-    // The ripples on the water: ef/ripple_effect.breff and .breft of system.szs (CHN-94).
+    // The ripples on the water: ef/ripple_effect.breff and .breft of system.szs.
     Formats::ByteView RippleEffects() const;
     Formats::ByteView RipplePictures() const;
 

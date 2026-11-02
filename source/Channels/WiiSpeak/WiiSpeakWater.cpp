@@ -9,7 +9,7 @@ namespace
 const std::string ChatRoomWaves = "02000_bg_wait_00";
 
 // The original lets a drop fall on the chat room's water with every third drop of the water's sound (0x800A9DE4); WeeOS does not play
-// the events of that sound, so a drop falls every 150 steps (EFF-14, Assumed).
+// the events of that sound, so a drop falls every 150 steps (Assumed).
 constexpr int ChatRoomStepsBetweenDrops = 150;
 constexpr int MenuStepsBetweenDrops = 30;
 

@@ -28,7 +28,7 @@ public:
 
     // The Miis that appear in the chat room: the first of the ten Mii lists at 0xC70 (0x800C4C3C fills them: eight bytes of the
     // console they belong to, then six Miis of 0x50 bytes, each the 74 bytes of the Mii and its CRC-16). That the console's own Miis
-    // are the first list is Assumed (CHN-38).
+    // are the first list is Assumed.
     static constexpr std::size_t MiiListsOffset = 0xC70;
     static constexpr std::size_t ConsoleIdSize = 8;
     static constexpr std::size_t ChosenMiisOffset = MiiListsOffset + ConsoleIdSize;

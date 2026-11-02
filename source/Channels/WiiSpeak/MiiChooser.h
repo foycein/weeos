@@ -49,7 +49,7 @@ private:
 };
 
 // Choose Miis of the chat room: the chooser of six, whose choice is saved in the save file. It lies on the chat room's water, whose
-// waves go on and whose drops wait until the chat room comes back (CHN-95).
+// waves go on and whose drops wait until the chat room comes back.
 class ChooseMiisScreen : public WiiSpeakScreen
 {
 public:

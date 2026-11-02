@@ -15,7 +15,7 @@ namespace Channels
 // comment layout runs 600 frames).
 constexpr double LongestRecordingSeconds = 10.0;
 
-// "Change Voice" raises the voice by this factor without making it shorter (CHN-34, Assumed: the voice changer of the original
+// "Change Voice" raises the voice by this factor without making it shorter (Assumed: the voice changer of the original
 // was not decoded).
 constexpr double ChangedVoicePitch = 1.5;
 
