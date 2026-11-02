@@ -70,7 +70,7 @@ add_library(Formats STATIC
 )
 
 # Reading the NAND decrypts and hashes hundreds of megabytes, and finding the keys of a console hashes every 16 bytes of its programs.
-# Without optimization these files take most of the time of the tests of the dump, so they are optimized in every configuration.
+# Without optimization these files take most of the time of reading a NAND, so they are optimized in every configuration.
 # The runtime checks of the debug build cannot be combined with that. /Od and /Ob0 are taken out so that /O2 neither overrides /Od with
 # a warning nor stays without inlining; the other files are not optimized either way.
 if(MSVC)
