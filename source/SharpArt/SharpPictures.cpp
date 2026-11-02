@@ -118,6 +118,7 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_ArwSetUp_b.tpl", 72, 72, 0x88858AC2, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageArrowDown},
     SharpPicture{"fs_ArwSetUp_a.tpl", 72, 52, 0x45123048, ShownAtItsSize, ColorAndAlpha, DrawKeyboardArrowUp},
     SharpPicture{"fs_ArwSetUp_b.tpl", 72, 52, 0x5072185D, ShownAtItsSize, ColorAndAlpha, DrawKeyboardArrowDown},
+    SharpPicture{"it_Button_a.tpl", 144, 112, 0x485E520B, ShownAtItsSize, ColorAndAlpha, DrawBigSettingsButton, TransparentWhite},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},

@@ -244,4 +244,82 @@ void DrawKeyboardArrowDown(VectorCanvas& canvas)
     DrawArrowButton(canvas, KeyboardBoxShift, false);
 }
 
+// ---- The big square button of the index pages of Wii Settings and of Data Management
+
+namespace
+{
+
+// A white edge, a blue rim and the inside: light gray at the top, a darker band that fades to white, and a soft shadow along the right
+// side and the bottom.
+constexpr float FrameLeft = 1;
+constexpr float FrameTop = 1;
+constexpr float FrameRight = 142.8f;
+constexpr float FrameBottom = 112;
+constexpr float FrameCornerRadius = 8;
+constexpr float FrameRimInset = 2.85f;
+constexpr float FrameInsideInset = 4.9f;
+constexpr float RightShadowStart = 129;
+constexpr float BottomShadowStart = 97;
+constexpr Color FrameRimBlue = {74, 189, 239, 255};
+
+VectorPath FrameInset(float inset)
+{
+    float left = FrameLeft + inset;
+    float top = FrameTop + inset;
+    float right = FrameRight - inset;
+    float bottom = FrameBottom - inset;
+    VectorPath frame;
+    frame.AddRoundedRectangle(left, top, right - left, bottom - top, FrameCornerRadius - inset);
+    return frame;
+}
+
+Paint FrameInsidePaint()
+{
+    return VerticalGradient({
+        {11.7f, Gray(222)},
+        {12.2f, Gray(214)},
+        {21.5f, Gray(214)},
+        {23, Gray(189)},
+        {27.5f, Gray(189)},
+        {28.5f, Gray(198)},
+        {31, Gray(206)},
+        {33.5f, Gray(214)},
+        {35.5f, Gray(222)},
+        {38, Gray(231)},
+        {40.5f, Gray(239)},
+        {43.5f, Gray(247)},
+        {46, White},
+    });
+}
+
+// A shadow inside the rim, from nothing at the start to its darkest at the inside's edge; its rounded corners follow those of the inside.
+void FillShadow(VectorCanvas& canvas, Point start, Point end, Formats::Byte darkestAlpha)
+{
+    constexpr float InsideCornerRadius = FrameCornerRadius - FrameInsideInset;
+    float right = FrameRight - FrameInsideInset;
+    float bottom = FrameBottom - FrameInsideInset;
+
+    VectorPath shadow;
+    shadow.AddRoundedRectangle(start.x, start.y, right - start.x, bottom - start.y, InsideCornerRadius);
+    canvas.Fill(shadow, LinearGradient(start, {0, 0, 0, 0}, end, {0, 0, 0, darkestAlpha}));
+}
+
+}
+
+void DrawBigSettingsButton(VectorCanvas& canvas)
+{
+    constexpr Formats::Byte RightShadowAlpha = 57;
+    constexpr Formats::Byte BottomShadowAlpha = 90;
+    float insideLeft = FrameLeft + FrameInsideInset;
+    float insideTop = FrameTop + FrameInsideInset;
+    float insideRight = FrameRight - FrameInsideInset;
+    float insideBottom = FrameBottom - FrameInsideInset;
+
+    canvas.Fill(FrameInset(0), SolidPaint(White));
+    canvas.Fill(FrameInset(FrameRimInset), SolidPaint(FrameRimBlue));
+    canvas.Fill(FrameInset(FrameInsideInset), FrameInsidePaint());
+    FillShadow(canvas, {RightShadowStart, insideTop}, {insideRight, insideTop}, RightShadowAlpha);
+    FillShadow(canvas, {insideLeft, BottomShadowStart}, {insideLeft, insideBottom}, BottomShadowAlpha);
+}
+
 }

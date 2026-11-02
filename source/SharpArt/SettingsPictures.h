@@ -27,4 +27,8 @@ void DrawSettingsPageArrowDown(VectorCanvas& canvas);
 void DrawKeyboardArrowUp(VectorCanvas& canvas);
 void DrawKeyboardArrowDown(VectorCanvas& canvas);
 
+// The big square button of the index pages of Wii Settings and of Data Management (144 by 112): a white edge, a blue rim, a gray band at
+// the top that fades to white, and a soft shadow on the right and at the bottom.
+void DrawBigSettingsButton(VectorCanvas& canvas);
+
 }
