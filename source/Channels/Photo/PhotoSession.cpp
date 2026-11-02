@@ -40,7 +40,7 @@ std::unique_ptr<Layout::LayoutArchive> ReadHands(SystemMenu::TitleContents& cont
 }
 
 // The board's database as a channel reaches it: cdb.vff lies in the menu's data folder, which only the menu may change, but the file
-// itself may be written by every title (rw rw rw in the dump). So the channel writes into the file as it is and never makes or deletes it.
+// itself may be written by every title (rw rw rw on a real console). So the channel writes into the file as it is and never makes or deletes it.
 class BoardFiles : public SystemMenu::NandFiles
 {
 public:
