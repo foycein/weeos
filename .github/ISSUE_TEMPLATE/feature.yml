@@ -1,0 +1,12 @@
+name: Idea
+description: Something from the Wii that WeeOS should have, or a step on the roadmap.
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: What and why
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How the real Wii does it

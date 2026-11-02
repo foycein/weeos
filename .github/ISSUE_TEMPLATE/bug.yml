@@ -1,0 +1,27 @@
+name: Bug
+description: Something in WeeOS does not work or does not look, sound or behave like the real Wii.
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened
+      description: The screen, what you did, what you saw and heard.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What the real Wii does
+      description: If you know it. A photo or video of the console helps a lot.
+  - type: input
+    attributes:
+      label: WeeOS version and Windows version
+      placeholder: WeeOS 0.8, Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Graphics card and controller
+      placeholder: RTX 3060, mouse / Wii Remote with Dolphin Bar
+  - type: markdown
+    attributes:
+      value: Never attach NAND images, keys, or Nintendo files.
