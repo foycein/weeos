@@ -5,6 +5,7 @@
 #include "SharpArt/DataManagementPictures.h"
 #include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
+#include "SharpArt/KeyboardPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/SettingsPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
@@ -123,6 +124,11 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_Denpa_a1.tpl", 40, 40, 0x7312E312, ShownAtItsSize, ColorAndAlpha, DrawSignalWeak},
     SharpPicture{"my_Denpa_a2.tpl", 40, 40, 0x8458D833, ShownAtItsSize, ColorAndAlpha, DrawSignalMiddle},
     SharpPicture{"my_Denpa_a3.tpl", 40, 40, 0x8490AC63, ShownAtItsSize, ColorAndAlpha, DrawSignalStrong},
+    SharpPicture{"fs_glassPlate_d.tpl", 42, 34, 0xD85CDBC1, ShownAtItsSize, ColorAndAlpha, DrawLetterKey},
+    SharpPicture{"fs_glassPlate_g.tpl", 72, 34, 0xB2FE858F, ShownAtItsSize, ColorAndAlpha, DrawWideKey},
+    SharpPicture{"fs_glassPlate_space.tpl", 156, 34, 0x97C72315, ShownAtItsSize, ColorAndAlpha, DrawSpaceKey},
+    SharpPicture{"fs_glassPlate_space2.tpl", 70, 66, 0x23934903, ShownAtItsSize, ColorAndAlpha, DrawTallKey},
+    SharpPicture{"fs_roundPlate_a.tpl", 32, 32, 0x68BB31AE, ShownAtItsSize, ColorAndAlpha, DrawRoundPlate},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},
