@@ -27,7 +27,7 @@ using Microsoft::WRL::ComPtr;
 constexpr wchar_t ProgramFolderName[] = L"WeeOS";
 constexpr wchar_t ProgramFileName[] = L"WeeOS.exe";
 constexpr wchar_t ShortcutFileName[] = L"WeeOS.lnk";
-constexpr wchar_t ProgramDescription[] = L"A hand-written reconstruction of the Wii system for the PC";
+constexpr wchar_t ProgramDescription[] = L"The Wii system, reconstructed natively for Windows";
 constexpr wchar_t Publisher[] = L"foycein";
 
 constexpr wchar_t UninstallKeyPath[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WeeOS";

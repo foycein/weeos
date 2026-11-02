@@ -139,7 +139,7 @@ def WriteReadme(releaseFolder, version):
     lines = [
         f"# WeeOS {version}",
         "",
-        "A hand-written reconstruction of the Wii system for the PC.",
+        "The Wii system, reconstructed natively for Windows.",
         "",
         f"- `{SetupFileName}` installs WeeOS, by default into Programs/WeeOS of your local application data, with its shortcuts and an uninstaller.",
         f"- `{zipName}` is the same WeeOS as a portable folder: unpack it anywhere and start `WeeOS.exe`.",

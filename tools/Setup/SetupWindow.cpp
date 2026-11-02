@@ -280,7 +280,7 @@ SetupWindow::PageWords SetupWindow::WordsOfThePage() const
     {
     case Page::ChooseFolder:
         return {L"Install WeeOS " + WeeOSVersionText(),
-            L"A hand-written reconstruction of the Wii system for the PC.\nWeeOS will be installed in this folder:", L"Install", L"Cancel"};
+            L"The Wii system, reconstructed natively for Windows.\nWeeOS will be installed in this folder:", L"Install", L"Cancel"};
     case Page::Installing:
         return {L"Installing WeeOS...", L"Unpacking the system and the channels.", L"", L""};
     case Page::Installed:
