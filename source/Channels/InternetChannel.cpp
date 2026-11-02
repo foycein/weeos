@@ -204,7 +204,7 @@ constexpr std::size_t LongestTypedText = 1024;
 
 constexpr std::string_view SecureScheme = "https://";
 
-// The test helpers PlaceOf... find a part of a screen by trying points of the page in steps, and give a point a little inside it.
+// The functions PlaceOf... find a part of a screen by trying points of the page in steps, and give a point a little inside it.
 constexpr float ToolbarScanStep = 1;
 constexpr float FavoriteScanStep = 4;
 constexpr Formats::Vector2 IntoTheFavorite = {40, 40};

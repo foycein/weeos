@@ -25,8 +25,8 @@
 namespace Channels
 {
 
-// The Internet Channel (docs/research/Channels.md 7, docs/audit/Browser.md). The channel shows its start page at once and joins the
-// network in the background (0x800320CC). The console is online through the PC (docs/DECISIONS.md, Online): while the PC is connected
+// The Internet Channel. The channel shows its start page at once and joins the
+// network in the background (0x800320CC). The console is online through the PC: while the PC is connected
 // the join succeeds; while it is not, the join fails after the time-out, and while the start page is on screen it shows its dialog
 // "%06d: Unable to connect to the internet. ..." with OK (0x800338B0). The start page is the browser's local page startpage.html,
 // drawn natively from its widescreen styles, pictures and the texts of english.lng.
@@ -34,7 +34,7 @@ namespace Channels
 // Its buttons work as the original's: Search and Web Address open the channel's soft keyboard, Favorites shows the favorites that the
 // channel keeps in opera.vff in the NAND, Settings shows the settings that mean something on a PC, the Operations Guide shows the
 // manual pages of the title, and Wii Menu asks "Return to the Wii Menu?". Web pages are Chromium's (the part Browser), drawn into the
-// picture with the toolbar of the original under them. Pages of Nintendo's services go to the owner's server, and fail while there is none.
+// picture with the toolbar of the original under them. Pages of Nintendo's services go to WeeOS's own server, and fail while there is none.
 class InternetChannel : public Channel
 {
 public:

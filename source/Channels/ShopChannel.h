@@ -19,8 +19,8 @@
 namespace Channels
 {
 
-// The Wii Shop Channel (docs/research/Channels.md 4.4). The Shop is a browser around the pages of a server. Its server is the owner's
-// own server, which does not exist yet (docs/DECISIONS.md, Online), so all it shows are the start-up picture and its local error pages,
+// The Wii Shop Channel. The Shop is a browser around the pages of a server. Its server is WeeOS's
+// own server, which does not exist yet, so all it shows are the start-up picture and its local error pages,
 // which WeeOS draws natively from the pages' files:
 //  1. the start-up picture, the Wii logo of the area (StartupTM for the USA, 0x8001B420), with the turning access mark under the logo and
 //     its loading sound, while the network starts and the first page of the server is asked for (CHN-93);

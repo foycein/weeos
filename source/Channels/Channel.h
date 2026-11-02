@@ -9,7 +9,7 @@ namespace Channels
 
 // The program of one channel, written for WeeOS. The original title carries a program for the PowerPC (content 1), which the console
 // starts after IOS has restarted with the title's IOS. In WeeOS the channel system makes this object instead and runs it on the same
-// engines as the menu (docs/research/Channels.md 1.2, docs/audit/OpenPoints/Channels.md CHN-15).
+// engines as the menu.
 //
 // A channel reads its files from the contents of its own title, draws its picture, plays its sounds by name and ends by asking for
 // the Wii Menu (ChannelServices).

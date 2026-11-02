@@ -22,7 +22,7 @@ namespace Channels
 {
 
 // The code of the WiiConnect24 download (KD 0x13DB3760): while the network does not start, from the error of SOStartup; while it does,
-// from what the owner's server answered (CHN-04).
+// from what WeeOS's own server answered (CHN-04).
 std::uint32_t DownloadErrorCodeOfStart(int startupError);
 std::uint32_t DownloadErrorCodeOfServer(SystemMenu::ServerAnswer answer);
 
@@ -47,8 +47,8 @@ struct WiiConnect24ChannelFiles
     WaitingMarkLook waitingMark;
 };
 
-// The Forecast and the News Channel (docs/research/Channels.md 5.5 and 6.4). Both need their data from a server before they can show
-// anything. Their server is the owner's own server, which does not exist yet (docs/DECISIONS.md, Online): the channel fades in
+// The Forecast and the News Channel. Both need their data from a server before they can show
+// anything. Their server is WeeOS's own server, which does not exist yet: the channel fades in
 // "One moment, please..." (layout error1) with its waiting mark under it while its download tries to reach the server, fades out when
 // the download fails, and fades in the error layout error0 with the message of the failure, the error code under it and the button
 // "Back to the Wii Menu".

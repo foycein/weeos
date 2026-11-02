@@ -79,7 +79,7 @@ void HideOtherLanguages(SystemMenu::MenuLayout& layout)
     }
 }
 
-// The data formats of the downloads are not built; they come with the owner's server. A server that answers gives the download a reply
+// The data formats of the downloads are not built; they come with WeeOS's own server. A server that answers gives the download a reply
 // it cannot read.
 std::uint32_t HttpErrorOf(SystemMenu::ServerAnswer answer)
 {

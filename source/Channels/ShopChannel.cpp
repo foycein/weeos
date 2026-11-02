@@ -172,7 +172,7 @@ bool ShowsInternetPage(std::uint32_t supportCode)
     return false;
 }
 
-// The pages of the Shop come with the owner's server; a server that answers sends a first page that the Shop cannot read yet.
+// The pages of the Shop come with WeeOS's own server; a server that answers sends a first page that the Shop cannot read yet.
 std::uint32_t BrowserErrorCodeOf(SystemMenu::ServerAnswer answer)
 {
     if (answer == SystemMenu::ServerAnswer::NameNotFound)

@@ -43,8 +43,8 @@ private:
     bool isRequested = false;
 };
 
-// The network of a channel: the network configuration module and the sockets of IOS, and the address of the owner's server, which takes
-// the place of Nintendo's servers (docs/DECISIONS.md, Online). The address is the setting "Server" of the settings of the PC.
+// The network of a channel: the network configuration module and the sockets of IOS, and the address of WeeOS's own server, which takes
+// the place of Nintendo's servers. The address is the setting "Server" of the settings of the PC.
 struct ChannelNetwork
 {
     Ios::NetworkConfigService& configuration;
