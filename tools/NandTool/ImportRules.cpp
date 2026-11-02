@@ -70,13 +70,13 @@ std::vector<ImportRule> FixedImportRules()
         ImportOnlyThisEntry("/shared2/sys/net", "the folder of the network configuration"),
         ImportOnlyThisEntry("/shared2/sys/net/02", "the folder of the network configuration of the IOS of today"),
         {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
-            "the network configuration: WeeOS's wired connection with automatic settings instead of the owner's networks"},
-        SkipEverythingInside("/shared2/sys/net", "network configuration: the names, passwords and addresses of the owner's networks"),
+            "the network configuration: WeeOS's wired connection with automatic settings instead of the console's own networks"},
+        SkipEverythingInside("/shared2/sys/net", "network configuration: the names, passwords and addresses of the console's own networks"),
         SkipEverythingInside("/title/00010000", "save data of disc games: personal data"),
 
-        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
+        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: WeeOS has no GameCube"),
         SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
-        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: the owner wants no GameCube"),
+        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: WeeOS has no GameCube"),
         SkipOnlyThisEntry("/ticket/00000001/00000101.tik", "ticket of MIOS"),
 
         ImportOnlyThisEntry("/title/00000001/00000002/data/setting.txt", "the facts about the console: serial number, model, region, video mode"),
@@ -93,8 +93,8 @@ std::vector<ImportRule> FixedImportRules()
         ImportOnlyThisEntry("/shared2", "the folder of the files that all titles share"),
         ImportOnlyThisEntry("/shared2/sys", "the folder of the system files"),
         {"/shared2/sys/SYSCONF", ImportScope::OnlyThisEntry, ImportAction::ImportWithPersonalSettingsReset,
-            "the system settings of the console, without the nickname, parental controls, Wii Remotes, address and clock bias of the owner"},
-        SkipEverythingInside("/shared2", "state, logs and shop data of the owner's console: not clear what they hold"),
+            "the system settings of the console, without the nickname, parental controls, Wii Remotes, address and clock bias of the person"},
+        SkipEverythingInside("/shared2", "state, logs and shop data of the person's console: not clear what they hold"),
 
         ImportEverythingInside("/sys", "state of the title service: users, certificates, space record"),
         ImportEverythingInside("/ticket", "tickets of the system titles"),
@@ -151,9 +151,9 @@ std::vector<std::uint64_t> FindHomebrewChannelIds(Formats::NandTitles& titles)
 std::vector<ImportRule> BuildCompleteImportRules()
 {
     return {
-        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: the owner wants no GameCube"),
+        SkipEverythingInside("/title/00000001/00000100", "BC, the Wii side of the GameCube mode: WeeOS has no GameCube"),
         SkipOnlyThisEntry("/ticket/00000001/00000100.tik", "ticket of BC"),
-        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: the owner wants no GameCube"),
+        SkipEverythingInside("/title/00000001/00000101", "MIOS, the GameCube mode of the console: WeeOS has no GameCube"),
         SkipOnlyThisEntry("/ticket/00000001/00000101.tik", "ticket of MIOS"),
         {"/shared2/sys/net/02/config.dat", ImportScope::OnlyThisEntry, ImportAction::ImportWithWeeOSConnection,
             "the network configuration: WeeOS is online through the PC, with nothing to configure"},
