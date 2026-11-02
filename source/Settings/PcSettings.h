@@ -59,7 +59,7 @@ struct PcSettings
     bool operator==(const PcSettings&) const = default;
 };
 
-// The settings that WeeOS starts with: the window of DECISIONS.md, the default sound device, and the keys of Input::DefaultKeyMap.
+// The settings that WeeOS starts with: the default window, the default sound device, and the keys of Input::DefaultKeyMap.
 PcSettings DefaultPcSettings();
 
 // The key that presses the button, or Settings::NoKey.
