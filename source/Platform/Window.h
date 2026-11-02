@@ -15,8 +15,7 @@ constexpr WindowSize DefaultClientSize = {1280, 720};
 // The smallest area inside the frame that the user can drag the window to.
 constexpr WindowSize SmallestClientSize = {480, 270};
 
-// Only WeeOS.exe started by the owner shows its window. Tests and the runs of helpers draw into a window that is never shown, so nothing
-// appears on the screen (docs/HelperRules.md).
+// Only WeeOS.exe shows its window. Tests and other runs draw into a window that is never shown, so nothing appears on the screen.
 enum class WindowVisibility
 {
     Hidden,

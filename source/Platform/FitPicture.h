@@ -6,7 +6,7 @@
 namespace Platform
 {
 
-// The picture of WeeOS is always 16:9 (docs/DECISIONS.md, Settings).
+// The picture of WeeOS is always 16:9.
 constexpr float PictureWidthShare = 16;
 constexpr float PictureHeightShare = 9;
 

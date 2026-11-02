@@ -5,8 +5,8 @@
 namespace Platform
 {
 
-// What Windows says about the place of the PC: its country and how it writes the time of day. WeeOS follows it (docs/DECISIONS.md,
-// Settings): the country of the console and the clock of the Wii Menu.
+// What Windows says about the place of the PC: its country and how it writes the time of day. WeeOS follows it:
+// the country of the console and the clock of the Wii Menu.
 struct RegionalSettings
 {
     // The two letters of the country (ISO 3166), for example "US". Empty when Windows has none.
