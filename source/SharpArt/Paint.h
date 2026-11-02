@@ -21,6 +21,10 @@ enum class PaintKind
 
     // Changes with the distance from the start point, the center (share 0), to the circle through the end point (share 1).
     RadialGradient,
+
+    // Changes with the direction from the start point, the center, all the way around: share 0 points to the right, 0.25 down,
+    // 0.5 to the left and 0.75 up.
+    ConicGradient,
 };
 
 // One color of a gradient and where it is, as a share from 0 to 1. Between two stops the colors mix; before the first stop and after
@@ -53,5 +57,8 @@ Paint RadialGradient(Point center, Color centerColor, float radius, Color edgeCo
 
 // The colors at the distances from the center that the stops give in units (not shares).
 Paint RadialGradientByDistance(Point center, const std::vector<ColorStop>& stopsByDistance);
+
+// The colors in the directions from the center that the stops give in degrees: 0 to the right, 90 down, 180 to the left, 270 up.
+Paint ConicGradientByDegrees(Point center, const std::vector<ColorStop>& stopsByDegrees);
 
 }

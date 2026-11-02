@@ -188,6 +188,9 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
         texture.handle = SendPicture(*picture, horizontalWrap, verticalWrap);
     }
 
+    if (SharpArt::IsPictureOfWords(textureFileName, *picture))
+        texture.edgeSharpening = Graphics::EdgeSharpening::ColorAndAlpha;
+
     loadedTextures.emplace(key, texture);
     return texture;
 }

@@ -1,6 +1,7 @@
 #include "SharpArt/SharpPictures.h"
 
 #include "SharpArt/ClockPictures.h"
+#include "SharpArt/HomeMenuPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
@@ -26,6 +27,8 @@ constexpr Color TransparentWhite = {255, 255, 255, 0};
 constexpr Color TransparentArrowBlue = {0, 34, 136, 0};
 constexpr Color TransparentButtonGray = {193, 193, 193, 0};
 constexpr Color TransparentCardBlue = {51, 187, 238, 0};
+constexpr Color TransparentBlack = {0, 0, 0, 0};
+constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, 0xFD378172, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -50,9 +53,21 @@ constexpr std::array AllPictures = {
     SharpPicture{"mn_Top_SdCard_b.tpl", 38, 48, 0x88BBE31B, ShownAtItsSize, ColorAndAlpha, DrawSdCard, TransparentCardBlue},
     SharpPicture{"my_arw_a.tpl", 64, 64, 0x15ECDE96, ShownAtItsSize, ColorAndAlpha, DrawArrowRight, TransparentArrowBlue},
     SharpPicture{"my_arw_b.tpl", 64, 64, 0x2BF2CD28, ShownAtItsSize, ColorAndAlpha, DrawArrowLeft, TransparentArrowBlue},
+    SharpPicture{"th_btn_L_a1.tpl", 56, 112, 0xE12C2907, ShownAtItsSize, ColorAndAlpha, DrawBigButtonLeftEnd, TransparentButtonGrayOfHome},
+    SharpPicture{"th_btn_L_a2.tpl", 8, 112, 0x119E3D1B, ShownAtItsSize, ColorAndAlpha, DrawBigButtonMiddle, TransparentButtonGrayOfHome},
+    SharpPicture{"th_optnBtn_a1.tpl", 24, 64, 0xCFEB5B83, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonLeftEnd, TransparentBlack},
+    SharpPicture{"th_optnBtn_a2.tpl", 8, 64, 0x684A418C, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonMiddle, TransparentBlack},
+    SharpPicture{"th_optnBtn_a3.tpl", 24, 64, 0x01422CAE, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonRightEnd, TransparentBlack},
+    SharpPicture{"th_btn_L_a3.tpl", 56, 112, 0x74E6D175, ShownAtItsSize, ColorAndAlpha, DrawBigButtonRightEnd, TransparentButtonGrayOfHome},
 };
 
 constexpr float FullByte = 255;
+constexpr std::string_view WordPicturePrefix = "tx_";
+
+bool IsIntensityPixel(const Formats::Rgba8Pixel& pixel)
+{
+    return pixel.red == pixel.alpha && pixel.green == pixel.alpha && pixel.blue == pixel.alpha;
+}
 
 void TurnIntoIntensity(Formats::RgbaImage& picture)
 {
@@ -100,6 +115,14 @@ bool IsTheOriginalOf(const SharpPicture& sharpPicture, const Formats::RgbaImage&
         return false;
 
     return FingerprintOf(picture) == sharpPicture.originalFingerprint;
+}
+
+bool IsPictureOfWords(std::string_view textureFileName, const Formats::RgbaImage& picture)
+{
+    if (!textureFileName.starts_with(WordPicturePrefix))
+        return false;
+
+    return std::ranges::all_of(picture.pixels, IsIntensityPixel);
 }
 
 Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit)

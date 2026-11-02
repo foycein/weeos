@@ -16,6 +16,9 @@ constexpr Formats::Rgba8Color OpaqueWhite = {255, 255, 255, 255};
 constexpr Formats::SignedColor TransparentBlackRegister = {0, 0, 0, 0};
 constexpr Formats::SignedColor OpaqueWhiteRegister = {255, 255, 255, 255};
 
+// The graphics card measures how much a texture is magnified on the first texture of the material.
+constexpr std::size_t FirstTextureMap = 0;
+
 using VertexColors = std::array<Formats::Rgba8Color, Formats::CornerCount>;
 
 bool IsOpaqueWhite(const Formats::Rgba8Color& color)
@@ -133,10 +136,10 @@ std::vector<Graphics::TevStage> ChooseStages(const LiveMaterial& liveMaterial, c
     return MakeDefaultTevStages(description.textures.size(), tintsTextures, multipliesByRasterColor);
 }
 
-Graphics::MaterialTexture MakeMaterialTexture(LiveLayout& layout, const LiveMaterial& liveMaterial, std::size_t textureMapIndex)
+Graphics::MaterialTexture MakeMaterialTexture(const LoadedTexture& loadedTexture, const LiveMaterial& liveMaterial, std::size_t textureMapIndex)
 {
     Graphics::MaterialTexture texture;
-    texture.texture = ObtainTextureOfMap(layout, liveMaterial, textureMapIndex).handle;
+    texture.texture = loadedTexture.handle;
     texture.matrix = TextureMatrixOf(liveMaterial.description, textureMapIndex);
     return texture;
 }
@@ -162,7 +165,12 @@ DrawableMaterial BuildDrawableMaterial(LiveLayout& layout, const LiveMaterial& l
 
     Graphics::Material& material = drawable.material;
     for (std::size_t textureMapIndex = 0; textureMapIndex < description.textures.size(); ++textureMapIndex)
-        material.textures.push_back(MakeMaterialTexture(layout, liveMaterial, textureMapIndex));
+    {
+        LoadedTexture loadedTexture = ObtainTextureOfMap(layout, liveMaterial, textureMapIndex);
+        material.textures.push_back(MakeMaterialTexture(loadedTexture, liveMaterial, textureMapIndex));
+        if (textureMapIndex == FirstTextureMap)
+            material.edgeSharpening = loadedTexture.edgeSharpening;
+    }
 
     material.colorRegisters = {
         ToRegisterColor(description.foreColor),

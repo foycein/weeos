@@ -61,6 +61,10 @@ std::uint32_t FingerprintOf(const Formats::RgbaImage& picture);
 // True when the picture is the original that the sharp picture replaces: the same size and the same fingerprint.
 bool IsTheOriginalOf(const SharpPicture& sharpPicture, const Formats::RgbaImage& picture);
 
+// True for a picture of words: its file name starts with "tx_" (the words of the HOME menu) and it is an intensity picture. Words
+// cannot be drawn again without copying the font, so such a picture gets the sharp edges of the fonts instead (docs/audit/SharpArt.md).
+bool IsPictureOfWords(std::string_view textureFileName, const Formats::RgbaImage& picture);
+
 // Draws the picture with pixelsPerUnit pixels for every pixel of the original.
 Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
 

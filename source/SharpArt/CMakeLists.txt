@@ -1,5 +1,6 @@
 add_library(SharpArt STATIC
     ClockPictures.cpp
+    HomeMenuPictures.cpp
     Paint.cpp
     SharpPictures.cpp
     VectorCanvas.cpp

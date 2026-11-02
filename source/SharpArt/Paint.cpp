@@ -47,6 +47,18 @@ float ShareOfRadius(Point center, Point end, Point point)
     return std::hypot(point.x - center.x, point.y - center.y) / radius;
 }
 
+constexpr float FullTurnDegrees = 360;
+constexpr float DegreesPerRadian = 57.2957795f;
+
+// The direction from the center to the point as a share of a full turn, from 0 to 1: 0 to the right, 0.25 down.
+float ShareOfTurn(Point center, Point point)
+{
+    float degrees = std::atan2(point.y - center.y, point.x - center.x) * DegreesPerRadian;
+    if (degrees < 0)
+        degrees += FullTurnDegrees;
+    return degrees / FullTurnDegrees;
+}
+
 Color ColorOfStopsAt(const std::vector<ColorStop>& stops, float share)
 {
     if (share <= stops.front().share)
@@ -75,8 +87,10 @@ Color Paint::ColorAt(Point point) const
     float share = 0;
     if (kind == PaintKind::LinearGradient)
         share = ShareAlongLine(start, end, point);
-    else
+    else if (kind == PaintKind::RadialGradient)
         share = ShareOfRadius(start, end, point);
+    else
+        share = ShareOfTurn(start, point);
 
     return ColorOfStopsAt(stops, share);
 }
@@ -113,6 +127,16 @@ Paint RadialGradientByDistance(Point center, const std::vector<ColorStop>& stops
     paint.end = {center.x + radius, center.y};
     for (const ColorStop& stop : stopsByDistance)
         paint.stops.push_back({stop.share / radius, stop.color});
+    return paint;
+}
+
+Paint ConicGradientByDegrees(Point center, const std::vector<ColorStop>& stopsByDegrees)
+{
+    Paint paint;
+    paint.kind = PaintKind::ConicGradient;
+    paint.start = center;
+    for (const ColorStop& stop : stopsByDegrees)
+        paint.stops.push_back({stop.share / FullTurnDegrees, stop.color});
     return paint;
 }
 

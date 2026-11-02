@@ -23,6 +23,9 @@ struct LoadedTexture
     Graphics::TextureHandle handle;
     std::uint32_t width = 0;
     std::uint32_t height = 0;
+
+    // A picture of words gets the sharp edges of the fonts (SharpArt::IsPictureOfWords).
+    Graphics::EdgeSharpening edgeSharpening = Graphics::EdgeSharpening::None;
 };
 
 // The pane and all the panes below it, in drawing order.
