@@ -17,7 +17,7 @@ namespace SystemMenu
 // the downloadable content (00010005) and the system itself never show.
 //
 // The low half of these titles is a code of four letters or digits, for example "HADE". A low half that starts with another printable
-// character belongs to the data of a game; WeeOS has no games and leaves such titles out (docs/audit/OpenPoints/SystemMenu.md).
+// character belongs to the data of a game; WeeOS has no games and leaves such titles out.
 bool IsChannelKind(Ios::TitleId titleId);
 bool HasSaveDataKind(Ios::TitleId titleId);
 

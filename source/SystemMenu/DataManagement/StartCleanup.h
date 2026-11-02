@@ -15,7 +15,7 @@ namespace SystemMenu
 //   there loses them, so that it can come back whole from the SD card (0x8134A588).
 // * The save data: a data folder that has files but no banner.bin is erased, unless it holds the folder noerase (0x8134A718).
 //
-// The data of games, which the original deletes in the same pass, does not occur in WeeOS (docs/audit/OpenPoints/SystemMenu.md SYS-71).
+// The data of games, which the original deletes in the same pass, does not occur in WeeOS.
 void CleanUpBeforeTheList(DataManagementServices& services, DataKind kind);
 
 }

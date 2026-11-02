@@ -27,7 +27,7 @@ namespace SystemMenu
 // The list shows 15 entries on a page, of the Wii System Memory or of the SD card; the two buttons at the top switch between them.
 // The arrows and the buttons Plus and Minus turn the pages. An entry opens a window with its name, its size in blocks and the buttons
 // Move, Copy and Erase. A button asks first, then the work runs beside the menu while a message says what happens, and a message
-// tells how it ended. docs/audit/SystemMenu.md (Data Management) says what was read in the original and what differs.
+// tells how it ended.
 class DataEditorScreen : public Screen
 {
 public:
