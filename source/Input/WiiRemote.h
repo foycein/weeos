@@ -23,7 +23,7 @@ constexpr int UsualCameraSensitivity = 2;
 // keeps its four devices also without remotes), and it is asked for its status every second until it answers.
 // At a connection it gets its data report (buttons, motion, camera, extension, about 100 in a second), its lights, its calibration
 // and its camera; a Nunchuk or Classic Controller is started and named when the remote says one is plugged in.
-// After Disconnect, and after five minutes without anything happening (INP-07), it sleeps: its lights go off, it is not connected,
+// After Disconnect, and after five minutes without anything happening, it sleeps: its lights go off, it is not connected,
 // and a press of one of its buttons connects it again, as a remote that was switched off does.
 class WiiRemote final : public RemoteSource
 {
@@ -52,7 +52,7 @@ public:
     void SetRumble(bool shouldRumble) override;
     void SetPlayerLeds(const PlayerLeds& leds) override;
 
-    // The sound is cut into packets of 40 samples and one packet goes out every 1/150 second (INP-01).
+    // The sound is cut into packets of 40 samples and one packet goes out every 1/150 second.
     void PlaySpeakerSound(const SpeakerSound& sound) override;
 
 private:

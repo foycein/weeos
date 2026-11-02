@@ -18,13 +18,13 @@ constexpr double SecondsBetweenProbes = 1.0;
 // The battery is asked for once a minute.
 constexpr double SecondsBetweenStatusRequests = 60.0;
 
-// The library switches a remote off after 5 minutes without a change (INP-07).
+// The library switches a remote off after 5 minutes without a change.
 constexpr double IdleSecondsBeforeSleep = 5.0 * 60.0;
 
-// Assumed (CTL-02): a remote that moves less than this lies still; noise of the sensor stays below it.
+// Assumed: a remote that moves less than this lies still; noise of the sensor stays below it.
 constexpr float StillMotionInGravities = 0.05f;
 
-// The HOME menu streams 40 samples every 1/150 second, which is 20 bytes of ADPCM (INP-01).
+// The HOME menu streams 40 samples every 1/150 second, which is 20 bytes of ADPCM.
 constexpr double SpeakerPacketsPerSecond = 150.0;
 constexpr std::size_t SamplesPerSpeakerPacket = 40;
 
@@ -447,7 +447,7 @@ RemoteState WiiRemote::MakeState()
     return state;
 }
 
-// Likely (CTL-06): x of the remote points to its left and z out of its face, so a remote turned counterclockwise by an angle
+// Likely: x of the remote points to its left and z out of its face, so a remote turned counterclockwise by an angle
 // measures x = -sin(angle) and z = cos(angle) of the gravity.
 float WiiRemote::RollFromAcceleration() const
 {

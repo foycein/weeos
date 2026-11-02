@@ -9,29 +9,29 @@ namespace Input
 namespace
 {
 
-// The pointer library's camera units (INP-02): a pixel is 2 / 1024, and the middle of the picture is at (0.999, 0.749).
+// The pointer library's camera units: a pixel is 2 / 1024, and the middle of the picture is at (0.999, 0.749).
 constexpr float CameraUnitsPerPixel = 2.0f / 1024.0f;
 constexpr float CameraMiddleX = 0.999f;
 constexpr float CameraMiddleY = 0.749f;
 
 // The bar is 0.2 camera units above or below where the remote points when it points at the middle of the screen; the scale from
-// camera units to the library's position is 1.25 / 0.55 for both (INP-02).
+// camera units to the library's position is 1.25 / 0.55 for both.
 constexpr float SensorBarHeight = 0.2f;
 constexpr float CameraToPosition = 1.25f / 0.55f;
 
-// The menu sets the play radius 0.05 and the sensitivity 1.0 for every channel (INP-02).
+// The menu sets the play radius 0.05 and the sensitivity 1.0 for every channel.
 constexpr float PlayRadius = 0.05f;
 constexpr float PlaySensitivity = 1.0f;
 constexpr int PlayExponent = 4;
 
 // The menu's pointer: the position times 1.2 times half the height of the canvas, x stretched by 1.15 on a wide screen, in a canvas
-// of 832 x 456 (INP-02). Divided by half the canvas that is our pointer space.
+// of 832 x 456. Divided by half the canvas that is our pointer space.
 constexpr float PointerScale = 1.2f;
 constexpr float CanvasHalfHeight = 228.0f;
 constexpr float WideCanvasHalfWidth = 416.0f;
 constexpr float WideScreenStretch = 1.15f;
 
-// The distance is 0.2 / tan(21 degrees) / the span of the dots (INP-06): the bar's two groups of lights are 0.2 m apart and
+// The distance is 0.2 / tan(21 degrees) / the span of the dots: the bar's two groups of lights are 0.2 m apart and
 // half of the camera picture is 21 degrees wide.
 constexpr float SensorBarWidthInMeters = 0.2f;
 constexpr float TangentOfHalfCameraAngle = 0.38386f;

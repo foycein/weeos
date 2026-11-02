@@ -16,7 +16,7 @@ constexpr std::uint8_t FullReportMode = 0x30;
 constexpr int PacketNumberCount = 16;
 constexpr std::uint8_t SwitchOn = 0x01;
 
-// Assumed (CTL-10): a turn slower than this is the drift of a gyroscope at rest, not the hand.
+// Assumed: a turn slower than this is the drift of a gyroscope at rest, not the hand.
 constexpr float GyroscopeRestingRate = 1.5f;
 
 // The bits of the buttons that belong to each side; the shared byte holds both sides' buttons, each side reports its own.

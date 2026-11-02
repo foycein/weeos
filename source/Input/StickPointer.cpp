@@ -16,7 +16,7 @@ namespace
 constexpr auto PictureWidthsPerSecond = std::to_array<float>({0.4f, 0.6f, 0.8f, 1.1f, 1.5f});
 constexpr float StickDeadZone = 0.2f;
 
-// Assumed (CTL-08): turning a controller by 40 degrees takes the hand across the picture at the usual speed; the other speeds scale it
+// Assumed: turning a controller by 40 degrees takes the hand across the picture at the usual speed; the other speeds scale it
 // like the stick.
 constexpr float PictureWidthInDegrees = 40.0f;
 

@@ -60,7 +60,7 @@ constexpr int ByteShift = 8;
 // The camera takes dots of up to 10 bits; a place that holds no dot is all ones. Its picture is 768 pixels high.
 constexpr float CameraPictureHeight = 768;
 
-// The battery byte and its level (INP-01): below 3 is level 0, below 51 level 1, below 68 level 2, below 85 level 3.
+// The battery byte and its level: below 3 is level 0, below 51 level 1, below 68 level 2, below 85 level 3.
 constexpr auto BatteryLevelLimits = std::to_array<int>({3, 51, 68, 85});
 
 // The sensitivity blocks of the camera for the five levels of the console (WiiBrew, IR Camera, "Sensitivity Settings").
@@ -84,7 +84,7 @@ constexpr auto SensitivityLevels = std::to_array<SensitivityBlocks>({
 constexpr std::uint8_t CameraControlStart = 0x08;
 constexpr std::uint8_t CameraBasicMode = 0x01;
 
-// The speaker for 4 bit Yamaha ADPCM (WiiBrew, Wiimote, Speaker): 0x07D0 is the rate value of the HOME menu too (INP-01).
+// The speaker for 4 bit Yamaha ADPCM (WiiBrew, Wiimote, Speaker): 0x07D0 is the rate value of the HOME menu too.
 constexpr std::uint8_t SpeakerSwitchOn = 0x01;
 constexpr std::uint8_t SpeakerConfigurationStart = 0x08;
 constexpr std::uint8_t SpeakerPlayOn = 0x01;
@@ -104,7 +104,7 @@ constexpr std::array<std::uint8_t, 4> NunchukIdentity = {0xA4, 0x20, 0x00, 0x00}
 constexpr std::array<std::uint8_t, 4> ClassicControllerIdentity = {0xA4, 0x20, 0x01, 0x01};
 constexpr std::size_t IdentityKindByte = 2;
 
-// Assumed (CTL-04): the zero and one gravity of a remote and a Nunchuk that has not sent its calibration, in units of 10 bits.
+// Assumed: the zero and one gravity of a remote and a Nunchuk that has not sent its calibration, in units of 10 bits.
 constexpr int UsualAccelerationZero = 512;
 constexpr int UsualRemoteOneGravity = 616;
 constexpr int UsualNunchukOneGravity = 716;
@@ -123,8 +123,8 @@ constexpr int NunchukAccelerationYShift = 4;
 constexpr int NunchukAccelerationZShift = 6;
 constexpr int NunchukStickMiddle = 128;
 
-// The pointer library makes a stick axis (|raw| - dead zone) / (full - dead zone), clamped to 0 to 1 with the sign kept
-// (INP-05): 15 and 71 for the Nunchuk, 60 and 308 for the sticks of the Classic Controller, 30 and 180 for its triggers.
+// The pointer library makes a stick axis (|raw| - dead zone) / (full - dead zone), clamped to 0 to 1 with the sign kept:
+// 15 and 71 for the Nunchuk, 60 and 308 for the sticks of the Classic Controller, 30 and 180 for its triggers.
 constexpr float NunchukDeadZone = 15;
 constexpr float NunchukFull = 71;
 constexpr float ClassicStickDeadZone = 60;
@@ -132,7 +132,7 @@ constexpr float ClassicStickFull = 308;
 constexpr float ClassicTriggerDeadZone = 30;
 constexpr float ClassicTriggerFull = 180;
 
-// Assumed (CTL-05): the library's raw values of the Classic Controller are its 6 bit left stick times 16, its 5 bit right stick
+// Assumed: the library's raw values of the Classic Controller are its 6 bit left stick times 16, its 5 bit right stick
 // times 32 (both from their middle) and its 5 bit triggers times 8.
 constexpr int ClassicLeftStickMiddle = 32;
 constexpr int ClassicLeftStickScale = 16;
