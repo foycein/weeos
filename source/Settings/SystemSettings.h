@@ -24,7 +24,7 @@ enum class SoundMode : std::uint8_t
     Surround = 2,
 };
 
-// The name of a console that has none, as a fresh WeeOS is (docs/DECISIONS.md, Settings).
+// The name of a console that has none, as a fresh WeeOS is.
 constexpr std::u16string_view FreshConsoleNickname = u"WeeOS";
 
 // The volume of the speakers of the remotes (BT.SPKV, 0 to 127) of a console that has no such setting (INP-01).
@@ -42,7 +42,7 @@ enum class SensorBarPosition : std::uint8_t
 //
 // Every value has a default for the case that the file does not have the setting at all, and a value that is outside of
 // what the console accepts is read as the console reads it (a sound mode of 7 is stereo, a sensitivity of 9 is 5).
-// Date, time, country and language are not settings of WeeOS: they follow the PC (docs/DECISIONS.md, Settings).
+// Date, time, country and language are not settings of WeeOS: they follow the PC.
 class SystemSettings
 {
 public:

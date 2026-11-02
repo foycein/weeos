@@ -14,7 +14,7 @@
 namespace Settings
 {
 
-// The size of the window when nothing else is set (docs/DECISIONS.md: 1280 x 720). WeeOS starts in borderless fullscreen.
+// The size of the window when nothing else is set. WeeOS starts in borderless fullscreen.
 constexpr std::uint32_t DefaultWindowWidth = 1280;
 constexpr std::uint32_t DefaultWindowHeight = 720;
 
@@ -22,7 +22,7 @@ constexpr int LowestVolume = 0;
 constexpr int HighestVolume = 100;
 
 // The settings of WeeOS on the PC, which a Wii does not have: the window, the sound device, the keys and the controllers. They are the pages "PC Settings"
-// of Wii Settings (docs/DECISIONS.md, Settings). The sound mode and the rumble are the console's own settings (SystemSettings).
+// of Wii Settings. The sound mode and the rumble are the console's own settings (SystemSettings).
 // The picture is always 16:9, so its shape is no setting.
 struct PcSettings
 {
@@ -34,7 +34,7 @@ struct PcSettings
     std::optional<int> windowLeft;
     std::optional<int> windowTop;
 
-    // WeeOS starts in borderless fullscreen unless the settings say otherwise (docs/DECISIONS.md, Start).
+    // WeeOS starts in borderless fullscreen unless the settings say otherwise.
     bool isFullscreen = true;
 
     // The name Windows gives the playback device. Empty for the device that Windows uses by default.
@@ -52,7 +52,7 @@ struct PcSettings
     // How gamepads and Joy-Cons play a Wii Remote.
     Input::ControllerSettings controllers;
 
-    // The owner's own server, which takes the place of every Nintendo service (docs/DECISIONS.md, Online): a host name or an IPv4
+    // WeeOS's own server, which takes the place of every Nintendo service: a host name or an IPv4
     // address, with ":port" when it is not 80. Empty until the server exists; until then every online channel shows its server error.
     std::string serverAddress;
 

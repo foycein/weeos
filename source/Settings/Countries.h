@@ -15,7 +15,7 @@ struct Country
     std::uint8_t code;
 };
 
-// The country of a console that is not in the list of the USA console (docs/audit/OpenPoints/Settings.md SET-13).
+// The country of a console that is not in the list of the USA console.
 constexpr std::uint8_t UnitedStatesCode = 49;
 
 // The 48 countries that the Country page of a USA console offered, sorted by their letters.

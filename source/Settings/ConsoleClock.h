@@ -23,7 +23,7 @@ struct CalendarTime
 using PcClock = std::function<std::chrono::local_seconds()>;
 
 // The time of day of the console. A Wii has a clock chip of its own that the user sets; WeeOS has no such setting: the console's time is
-// always the clock of the PC (docs/DECISIONS.md, Settings).
+// always the clock of the PC.
 class ConsoleClock
 {
 public:
