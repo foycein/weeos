@@ -24,7 +24,7 @@ struct BuiltInSong
     std::string_view soundName;
 };
 
-// The names are texts of the program; which song of rev_photo.brsar each one plays is Assumed (CHN-33): in the order of the archive.
+// The names are texts of the program; which song of rev_photo.brsar each one plays is Assumed: in the order of the archive.
 constexpr std::array<BuiltInSong, 5> BuiltInSongs = {{
     {"Calm", "BGM_SLIDE1"},
     {"Bright", "BGM_SLIDE2"},

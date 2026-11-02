@@ -20,7 +20,7 @@ namespace Channels
 namespace
 {
 
-// How far the zoom buttons magnify a photo (Assumed, CHN-31).
+// How far the zoom buttons magnify a photo (Assumed).
 constexpr std::array<float, 3> ZoomLevels = {1, 2, 4};
 
 // The panes of the layout "error": its messages for a photo and a movie whose format is not supported.

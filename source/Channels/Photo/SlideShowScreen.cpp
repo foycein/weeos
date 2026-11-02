@@ -16,7 +16,7 @@ namespace Channels
 namespace
 {
 
-// The pace and the look of the three effects (Assumed, CHN-31 and CHN-33): Simple fades from one photo to the next, Dramatic moves
+// The pace and the look of the three effects (Assumed): Simple fades from one photo to the next, Dramatic moves
 // slowly closer to each photo and fades faster, Nostalgic shows the photos in the brown of old prints and fades slowly.
 constexpr double SecondsPerSlide = 5;
 constexpr double SecondsOfSimpleFade = 1;

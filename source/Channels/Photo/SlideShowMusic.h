@@ -37,7 +37,7 @@ struct SlideShowSong
 // when the card holds AAC files, and the files themselves (up to 100).
 std::vector<SlideShowSong> ListSlideShowSongs(const std::vector<Ios::SdPath>& musicFiles);
 
-// An AAC file plays when the channel accepts it (CHN-08: the first sound track is mp4a, one of the twelve sample rates, one or two
+// An AAC file plays when the channel accepts it (the first sound track is mp4a, one of the twelve sample rates, one or two
 // channels) and Windows can decode it; else the channel says "This AAC file format is not supported" (layout slide_bgm_error).
 // "All AAC files" and "Shuffle AAC files" play when one of the files does.
 bool IsSongPlayable(PhotoSession& session, const SlideShowSong& song);

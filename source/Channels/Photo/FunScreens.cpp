@@ -220,7 +220,7 @@ struct StampButton
 // The stamps and their pictures in TPLPhoto.tpl: the lips, the sunglasses, the sparkle and the heart.
 constexpr std::array<StampButton, 4> Stamps = {{{"kiss", 14}, {"glass", 17}, {"kira", 0}, {"heart", 2}}};
 
-// The size of the pen and of the piece that the scissors cut, in pixels of the screen (Assumed, CHN-33).
+// The size of the pen and of the piece that the scissors cut, in pixels of the screen (Assumed).
 constexpr float PenRadiusOnScreen = 3;
 constexpr float SmallestPenRadius = 1;
 constexpr float CutPieceSideOnScreen = 80;

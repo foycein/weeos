@@ -26,7 +26,7 @@ namespace Channels
 namespace
 {
 
-// The board keeps a photo at most 640 x 480, written as a JPEG picture of this quality (Assumed, CHN-33).
+// The board keeps a photo at most 640 x 480, written as a JPEG picture of this quality (Assumed).
 constexpr int BoardPictureLargestWidth = 640;
 constexpr int BoardPictureLargestHeight = 480;
 constexpr int BoardPictureQuality = 90;
@@ -35,13 +35,13 @@ constexpr std::string_view MovieFrameQuestion = "textTUS1A";
 constexpr std::string_view NewPhotoQuestion = "textTUS2A";
 constexpr std::string_view SaveSound = "SE_SAVE";
 
-// How the part of the photo can be changed (Assumed, CHN-33): the zoom grows by a quarter per press, up to four times; a press of the
+// How the part of the photo can be changed (Assumed): the zoom grows by a quarter per press, up to four times; a press of the
 // +Control Pad moves the part by a twentieth of the photo.
 constexpr float ZoomStep = 1.25f;
 constexpr float LargestZoom = 4;
 constexpr float MoveStep = 0.05f;
 
-// "Posting to the Wii Menu..." shows this long before the files are written (Assumed, CHN-33).
+// "Posting to the Wii Menu..." shows this long before the files are written (Assumed).
 constexpr int StepsOfSaving = 60;
 
 // The part of the photo with the shape of the target, the given zoom and its middle at a share of the photo, scaled to the target.

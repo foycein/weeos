@@ -24,7 +24,7 @@ constexpr std::string_view ListTitleWithLimit = "bgmTUS1";
 constexpr std::string_view ListTitle = "bgmTUS0";
 constexpr std::string_view UnsupportedMessage = "slide_bgm_error";
 
-// The list of songs between the belt and the buttons, in page units of the 4:3 layout (Assumed, CHN-33).
+// The list of songs between the belt and the buttons, in page units of the 4:3 layout (Assumed).
 constexpr float ListTop = 60;
 constexpr float ListLeft = 120;
 constexpr float RowHeight = 34;
