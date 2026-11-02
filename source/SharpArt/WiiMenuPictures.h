@@ -24,4 +24,8 @@ void DrawSdCard(VectorCanvas& canvas);
 void DrawArrowRight(VectorCanvas& canvas);
 void DrawArrowLeft(VectorCanvas& canvas);
 
+// The disc on the tile of the Disc Channel (96 by 96): a silver disc whose shine runs around it in light and dark sectors, a white rim
+// and the rings of the hub around the hole.
+void DrawDiscChannelDisc(VectorCanvas& canvas);
+
 }

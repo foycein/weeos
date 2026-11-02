@@ -218,6 +218,66 @@ void DrawLetterDOfTheMark(VectorCanvas& canvas)
     FillPolygon(canvas, {{17.5f, 20.9f}, {23.3f, 20.9f}, {23, 22.8f}, {17, 22.8f}}, CardLabelWhite);
 }
 
+// The disc: every ring is drawn with the hole cut out of it, so the hole stays clear.
+constexpr Point DiscCenter = {48, 48};
+constexpr float DiscHoleRadius = 4.2f;
+
+Color DiscGray(Formats::Byte level)
+{
+    return {level, level, level, 255};
+}
+
+void FillDiscRing(VectorCanvas& canvas, float outerRadius, const Paint& paint)
+{
+    VectorPath ring;
+    ring.AddCircle(DiscCenter, outerRadius);
+    ring.AddCircle(DiscCenter, DiscHoleRadius);
+    canvas.Fill(ring, paint);
+}
+
+// The shine of the disc by direction, in degrees from the right going down: two light and two dark sectors, with small turns between.
+const std::vector<ColorStop> DiscShineByDegrees = {
+    {0, DiscGray(156)},
+    {15, DiscGray(163)},
+    {30, DiscGray(188)},
+    {45, DiscGray(206)},
+    {60, DiscGray(211)},
+    {75, DiscGray(203)},
+    {90, DiscGray(200)},
+    {105, DiscGray(221)},
+    {120, DiscGray(201)},
+    {135, DiscGray(159)},
+    {150, DiscGray(144)},
+    {165, DiscGray(136)},
+    {180, DiscGray(129)},
+    {195, DiscGray(164)},
+    {210, DiscGray(147)},
+    {225, DiscGray(118)},
+    {240, DiscGray(142)},
+    {255, DiscGray(182)},
+    {270, DiscGray(204)},
+    {285, DiscGray(184)},
+    {300, DiscGray(143)},
+    {315, DiscGray(118)},
+    {330, DiscGray(156)},
+    {345, DiscGray(188)},
+    {360, DiscGray(156)},
+};
+
+const std::vector<ColorStop> DiscEdgeByDegrees = {
+    {0, DiscGray(139)},
+    {45, DiscGray(193)},
+    {90, DiscGray(194)},
+    {180, DiscGray(139)},
+    {225, DiscGray(167)},
+    {270, DiscGray(176)},
+    {360, DiscGray(139)},
+};
+
+// Towards the hub the shine is softer: a middle gray lies over it, fading out towards the rim.
+constexpr Color DiscMiddleGray = {160, 160, 160, 130};
+constexpr Color DiscMiddleGrayClear = {160, 160, 160, 0};
+
 void DrawArrow(VectorCanvas& canvas, const ArrowCorners& outline, const ArrowCorners& inside)
 {
     FillArrowShape(canvas, outline, SolidPaint(ArrowEdgeBlue));
@@ -308,6 +368,30 @@ void DrawArrowLeft(VectorCanvas& canvas)
 {
     float width = static_cast<float>(canvas.UnitWidth());
     DrawArrow(canvas, MirroredLeftToRight(ArrowOutline, width), MirroredLeftToRight(ArrowInside, width));
+}
+
+void DrawDiscChannelDisc(VectorCanvas& canvas)
+{
+    constexpr float EdgeRadius = 41.5f;
+    constexpr float RimRadius = 40.2f;
+    constexpr float ShineRadius = 37.6f;
+    constexpr float SoftShineRadius = 12;
+    constexpr float HubOuterRadius = 13;
+    constexpr float HubWhiteRingRadius = 11.8f;
+    constexpr float HubGrayRingRadius = 10.5f;
+    constexpr float HubInnerWhiteRadius = 9.4f;
+    constexpr float HubInnerEdgeRadius = 5.8f;
+
+    FillDiscRing(canvas, EdgeRadius, ConicGradientByDegrees(DiscCenter, DiscEdgeByDegrees));
+    FillDiscRing(canvas, RimRadius, SolidPaint(DiscGray(246)));
+    FillDiscRing(canvas, ShineRadius, ConicGradientByDegrees(DiscCenter, DiscShineByDegrees));
+    FillDiscRing(canvas, ShineRadius, RadialGradient(DiscCenter, DiscMiddleGray, ShineRadius, DiscMiddleGrayClear, SoftShineRadius));
+
+    FillDiscRing(canvas, HubOuterRadius, SolidPaint(DiscGray(203)));
+    FillDiscRing(canvas, HubWhiteRingRadius, SolidPaint(DiscGray(251)));
+    FillDiscRing(canvas, HubGrayRingRadius, SolidPaint(DiscGray(150)));
+    FillDiscRing(canvas, HubInnerWhiteRadius, SolidPaint(DiscGray(255)));
+    FillDiscRing(canvas, HubInnerEdgeRadius, SolidPaint(DiscGray(190)));
 }
 
 }

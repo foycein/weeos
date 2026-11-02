@@ -36,6 +36,7 @@ constexpr Color TransparentArrowBlue = {0, 34, 136, 0};
 constexpr Color TransparentButtonGray = {193, 193, 193, 0};
 constexpr Color TransparentCardBlue = {51, 187, 238, 0};
 constexpr Color TransparentBlack = {0, 0, 0, 0};
+constexpr Color TransparentDiscGray = {160, 160, 160, 0};
 constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 
@@ -63,6 +64,7 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_TopBtn_c.tpl", 80, 80, 0x1ED4FB29, ShownAtItsSize, ColorAndAlpha, DrawWiiButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_h.tpl", 80, 80, 0x4A42E90D, ShownAtItsSize, Intensity, DrawButtonGlowRing},
     SharpPicture{"mn_Top_SdCard_b.tpl", 38, 48, 0x88BBE31B, ShownAtItsSize, ColorAndAlpha, DrawSdCard, TransparentCardBlue},
+    SharpPicture{"my_DiskChIcon_a.tpl", 96, 96, 0x6A586F24, ShownAtItsSize, ColorAndAlpha, DrawDiscChannelDisc, TransparentDiscGray},
     SharpPicture{"my_arw_a.tpl", 64, 64, 0x15ECDE96, ShownAtItsSize, ColorAndAlpha, DrawArrowRight, TransparentArrowBlue},
     SharpPicture{"my_arw_b.tpl", 64, 64, 0x2BF2CD28, ShownAtItsSize, ColorAndAlpha, DrawArrowLeft, TransparentArrowBlue},
     SharpPicture{"th_btn_L_a1.tpl", 56, 112, 0xE12C2907, ShownAtItsSize, ColorAndAlpha, DrawBigButtonLeftEnd, TransparentButtonGrayOfHome},
