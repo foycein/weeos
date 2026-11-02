@@ -7,6 +7,7 @@ add_library(SharpArt STATIC
     HomeMenuPictures.cpp
     InternetChannelPictures.cpp
     KeyboardPictures.cpp
+    MessageBoardPictures.cpp
     Paint.cpp
     RemotePictures.cpp
     SettingsPictures.cpp

@@ -8,6 +8,7 @@
 #include "SharpArt/HomeMenuPictures.h"
 #include "SharpArt/InternetChannelPictures.h"
 #include "SharpArt/KeyboardPictures.h"
+#include "SharpArt/MessageBoardPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/SettingsPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
@@ -77,6 +78,8 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_TopBtn_c.tpl", 80, 80, 0x1ED4FB29, ShownAtItsSize, ColorAndAlpha, DrawWiiButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_b.tpl", 80, 80, 0x3548752A, ShownAtItsSize, ColorAndAlpha, DrawWiiPlateButton, TransparentButtonGray},
     SharpPicture{"mn_TopBtn_h.tpl", 80, 80, 0x01FD5F06, ShownAtItsSize, ColorAndAlpha, DrawQuestionButton, TransparentButtonGray},
+    SharpPicture{"my_TopBtn_d.tpl", 64, 64, 0x7571716E, ShownAtItsSize, ColorAndAlpha, DrawCalendarButton, TransparentButtonGray},
+    SharpPicture{"my_TopBtn_e.tpl", 64, 64, 0xAE9C649D, ShownAtItsSize, ColorAndAlpha, DrawMemoButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_h.tpl", 80, 80, 0x4A42E90D, ShownAtItsSize, Intensity, DrawButtonGlowRing},
     SharpPicture{"mn_Top_SdCard_b.tpl", 38, 48, 0x88BBE31B, ShownAtItsSize, ColorAndAlpha, DrawSdCard, TransparentCardBlue},
     SharpPicture{"my_DiskChIcon_a.tpl", 96, 96, 0x6A586F24, ShownAtItsSize, ColorAndAlpha, DrawDiscChannelDisc, TransparentDiscGray},
