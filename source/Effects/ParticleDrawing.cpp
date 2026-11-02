@@ -229,7 +229,7 @@ Graphics::Matrix4 TurnAboutTheShapeAxis(std::uint8_t turnAxis, Vector3 rotation)
 }
 
 // A picture lying in the world: its height along the particle's direction, its width across it in the plane of the emitter's form
-// (EFF-06, Assumed), turned about one of its own axes by the particle's rotation.
+// (Assumed), turned about one of its own axes by the particle's rotation.
 ViewQuad DirectionalQuad(const EmitterView& view, const Particle& particle, float width, float height)
 {
     Vector3 direction = ParticleDirection(view, particle);
