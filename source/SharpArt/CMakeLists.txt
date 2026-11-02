@@ -15,6 +15,7 @@ add_library(SharpArt STATIC
     SmallWords.cpp
     VectorCanvas.cpp
     VectorPath.cpp
+    WaitingMarkPictures.cpp
     WiiLogoPictures.cpp
     WiiMenuPictures.cpp
     WiiOptionsPictures.cpp

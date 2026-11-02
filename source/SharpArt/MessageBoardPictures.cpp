@@ -159,6 +159,105 @@ void DrawMemo(VectorCanvas& canvas)
         {28, 34.5f}, {28, 30}}, PencilCornerCut, Pencil);
 }
 
+// ---- The buttons that scroll the board (80 by 80): a bright ball inside a blue ring with the cross of the + Control Pad on it, the
+// lower or the upper arm lit blue. The arms have a dark outline and a short groove each.
+
+constexpr Point PadButtonCenter = {40, 40};
+constexpr float RingOuterRadius = 38.4f;
+constexpr float PadBallRadius = 35.5f;
+constexpr Color RingBlue = {49, 189, 239, 255};
+constexpr Point PadBallLightCenter = {36, 32};
+
+constexpr float ArmNear = 30.8f;
+constexpr float ArmFar = 49.2f;
+constexpr float CrossTop = 15.7f;
+constexpr float CrossBottom = 65.2f;
+constexpr float CrossLeft = 14.8f;
+constexpr float CrossRight = 65.2f;
+constexpr float CrossOuterCornerCut = 1.5f;
+constexpr float OutlineWidth = 1.4f;
+constexpr Color CrossOutlineGray = Gray(132);
+constexpr Color CrossFaceLight = Gray(247);
+constexpr Color CrossFaceShaded = Gray(229);
+constexpr Color LitArmBlue = {132, 214, 255, 255};
+constexpr Color Groove = Gray(160);
+
+void DrawPadBall(VectorCanvas& canvas)
+{
+    VectorPath ring;
+    ring.AddCircle(PadButtonCenter, RingOuterRadius);
+    canvas.Fill(ring, SolidPaint(RingBlue));
+
+    VectorPath ball;
+    ball.AddCircle(PadButtonCenter, PadBallRadius);
+    canvas.Fill(ball, RadialGradientByDistance(PadBallLightCenter,
+        {{20, Gray(246)}, {24, Gray(241)}, {28, Gray(231)}, {32, Gray(217)}, {36, Gray(210)}, {40, Gray(205)}, {44, Gray(197)}}));
+}
+
+// The cross, its outline moved inwards by the inset: the outer corners round, the inner ones sharp.
+VectorPath CrossShape(float inset)
+{
+    float near = ArmNear + inset;
+    float far = ArmFar - inset;
+    float top = CrossTop + inset;
+    float bottom = CrossBottom - inset;
+    float left = CrossLeft + inset;
+    float right = CrossRight - inset;
+    constexpr float Round = CrossOuterCornerCut;
+
+    VectorPath cross;
+    cross.AddPolygonWithRoundCorners({{{near, top}, Round}, {{far, top}, Round}, {{far, near}, 0}, {{right, near}, Round},
+        {{right, far}, Round}, {{far, far}, 0}, {{far, bottom}, Round}, {{near, bottom}, Round}, {{near, far}, 0}, {{left, far}, Round},
+        {{left, near}, Round}, {{near, near}, 0}});
+    return cross;
+}
+
+void FillLitArm(VectorCanvas& canvas, float armStart, float armEnd)
+{
+    FillRectangle(canvas, ArmNear + OutlineWidth, armStart, ArmFar - OutlineWidth, armEnd, LitArmBlue);
+}
+
+void FillGrooves(VectorCanvas& canvas)
+{
+    constexpr float GrooveHalfWidth = 1;
+    constexpr float GrooveFromTheMiddle = 10;
+    constexpr float GrooveLength = 9.7f;
+    constexpr float Middle = 40;
+
+    float nearStart = Middle - GrooveFromTheMiddle - GrooveLength;
+    float nearEnd = Middle - GrooveFromTheMiddle;
+    float farStart = Middle + GrooveFromTheMiddle;
+    float farEnd = Middle + GrooveFromTheMiddle + GrooveLength;
+    float across = Middle - GrooveHalfWidth;
+    float acrossEnd = Middle + GrooveHalfWidth;
+
+    FillRectangle(canvas, across, nearStart, acrossEnd, nearEnd, Groove);
+    FillRectangle(canvas, across, farStart, acrossEnd, farEnd, Groove);
+    FillRectangle(canvas, nearStart, across, nearEnd, acrossEnd, Groove);
+    FillRectangle(canvas, farStart, across, farEnd, acrossEnd, Groove);
+}
+
+void DrawPadButton(VectorCanvas& canvas, float litArmStart, float litArmEnd)
+{
+    DrawPadBall(canvas);
+    canvas.Fill(CrossShape(0), SolidPaint(CrossOutlineGray));
+    canvas.Fill(CrossShape(OutlineWidth), LinearGradient({20, 20}, CrossFaceLight, {60, 60}, CrossFaceShaded));
+    FillLitArm(canvas, litArmStart, litArmEnd);
+    FillGrooves(canvas);
+}
+
+}
+
+void DrawPadButtonLowerArmLit(VectorCanvas& canvas)
+{
+    constexpr float LowerArmStart = ArmFar - 0.5f;
+    DrawPadButton(canvas, LowerArmStart, CrossBottom - OutlineWidth);
+}
+
+void DrawPadButtonUpperArmLit(VectorCanvas& canvas)
+{
+    constexpr float UpperArmEnd = ArmNear + 0.5f;
+    DrawPadButton(canvas, CrossTop + OutlineWidth, UpperArmEnd);
 }
 
 void DrawCalendarButton(VectorCanvas& canvas)

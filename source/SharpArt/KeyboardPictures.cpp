@@ -321,6 +321,55 @@ void MakeTranslucent(VectorCanvas& canvas, Formats::Byte opacity)
         pixel.alpha = static_cast<Formats::Byte>(pixel.alpha * opacity / 255);
 }
 
+// ---- The button that changes the kind of keyboard: a white plate in a dark frame that lightens downward. The plate is lit at the top,
+// grays towards the middle and has a lower part with round upper corners, darker at its top and white again at the bottom.
+
+constexpr float FrameLeft = 0;
+constexpr float FrameTop = 2;
+constexpr float FrameRight = 200;
+constexpr float FrameBottom = 95;
+constexpr float FrameCornerRadius = 8.5f;
+constexpr float ToolPlateLeft = 4;
+constexpr float ToolPlateTop = 5.45f;
+constexpr float ToolPlateRight = 196;
+constexpr float ToolPlateBottom = 90.75f;
+constexpr float ToolPlateCornerRadius = 5;
+constexpr float LowerPartInset = 2.8f;
+constexpr float LowerPartTop = 50.8f;
+constexpr float LowerPartUpperCornerCut = 11;
+constexpr float SideShadeWidth = 2;
+constexpr Color SideShade = {0, 0, 0, 70};
+constexpr Color NoShade = {0, 0, 0, 0};
+
+}
+
+void DrawToolButton(VectorCanvas& canvas)
+{
+    FillRoundedBox(canvas, FrameLeft, FrameTop, FrameRight, FrameBottom, FrameCornerRadius,
+        VerticalGradient({{3, Gray(26)}, {88, Gray(158)}}));
+
+    FillRoundedBox(canvas, ToolPlateLeft, ToolPlateTop, ToolPlateRight, ToolPlateBottom, ToolPlateCornerRadius,
+        VerticalGradient({{10.5f, Gray(255)}, {12, Gray(249)}, {47, Gray(222)}, {47.6f, Gray(228)}, {89, Gray(255)}}));
+
+    float lowerLeft = ToolPlateLeft + LowerPartInset;
+    float lowerRight = ToolPlateRight - LowerPartInset;
+    float bottomCut = ToolPlateCornerRadius;
+    VectorPath lowerPart;
+    lowerPart.AddPolygonWithRoundCorners({{{lowerLeft, LowerPartTop}, LowerPartUpperCornerCut},
+        {{lowerRight, LowerPartTop}, LowerPartUpperCornerCut}, {{lowerRight, ToolPlateBottom}, bottomCut},
+        {{lowerLeft, ToolPlateBottom}, bottomCut}});
+    canvas.Fill(lowerPart, VerticalGradient({{52, Gray(202)}, {88, Gray(255)}}));
+
+    float shadeTop = ToolPlateTop + ToolPlateCornerRadius;
+    float shadeBottom = ToolPlateBottom - ToolPlateCornerRadius;
+    float leftShadeEnd = ToolPlateLeft + SideShadeWidth;
+    float rightShadeStart = ToolPlateRight - SideShadeWidth;
+    VectorPath leftSide;
+    leftSide.AddRectangle(ToolPlateLeft, shadeTop, SideShadeWidth, shadeBottom - shadeTop);
+    canvas.Fill(leftSide, LinearGradient({ToolPlateLeft, 0}, SideShade, {leftShadeEnd, 0}, NoShade));
+    VectorPath rightSide;
+    rightSide.AddRectangle(rightShadeStart, shadeTop, SideShadeWidth, shadeBottom - shadeTop);
+    canvas.Fill(rightSide, LinearGradient({ToolPlateRight, 0}, SideShade, {rightShadeStart, 0}, NoShade));
 }
 
 void DrawTextFieldPlate(VectorCanvas& canvas)

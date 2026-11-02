@@ -11,6 +11,7 @@
 #include "SharpArt/MessageBoardPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/SettingsPictures.h"
+#include "SharpArt/WaitingMarkPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
@@ -148,6 +149,19 @@ constexpr std::array AllPictures = {
     SharpPicture{"fs_scrollAllow_a.tpl", 48, 48, 0x77E9B61E, ShownAtItsSize, ColorAndAlpha, DrawScrollArrowSign, TransparentScrollGray},
     SharpPicture{"fs_ComBtn_c.tpl", 180, 54, 0x6B9CB140, ShownAtItsSize, ColorAndAlpha, DrawPillButton, TransparentCardBlue},
     SharpPicture{"fs_windowPlate_a.tpl", 184, 48, 0x9170AF52, ShownAtItsSize, ColorAndAlpha, DrawTextFieldPlate},
+    SharpPicture{"fs_toolButton_a.tpl", 200, 96, 0xFDC630D6, ShownAtItsSize, ColorAndAlpha, DrawToolButton},
+    SharpPicture{"my_ComBtn_d.tpl", 80, 80, 0x24B11088, ShownAtItsSize, ColorAndAlpha, DrawPadButtonLowerArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_e.tpl", 80, 80, 0x77BFA19C, ShownAtItsSize, ColorAndAlpha, DrawPadButtonUpperArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_d.tpl", 80, 80, 0xF1900F05, ShownAtItsSize, ColorAndAlpha, DrawPadButtonLowerArmLit, TransparentCardBlue},
+    SharpPicture{"my_ComBtn_e.tpl", 80, 80, 0xC6815F53, ShownAtItsSize, ColorAndAlpha, DrawPadButtonUpperArmLit, TransparentCardBlue},
+    SharpPicture{"it_Waiting_a.tpl", 32, 32, 0x1FD33D8D, ShownAtItsSize, Intensity, DrawWaitingMarkStepOne},
+    SharpPicture{"it_Waiting_b.tpl", 32, 32, 0xCE5B8AA2, ShownAtItsSize, Intensity, DrawWaitingMarkStepTwo},
+    SharpPicture{"it_Waiting_c.tpl", 32, 32, 0x628D7B4A, ShownAtItsSize, Intensity, DrawWaitingMarkStepThree},
+    SharpPicture{"it_Waiting_d.tpl", 32, 32, 0xE20D556E, ShownAtItsSize, Intensity, DrawWaitingMarkStepFour},
+    SharpPicture{"it_Waiting_e.tpl", 32, 32, 0x69A98266, ShownAtItsSize, Intensity, DrawWaitingMarkStepFive},
+    SharpPicture{"it_Waiting_f.tpl", 32, 32, 0xFD1FB433, ShownAtItsSize, Intensity, DrawWaitingMarkStepSix},
+    SharpPicture{"it_Waiting_g.tpl", 32, 32, 0x001A6997, ShownAtItsSize, Intensity, DrawWaitingMarkStepSeven},
+    SharpPicture{"it_Waiting_h.tpl", 32, 32, 0x811E5109, ShownAtItsSize, Intensity, DrawWaitingMarkStepEight},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},

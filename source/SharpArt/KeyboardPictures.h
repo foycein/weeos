@@ -36,4 +36,7 @@ void DrawPillButton(VectorCanvas& canvas);
 // The plate of the text field above the keys (184 by 48): a gray plate sunk into a dark frame.
 void DrawTextFieldPlate(VectorCanvas& canvas);
 
+// The button that changes the kind of keyboard (200 by 96): a white plate in a dark frame, its lower part a little darker at the top.
+void DrawToolButton(VectorCanvas& canvas);
+
 }
