@@ -168,4 +168,80 @@ void DrawSettingsPageButtonLightOnBlackRightEnd(VectorCanvas& canvas)
     DrawButtonLightPieceOnBlack(canvas, RightEndSides);
 }
 
+// ---- The arrow buttons that scroll a page up and down
+
+namespace
+{
+
+// A box with a thick black edge, white at the top and gray at the bottom, around a black arrow whose base is notched towards its point.
+// The places are those of the pages of Wii Settings (72 by 72); the keyboard's picture (72 by 52) is the same box without the empty rows
+// above it.
+constexpr Color Black = {0, 0, 0, 255};
+constexpr float BoxTop = 10;
+constexpr float BoxBottom = 62;
+constexpr float BoxWidth = 72;
+constexpr float BoxCornerRadius = 11;
+constexpr float BoxEdgeWidth = 3;
+constexpr float KeyboardBoxShift = -10;
+
+// The arrow that points up; the arrow that points down is its mirror around the middle of the box.
+constexpr Point ArrowPoint = {36, 21.3f};
+constexpr Point ArrowBaseLeft = {17.3f, 48};
+constexpr Point ArrowBaseRight = {54.7f, 48};
+constexpr Point ArrowBaseMiddle = {36, 43.2f};
+
+Point MirroredAcrossTheBox(Point point, bool pointsUp)
+{
+    if (pointsUp)
+        return point;
+
+    float boxMiddle = (BoxTop + BoxBottom) / 2;
+    return {point.x, 2 * boxMiddle - point.y};
+}
+
+void DrawArrowButton(VectorCanvas& canvas, float shift, bool pointsUp)
+{
+    VectorPath box;
+    box.AddRoundedRectangle(0, BoxTop + shift, BoxWidth, BoxBottom - BoxTop, BoxCornerRadius);
+    canvas.Fill(box, SolidPaint(Black));
+
+    float insideTop = BoxTop + BoxEdgeWidth + shift;
+    float insideBottom = BoxBottom - BoxEdgeWidth + shift;
+    VectorPath inside;
+    inside.AddRoundedRectangle(BoxEdgeWidth, insideTop, BoxWidth - 2 * BoxEdgeWidth, insideBottom - insideTop, BoxCornerRadius - BoxEdgeWidth);
+    canvas.Fill(inside, LinearGradient({0, insideTop}, Gray(254), {0, insideBottom}, Gray(185)));
+
+    auto place = [shift, pointsUp](Point point)
+    {
+        Point mirrored = MirroredAcrossTheBox(point, pointsUp);
+        return Point{mirrored.x, mirrored.y + shift};
+    };
+
+    VectorPath arrow;
+    arrow.AddPolygon({place(ArrowPoint), place(ArrowBaseRight), place(ArrowBaseMiddle), place(ArrowBaseLeft)});
+    canvas.Fill(arrow, SolidPaint(Black));
+}
+
+}
+
+void DrawSettingsPageArrowUp(VectorCanvas& canvas)
+{
+    DrawArrowButton(canvas, 0, true);
+}
+
+void DrawSettingsPageArrowDown(VectorCanvas& canvas)
+{
+    DrawArrowButton(canvas, 0, false);
+}
+
+void DrawKeyboardArrowUp(VectorCanvas& canvas)
+{
+    DrawArrowButton(canvas, KeyboardBoxShift, true);
+}
+
+void DrawKeyboardArrowDown(VectorCanvas& canvas)
+{
+    DrawArrowButton(canvas, KeyboardBoxShift, false);
+}
+
 }

@@ -21,4 +21,10 @@ void DrawSettingsPageButtonLightOnBlackLeftEnd(VectorCanvas& canvas);
 void DrawSettingsPageButtonLightOnBlackMiddle(VectorCanvas& canvas);
 void DrawSettingsPageButtonLightOnBlackRightEnd(VectorCanvas& canvas);
 
+// The buttons with a black arrow that scroll a page of Wii Settings (72 by 72) and the keyboard's list (72 by 52) up and down.
+void DrawSettingsPageArrowUp(VectorCanvas& canvas);
+void DrawSettingsPageArrowDown(VectorCanvas& canvas);
+void DrawKeyboardArrowUp(VectorCanvas& canvas);
+void DrawKeyboardArrowDown(VectorCanvas& canvas);
+
 }
