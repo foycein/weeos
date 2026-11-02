@@ -13,7 +13,7 @@ constexpr std::size_t Rsa2048SignatureSize = 256;
 constexpr std::size_t EllipticCurveSignatureSize = 60;
 constexpr std::size_t RsaPaddingSize = 60;
 
-// The padding after an elliptic curve signature is 64 bytes: the device certificate of the reference console
+// The padding after an elliptic curve signature is 64 bytes: the device certificate of a real console
 // is 384 bytes only with it, and its issuer name starts at offset 0x80.
 constexpr std::size_t EllipticCurvePaddingSize = 64;
 

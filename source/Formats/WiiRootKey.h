@@ -11,7 +11,7 @@ namespace Formats
 
 // The public key of the root of Nintendo's certificate chain for the Wii: the certificate "Root", an RSA key of 4096 bits.
 // It signs the certificate of the authority "CA00000001", which signs the certificates that sign tickets and title metadata.
-// The key is part of IOS: the kernel image of IOS80 holds it at offset 0x28D80 (docs/audit/Ios.md).
+// The key is part of IOS: the kernel image of IOS80 holds it at offset 0x28D80.
 constexpr std::size_t WiiRootModulusSize = 512;
 constexpr std::uint32_t WiiRootPublicExponent = 0x00010001;
 

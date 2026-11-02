@@ -809,7 +809,7 @@ EffectAnimation ReadAnimation(ByteReader& reader, std::size_t start, std::uint16
     animation.isBaked = header.tag == BakedCurveTag;
     animation.componentCount = std::popcount(header.componentMask);
 
-    // Version 11's emitter animations are not read: none of the files plays one without the owner's server (the lobby).
+    // Version 11's emitter animations are not read: none of the files plays one without WeeOS's own server (the lobby).
     if (isEmitterAnimation && version == EffectFileVersion11)
     {
         animation.target = EffectAnimationTarget::EmitterUnnamed;

@@ -37,8 +37,7 @@ constexpr std::size_t Rgba8GreenBlueOffset = 32;
 using BlockPixels = std::array<Rgba8Pixel, LargestBlockPixelCount>;
 using Color16Decoder = Rgba8Pixel (*)(std::uint16_t);
 
-// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255.
-// Likely, FMT-04 in docs/audit/OpenPoints/Formats.md.
+// Fills the eight bits of a byte by repeating the bits of the value, so that the largest value gives 255 (Likely).
 Byte ExpandToEightBits(unsigned value, int bitCount)
 {
     unsigned expanded = 0;

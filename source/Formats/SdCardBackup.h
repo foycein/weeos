@@ -18,7 +18,7 @@ namespace Formats
 // encrypts with its SD key, and a backup archive follows: a header, the title metadata and the contents of a channel,
 // or the files of the save data, and at the end the signature of the console.
 //
-// All numbers are big endian. docs/audit/SystemMenu.md (Data Management) says where every field comes from.
+// All numbers are big endian.
 //
 // Every encrypted header starts a chain of its own with the initialization vector of the SD card (sd_iv of keys.txt).
 // A header keeps the MD5 digest of itself. The digest is computed while the digest placeholder of the console (md5_blanker of keys.txt)

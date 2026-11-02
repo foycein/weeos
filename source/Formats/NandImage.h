@@ -55,7 +55,7 @@ enum class NandPageCheck
     Correct,
 
     // The page has data, but its error correction bytes are all 0xFF: they were never written. The last page of each copy of boot2
-    // is like this in the reference console.
+    // is like this on a real console.
     Unprotected,
 
     // The data or the error correction bytes were changed.
@@ -92,7 +92,7 @@ public:
 
     Bytes ReadBoot1Block();
 
-    // The data of blocks 1 to 7 one after the other. boot2 is stored twice in them: docs/research/Boot2.md says where.
+    // The data of blocks 1 to 7 one after the other. boot2 is stored twice in them.
     Bytes ReadBoot2Blocks();
 
     // The last 1024 bytes of the file.
