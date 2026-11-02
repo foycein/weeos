@@ -10,7 +10,7 @@ namespace WeeOS
 // True when the NAND folder holds a console: its index (written last by every import and by the file system) is there.
 bool HasConsole(const Ios::IosFolders& folders);
 
-// Makes a new console, like a Wii that leaves the factory, from the Wii files that ship beside WeeOS.exe (tools/PrepareWiiFiles):
+// Makes a new console, like a Wii that leaves the factory, from prepared Wii files beside WeeOS.exe:
 //  - a console identity of its own, when the identity folder has none (Ios::WriteNewIdentity), with the keys that every Wii shares
 //    found in the prepared System Menu and its IOS (Ios::FindSharedKeysInWiiFiles)
 //  - every prepared title, installed through the title service, which writes the tickets, the contents, content.map and uid.sys

@@ -40,7 +40,7 @@ struct HostEnvironment
     Platform::RegionalSettings regionalSettings = Platform::ReadRegionalSettings();
     std::filesystem::path pcSettingsFile = Platform::ExecutableFolder() / "WeeOS.settings.txt";
 
-    // The Wii files from which the first start makes a new console (tools/PrepareWiiFiles).
+    // The Wii files from which the first start makes a new console, when they are there.
     std::filesystem::path wiiFilesFolder = Platform::ExecutableFolder() / "WiiFiles";
 
     // Who picks the NAND of a Wii to import.

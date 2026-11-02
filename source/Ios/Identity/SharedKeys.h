@@ -38,7 +38,7 @@ public:
 // System Menu or its IOS cannot be read.
 SharedKeys FindSharedKeys(TitleContents& titles);
 
-// The same, in the Wii files that tools/PrepareWiiFiles writes: a folder for each title, named after its id ("0000000100000002"),
+// The same, in a folder of prepared Wii files: a folder for each title, named after its id ("0000000100000002"),
 // with title.tmd and the contents, each named after its content id ("00000098.app").
 SharedKeys FindSharedKeysInWiiFiles(const std::filesystem::path& wiiFilesFolder);
 
