@@ -22,7 +22,7 @@ namespace Channels
 {
 
 // The code of the WiiConnect24 download (KD 0x13DB3760): while the network does not start, from the error of SOStartup; while it does,
-// from what WeeOS's own server answered (CHN-04).
+// from what WeeOS's own server answered.
 std::uint32_t DownloadErrorCodeOfStart(int startupError);
 std::uint32_t DownloadErrorCodeOfServer(SystemMenu::ServerAnswer answer);
 
@@ -52,7 +52,7 @@ struct WiiConnect24ChannelFiles
 // "One moment, please..." (layout error1) with its waiting mark under it while its download tries to reach the server, fades out when
 // the download fails, and fades in the error layout error0 with the message of the failure, the error code under it and the button
 // "Back to the Wii Menu".
-// The message and the code are the ones of the WiiConnect24 download of the original (CHN-04): the Internet cannot be reached while the
+// The message and the code are the ones of the WiiConnect24 download of the original: the Internet cannot be reached while the
 // PC is not connected or the name of the server is not known, the service is unavailable while the server does not answer.
 // The order of the fades is the original's (Forecast 0x8000AD28), the choice of the message is the one of 0x8000B46C.
 class WiiConnect24Channel : public Channel

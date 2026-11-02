@@ -27,9 +27,9 @@ namespace Channels
 // and the System Menu is asked for.
 //
 // HOME opens the HOME Button Menu of the channel's own files, as the HBM library inside every channel program does. While it is open
-// the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again (CHN-16), and its
-// "Operations Guide" opens the channel's manual over the channel, which stands still until HOME closes the manual (CHN-13).
-// The POWER button switches the console off and the RESET button starts it again (CHN-27).
+// the channel stands still. Its "Wii Menu" starts the System Menu, its "Reset" starts the channel again, and its
+// "Operations Guide" opens the channel's manual over the channel, which stands still until HOME closes the manual.
+// The POWER button switches the console off and the RESET button starts it again.
 // When the user closes the window, the question "Turn off WeeOS?" of the menu lies over the channel (AskToTurnOff).
 class ChannelSystem
 {
@@ -109,7 +109,7 @@ private:
     bool hasAskedForMenu = false;
 };
 
-// The archive of the console's two bitmap fonts: content 5 of the System Menu, which titles share (CHN-77). Nothing when it is not there.
+// The archive of the console's two bitmap fonts: content 5 of the System Menu, which titles share. Nothing when it is not there.
 std::optional<Formats::Bytes> ReadConsoleFontArchive(const Ios::TitleService& titles);
 
 }

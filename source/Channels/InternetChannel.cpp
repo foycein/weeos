@@ -55,7 +55,7 @@ constexpr std::u16string_view OperaVersionScript =
 // 456 / 450 layout units and the page is as wide as the picture.
 constexpr float WidePageHeight = 450;
 
-// The pages, the favorites, the settings and the toolbar are drawn with one layout unit per CSS pixel (BRW-19, Assumed).
+// The pages, the favorites, the settings and the toolbar are drawn with one layout unit per CSS pixel (Assumed).
 constexpr float FlatPageScale = 1;
 
 // The places of the widescreen startpage.css, in pixels of the page, from the left edge of #frontcontainer, which is 547 pixels wide
@@ -116,7 +116,7 @@ constexpr float AlertOkMargin = 131;
 constexpr float ButtonMargin = 37;
 constexpr PageTextStyle MessageStyle = {22, {0, 0, 0, 255}, Text::HorizontalAlignment::Left};
 
-// The page under a dialog is darkened (CHN-29, Assumed: #dialogBackground is black, how much of the page shows through is not known).
+// The page under a dialog is darkened (Assumed: #dialogBackground is black, how much of the page shows through is not known).
 constexpr Formats::Rgba8Color DialogShade = {0, 0, 0, 128};
 
 // The pictures hold their states one under the other: the state of a place that the pointer is on is the second one.
@@ -199,7 +199,7 @@ constexpr std::string_view DeleteFavoriteText = "D_DELETE_FAV";
 constexpr std::string_view GoogleText = "S_HOKKAIDO_GOOGLE";
 constexpr std::string_view YahooText = "S_HOKKAIDO_YAHOO";
 
-// The longest address and search text of the keyboard (BRW-09, Assumed: the original's limits were not read).
+// The longest address and search text of the keyboard (Assumed: the original's limits were not read).
 constexpr std::size_t LongestTypedText = 1024;
 
 constexpr std::string_view SecureScheme = "https://";

@@ -17,7 +17,7 @@ enum class AccessMarkPlace
     OverThePage,
 };
 
-// The Wii Shop Channel's access mark (CHN-93): the model of AccessMark.brres, a turning mark with its shadow behind it, one turn a second.
+// The Wii Shop Channel's access mark: the model of AccessMark.brres, a turning mark with its shadow behind it, one turn a second.
 // The model is one square of 4 by 4 units for the mark and one for the shadow; it is drawn as two quads with the pictures of the file.
 class ShopAccessMark
 {

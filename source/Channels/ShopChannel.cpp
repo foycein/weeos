@@ -56,7 +56,7 @@ constexpr std::string_view CursorArchivePath = "arc/layout/common/cursor.ash";
 constexpr std::string_view AccessMarkPath = "arc/layout/AccessMark.brres";
 
 // The start-up picture stays until the browser has drawn its first page (0x8001BD00). Its own start takes a while even when the page is
-// an error that comes at once; the picture shows at least this long (StartupPictureSeconds, CHN-28, Assumed).
+// an error that comes at once; the picture shows at least this long (StartupPictureSeconds, Assumed).
 constexpr double StartupPictureSeconds = 2;
 
 // The loop that plays while the access mark shows (0x8001CB60).
@@ -101,14 +101,14 @@ constexpr ButtonPlaces MiddleButton = {{199, 287, 211, 75}, {211, 294, 187, 55},
 constexpr ButtonPlaces LeftButton = {{13, 371, 211, 75}, {25, 379, 187, 55}, {27, 394, 185, 22}};
 constexpr ButtonPlaces RightButton = {{387, 371, 211, 75}, {399, 379, 187, 55}, {400, 394, 185, 22}};
 
-// The sound effects of the pages, cSE_Forcus and cSE_Decide of sound.js, by their names in IplSound.brsar (CHN-28, Assumed).
+// The sound effects of the pages, cSE_Forcus and cSE_Decide of sound.js, by their names in IplSound.brsar (Assumed).
 constexpr std::string_view FocusSound = "WIPL_SE_BT_TARGETTING";
 constexpr std::string_view DecideSound = "WIPL_SE_DECIDE";
 
 // The first page of the Shop is on its server. When the browser cannot load it, the browser's error event names the class of the error
 // and its number, and the Shop shows 209511 plus the number for an error of the HTTP class (0x80029460). Which numbers the browser
 // gives for a name that is not found, a server that does not answer and a reply it cannot read was not read: the numbers of the SDK's
-// HTTP library stand for them (CHN-04, Assumed). The codes are on no list of internet.html, so the page is error.html.
+// HTTP library stand for them (Assumed). The codes are on no list of internet.html, so the page is error.html.
 constexpr std::uint32_t BrowserHttpErrorCodeBase = 209511;
 constexpr std::uint32_t BrowserNameNotFoundError = 4;
 constexpr std::uint32_t BrowserConnectError = 5;

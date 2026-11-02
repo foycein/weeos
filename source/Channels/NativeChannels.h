@@ -48,7 +48,7 @@ struct ChannelSharedFiles
 
 std::optional<ChannelSharedFiles> SharedFilesOf(Ios::TitleId titleId);
 
-// The sound archives that a channel plays: its own and the one of its HOME menu, each read from a content of its title (CHN-30).
+// The sound archives that a channel plays: its own and the one of its HOME menu, each read from a content of its title.
 // A channel asks for its sounds by name (ChannelServices::sounds), and the program plays each name from the archive that has it.
 std::vector<Formats::Bytes> ReadSoundArchives(Ios::TitleId titleId, SystemMenu::TitleContents& contents);
 

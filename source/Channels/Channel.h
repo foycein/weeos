@@ -31,7 +31,7 @@ public:
     // draws them while it is open.
     virtual SystemMenu::CursorManager& Hands() = 0;
 
-    // The channel's own hands when they are particle effects (the Forecast, the News and the Mii Channel, CHN-26), or null. The
+    // The channel's own hands when they are particle effects (the Forecast, the News and the Mii Channel), or null. The
     // channel system moves them and draws them over the channel while the HOME menu is closed; the HOME menu shows the hands of
     // Hands().
     virtual EffectHands* OwnHands()

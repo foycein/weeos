@@ -23,7 +23,7 @@ namespace Channels
 // own server, which does not exist yet, so all it shows are the start-up picture and its local error pages,
 // which WeeOS draws natively from the pages' files:
 //  1. the start-up picture, the Wii logo of the area (StartupTM for the USA, 0x8001B420), with the turning access mark under the logo and
-//     its loading sound, while the network starts and the first page of the server is asked for (CHN-93);
+//     its loading sound, while the network starts and the first page of the server is asked for;
 //  2. the page of the error: internet.html, with the button Wii Menu, for the codes of a missing Internet connection, and error.html,
 //     with Wii Menu and Try Again, for the others (0x8002BA40). A server that cannot be reached gives error.html. Try Again asks again:
 //     the page stays, with the access mark small in its upper left corner, until the next page comes.

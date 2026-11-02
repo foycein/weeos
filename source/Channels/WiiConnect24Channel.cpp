@@ -37,7 +37,7 @@ constexpr std::array<std::string_view, 6> OtherLanguages = {"JP", "GE", "FR", "I
 // The hands of the channel's HOME Button Menu (HomeButton3), which show while it is open.
 constexpr std::string_view HandArchivePath = "./HomeButton3/LZ77_homeBtn.arc";
 
-// The channel's own hands are particle effects of its resource content (CHN-26). The Forecast draws them in a box of the size of the
+// The channel's own hands are particle effects of its resource content. The Forecast draws them in a box of the size of the
 // picture, the shadow 3 units right of and below the hand (0x8002C304).
 constexpr std::string_view HandEffectsPath = "./nw4r_defcursor_all01.breff.LZ";
 constexpr std::string_view HandPicturesPath = "./nw4r_defcursor_all01.breft.LZ";
@@ -62,7 +62,7 @@ constexpr std::uint32_t HttpNameNotFoundError = 4;
 constexpr std::uint32_t HttpConnectError = 5;
 constexpr std::uint32_t HttpReplyNotUnderstoodError = 7;
 
-// The sounds of the error, by their names in rev_wtr.brsar and rev_news.brsar (CHN-26, Assumed).
+// The sounds of the error, by their names in rev_wtr.brsar and rev_news.brsar (Assumed).
 constexpr std::string_view ErrorSound = "WTR_SE_COM_ERROR";
 constexpr std::string_view ButtonSound = "WTR_SE_COM_BUTTON";
 

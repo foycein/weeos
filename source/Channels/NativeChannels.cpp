@@ -64,7 +64,7 @@ constexpr std::size_t WiiMenuResetAndManual = 3;
 
 // The manuals of the Forecast and the News Channel: html-us.arc of content 10, which their programs open as arc:/html/startup.html
 // (0x8003B2C8 of the Forecast). The browser plays the sounds of the channel by their numbers in the archive, which both archives
-// share: 0x17 for the focus, 0x18 for a choice, 0x16 for scrolling, 0x1B for closing (0x8007E2A8; CHN-13).
+// share: 0x17 for the focus, 0x18 for a choice, 0x16 for scrolling, 0x1B for closing (0x8007E2A8).
 constexpr ManualSounds ManualSoundNames = {"WTR_SE_COM_RECEIVE", "WTR_SE_COM_SUCCESS", "WTR_SE_B_SCROLL", "WTR_SE_COM_BUTTON_B"};
 constexpr ManualLocation WiiConnect24ChannelManual = {10, "html-us.arc", "html/startup.html", ManualSoundNames};
 
@@ -102,7 +102,7 @@ constexpr ChannelSharedFiles InternetSharedFiles = {.fontContentIndex = 8,
     .isHomeMenuPacked = false,
     .offeredHomeMenuButtons = WiiMenuAndReset};
 
-// Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts (CHN-97).
+// Wii Speak opens HomeButton3 of its content 3 and has no content of fonts: its program uses the console's fonts.
 constexpr ChannelSharedFiles WiiSpeakSharedFiles = {.fontContentIndex = std::nullopt,
     .homeMenuContentIndex = 3,
     .homeMenuFolder = "./HomeButton3",
@@ -124,7 +124,7 @@ constexpr std::array<ChannelSoundArchive, 2> NewsSounds = {{{9, "./rev_news.brsa
 constexpr std::array<ChannelSoundArchive, 1> ShopSounds = {{{2, "arc/sound/IplSound.brsar", false}}};
 constexpr std::array<ChannelSoundArchive, 2> WiiSpeakSounds = {{{2, "./MicChatSound.brsar", false}, {3, "./HomeButton3/Huf8_HomeButtonSe.brsar", true}}};
 
-// The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts (CHN-70).
+// The Mii Channel plays its own archive (80017EB0) and the sounds of HomeButton2, which content 4 keeps beside its layouts.
 constexpr std::array<ChannelSoundArchive, 2> MiiSounds = {{{2, "Channel/Sound/NigaoeSound.brsar", false},
     {4, "./HomeButton2/Huf8_HomeButtonSe.brsar", true}}};
 

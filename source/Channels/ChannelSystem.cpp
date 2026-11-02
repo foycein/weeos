@@ -341,7 +341,7 @@ void ChannelSystem::FollowHomeButtonPermission()
         homeButton->Disable();
 }
 
-// The SDK of the channels switches the console off for POWER and restarts it for RESET (CHN-27).
+// The SDK of the channels switches the console off for POWER and restarts it for RESET.
 void ChannelSystem::AnswerFrontPanel()
 {
     std::optional<Ios::PowerEvent> button = power.TryTakeEvent();

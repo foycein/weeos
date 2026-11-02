@@ -34,7 +34,7 @@ struct EffectHandsLook
     bool closedHandTurns = true;
 };
 
-// The hands of the channels that draw them as particle effects of nw4r_defcursor_all01 (CHN-26): the hand "def_cursor_normal_1p"
+// The hands of the channels that draw them as particle effects of nw4r_defcursor_all01: the hand "def_cursor_normal_1p"
 // (hold, open; 1p to 4p) and under it its shadow "def_cursor_normal_sd", placed where the remote points and turned with the remote.
 // The effects make one particle that lives one step, so a hand is made again in every step at the pointer, as the Forecast does
 // (0x8002C304).
