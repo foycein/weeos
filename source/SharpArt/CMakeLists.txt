@@ -1,4 +1,5 @@
 add_library(SharpArt STATIC
+    ChannelBannerPictures.cpp
     ClockPictures.cpp
     CursorPictures.cpp
     DataManagementPictures.cpp

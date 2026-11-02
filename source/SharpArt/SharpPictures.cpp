@@ -1,5 +1,6 @@
 #include "SharpArt/SharpPictures.h"
 
+#include "SharpArt/ChannelBannerPictures.h"
 #include "SharpArt/ClockPictures.h"
 #include "SharpArt/CursorPictures.h"
 #include "SharpArt/DataManagementPictures.h"
@@ -129,6 +130,8 @@ constexpr std::array AllPictures = {
     SharpPicture{"ist_icon_009.tpl", 64, 64, 0x9067C68B, ChannelMagnification, ColorAndAlpha, DrawInternetWrench, TransparentWhite},
     SharpPicture{"ist_icon_010.tpl", 64, 64, 0x5BBAE1A6, ChannelMagnification, ColorAndAlpha, DrawInternetQuestionMark, TransparentWhite},
     SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
+    SharpPicture{"sk_MiiLogo_00.tpl", 72, 48, 0x33D2EED2, ChannelMagnification, ColorAndAlpha, DrawMiiLogoColors},
+    SharpPicture{"sk_MiiLogo_01.tpl", 72, 48, 0x9CC69756, ChannelMagnification, Intensity, DrawMiiLogoShape},
 };
 
 constexpr float FullByte = 255;
