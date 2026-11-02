@@ -117,7 +117,7 @@ void ShareExtraHeight(std::vector<RowHeight>& rowHeights, float extraHeight)
 }
 
 // Cells that ask for more than the width of their table give way, down to their content: the pages ask for a cell of 1019 pixels in a
-// table as wide as the screen and still show their content in the middle of the screen (CHN-13).
+// table as wide as the screen and still show their content in the middle of the screen.
 void NarrowAskedColumns(std::vector<float>& widths, const ColumnMeasures& measures, float excess)
 {
     float give = 0;
