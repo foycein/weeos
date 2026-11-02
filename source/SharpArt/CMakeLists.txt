@@ -6,6 +6,7 @@ add_library(SharpArt STATIC
     HomeMenuPictures.cpp
     Paint.cpp
     RemotePictures.cpp
+    SettingsPictures.cpp
     SharpPictures.cpp
     SmallWords.cpp
     VectorCanvas.cpp

@@ -6,6 +6,7 @@
 #include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
 #include "SharpArt/RemotePictures.h"
+#include "SharpArt/SettingsPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
@@ -104,6 +105,15 @@ constexpr std::array AllPictures = {
     SharpPicture{"th_optnBtn_a2.tpl", 8, 64, 0x684A418C, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonMiddle, TransparentBlack},
     SharpPicture{"th_optnBtn_a3.tpl", 24, 64, 0x01422CAE, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonRightEnd, TransparentBlack},
     SharpPicture{"th_btn_L_a3.tpl", 56, 112, 0x74E6D175, ShownAtItsSize, ColorAndAlpha, DrawBigButtonRightEnd, TransparentButtonGrayOfHome},
+    SharpPicture{"SetBtn_a0.tpl", 32, 64, 0xB33DE186, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonLeftEnd, TransparentWhite},
+    SharpPicture{"SetBtn_a1.tpl", 8, 64, 0x0ACC8A22, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonMiddle, TransparentWhite},
+    SharpPicture{"SetBtn_a2.tpl", 32, 64, 0xA68F5DE2, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonRightEnd, TransparentWhite},
+    SharpPicture{"SetBtn_Focus_a0.tpl", 32, 64, 0xDBBFA318, ShownAtItsSize, Intensity, DrawSettingsPageButtonLightLeftEnd},
+    SharpPicture{"SetBtn_Focus_a1.tpl", 8, 64, 0x9DE70E1B, ShownAtItsSize, Intensity, DrawSettingsPageButtonLightMiddle},
+    SharpPicture{"SetBtn_Focus_a2.tpl", 32, 64, 0x59865F1F, ShownAtItsSize, Intensity, DrawSettingsPageButtonLightRightEnd},
+    SharpPicture{"SetBtn_Focus_a0.tpl", 32, 64, 0xEDD9167C, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonLightOnBlackLeftEnd},
+    SharpPicture{"SetBtn_Focus_a1.tpl", 8, 64, 0x4B0C5D91, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonLightOnBlackMiddle},
+    SharpPicture{"SetBtn_Focus_a2.tpl", 32, 64, 0xBD6D9C15, ShownAtItsSize, ColorAndAlpha, DrawSettingsPageButtonLightOnBlackRightEnd},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},
