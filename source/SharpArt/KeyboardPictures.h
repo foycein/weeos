@@ -33,4 +33,7 @@ void DrawScrollArrowSign(VectorCanvas& canvas);
 // bottom and the right end.
 void DrawPillButton(VectorCanvas& canvas);
 
+// The plate of the text field above the keys (184 by 48): a gray plate sunk into a dark frame.
+void DrawTextFieldPlate(VectorCanvas& canvas);
+
 }

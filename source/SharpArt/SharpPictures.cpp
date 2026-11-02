@@ -137,6 +137,7 @@ constexpr std::array AllPictures = {
     SharpPicture{"fs_cellPhoneIcon_a.tpl", 64, 32, 0x71DA0D73, ShownAtItsSize, ColorAndAlpha, DrawTenKeySign},
     SharpPicture{"fs_scrollAllow_a.tpl", 48, 48, 0x77E9B61E, ShownAtItsSize, ColorAndAlpha, DrawScrollArrowSign, TransparentScrollGray},
     SharpPicture{"fs_ComBtn_c.tpl", 180, 54, 0x6B9CB140, ShownAtItsSize, ColorAndAlpha, DrawPillButton, TransparentCardBlue},
+    SharpPicture{"fs_windowPlate_a.tpl", 184, 48, 0x9170AF52, ShownAtItsSize, ColorAndAlpha, DrawTextFieldPlate},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},

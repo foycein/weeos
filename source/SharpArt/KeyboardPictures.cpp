@@ -289,4 +289,58 @@ void DrawPillButton(VectorCanvas& canvas)
     canvas.Fill(inside, LinearGradient({162, 0}, Transparent(PillShadeBlue), {176, 0}, PillShadeBlue));
 }
 
+// ---- The plate of the text field
+
+namespace
+{
+
+// A dark frame around a gray plate that is lighter in the upper left, with a shadow inside its upper and left edges and a light inside its lower
+// and right edges, as if it were sunk into the keyboard. The whole plate lets a little of the background through.
+constexpr float PlateLeft = 3;
+constexpr float PlateTop = 3;
+constexpr float PlateRight = 181;
+constexpr float PlateBottom = 44.9f;
+constexpr float PlateCornerRadius = 6;
+constexpr float PlateFrameWidth = 2;
+
+// The frame is thinner on the lit sides, the right and the bottom.
+constexpr float PlateLitFrameWidth = 1.4f;
+constexpr Formats::Byte PlateOpacity = 241;
+constexpr Color ClearBlack = {0, 0, 0, 0};
+constexpr Color ClearWhite = {255, 255, 255, 0};
+
+constexpr Color WithAlpha(Color color, Formats::Byte alpha)
+{
+    color.alpha = alpha;
+    return color;
+}
+
+void MakeTranslucent(VectorCanvas& canvas, Formats::Byte opacity)
+{
+    for (Formats::Rgba8Pixel& pixel : canvas.Picture().pixels)
+        pixel.alpha = static_cast<Formats::Byte>(pixel.alpha * opacity / 255);
+}
+
+}
+
+void DrawTextFieldPlate(VectorCanvas& canvas)
+{
+    float insideLeft = PlateLeft + PlateFrameWidth;
+    float insideTop = PlateTop + PlateFrameWidth;
+    float insideRight = PlateRight - PlateLitFrameWidth;
+    float insideBottom = PlateBottom - PlateLitFrameWidth;
+
+    FillRoundedBox(canvas, PlateLeft, PlateTop, PlateRight, PlateBottom, PlateCornerRadius, SolidPaint(Black));
+
+    VectorPath inside;
+    inside.AddRoundedRectangle(insideLeft, insideTop, insideRight - insideLeft, insideBottom - insideTop, PlateCornerRadius);
+    canvas.Fill(inside, LinearGradient({72, 10}, Gray(203), {122, 40}, Gray(172)));
+    canvas.Fill(inside, LinearGradient({0, 36}, ClearWhite, {0, 41.5f}, WithAlpha(White, 245)));
+    canvas.Fill(inside, LinearGradient({171.5f, 0}, ClearWhite, {insideRight - 0.3f, 0}, WithAlpha(White, 230)));
+    canvas.Fill(inside, LinearGradient({0, insideTop}, WithAlpha(Black, 140), {0, 9.5f}, ClearBlack));
+    canvas.Fill(inside, LinearGradient({insideLeft, 0}, WithAlpha(Black, 110), {9, 0}, ClearBlack));
+
+    MakeTranslucent(canvas, PlateOpacity);
+}
+
 }
