@@ -55,7 +55,7 @@ struct SameCodeVersion
 };
 
 // IOS80 v6944, the one a new WeeOS installs, has the title service, the file system and the modules of the dump's v7200 byte for byte; only
-// the build text, the build date of the kernel and two waits for the SEEPROM differ (docs/research/Boot2.md, section 1, row 3).
+// the build text, the build date of the kernel and two waits for the SEEPROM differ.
 constexpr SameCodeVersion SameCodeVersions[] = {
     {80, 6944, 0x00030310},
 };

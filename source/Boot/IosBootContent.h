@@ -9,7 +9,7 @@
 namespace Boot
 {
 
-// The kernel file of an IOS, found the way the console finds it before it starts the IOS (docs/research/Boot2.md 4.5).
+// The kernel file of an IOS, found the way the console finds it before it starts the IOS.
 struct IosBootContent
 {
     Ios::TitleId iosTitleId;

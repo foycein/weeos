@@ -19,7 +19,7 @@ namespace Boot
 //     ... run the System Menu; when it starts a channel:
 //     console.LaunchTitle(channelId, ticketView);
 //
-// The sequence is the one of the console (docs/research/Boot2.md, docs/research/BootChain.md):
+// The sequence is the one of the console:
 //  - boot2 starts. It has a file system and the title service. It prepares the NAND folders, decides that the System Menu starts
 //    (BootSelection) and asks for it like any title is asked for: the request goes to /sys/launch.sys and IOS restarts.
 //  - The new IOS, the one the System Menu needs, reads the request, checks it and enters the title.

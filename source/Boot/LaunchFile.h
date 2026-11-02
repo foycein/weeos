@@ -24,7 +24,7 @@ struct LaunchRequest
 // /sys/launch.sys holds the request while IOS restarts: the title id (8 bytes) and the ticket view.
 // /sys/space.sys holds zeros. It is there so that the launch file always finds room on the NAND:
 // the file is deleted before the launch file is written and put back when the launch file is gone.
-// The kernel makes these two files in this order (docs/research/Boot2.md 4.5).
+// The kernel makes these two files in this order.
 constexpr std::size_t TitleIdSize = 8;
 constexpr std::size_t LaunchFileSize = TitleIdSize + Ios::TicketViewSize;
 constexpr std::size_t SpaceFileSize = 0x4AC4;

@@ -15,7 +15,7 @@ constexpr std::uint32_t Mem1Size = 0x01800000;
 constexpr std::uint32_t Mem2Size = 0x04000000;
 
 // The hardware version word of the console (low memory 0x80003138). The dump does not tell it. The System Menu only separates
-// the values 0, 1, 2, 0x10, 0x11 and larger ones, and 0x11 is the one of the first model (docs/audit/OpenPoints/Boot.md BOOT-11).
+// the values 0, 1, 2, 0x10, 0x11 and larger ones, and 0x11 is the one of the first model.
 constexpr std::uint32_t HollywoodVersionWord = 0x00000011;
 
 // What boot1 leaves in low memory 0x80003158. Only the kernel reads it. The value is the example of WiiBrew (BOOT-16).
@@ -25,8 +25,8 @@ constexpr std::uint32_t MemoryVendorCode = 0x0000FF16;
 constexpr std::uint32_t BusClockHertz = 243'000'000;
 constexpr std::uint32_t ProcessorClockHertz = 729'000'000;
 
-// What a program that was just started needs to know, taken from what IOS tells the PowerPC when it starts one
-// (docs/research/BootChain.md 3.5 and appendix B). The words that a program writes into low memory itself are not here.
+// What a program that was just started needs to know, taken from what IOS tells the PowerPC when it starts one.
+// The words that a program writes into low memory itself are not here.
 struct BootInformation
 {
     // The title that was started, the user and the group it runs as, and the IOS it runs on.

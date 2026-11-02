@@ -10,8 +10,7 @@
 namespace Boot
 {
 
-// Starts a title the way the console does it, for the System Menu at power on and for every title that a program asks for later
-// (docs/research/Boot2.md 4.5, docs/research/BootChain.md 3.4):
+// Starts a title the way the console does it, for the System Menu at power on and for every title that a program asks for later:
 //
 //  1. The title service checks the title and the ticket view and gives the title a user id.
 //  2. The kernel file of the IOS that the title needs is looked up (IosBootContent).
