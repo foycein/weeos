@@ -67,7 +67,7 @@ void ConnectionPages::BuildPage(PageId page, Page& content)
     builder.AddBottomRight(u"OK", [this] { navigator.GoTo(PageId::ConnectionStatus); });
 }
 
-// The test passes while the PC is connected. The owner's server comes later (docs/DECISIONS.md, Online), so the page only names
+// The test passes while the PC is connected. WeeOS's own server comes later, so the page only names
 // its code when it does not answer.
 std::vector<std::u16string> ConnectionPages::LinesOfTheResult() const
 {

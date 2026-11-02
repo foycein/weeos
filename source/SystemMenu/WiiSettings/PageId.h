@@ -3,8 +3,8 @@
 namespace SystemMenu
 {
 
-// The pages of Wii Settings. The original has them as files of a web site (docs/research/SystemMenuStructure.md 4.9 and Appendix B);
-// WeeOS keeps the pages that belong to the Wii and adds the settings of the PC (docs/DECISIONS.md, Settings).
+// The pages of Wii Settings. The original has them as files of a web site;
+// WeeOS keeps the pages that belong to the Wii and adds the settings of the PC.
 enum class PageId
 {
     // The page that leads to all the others.

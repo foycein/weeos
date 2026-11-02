@@ -9,8 +9,8 @@
 namespace SystemMenu
 {
 
-// "Import a Wii NAND" of PC Settings: the import of the person's own Wii, the same import that the first start offers
-// (docs/DECISIONS.md, Start, welcome and identity). The program picks the NAND, imports it beside the menu and starts again with the
+// "Import a Wii NAND" of PC Settings: the import of the person's own Wii, the same import that the first start offers.
+// The program picks the NAND, imports it beside the menu and starts again with the
 // imported Wii; the pages ask for it, wait while it works, and tell why it failed when it did.
 class ImportPages : public PageGroup
 {

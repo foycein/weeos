@@ -17,7 +17,7 @@ struct FramePicture
     int offsetFromTop = 0;
 };
 
-// The pictures that make a look. The pictures are those of the pages of the original (docs/research/SystemMenuStructure.md Appendix B).
+// The pictures that make a look. The pictures are those of the pages of the original.
 struct LookPictures
 {
     // The picture behind the button. It is drawn at its own size in the middle of the button.

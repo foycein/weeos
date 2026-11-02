@@ -13,8 +13,8 @@
 namespace SystemMenu
 {
 
-// "Internet": WeeOS is online through the internet connection of the PC, with nothing to set up (docs/DECISIONS.md, Online). The page says
-// so and offers the connection test (PcConnectionTest): it passes while the PC is connected, and says whether the owner's server answered.
+// "Internet": WeeOS is online through the internet connection of the PC, with nothing to set up. The page says
+// so and offers the connection test (PcConnectionTest): it passes while the PC is connected, and says whether WeeOS's own server answered.
 class ConnectionPages : public PageGroup
 {
 public:

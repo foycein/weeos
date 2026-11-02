@@ -22,7 +22,7 @@ std::unique_ptr<Screen> MakeWiiSettingsScreen(MenuServices& services, int argume
 class SettingsScreen : public Screen
 {
 public:
-    // The argument says which page comes first: 1 Internet, any other the index page (docs/research/SystemMenuStructure.md 3.4; the pages
+    // The argument says which page comes first: 1 Internet, any other the index page (the pages
     // the other arguments name follow the PC in WeeOS).
     // Throws a MenuError when the menu has no settings to work with.
     SettingsScreen(MenuServices& menuServices, int argument);

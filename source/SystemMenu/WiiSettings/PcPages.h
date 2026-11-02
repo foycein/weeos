@@ -12,7 +12,7 @@
 namespace SystemMenu
 {
 
-// "PC Settings": the window, the sound and the controls of WeeOS on the PC, in the look of the other pages (docs/DECISIONS.md, Settings).
+// "PC Settings": the window, the sound and the controls of WeeOS on the PC, in the look of the other pages.
 // Every choice counts at once: the pages store it in the file beside the program and the program makes it true while the user looks.
 // The sound mode and the rumble are the console's own settings, so these pages change those (the sound mode on the page SoundSet).
 class PcPages : public PageGroup
