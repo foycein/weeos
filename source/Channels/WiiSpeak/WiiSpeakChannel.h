@@ -19,7 +19,7 @@
 namespace Channels
 {
 
-// The Wii Speak Channel 2.0 (HCFE v512) (docs/research/Channels.md 8, docs/audit/WiiSpeak.md).
+// The Wii Speak Channel 2.0 (HCFE v512).
 //
 // The start follows FirstSetUpScene (0x80094920 of the program): the Mii database must be readable ("Could not read save data from
 // the Mii Channel." and back to the Wii Menu otherwise), the Wii Speak accessory must be there (its two messages, and back to the Wii

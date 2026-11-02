@@ -17,7 +17,7 @@ namespace
 
 constexpr std::string_view SceneName = "talk";
 
-// The code that the Wii Speak Channel shows when the login server of Nintendo Wi-Fi Connection, whose place the owner's server takes,
+// The code that the Wii Speak Channel shows when the login server of Nintendo Wi-Fi Connection, whose place WeeOS's own server takes,
 // cannot be reached while the Internet works (CHN-99, Assumed).
 constexpr std::uint32_t LoginServerUnreachableCode = 20100;
 
@@ -287,7 +287,7 @@ std::optional<WiiSpeakScreenName> ChatRoomScreen::Press(const std::string& butto
     return std::nullopt;
 }
 
-// The lobby logs in to Nintendo Wi-Fi Connection first, whose place the owner's server takes (CHN-04). While the PC is not connected the
+// The lobby logs in to Nintendo Wi-Fi Connection first, whose place WeeOS's own server takes (CHN-04). While the PC is not connected the
 // network does not start; else the try reaches for the server beside the program.
 void ChatRoomScreen::StartConnecting()
 {

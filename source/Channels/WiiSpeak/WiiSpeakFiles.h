@@ -13,7 +13,7 @@
 namespace Channels
 {
 
-// The files of the Wii Speak Channel 2.0 (HCFE v512) in its content 2 (docs/research/Channels.md 8.1): the system archive
+// The files of the Wii Speak Channel 2.0 (HCFE v512) in its content 2: the system archive
 // "system.szs" with the common layouts, the fonts and the messages, the archives of the scenes "scene/<name>.szs", the sound archive
 // and the music of the performance check. The .szs archives are packed with Yaz0; each holds the layout bundles of a scene as
 // "<number>_<name>.arc", whose folders blyt, anim and timg lie at the top.

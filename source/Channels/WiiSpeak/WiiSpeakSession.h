@@ -23,7 +23,7 @@
 namespace Channels
 {
 
-// The screens of the Wii Speak Channel that WeeOS has (docs/audit/WiiSpeak.md).
+// The screens of the Wii Speak Channel that WeeOS has.
 enum class WiiSpeakScreenName
 {
     ChatRoom,
