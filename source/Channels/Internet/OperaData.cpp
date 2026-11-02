@@ -47,7 +47,7 @@ constexpr std::size_t ThumbnailPlaceCount = 140;
 constexpr std::size_t ThumbnailPlaceSize = 18560;
 constexpr std::string_view FreeThumbnailPlace = "*";
 
-// opera.vff is 1.5 MB, as the original's (the dump's /title/00010001/48414445/data/opera.vff), which makes it a FAT12 volume.
+// opera.vff is 1.5 MB, as the original's (/title/00010001/48414445/data/opera.vff on a real console), which makes it a FAT12 volume.
 constexpr std::uint32_t VolumeSize = 1572864;
 
 std::string PathInDataFolder(std::string_view name)
