@@ -50,6 +50,11 @@ public:
     // The volume of the whole sequence, from 0 to 1. The notes take it from the next sound frame on.
     void SetVolume(float sequenceVolume);
 
+    // Added to the pan of every note (-1 left, 1 right), and multiplying the pitch of every note. The notes take them from the next
+    // sound frame on.
+    void SetPan(float sequencePan);
+    void SetPitch(float sequencePitch);
+
     // A held sequence stands still: its ticks do not move on, and the voices of its notes are held where they are.
     void SetHeld(bool held);
 
@@ -134,6 +139,8 @@ private:
     const LoadedBank& bank;
     SequenceSettings settings;
     float volume;
+    float pan = 0.0f;
+    float pitch = 1.0f;
     VoicePool& voices;
     SequenceGlobals& globals;
 

@@ -138,6 +138,10 @@ enum class PlazaMoment
     // A falling Mii hits the ground the first time (SEQ_DOOL_THROW_GND1), and then bounces (SEQ_DOOL_THROW_GND2).
     HitsTheGround,
     BouncesOnTheGround,
+
+    // A walking or running Mii puts its left or its right foot down (MiiFootsteps.h).
+    StepsWithTheLeftFoot,
+    StepsWithTheRightFoot,
 };
 
 struct PlazaMomentOfMii
@@ -189,6 +193,12 @@ public:
     void UpdateMii(const StoredMii& mii);
     void RemoveMii(std::size_t slot);
 
+    // A Mii leaves the parade and the list of the parade, whose later places move one down; the parade goes on. The body of an erased Mii
+    // takes the next Mii of the parade at the back (800257EC); the body of a Mii sent to the plaza stays away until the parade starts
+    // again (8005B3F8).
+    void EraseFromParade(std::size_t place);
+    void SendFromParade(std::size_t place);
+
     const std::vector<PlazaMii>& Miis() const;
     const PlazaMii* FindMii(std::size_t slot) const;
 
@@ -234,6 +244,9 @@ public:
     // The point of the ground that a place of the picture shows.
     Formats::Vector2 GroundPointAt(Formats::Vector2 picturePlace, float canvasWidth, float canvasHeight) const;
 
+    // The point of the ground in the middle of the picture, straight ahead of the camera.
+    Formats::Vector2 GroundPointAhead() const;
+
     // The Mii nearest the camera whose body covers the place of the picture, if one does.
     std::optional<std::size_t> MiiAt(Formats::Vector2 picturePlace, float canvasWidth, float canvasHeight) const;
 
@@ -264,6 +277,7 @@ private:
     void CountTalkBalloon(PlazaMii& plazaMii);
     void CountRunningDust(PlazaMii& plazaMii);
     void NoteFrameMoment(const PlazaMii& plazaMii, float frameBefore, float momentFrame, PlazaMoment moment);
+    void NoteFootsteps(const PlazaMii& plazaMii, float frameBefore);
     void TurnAndStep(PlazaMii& plazaMii, float speedKept, float speedAdded, float remaining);
     void PushApart();
     void WakeWhenBumped(PlazaMii& plazaMii);
@@ -275,6 +289,8 @@ private:
     void KeepTheParadeComing();
     void LetTheNextMiiComeIn();
     void ReturnToTheFarEnd(PlazaMii& plazaMii);
+    void LeaveTheParadeOrder(std::size_t place);
+    void MovePlacesDownAfter(std::size_t place);
     bool TakeTheNextParadeMii(PlazaMii& plazaMii);
     void PlaceAtTheBackOfTheParade(PlazaMii& plazaMii);
     bool IsCrowded(Formats::Vector2 place, const PlazaMii& newcomer) const;

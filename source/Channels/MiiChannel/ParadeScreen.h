@@ -6,6 +6,7 @@
 #include "Channels/MiiChannel/MiiChannelData.h"
 #include "Channels/MiiChannel/MiiEffects.h"
 #include "Channels/MiiChannel/MiiFigures.h"
+#include "Channels/MiiChannel/MiiFootsteps.h"
 #include "Channels/MiiChannel/MiiPlaza.h"
 #include "Channels/MiiChannel/PlazaGround.h"
 
@@ -51,6 +52,7 @@ public:
 
 private:
     void ShowParadeMiis();
+    void PlayFootsteps(const std::vector<PlazaMomentOfMii>& moments);
     void HandleButtons();
     void HandleHand();
     void HandleMessageAnswer();
@@ -69,6 +71,7 @@ private:
     std::unique_ptr<ButtonFocus> focus;
     MiiHeads heads;
     MiiPlaza parade;
+    MiiFootsteps footsteps;
 
     std::optional<std::size_t> miiToErase;
     bool isWayBackAsked = false;

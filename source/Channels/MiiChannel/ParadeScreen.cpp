@@ -131,7 +131,7 @@ void ParadeScreen::Update(bool acceptsInput)
 {
     layout->Calculate();
     parade.Update();
-    ShowPlazaMoments(effects, parade, figures);
+    PlayFootsteps(ShowPlazaMoments(effects, parade, figures));
     heads.Prepare(HeadsOfMiis(parade));
 
     std::string count = std::format("{:05}/{:05}", data.ParadeMiis().size(), Mii::HiddenMiiCapacity);
@@ -148,6 +148,24 @@ void ParadeScreen::Update(bool acceptsInput)
         return;
 
     HandleButtons();
+}
+
+// Every Mii that puts a foot down is heard by its place on the road (8001E448).
+void ParadeScreen::PlayFootsteps(const std::vector<PlazaMomentOfMii>& moments)
+{
+    for (const PlazaMomentOfMii& moment : moments)
+    {
+        bool isAStep = moment.moment == PlazaMoment::StepsWithTheLeftFoot || moment.moment == PlazaMoment::StepsWithTheRightFoot;
+        const PlazaMii* paradeMii = parade.FindMii(moment.slot);
+        if (!isAStep || paradeMii == nullptr)
+            continue;
+
+        FootstepPlace place = ParadeFootstepPlace(paradeMii->position, parade);
+        std::optional<Footstep> footstep = footsteps.Step(*paradeMii, moment.moment, place);
+        if (footstep)
+            services.sounds.RequestWithSettings(footstep->soundName, footstep->settings);
+    }
+    footsteps.CountStep();
 }
 
 void ParadeScreen::Draw()
@@ -256,7 +274,7 @@ void ParadeScreen::HandleMessageAnswer()
     {
         services.sounds.Request(EraseSound);
         data.RemoveFromParade(*miiToErase);
-        ShowParadeMiis();
+        parade.EraseFromParade(*miiToErase);
     }
     miiToErase.reset();
 }
@@ -279,7 +297,7 @@ void ParadeScreen::DropHeldMii(Formats::Vector2 pointer)
             return;
         }
         services.sounds.Request(SendSound);
-        ShowParadeMiis();
+        parade.SendFromParade(*held);
         return;
     }
 

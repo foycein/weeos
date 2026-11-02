@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Formats/Bytes.h"
+#include "Sound/SoundStartSettings.h"
 
 #include <string>
 #include <string_view>
@@ -54,6 +55,7 @@ constexpr int LeavingStopFadeSteps = 20;
 enum class SoundAction
 {
     PlayEffect,
+    PlayEffectWithSettings,
     StartMusic,
     StopMusic,
     ChangeMusicVolume,
@@ -70,8 +72,11 @@ struct SoundRequest
 {
     SoundAction action = SoundAction::PlayEffect;
 
-    // The name of the effect that PlayEffect plays, or of the music that StartMusic starts.
+    // The name of the effect that PlayEffect and PlayEffectWithSettings play, or of the music that StartMusic starts.
     std::string effectName;
+
+    // The volume, pan, pitch and player priority of PlayEffectWithSettings.
+    Sound::SoundStartSettings startSettings;
 
     // The new volume of ChangeMusicVolume and ChangeConsoleVolume: 1 is full, 0 is silence.
     float volume = 1.0f;
@@ -94,6 +99,14 @@ public:
     {
         effectNames.emplace_back(soundName);
         requests.push_back({.action = SoundAction::PlayEffect, .effectName = std::string(soundName)});
+    }
+
+    // Plays a sound effect of the archive with its own volume, pan, pitch and player priority (the steps of the Miis, 80018F3C). The same
+    // effect that still plays goes on: the original starts the new one on the same handle, which lets go of the old one without stopping it.
+    void RequestWithSettings(std::string_view soundName, const Sound::SoundStartSettings& startSettings)
+    {
+        effectNames.emplace_back(soundName);
+        requests.push_back({.action = SoundAction::PlayEffectWithSettings, .effectName = std::string(soundName), .startSettings = startSettings});
     }
 
     // Starts the music of the menu from its beginning (0x8136B3BC with WIPL_BGM_MENU), or another music of the archives, for example the

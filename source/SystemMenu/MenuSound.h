@@ -59,6 +59,7 @@ private:
     std::optional<FoundSound> FindSound(std::string_view name) const;
     void Stop(const StartedSound& sound, int fadeSteps);
     void PlayEffect(const std::string& name);
+    void PlayEffectWithSettings(const std::string& name, const Sound::SoundStartSettings& startSettings);
     void StartMusic(const std::string& name);
     void StopMusic(int fadeSteps);
     void ChangeMusicVolume(float volume, int fadeSteps);

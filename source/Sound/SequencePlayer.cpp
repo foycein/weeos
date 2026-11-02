@@ -203,6 +203,16 @@ void SequencePlayer::SetVolume(float sequenceVolume)
     volume = sequenceVolume;
 }
 
+void SequencePlayer::SetPan(float sequencePan)
+{
+    pan = sequencePan;
+}
+
+void SequencePlayer::SetPitch(float sequencePitch)
+{
+    pitch = sequencePitch;
+}
+
 void SequencePlayer::SetHeld(bool held)
 {
     isHeld = held;

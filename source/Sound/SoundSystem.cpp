@@ -111,11 +111,18 @@ const SoundArchiveFile& SoundSystem::Archive() const
 
 SoundHandle SoundSystem::Play(std::size_t soundNumber)
 {
+    return Play(soundNumber, SoundStartSettings{});
+}
+
+SoundHandle SoundSystem::Play(std::size_t soundNumber, const SoundStartSettings& startSettings)
+{
     if (soundNumber >= archive.sounds.size())
         return SoundHandle{};
 
     SoundHandle handle{++lastHandleNumber};
-    if (!commands.Push({SoundCommandKind::Play, handle.number, soundNumber}))
+    SoundCommand command{SoundCommandKind::Play, handle.number, soundNumber};
+    command.startSettings = startSettings;
+    if (!commands.Push(command))
         return SoundHandle{};
 
     return handle;
@@ -402,6 +409,19 @@ void SoundSystem::StartSound(const SoundCommand& command)
         StartWaveSound(command, info);
     else
         StartSequenceSound(command, info);
+
+    RunningSound* started = FindRunningSound(command.handleNumber);
+    if (started == nullptr)
+        return;
+
+    const SoundStartSettings& startSettings = command.startSettings;
+    started->volume.MoveTo(startSettings.volume, 0);
+    started->playerPriority = startSettings.playerPriority.value_or(info.playerPriority);
+    if (started->sequence)
+    {
+        started->sequence->SetPan(startSettings.pan);
+        started->sequence->SetPitch(startSettings.pitch);
+    }
 }
 
 void SoundSystem::StartSequenceSound(const SoundCommand& command, const SoundInfo& info)
@@ -430,10 +450,16 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
     settings.mainSend = float(sound.mainSend) / HighestNumber;
     settings.effectSend = float(sound.effectSendA) / HighestNumber;
     settings.pitch = sound.pitch * note.tune;
+    settings.pan += command.startSettings.pan;
+    settings.pitch *= command.startSettings.pitch;
+
+    // The volume of the start is kept apart, in the volume of the running sound; the voice has it from its first sample.
+    VoiceSettings firstSettings = settings;
+    firstSettings.volume *= command.startSettings.volume;
 
     Envelope envelope(note.attack, note.decay, note.sustain, note.release);
     int priority = info.waveSound.channelPriority + info.playerPriority;
-    std::optional<VoiceHandle> voice = voices.Start(loaded.waves[note.waveIndex], envelope, priority, settings);
+    std::optional<VoiceHandle> voice = voices.Start(loaded.waves[note.waveIndex], envelope, priority, firstSettings);
     if (!voice)
         return;
 
@@ -445,7 +471,7 @@ void SoundSystem::StartWaveSound(const SoundCommand& command, const SoundInfo& i
 
 std::uint8_t SoundSystem::PlayerPriorityOf(const RunningSound& sound) const
 {
-    return archive.sounds[sound.soundNumber].playerPriority;
+    return sound.playerPriority;
 }
 
 void SoundSystem::StartFreeWave(const SoundCommand& command)
@@ -481,7 +507,7 @@ bool SoundSystem::MakeRoomInPlayer(const SoundInfo& info)
             continue;
 
         ++soundsOfPlayer;
-        bool isWeaker = weakestSound == nullptr || runningInfo.playerPriority < PlayerPriorityOf(*weakestSound);
+        bool isWeaker = weakestSound == nullptr || PlayerPriorityOf(sound) < PlayerPriorityOf(*weakestSound);
         if (isWeaker)
             weakestSound = &sound;
     }

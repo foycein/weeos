@@ -81,7 +81,7 @@ VoiceSettings SequencePlayer::SettingsOfNote(const SequenceTrack& track, const P
 
     VoiceSettings voiceSettings;
     voiceSettings.volume = volume * Square(trackLoudness) * Square(expressionLoudness) * Square(mainLoudness) * note.startVolume;
-    voiceSettings.pan = note.startPan + track.pan;
+    voiceSettings.pan = note.startPan + track.pan + pan;
     double semitones = double(note.key - note.parameters.originalKey) + bentSemitones + note.sweep.SemitonesLeft();
 
     // The pitch and the pan take the wave as it was before the frame, the volume as it is after it.
@@ -96,7 +96,7 @@ VoiceSettings SequencePlayer::SettingsOfNote(const SequenceTrack& track, const P
     voiceSettings.surroundPan = track.surroundPan;
     voiceSettings.mainSend = float(track.mainSend) / HighestNumber;
     voiceSettings.effectSend = float(track.effectSendA) / HighestNumber;
-    voiceSettings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.parameters.tune;
+    voiceSettings.pitch = static_cast<float>(std::exp2(semitones / SemitonesPerOctave)) * note.parameters.tune * pitch;
     voiceSettings.lowPass = LowPassValueFromCutoffNumber(track.lowPassCutoff);
     return voiceSettings;
 }

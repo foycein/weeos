@@ -99,6 +99,17 @@ constexpr GroundHits LandingHits = {{29, 58, 79}, {30, 59, 80}};
 constexpr GroundHits LandingFromHighHits = {{69, 97, 118}, {70, 98, 119}};
 constexpr float GetDownSmokeFrame = 5;
 
+// The frames at which a Mii puts a foot down (the same events, 803BE438 to 803BE444): bodyWalk the right foot at 13 and the left at 33,
+// bodyRun the left foot at 15 and the right at 35.
+struct FootFrames
+{
+    float leftFoot;
+    float rightFoot;
+};
+
+constexpr FootFrames WalkFootFrames = {33, 13};
+constexpr FootFrames RunFootFrames = {15, 35};
+
 // The camera is high from this zoom level on, and a Mii falls in from higher (0x8001F4D4).
 constexpr int HighZoomLevel = 2;
 
@@ -318,6 +329,50 @@ void MiiPlaza::RemoveMii(std::size_t slot)
     std::erase_if(miis, [slot](const PlazaMii& plazaMii) { return plazaMii.mii.slot == slot; });
     if (heldSlot == slot)
         heldSlot.reset();
+}
+
+void MiiPlaza::EraseFromParade(std::size_t place)
+{
+    LeaveTheParadeOrder(place);
+    PlazaMii* body = FindMiiInSlot(place);
+    bool bodyTakesTheNextMii = body != nullptr && TakeTheNextParadeMii(*body);
+    if (!bodyTakesTheNextMii)
+        RemoveMii(place);
+    MovePlacesDownAfter(place);
+}
+
+void MiiPlaza::SendFromParade(std::size_t place)
+{
+    LeaveTheParadeOrder(place);
+    RemoveMii(place);
+    MovePlacesDownAfter(place);
+}
+
+void MiiPlaza::LeaveTheParadeOrder(std::size_t place)
+{
+    auto leaving = std::find_if(paradeOrder.begin(), paradeOrder.end(), [place](const StoredMii& stored) { return stored.slot == place; });
+    if (leaving == paradeOrder.end())
+        return;
+
+    bool hasComeAlready = static_cast<std::size_t>(leaving - paradeOrder.begin()) < nextInParade;
+    if (hasComeAlready)
+        --nextInParade;
+    paradeOrder.erase(leaving);
+}
+
+// The places of the parade are the places of its list, so the Miis after one that left move one place down.
+void MiiPlaza::MovePlacesDownAfter(std::size_t place)
+{
+    for (StoredMii& stored : paradeOrder)
+    {
+        if (stored.slot > place)
+            --stored.slot;
+    }
+    for (PlazaMii& plazaMii : miis)
+    {
+        if (plazaMii.mii.slot > place)
+            --plazaMii.mii.slot;
+    }
 }
 
 const std::vector<PlazaMii>& MiiPlaza::Miis() const
@@ -583,6 +638,12 @@ Formats::Vector2 MiiPlaza::GroundPointAt(Formats::Vector2 picturePlace, float ca
     return {camera.eye.x + ray.x * distance, camera.eye.z + ray.z * distance};
 }
 
+Formats::Vector2 MiiPlaza::GroundPointAhead() const
+{
+    constexpr float AnyCanvasSize = 1.0f;
+    return GroundPointAt({0, 0}, AnyCanvasSize, AnyCanvasSize);
+}
+
 std::optional<std::size_t> MiiPlaza::MiiAt(Formats::Vector2 picturePlace, float canvasWidth, float canvasHeight) const
 {
     std::optional<std::size_t> found;
@@ -813,7 +874,9 @@ void MiiPlaza::Walk(PlazaMii& plazaMii)
     float speedAdded = kind == PlazaKind::Parade ? ParadeSpeedAddedPerStep : SpeedAddedPerStep;
     TurnAndStep(plazaMii, SpeedKeptPerStep, speedAdded, remaining);
     float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
+    float frameBefore = plazaMii.animationFrame;
     plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, WalkAnimationFrames);
+    NoteFootsteps(plazaMii, frameBefore);
 }
 
 void MiiPlaza::Run(PlazaMii& plazaMii)
@@ -842,7 +905,9 @@ void MiiPlaza::Run(PlazaMii& plazaMii)
     float speedAdded = kind == PlazaKind::Parade ? ParadeRunSpeedAddedPerStep : RunSpeedAddedPerStep;
     TurnAndStep(plazaMii, RunSpeedKeptPerStep, speedAdded, remaining);
     float frames = WalkAnimationRate(plazaMii.speed, plazaMii.mii.record);
+    float frameBefore = plazaMii.animationFrame;
     plazaMii.animationFrame = std::fmod(plazaMii.animationFrame + frames, RunAnimationFrames);
+    NoteFootsteps(plazaMii, frameBefore);
 }
 
 // The Mii turns a little toward its target and moves on at a speed that settles where what it keeps and what it adds balance.
@@ -1045,6 +1110,13 @@ void MiiPlaza::NoteFrameMoment(const PlazaMii& plazaMii, float frameBefore, floa
     bool passesTheFrame = frameBefore < momentFrame && plazaMii.animationFrame >= momentFrame;
     if (passesTheFrame)
         moments.push_back({moment, plazaMii.mii.slot});
+}
+
+void MiiPlaza::NoteFootsteps(const PlazaMii& plazaMii, float frameBefore)
+{
+    FootFrames feet = plazaMii.activity == PlazaActivity::Running ? RunFootFrames : WalkFootFrames;
+    NoteFrameMoment(plazaMii, frameBefore, feet.leftFoot, PlazaMoment::StepsWithTheLeftFoot);
+    NoteFrameMoment(plazaMii, frameBefore, feet.rightFoot, PlazaMoment::StepsWithTheRightFoot);
 }
 
 std::vector<PlazaMomentOfMii> MiiPlaza::TakeMoments()

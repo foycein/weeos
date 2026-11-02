@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sound/SoundStartSettings.h"
 #include "Sound/WaveDecoder.h"
 
 #include <array>
@@ -35,6 +36,9 @@ struct SoundCommand
 
     // The new volume of ChangeVolume, and the volume of PlayWave.
     float volume = 1.0f;
+
+    // What Play changes about the sound it starts.
+    SoundStartSettings startSettings;
 
     // The wave that PlayWave plays.
     std::shared_ptr<const DecodedWave> wave;

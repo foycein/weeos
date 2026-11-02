@@ -30,6 +30,7 @@ add_library(Channels STATIC
     MiiChannel/MiiEffects.cpp
     MiiChannel/MiiEditor.cpp
     MiiChannel/MiiFigures.cpp
+    MiiChannel/MiiFootsteps.cpp
     MiiChannel/MiiPlaza.cpp
     MiiChannel/ParadeScreen.cpp
     MiiChannel/PlazaGround.cpp

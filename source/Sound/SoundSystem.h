@@ -50,6 +50,9 @@ public:
     // The handle names no sound when the number is not a sound of the archive or the queue to the audio thread is full.
     SoundHandle Play(std::size_t soundNumber);
 
+    // The same, with its own volume, pan, pitch and player priority.
+    SoundHandle Play(std::size_t soundNumber, const SoundStartSettings& startSettings);
+
     // The same, but the sound is dropped when a sound with the same number is still playing at that time.
     SoundHandle PlayIfNotPlaying(std::size_t soundNumber);
 
@@ -123,6 +126,9 @@ private:
 
         // The volume of the archive, and for a wave sound the settings of its voice at the start.
         float archiveVolume = 1.0f;
+
+        // Its priority in its player: the one of the archive, or the one it was started with.
+        std::uint8_t playerPriority = 0;
         VoiceSettings waveSettings;
 
         // What the menu does to the volume: its own volume, the fade of a stop and the fade of a pause.

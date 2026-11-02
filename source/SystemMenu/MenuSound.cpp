@@ -46,6 +46,7 @@ void MenuSound::PlayRequests(const SoundRequests& requests)
         switch (request.action)
         {
         case SoundAction::PlayEffect: PlayEffect(request.effectName); break;
+        case SoundAction::PlayEffectWithSettings: PlayEffectWithSettings(request.effectName, request.startSettings); break;
         case SoundAction::StartMusic: StartMusic(request.effectName); break;
         case SoundAction::StopMusic: StopMusic(request.fadeSteps); break;
         case SoundAction::ChangeMusicVolume: ChangeMusicVolume(request.volume, request.fadeSteps); break;
@@ -105,6 +106,13 @@ void MenuSound::PlayEffect(const std::string& name)
         Stop(earlier->second, 0);
 
     effects[name] = {found->system, found->system->Play(found->number)};
+}
+
+void MenuSound::PlayEffectWithSettings(const std::string& name, const Sound::SoundStartSettings& startSettings)
+{
+    std::optional<FoundSound> found = FindSound(name);
+    if (found)
+        found->system->Play(found->number, startSettings);
 }
 
 void MenuSound::StartMusic(const std::string& name)

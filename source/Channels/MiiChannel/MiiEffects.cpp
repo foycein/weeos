@@ -70,6 +70,8 @@ void ShowMoment(MiiEffects& effects, const PlazaMomentOfMii& moment, const Plaza
         break;
     case PlazaMoment::HitsTheGround:
     case PlazaMoment::BouncesOnTheGround:
+    case PlazaMoment::StepsWithTheLeftFoot:
+    case PlazaMoment::StepsWithTheRightFoot:
         break;
     }
 }
