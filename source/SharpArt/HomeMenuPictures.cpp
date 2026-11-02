@@ -347,6 +347,93 @@ void DrawSettingsButton(VectorCanvas& canvas, float left)
     DrawSettingsButtonGloss(canvas, left);
 }
 
+// ---- The HOME button
+
+constexpr Point HomeButtonCenter = {28.34f, 28};
+constexpr float HomeButtonRimRadius = 21.6f;
+constexpr float HomeButtonDiscRadius = 20.7f;
+constexpr Color HomeButtonRim = {0, 8, 123, 255};
+
+// The disc is white in a round patch in the upper left and turns lavender towards the lower right.
+constexpr Point HomeButtonLightCenter = {21, 21};
+const std::vector<ColorStop> HomeButtonDiscByDistance = {
+    {19, {239, 239, 247, 255}},
+    {21, {231, 231, 247, 255}},
+    {23, {222, 222, 239, 255}},
+    {24.5f, {214, 214, 231, 255}},
+    {27.5f, {206, 206, 222, 255}},
+};
+constexpr Point HomeButtonWhitePatchCenter = {25, 23.6f};
+constexpr float HomeButtonWhitePatchRadius = 12.3f;
+constexpr float HomeButtonWhitePatchSoftEdge = 1.5f;
+constexpr Color White = {255, 255, 255, 255};
+constexpr Color ClearWhite = {255, 255, 255, 0};
+
+// The house: a roof with eaves wider than the walls, a white window, and its right part and its foot a little darker.
+constexpr Color HouseBlue = {148, 189, 255, 255};
+constexpr Color HouseShadeBlue = {140, 181, 247, 255};
+constexpr Color HouseEdgeBlue = {140, 165, 214, 160};
+constexpr Color HouseLineUnderTheRoof = {173, 206, 255, 255};
+constexpr Color WindowFrame = {189, 202, 231, 255};
+constexpr Color WindowSill = {132, 173, 231, 160};
+constexpr Color WindowWhite = {239, 239, 247, 255};
+constexpr Point RoofTop = {28.4f, 15.6f};
+constexpr float EavesY = 29.1f;
+constexpr float LeftEaveX = 14.4f;
+constexpr float RightEaveX = 42.4f;
+constexpr float WallLeft = 18.7f;
+constexpr float WallRight = 37;
+constexpr float HouseBottom = 39;
+constexpr float WindowLeft = 23.6f;
+constexpr float WindowRight = 31.6f;
+constexpr float WindowBottom = 35;
+constexpr float EdgeLineWidth = 1;
+
+void FillPolygonAt(VectorCanvas& canvas, const std::vector<Point>& corners, const Paint& paint)
+{
+    VectorPath polygon;
+    for (Point corner : corners)
+        polygon.LineTo(corner);
+    polygon.Close();
+    canvas.Fill(polygon, paint);
+}
+
+void DrawStroke(VectorCanvas& canvas, Point from, Point to, Color color)
+{
+    VectorPath stroke;
+    stroke.AddStroke(from, to, EdgeLineWidth);
+    canvas.Fill(stroke, SolidPaint(color));
+}
+
+void DrawHouse(VectorCanvas& canvas)
+{
+    FillPolygonAt(canvas, {
+        RoofTop,
+        {RightEaveX, EavesY},
+        {WallRight, EavesY},
+        {WallRight, HouseBottom},
+        {WallLeft, HouseBottom},
+        {WallLeft, EavesY},
+        {LeftEaveX, EavesY},
+    }, SolidPaint(HouseBlue));
+
+    FillPolygonAt(canvas, {{32, 27.5f}, {35.3f, 23.6f}, {40.9f, 29}, {WallRight, 29}, {WallRight, HouseBottom}, {32, HouseBottom}},
+        SolidPaint(HouseShadeBlue));
+    FillRectangle(canvas, WallLeft, 35.5f, WallRight, HouseBottom, SolidPaint(HouseShadeBlue));
+    FillRectangle(canvas, 15.5f, 28, WindowRight, 29, SolidPaint(HouseLineUnderTheRoof));
+
+    DrawStroke(canvas, {28.4f, 16.4f}, {15.5f, 28.6f}, HouseEdgeBlue);
+    DrawStroke(canvas, {19.2f, 29.5f}, {19.2f, 38.5f}, HouseEdgeBlue);
+    DrawStroke(canvas, {32.4f, 29.5f}, {32.4f, 35.6f}, HouseEdgeBlue);
+}
+
+void DrawWindow(VectorCanvas& canvas)
+{
+    FillRectangle(canvas, WindowLeft, EavesY, WindowRight, WindowBottom, LinearGradient({24, 29}, White, {30, 34}, WindowWhite));
+    FillRectangle(canvas, WindowLeft, WindowBottom, WindowRight, WindowBottom + 1, SolidPaint(WindowFrame));
+    FillRectangle(canvas, WindowLeft, WindowBottom + 1, 32, WindowBottom + 2, SolidPaint(WindowSill));
+}
+
 }
 
 void DrawBigButtonLeftEnd(VectorCanvas& canvas)
@@ -379,6 +466,96 @@ void DrawSettingsButtonMiddle(VectorCanvas& canvas)
 void DrawSettingsButtonRightEnd(VectorCanvas& canvas)
 {
     DrawSettingsButton(canvas, -SettingsButtonRightEndStart);
+}
+
+void DrawHomeButtonPicture(VectorCanvas& canvas)
+{
+    FillCircle(canvas, HomeButtonCenter, HomeButtonRimRadius, SolidPaint(HomeButtonRim));
+    FillCircle(canvas, HomeButtonCenter, HomeButtonDiscRadius, RadialGradientByDistance(HomeButtonLightCenter, HomeButtonDiscByDistance));
+
+    float softEdgeStart = HomeButtonWhitePatchRadius - HomeButtonWhitePatchSoftEdge;
+    Paint whitePatch = RadialGradient(HomeButtonWhitePatchCenter, White, HomeButtonWhitePatchRadius, ClearWhite, softEdgeStart);
+    FillCircle(canvas, HomeButtonWhitePatchCenter, HomeButtonWhitePatchRadius, whitePatch);
+
+    DrawHouse(canvas);
+    DrawWindow(canvas);
+}
+
+void DrawBatteryCase(VectorCanvas& canvas)
+{
+    VectorPath battery;
+    battery.AddPolygon({{6, 3}, {40, 3}, {40, 7}, {43, 7}, {43, 17}, {40, 17}, {40, 21}, {6, 21}});
+    battery.AddPolygon({{8, 5}, {38, 5}, {38, 9}, {41, 9}, {41, 15}, {38, 15}, {38, 19}, {8, 19}});
+    canvas.Fill(battery, SolidPaint(White));
+}
+
+void DrawBatteryBar(VectorCanvas& canvas)
+{
+    FillRectangle(canvas, 5, 3, 10, 13, SolidPaint(White));
+}
+
+constexpr float SignMiddle = 12;
+constexpr float SignHalfThickness = 1.6f;
+constexpr float SignLength = 24;
+
+void DrawMinusSign(VectorCanvas& canvas)
+{
+    FillRectangle(canvas, 0, SignMiddle - SignHalfThickness, SignLength, SignMiddle + SignHalfThickness, SolidPaint(White));
+}
+
+void DrawPlusSign(VectorCanvas& canvas)
+{
+    VectorPath plus;
+    plus.AddPolygon({
+        {SignMiddle - SignHalfThickness, 0},
+        {SignMiddle + SignHalfThickness, 0},
+        {SignMiddle + SignHalfThickness, SignMiddle - SignHalfThickness},
+        {SignLength, SignMiddle - SignHalfThickness},
+        {SignLength, SignMiddle + SignHalfThickness},
+        {SignMiddle + SignHalfThickness, SignMiddle + SignHalfThickness},
+        {SignMiddle + SignHalfThickness, SignLength},
+        {SignMiddle - SignHalfThickness, SignLength},
+        {SignMiddle - SignHalfThickness, SignMiddle + SignHalfThickness},
+        {0, SignMiddle + SignHalfThickness},
+        {0, SignMiddle - SignHalfThickness},
+        {SignMiddle - SignHalfThickness, SignMiddle - SignHalfThickness},
+    });
+    canvas.Fill(plus, SolidPaint(White));
+}
+
+void DrawVolumeStep(VectorCanvas& canvas)
+{
+    FillRectangle(canvas, 0, 0, 8, 16, SolidPaint(White));
+}
+
+void DrawBlinkingDisc(VectorCanvas& canvas)
+{
+    constexpr Point Center = {12, 12};
+    constexpr float EdgeRadius = 10.41f;
+    constexpr float WhiteRadius = 9.43f;
+    constexpr Color Black = {0, 0, 0, 255};
+
+    FillCircle(canvas, Center, EdgeRadius, SolidPaint(Black));
+    FillCircle(canvas, Center, WhiteRadius, SolidPaint(White));
+}
+
+void DrawWindowCorner(VectorCanvas& canvas)
+{
+    constexpr float CornerSize = 16;
+    constexpr float RoundRadius = 12;
+    constexpr float EdgeWidth = 1;
+    constexpr float EdgeOverlap = 2;
+    constexpr Color Black = {0, 0, 0, 255};
+
+    // The rounded rectangles reach beyond the picture on the right and at the bottom, so only their upper left corner shows.
+    float beyond = CornerSize + RoundRadius + EdgeOverlap;
+    VectorPath edge;
+    edge.AddRoundedRectangle(0, 0, beyond, beyond, RoundRadius);
+    canvas.Fill(edge, SolidPaint(White));
+
+    VectorPath inside;
+    inside.AddRoundedRectangle(EdgeWidth, EdgeWidth, beyond, beyond, RoundRadius - EdgeWidth);
+    canvas.Fill(inside, SolidPaint(Black));
 }
 
 }

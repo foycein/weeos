@@ -52,8 +52,12 @@ struct SharpPicture
 // Every sharp picture that WeeOS has.
 std::span<const SharpPicture> AllSharpPictures();
 
-// The sharp picture for the texture file, or nothing when WeeOS draws none for it.
-const SharpPicture* FindSharpPicture(std::string_view textureFileName);
+// True when WeeOS draws a sharp picture for a texture file of this name (for one of its originals at least).
+bool HasSharpPicture(std::string_view textureFileName);
+
+// The sharp picture for the original picture of the texture file, or nothing when WeeOS draws none for it. Files of the same name in
+// other archives may hold other pictures: each original that WeeOS replaces has an entry of its own.
+const SharpPicture* FindSharpPicture(std::string_view textureFileName, const Formats::RgbaImage& original);
 
 // The CRC-32 of the red, green, blue and alpha bytes of every pixel, row by row.
 std::uint32_t FingerprintOf(const Formats::RgbaImage& picture);

@@ -176,8 +176,8 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
     texture.width = picture->width;
     texture.height = picture->height;
 
-    const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName);
-    if (sharpPicture && SharpArt::IsTheOriginalOf(*sharpPicture, *picture))
+    const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName, *picture);
+    if (sharpPicture)
     {
         std::uint32_t pixelsPerUnit = SharpArt::PixelsPerUnitFor(*sharpPicture, device.ScreenPixelsPerUnit());
         texture.handle = SendPicture(SharpArt::DrawSharpPicture(*sharpPicture, pixelsPerUnit), horizontalWrap, verticalWrap);

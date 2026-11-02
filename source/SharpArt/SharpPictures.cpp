@@ -2,6 +2,7 @@
 
 #include "SharpArt/ClockPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
+#include "SharpArt/RemotePictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
 #include "SharpArt/WiiOptionsPictures.h"
@@ -23,11 +24,15 @@ using enum PictureChannels;
 // The clock shows its 48 by 48 digits on panes of 88 by 64 units.
 constexpr float ClockMagnification = 2;
 constexpr float ShownAtItsSize = 1;
+
+// The steps of the volume grow up to almost three times their height.
+constexpr float VolumeStepMagnification = 3;
 constexpr Color TransparentWhite = {255, 255, 255, 0};
 constexpr Color TransparentArrowBlue = {0, 34, 136, 0};
 constexpr Color TransparentButtonGray = {193, 193, 193, 0};
 constexpr Color TransparentCardBlue = {51, 187, 238, 0};
 constexpr Color TransparentBlack = {0, 0, 0, 0};
+constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 
 constexpr std::array AllPictures = {
@@ -55,6 +60,20 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_arw_b.tpl", 64, 64, 0x2BF2CD28, ShownAtItsSize, ColorAndAlpha, DrawArrowLeft, TransparentArrowBlue},
     SharpPicture{"th_btn_L_a1.tpl", 56, 112, 0xE12C2907, ShownAtItsSize, ColorAndAlpha, DrawBigButtonLeftEnd, TransparentButtonGrayOfHome},
     SharpPicture{"th_btn_L_a2.tpl", 8, 112, 0x119E3D1B, ShownAtItsSize, ColorAndAlpha, DrawBigButtonMiddle, TransparentButtonGrayOfHome},
+    SharpPicture{"th_btry_icon_a.tpl", 48, 24, 0x9B34CA8F, ShownAtItsSize, Intensity, DrawBatteryCase},
+    SharpPicture{"th_btry_icon_b.tpl", 16, 16, 0x8FAC465D, ShownAtItsSize, Intensity, DrawBatteryBar},
+    SharpPicture{"th_mnsIcon_a.tpl", 24, 24, 0x47EEDDC2, ShownAtItsSize, Intensity, DrawMinusSign},
+    SharpPicture{"th_plsIcon_a.tpl", 24, 24, 0x4C6F07C0, ShownAtItsSize, Intensity, DrawPlusSign},
+    SharpPicture{"th_vol_a.tpl", 16, 16, 0xE969F9C3, VolumeStepMagnification, Intensity, DrawVolumeStep},
+    SharpPicture{"th_12Btn_on_b.tpl", 24, 24, 0x42CD25AB, ShownAtItsSize, ColorAndAlpha, DrawBlinkingDisc, TransparentBlack},
+    SharpPicture{"th_frm_b.tpl", 16, 16, 0x2B442FA5, ShownAtItsSize, ColorAndAlpha, DrawWindowCorner, TransparentWhite},
+    SharpPicture{"th_frm_b.tpl", 16, 16, 0x1138DF97, ShownAtItsSize, ColorAndAlpha, DrawWindowCorner, TransparentWhite},
+    SharpPicture{"rv_cntrl_back_b.tpl", 96, 328, 0xF1D30CE4, ShownAtItsSize, ColorAndAlpha, DrawRemoteBody, TransparentBlack},
+    SharpPicture{"rv_cntrl_btn_d.tpl", 96, 328, 0xD3CF1AF5, ShownAtItsSize, ColorAndAlpha, DrawRemoteButtons, TransparentBlack},
+    SharpPicture{"rv_cntrl_home_a.tpl", 16, 16, 0x5DCAF0A4, ShownAtItsSize, Intensity, DrawRemoteHomeSign},
+    SharpPicture{"rv_cntrl_pwr_a.tpl", 16, 16, 0x37588C3A, ShownAtItsSize, Intensity, DrawRemotePowerSign},
+    SharpPicture{"rv_cntrl_sound_b.tpl", 16, 32, 0x6DF5049C, ShownAtItsSize, Intensity, DrawRemoteSpeakerLit},
+    SharpPicture{"th_homeBtnImg_a.tpl", 56, 56, 0x0E7D0492, ShownAtItsSize, ColorAndAlpha, DrawHomeButtonPicture, TransparentNavy},
     SharpPicture{"th_optnBtn_a1.tpl", 24, 64, 0xCFEB5B83, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonLeftEnd, TransparentBlack},
     SharpPicture{"th_optnBtn_a2.tpl", 8, 64, 0x684A418C, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonMiddle, TransparentBlack},
     SharpPicture{"th_optnBtn_a3.tpl", 24, 64, 0x01422CAE, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonRightEnd, TransparentBlack},
@@ -85,11 +104,21 @@ std::span<const SharpPicture> AllSharpPictures()
     return AllPictures;
 }
 
-const SharpPicture* FindSharpPicture(std::string_view textureFileName)
+bool HasSharpPicture(std::string_view textureFileName)
 {
     for (const SharpPicture& picture : AllPictures)
     {
         if (picture.textureFileName == textureFileName)
+            return true;
+    }
+    return false;
+}
+
+const SharpPicture* FindSharpPicture(std::string_view textureFileName, const Formats::RgbaImage& original)
+{
+    for (const SharpPicture& picture : AllPictures)
+    {
+        if (picture.textureFileName == textureFileName && IsTheOriginalOf(picture, original))
             return &picture;
     }
     return nullptr;
