@@ -8,7 +8,7 @@
 namespace Graphics
 {
 
-// How the console makes its picture. The numbers come from the System Menu 4.3U (docs/audit/OpenPoints/Graphics.md):
+// How the console makes its picture. The numbers come from the System Menu 4.3U:
 // the menu draws into a frame buffer of 640 x 456 pixels and copies it with a vertical filter. The video chip shows the copy
 // as a part of a picture of 720 x 480 pixels, with black around it, and the television stretches that picture over its whole screen.
 
@@ -18,7 +18,7 @@ constexpr std::uint32_t ConsoleFrameHeight = 456;
 // The picture of the video chip.
 constexpr Canvas ConsoleRasterCanvas = {720, 480};
 
-// Assumed (docs/audit/OpenPoints/Graphics.md): how the pixels in between are made when the frame buffer is stretched to the screen.
+// Assumed: how the pixels in between are made when the frame buffer is stretched to the screen.
 // The video chip scales with a filter of its own, and bilinear filtering gives the same smooth edges.
 // What the copy reads beyond the edges of the frame buffer is DrawTargetEdgeWrap in TextureStore.cpp.
 constexpr FilterMode ConsoleScalingFilter = FilterMode::Linear;

@@ -28,7 +28,7 @@ namespace Graphics
 // The 16:9 canvas lies in the middle of the window; the rest of the window is the whole area that a scissor can reach.
 //
 // A window that is not shown has no swap chain: its pictures are drawn into a texture as large as the window, which ReadScreenPicture
-// reads back, and Present does not wait for a display. Tests and the runs of helpers draw this way (docs/HelperRules.md).
+// reads back, and Present does not wait for a display. Tests draw this way.
 //
 // While the window has no area, for example when it is minimized, BeginFrame and Present do nothing and the drawing
 // is skipped. The program should wait for window messages then instead of drawing pictures in a loop.

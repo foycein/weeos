@@ -17,7 +17,7 @@ namespace
 
 constexpr VkFormat PixelFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-// Assumed (docs/audit/OpenPoints/Graphics.md): outside of a picture that was drawn the outermost pixels repeat.
+// Assumed: outside of a picture that was drawn the outermost pixels repeat.
 // The copy of the console reads the line above the first and the line below the last line of its frame buffer.
 constexpr WrapMode DrawTargetEdgeWrap = WrapMode::Clamp;
 

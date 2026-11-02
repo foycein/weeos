@@ -18,7 +18,7 @@ layout(location = 3) out vec2 thirdTextureCoordinates;
 layout(location = 4) flat out uint drawIndex;
 
 // A quad is drawn as two triangles, with these corners. The corners are numbered left top, right top, right bottom, left bottom.
-// The triangles share the diagonal from the left top to the right bottom corner. Assumed (docs/audit/OpenPoints/Graphics.md):
+// The triangles share the diagonal from the left top to the right bottom corner. Assumed:
 // it only shows when the colors or the texture coordinates of the corners are not spread evenly,
 // and no public document says which diagonal the Wii uses.
 const uint cornerOfVertex[6] = uint[6](0u, 1u, 2u, 0u, 2u, 3u);
