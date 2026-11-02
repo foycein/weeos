@@ -1,6 +1,7 @@
 #include "SharpArt/SharpPictures.h"
 
 #include "SharpArt/ClockPictures.h"
+#include "SharpArt/CursorPictures.h"
 #include "SharpArt/DataManagementPictures.h"
 #include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
@@ -28,6 +29,9 @@ using enum PictureChannels;
 // The clock shows its 48 by 48 digits on panes of 88 by 64 units.
 constexpr float ClockMagnification = 2;
 constexpr float ShownAtItsSize = 1;
+
+// The hand's pane is 54 units wide for its 64 pixels, and the pointer's layout is stretched 1.37 times to the width of the screen.
+constexpr float HandMagnification = 1.2f;
 
 // The steps of the volume grow up to almost three times their height.
 constexpr float VolumeStepMagnification = 3;
@@ -99,6 +103,14 @@ constexpr std::array AllPictures = {
     SharpPicture{"th_optnBtn_a2.tpl", 8, 64, 0x684A418C, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonMiddle, TransparentBlack},
     SharpPicture{"th_optnBtn_a3.tpl", 24, 64, 0x01422CAE, ShownAtItsSize, ColorAndAlpha, DrawSettingsButtonRightEnd, TransparentBlack},
     SharpPicture{"th_btn_L_a3.tpl", 56, 112, 0x74E6D175, ShownAtItsSize, ColorAndAlpha, DrawBigButtonRightEnd, TransparentButtonGrayOfHome},
+    SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
+    SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
+    SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},
+    SharpPicture{"defcursor_final_p0.tpl", 32, 32, 0x432C1665, HandMagnification, Intensity, DrawHandShadeWithoutNumber},
+    SharpPicture{"defcursor_final_p1.tpl", 64, 64, 0xCF0560B3, HandMagnification, Intensity, DrawHandShadeOfPlayerOne},
+    SharpPicture{"defcursor_final_p2.tpl", 64, 64, 0xCFD81A13, HandMagnification, Intensity, DrawHandShadeOfPlayerTwo},
+    SharpPicture{"defcursor_final_p3.tpl", 64, 64, 0xC137D4C3, HandMagnification, Intensity, DrawHandShadeOfPlayerThree},
+    SharpPicture{"defcursor_final_p4.tpl", 64, 64, 0x594936FB, HandMagnification, Intensity, DrawHandShadeOfPlayerFour},
 };
 
 constexpr float FullByte = 255;
