@@ -99,8 +99,8 @@ The goal: **the whole Wii as a native PC system.** Every menu, every channel, ev
 - **Photo Channel**: photos and movies from the SD card, slide shows, posting to the board
 - **Internet Channel**: a modern Chromium engine inside the Wii's own interface, favorites included
 - **Wii Speak Channel**: with your PC's microphone
-- **Forecast, News and Wii Shop**: they start and show their manuals, ready for the online services
-- **Disc Channel**: as on the console
+- **Forecast, News and Wii Shop**: they start, Forecast and News with their manuals, ready for the online services
+- **Disc Channel**: its place on the Wii Menu and its start window, waiting for a disc
 
 ### ✅ 4. Made for PC
 - 16:9 everywhere, ultrawide and 16:10 without stretching, borderless fullscreen
