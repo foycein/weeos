@@ -23,7 +23,7 @@ namespace
 {
 
 constexpr std::string_view UsageText =
-    "Usage: NandTool [--dump <folder>] <command> [arguments]\n"
+    "Usage: NandTool --dump <folder> <command> [arguments]\n"
     "\n"
     "  list [path]                 the entries of a directory (default: /)\n"
     "  tree [path]                 everything below a path (default: /)\n"
@@ -36,13 +36,12 @@ constexpr std::string_view UsageText =
     "  identity <folder>           keys.txt, device.cert and seeprom.bin into <folder>, the identity folder of the IOS part\n"
     "  verify                     the error correction of all pages, the HMAC of all clusters, the contents and the signatures of all titles\n"
     "\n"
-    "The dump is the folder with nand.bin and keys.txt. Without --dump it is assets/console-dump, searched from here upwards.\n"
+    "The dump is the folder of a console's backup, with nand.bin and keys.txt.\n"
     "The NAND keeps the contents of titles already decrypted, so title and extract write them as they are stored;\n"
     "title checks every content against the SHA-1 hash in the title metadata first.\n"
     "Only the folders named in a command are written to, and import refuses a folder that is not empty.\n";
 
 constexpr std::string_view DumpOption = "--dump";
-constexpr std::string_view DefaultDumpFolder = "assets/console-dump";
 constexpr std::string_view NandImageFileName = "nand.bin";
 constexpr std::string_view KeysFileName = "keys.txt";
 constexpr std::string_view RootPath = "/";
@@ -86,23 +85,6 @@ public:
 };
 
 using Arguments = std::vector<std::string>;
-
-std::filesystem::path FindDumpFolder()
-{
-    std::filesystem::path folder = std::filesystem::current_path();
-    while (true)
-    {
-        std::filesystem::path candidate = folder / DefaultDumpFolder;
-        if (std::filesystem::is_directory(candidate))
-            return candidate;
-
-        std::filesystem::path parent = folder.parent_path();
-        if (parent == folder)
-            throw std::runtime_error("The console dump was not found. Name its folder with --dump <folder>.");
-
-        folder = parent;
-    }
-}
 
 // Accepts "title/00000001/" as well as "/title/00000001".
 std::string NormalizePath(std::string path)
@@ -478,21 +460,17 @@ const Command& FindCommand(const std::string& name)
 
 int Run(Arguments arguments)
 {
-    std::filesystem::path dumpFolder;
-    if (arguments.size() >= DumpOptionWordCount && arguments[0] == DumpOption)
-    {
-        dumpFolder = arguments[1];
-        arguments.erase(arguments.begin(), arguments.begin() + DumpOptionWordCount);
-    }
+    if (arguments.size() < DumpOptionWordCount || arguments[0] != DumpOption)
+        throw UsageError();
+
+    std::filesystem::path dumpFolder = arguments[1];
+    arguments.erase(arguments.begin(), arguments.begin() + DumpOptionWordCount);
 
     if (arguments.empty())
         throw UsageError();
 
     const Command& command = FindCommand(arguments.front());
     arguments.erase(arguments.begin());
-
-    if (dumpFolder.empty())
-        dumpFolder = FindDumpFolder();
 
     Dump dump(dumpFolder);
     command.run(dump, arguments);
