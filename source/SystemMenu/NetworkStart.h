@@ -16,7 +16,7 @@ constexpr int StartupErrorNoAddress = -76;
 // The PC's connection is the console's one wired connection, in slot 1.
 constexpr int PcConnectionNumber = 20;
 
-// How long SOStartup waits for an address before it gives up (CHN-04, Assumed: the 45 seconds of the menu's connection test).
+// How long SOStartup waits for an address before it gives up (Assumed: the 45 seconds of the menu's connection test).
 constexpr double ConnectionTimeOutSeconds = 45;
 
 // What a program finds when it starts the network as the SDK's SOStartup does.
