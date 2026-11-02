@@ -938,7 +938,12 @@ void SdChannelListScreen::Draw(DrawPass pass)
 
 void SdChannelListScreen::DrawTheList()
 {
+    // The sheet of the list is made of the pages beside the one that shows; on a screen wider than 16:9 it goes on beside the picture,
+    // as the grid of the Wii Menu does (docs/DECISIONS.md, Settings).
+    Graphics::GraphicsDevice& device = services.display.Device();
+    device.SetScissor(device.WholeArea());
     gridLayout->Draw();
+    device.ClearScissor();
     for (Tile& tile : tiles)
     {
         if (tile.icon)
