@@ -13,6 +13,13 @@ using Point = Formats::Vector2;
 // One closed outline: the corners of a polygon, in order. Curves are already cut into short straight lines.
 using Outline = std::vector<Point>;
 
+// A corner of a polygon and how far along both of its sides it is cut to make it round.
+struct RoundCorner
+{
+    Point place;
+    float cut = 0;
+};
+
 // The outline of a shape, made of straight lines and curves. The units are the pixels of the original picture: x grows to the
 // right, y grows downward and (0, 0) is the top left corner.
 // A shape is filled where a line from the point to far away crosses the outlines an odd number of times, so an outline inside
@@ -40,6 +47,9 @@ public:
 
     // A polygon whose corners are rounded: each corner is cut this far along both of its sides, at most half way, and the cut is a curve.
     void AddPolygonWithRoundCorners(const std::vector<Point>& corners, float cornerCut);
+
+    // The same with a cut of its own for every corner; a cut of 0 leaves the corner sharp.
+    void AddPolygonWithRoundCorners(const std::vector<RoundCorner>& corners);
     void AddRectangle(float left, float top, float width, float height);
     void AddRoundedRectangle(float left, float top, float width, float height, float cornerRadius);
     void AddEllipse(Point center, float radiusX, float radiusY);

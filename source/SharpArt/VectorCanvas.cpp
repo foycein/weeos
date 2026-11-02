@@ -108,12 +108,22 @@ std::uint32_t VectorCanvas::UnitHeight() const
 
 void VectorCanvas::Fill(const VectorPath& path, const Paint& paint)
 {
+    PaintPath(path, paint, Painting::Over);
+}
+
+void VectorCanvas::Cut(const VectorPath& path)
+{
+    PaintPath(path, SolidPaint({}), Painting::Cut);
+}
+
+void VectorCanvas::PaintPath(const VectorPath& path, const Paint& paint, Painting painting)
+{
     std::vector<Edge> edges = EdgesInPixels(path);
     for (std::uint32_t row = 0; row < picture.height; ++row)
     {
         std::vector<Edge> edgesOfTheRow = EdgesTouchingRow(edges, row);
         if (!edgesOfTheRow.empty())
-            FillRow(edgesOfTheRow, row, paint);
+            FillRow(edgesOfTheRow, row, paint, painting);
     }
 }
 
@@ -164,7 +174,7 @@ std::vector<VectorCanvas::Edge> VectorCanvas::EdgesTouchingRow(const std::vector
 
 // Measures how much of every pixel of the row the shape covers, then paints the pixels it touches. Only the part of the row between the
 // leftmost and the rightmost crossing is looked at, and it is cleared again for the next row.
-void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint)
+void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint, Painting painting)
 {
     float rowWidth = static_cast<float>(picture.width);
     float leftmost = rowWidth;
@@ -204,18 +214,23 @@ void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, co
     for (std::uint32_t column = firstColumn; column < endColumn; ++column)
     {
         if (rowCoverage[column] > 0)
-            PaintPixel(column, row, rowCoverage[column], paint);
+            PaintPixel(column, row, rowCoverage[column], paint, painting);
         rowCoverage[column] = 0;
     }
 }
 
-void VectorCanvas::PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint)
+void VectorCanvas::PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint, Painting painting)
 {
-    Point middleInUnits = {(static_cast<float>(column) + 0.5f) / scale, (static_cast<float>(row) + 0.5f) / scale};
-    Color color = paint.ColorAt(middleInUnits);
-
     Formats::Rgba8Pixel& pixel = picture.pixels[static_cast<std::size_t>(row) * picture.width + column];
-    pixel = PaintOver(pixel, color, std::min(coverage, 1.0f));
+    float coveredShare = std::min(coverage, 1.0f);
+    if (painting == Painting::Cut)
+    {
+        pixel.alpha = static_cast<Formats::Byte>(std::lround(pixel.alpha * (1 - coveredShare)));
+        return;
+    }
+
+    Point middleInUnits = {(static_cast<float>(column) + 0.5f) / scale, (static_cast<float>(row) + 0.5f) / scale};
+    pixel = PaintOver(pixel, paint.ColorAt(middleInUnits), coveredShare);
 }
 
 }

@@ -113,17 +113,25 @@ void VectorPath::AddPolygon(std::initializer_list<Point> corners)
 
 void VectorPath::AddPolygonWithRoundCorners(const std::vector<Point>& corners, float cornerCut)
 {
+    std::vector<RoundCorner> roundCorners;
+    for (Point corner : corners)
+        roundCorners.push_back({corner, cornerCut});
+    AddPolygonWithRoundCorners(roundCorners);
+}
+
+void VectorPath::AddPolygonWithRoundCorners(const std::vector<RoundCorner>& corners)
+{
     Close();
     std::size_t count = corners.size();
     for (std::size_t index = 0; index < count; ++index)
     {
-        Point previous = corners[(index + count - 1) % count];
-        Point corner = corners[index];
-        Point next = corners[(index + 1) % count];
+        Point previous = corners[(index + count - 1) % count].place;
+        Point corner = corners[index].place;
+        Point next = corners[(index + 1) % count].place;
 
         float previousSide = std::hypot(previous.x - corner.x, previous.y - corner.y);
         float nextSide = std::hypot(next.x - corner.x, next.y - corner.y);
-        float cut = std::min({cornerCut, previousSide / 2, nextSide / 2});
+        float cut = std::min({corners[index].cut, previousSide / 2, nextSide / 2});
 
         Point curveStart = MoveTowards(corner, previous, cut);
         Point curveEnd = MoveTowards(corner, next, cut);

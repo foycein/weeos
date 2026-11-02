@@ -25,6 +25,9 @@ public:
     // Paints the inside of the path over what is there.
     void Fill(const VectorPath& path, const Paint& paint);
 
+    // Cuts the inside of the path out of what is painted: there the picture becomes transparent, smoothly at the edges.
+    void Cut(const VectorPath& path);
+
     const Formats::RgbaImage& Picture() const;
     Formats::RgbaImage& Picture();
 
@@ -35,10 +38,18 @@ private:
         Point to;
     };
 
+    // Whether a shape is painted over the picture or cut out of it.
+    enum class Painting
+    {
+        Over,
+        Cut,
+    };
+
+    void PaintPath(const VectorPath& path, const Paint& paint, Painting painting);
     std::vector<Edge> EdgesInPixels(const VectorPath& path) const;
     static std::vector<Edge> EdgesTouchingRow(const std::vector<Edge>& edges, std::uint32_t row);
-    void FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint);
-    void PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint);
+    void FillRow(const std::vector<Edge>& edges, std::uint32_t row, const Paint& paint, Painting painting);
+    void PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint, Painting painting);
 
     std::uint32_t unitWidth;
     std::uint32_t unitHeight;

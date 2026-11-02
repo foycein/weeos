@@ -5,6 +5,7 @@
 #include "SharpArt/DataManagementPictures.h"
 #include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
+#include "SharpArt/InternetChannelPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
@@ -29,6 +30,9 @@ using enum PictureChannels;
 // The clock shows its 48 by 48 digits on panes of 88 by 64 units.
 constexpr float ClockMagnification = 2;
 constexpr float ShownAtItsSize = 1;
+
+// The icons and banners of the channels are made for 4:3 and stretched 1.37 times to the width of the screen.
+constexpr float ChannelMagnification = 1.4f;
 
 // The hand's pane is 54 units wide for its 64 pixels, and the pointer's layout is stretched 1.37 times to the width of the screen.
 constexpr float HandMagnification = 1.2f;
@@ -112,6 +116,16 @@ constexpr std::array AllPictures = {
     SharpPicture{"defcursor_final_p2.tpl", 64, 64, 0xCFD81A13, HandMagnification, Intensity, DrawHandShadeOfPlayerTwo},
     SharpPicture{"defcursor_final_p3.tpl", 64, 64, 0xC137D4C3, HandMagnification, Intensity, DrawHandShadeOfPlayerThree},
     SharpPicture{"defcursor_final_p4.tpl", 64, 64, 0x594936FB, HandMagnification, Intensity, DrawHandShadeOfPlayerFour},
+    SharpPicture{"ist_sphere_00.tpl", 56, 56, 0xD8D2A26E, ChannelMagnification, ColorAndAlpha, DrawInternetBall, TransparentWhite},
+    SharpPicture{"ist_rectangle_00.tpl", 56, 128, 0x4CD2A296, ChannelMagnification, ColorAndAlpha, DrawInternetBar, TransparentWhite},
+    SharpPicture{"ist_icon_000.tpl", 64, 64, 0x5691FDEC, ChannelMagnification, ColorAndAlpha, DrawInternetBinoculars, TransparentWhite},
+    SharpPicture{"ist_icon_001.tpl", 64, 64, 0x0D904300, ChannelMagnification, ColorAndAlpha, DrawInternetHouseWithQuestionMark, TransparentWhite},
+    SharpPicture{"ist_icon_002.tpl", 64, 64, 0x5F50EB5D, ChannelMagnification, ColorAndAlpha, DrawInternetArrowLeft, TransparentWhite},
+    SharpPicture{"ist_icon_003.tpl", 64, 64, 0x61D22ECF, ChannelMagnification, ColorAndAlpha, DrawInternetStar, TransparentWhite},
+    SharpPicture{"ist_icon_004.tpl", 64, 64, 0x47E9FECB, ChannelMagnification, ColorAndAlpha, DrawInternetInformation, TransparentWhite},
+    SharpPicture{"ist_icon_006.tpl", 64, 64, 0x2D4F5E84, ChannelMagnification, ColorAndAlpha, DrawInternetArrowRight, TransparentWhite},
+    SharpPicture{"ist_icon_010.tpl", 64, 64, 0x5BBAE1A6, ChannelMagnification, ColorAndAlpha, DrawInternetQuestionMark, TransparentWhite},
+    SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
 };
 
 constexpr float FullByte = 255;

@@ -4,6 +4,7 @@ add_library(SharpArt STATIC
     DataManagementPictures.cpp
     DialogPictures.cpp
     HomeMenuPictures.cpp
+    InternetChannelPictures.cpp
     Paint.cpp
     RemotePictures.cpp
     SharpPictures.cpp
