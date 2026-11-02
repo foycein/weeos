@@ -18,7 +18,7 @@ constexpr std::uint32_t Mem2Size = 0x04000000;
 // the values 0, 1, 2, 0x10, 0x11 and larger ones, and 0x11 is the one of the first model.
 constexpr std::uint32_t HollywoodVersionWord = 0x00000011;
 
-// What boot1 leaves in low memory 0x80003158. Only the kernel reads it. The value is the example of WiiBrew (BOOT-16).
+// What boot1 leaves in low memory 0x80003158. Only the kernel reads it. The value is the example of WiiBrew.
 constexpr std::uint32_t MemoryVendorCode = 0x0000FF16;
 
 // The clocks that the System Menu stores in 0x800000F8 and 0x800000FC.
