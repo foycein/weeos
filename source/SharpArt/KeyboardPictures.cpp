@@ -1,6 +1,8 @@
 #include "SharpArt/KeyboardPictures.h"
 
 #include <array>
+#include <cmath>
+#include <numbers>
 #include <initializer_list>
 #include <utility>
 #include <vector>
@@ -221,6 +223,70 @@ void DrawScrollArrowSign(VectorCanvas& canvas)
     FillRoundedBox(canvas, 0, 0, Size, Size, CornerRadius, SolidPaint(IconDark));
     FillRoundedBox(canvas, EdgeWidth, EdgeWidth, Size - EdgeWidth, Size - EdgeWidth, CornerRadius - EdgeWidth, SolidPaint(White));
     FillPolygon(canvas, {{24, 8.8f}, {40.8f, 37.8f}, {24, 31.2f}, {7.2f, 37.8f}}, ArrowDark);
+}
+
+// ---- The pill-shaped button of the keyboard (OK and Cancel)
+
+namespace
+{
+
+// A blue rim around a light inside: white gloss in the upper part, a pale blue-gray body that turns blue towards the bottom and the right
+// end, and a lighter left end.
+constexpr float PillWidth = 180;
+constexpr float PillHeight = 54;
+constexpr float PillRimWidth = 2.6f;
+constexpr float PillGlossBottom = 16.7f;
+constexpr Color PillRimBlue = {49, 189, 239, 255};
+constexpr Color PillBody = {239, 239, 247, 255};
+constexpr Color PillLowerBody = {231, 239, 247, 255};
+constexpr Color PillShadeBlue = {165, 214, 239, 255};
+
+Color Transparent(Color color)
+{
+    color.alpha = 0;
+    return color;
+}
+
+VectorPath PillPath(float inset)
+{
+    float radius = PillHeight / 2 - inset;
+    VectorPath pill;
+    pill.AddRoundedRectangle(inset, inset, PillWidth - 2 * inset, PillHeight - 2 * inset, radius);
+    return pill;
+}
+
+// The gloss: the top of the inside from the left end, down to the bottom of the gloss, with a round end before the right end of the pill.
+VectorPath GlossPath()
+{
+    constexpr float RightAngleDegrees = 90;
+    constexpr float UpDegrees = 270;
+    constexpr float RadiansPerDegree = std::numbers::pi_v<float> / (2 * RightAngleDegrees);
+    constexpr float GlossRightEnd = 162;
+    float radius = PillHeight / 2 - PillRimWidth;
+    float middleY = PillHeight / 2;
+    Point leftCenter = {PillHeight / 2, middleY};
+    float degreesAboveTheMiddle = std::asin((middleY - PillGlossBottom) / radius) / RadiansPerDegree;
+    float capRadius = (PillGlossBottom - PillRimWidth) / 2;
+    Point capCenter = {GlossRightEnd - capRadius, PillRimWidth + capRadius};
+
+    VectorPath gloss;
+    gloss.ArcTo(leftCenter, radius, radius, 2 * RightAngleDegrees + degreesAboveTheMiddle, UpDegrees);
+    gloss.ArcTo(capCenter, capRadius, capRadius, UpDegrees, UpDegrees + 2 * RightAngleDegrees);
+    gloss.Close();
+    return gloss;
+}
+
+}
+
+void DrawPillButton(VectorCanvas& canvas)
+{
+    canvas.Fill(PillPath(0), SolidPaint(PillRimBlue));
+
+    VectorPath inside = PillPath(PillRimWidth);
+    canvas.Fill(inside, VerticalGradient({{35, PillBody}, {41.5f, PillLowerBody}, {49.5f, PillShadeBlue}}));
+    canvas.Fill(inside, LinearGradient({3, 0}, {255, 255, 255, 200}, {22, 0}, Transparent(White)));
+    canvas.Fill(GlossPath(), SolidPaint(White));
+    canvas.Fill(inside, LinearGradient({162, 0}, Transparent(PillShadeBlue), {176, 0}, PillShadeBlue));
 }
 
 }

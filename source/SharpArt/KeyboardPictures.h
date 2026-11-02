@@ -29,4 +29,8 @@ void DrawTenKeySign(VectorCanvas& canvas);
 // The button that scrolls the text up (48 by 48): a dark arrow in a white box with a thick dark edge.
 void DrawScrollArrowSign(VectorCanvas& canvas);
 
+// The pill-shaped buttons of the keyboard, OK and Cancel (180 by 54): a blue rim, a white gloss and a pale inside that turns blue at the
+// bottom and the right end.
+void DrawPillButton(VectorCanvas& canvas);
+
 }
