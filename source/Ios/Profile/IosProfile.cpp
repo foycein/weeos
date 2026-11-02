@@ -11,7 +11,7 @@ namespace
 
 constexpr int VersionWordShift = 16;
 
-// The three memory plans of the kernels (docs/research/IosVersions.md, section 5.1).
+// The three memory plans of the kernels.
 constexpr std::uint32_t Mem2UsableStart = 0x90000800;
 
 constexpr KernelMemoryAddresses MonolithAddresses =
@@ -50,7 +50,7 @@ KernelMemoryAddresses AddressesOf(MemoryPlan plan)
     throw std::logic_error("AddressesOf was asked for a memory plan that does not exist");
 }
 
-// The commands of the title service (docs/research/IosVersions.md, section 5.2). Command 0 is never valid.
+// The commands of the title service. Command 0 is never valid.
 constexpr int FirstEsCommand = 1;
 constexpr int LastOriginalCommand = 0x31;
 constexpr int SetupStreamKeyCommand = 0x3C;

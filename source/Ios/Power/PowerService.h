@@ -57,7 +57,7 @@ enum class SlotLightMode : std::uint32_t
 // to reset or shut down. All of it is thread safe.
 //
 // The original loses a button press when no program waits for it.
-// Here a press is kept until a program takes it (deviation D1 in docs/audit/Ios.md).
+// Here a press is kept until a program takes it.
 class PowerService
 {
 public:

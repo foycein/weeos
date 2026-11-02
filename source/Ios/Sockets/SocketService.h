@@ -28,8 +28,8 @@ constexpr std::size_t MaximumSocketCount = 24;
 
 // The socket stack (SO) of IOS, in place of /dev/net/ip/top.
 //
-// The sockets are real sockets of Windows: the console is online through the PC (docs/DECISIONS.md, Online). A program sees the
-// calls, the numbers and the errors of the original (docs/audit/Ios.md):
+// The sockets are real sockets of Windows: the console is online through the PC. A program sees the
+// calls, the numbers and the errors of the original:
 //
 // * The stack is set up when a program starts it while the network configuration module has the link up, that is while the PC is
 //   connected. Before that every call that needs a socket fails with StackNotStarted, as on a console without a network.

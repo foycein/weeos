@@ -20,7 +20,7 @@ constexpr SystemAreaRange AllowedSystemAreaRanges[] =
     {0x1FB500000, 0x20},
 };
 
-// What the drive of the reference console answers to the Inquiry command: revision 0, device code 2, released 2008-12-18, version 0x41.
+// What the drive of a real console answers to the Inquiry command: revision 0, device code 2, released 2008-12-18, version 0x41.
 // The first 0x20 bytes of cache.dat in the System Menu's data folder hold the answer, as the menu stored it.
 constexpr DriveInformation ReferenceDriveInformation = {0x0000, 0x0002, 0x20081218, 0x41};
 

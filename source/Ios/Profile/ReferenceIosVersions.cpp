@@ -6,9 +6,8 @@ namespace Ios
 namespace
 {
 
-// Every IOS title of the reference console, written by hand from docs/research/IosVersions.md (sections 3 and 4.2).
+// Every IOS title of the reference console, written by hand.
 // The columns are: the number, the title version, stub or working, stock or patched, and the code group.
-// tests/IosProfileDumpTest.cpp reads all of it again from the dump.
 std::vector<IosVersion> MakeReferenceVersions()
 {
     return
@@ -30,7 +29,7 @@ std::vector<IosVersion> MakeReferenceVersions()
         {28,  2063,                    IosKind::Working, IosOrigin::Stock,   28},
         {30,  2816,                    IosKind::Stub,    IosOrigin::Stock,   3},
 
-        // The console runs a patched IOS31 (docs/research/IosVersions.md, 5.9). The profile is that of the stock IOS31.
+        // The console runs a patched IOS31. The profile is that of the stock IOS31.
         {31,  3608,                    IosKind::Working, IosOrigin::Patched, 31},
 
         {33,  3864,                    IosKind::Working, IosOrigin::Stock,   33},

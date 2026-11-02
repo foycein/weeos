@@ -6,7 +6,7 @@ namespace Ios
 namespace
 {
 
-// The window of the program starts like this (docs/DECISIONS.md). The program tells the virtual remote the real size.
+// The window of the program starts like this. The program tells the virtual remote the real size.
 constexpr Platform::WindowSize StartingWindowSize = {1280, 720};
 
 }

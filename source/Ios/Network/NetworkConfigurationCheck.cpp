@@ -11,7 +11,7 @@ namespace Ios
 namespace
 {
 
-// The rules are the ones of the network configuration module of IOS80 (docs/audit/Ios.md).
+// The rules are the ones of the network configuration module of IOS80.
 
 constexpr std::uint32_t SupportedVersion = 0;
 constexpr std::uint8_t UsedPermissionBits = 0x07;

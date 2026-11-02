@@ -16,7 +16,7 @@ namespace Ios
 namespace
 {
 
-// The address of the adapter of a wired connection is not known here (docs/audit/OpenPoints/Ios.md, SO2), so it is all zero.
+// The address of the adapter of a wired connection is not known here, so it is all zero.
 constexpr MacAddress UnknownAdapterAddress = {};
 
 // The stack of the console keeps two addresses: the loopback address and the address of the interface.

@@ -14,9 +14,9 @@ constexpr std::uint32_t KernelOfFebruary27th2012 = 0x00022712;
 // Every row says which IOS versions have a feature, or have it with one value.
 // Only working IOS are listed: a stub has no profile. A fact that every working IOS shares is not a feature.
 // IOS31 is the IOS that the console runs after a homebrew installer patched it. Its rows are those of the stock IOS31:
-// the places the installer changed (docs/research/IosVersions.md, 5.9) are no features.
+// the places the installer changed are no features.
 //
-// tests/IosProfileDumpTest.cpp finds every row again in the dump:
+// Every row can be found in the files of the IOS titles:
 // the build date and the memory plan in the data of the kernel, the command level in the command table of ES,
 // the flavor in the build tag of the file system, the flags in the texts and patterns of the modules, and so on.
 std::vector<FeatureRow> MakeReferenceRows()

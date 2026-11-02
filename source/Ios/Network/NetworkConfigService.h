@@ -49,7 +49,7 @@ enum class NetworkInterface
 
 // The network configuration module (NCD) of IOS, in place of /dev/net/ncd/manage.
 //
-// The console is online through the PC's connection, with nothing to choose (docs/DECISIONS.md, Online). The PC's connection is the
+// The console is online through the PC's connection, with nothing to choose. The PC's connection is the
 // console's one wired connection: when a program asks the module to connect, the link is up while the PC is connected, and while
 // it is not the wired interface waits for a cable that is not plugged in. The three connections of the file
 // /shared2/sys/net/02/config.dat are still read and written as the original does, but they decide nothing.

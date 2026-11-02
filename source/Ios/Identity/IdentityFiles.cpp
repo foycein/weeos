@@ -29,7 +29,7 @@ constexpr std::size_t SerialEepromOffsetInKeyBlock = 0x200;
 // A signature needs a number that nobody can guess, from 40 bytes up (Formats::SignHash).
 constexpr std::size_t NonceSize = 48;
 
-// Assumed: the version of boot2 that the reference console has. A console that WeeOS makes has no boot2; IOS only reports the number.
+// Assumed: the version of boot2 that a real console has. A console that WeeOS makes has no boot2; IOS only reports the number.
 constexpr std::uint8_t NewConsoleBootTwoVersion = 5;
 
 // The first byte of an address that a maker did not get from the IEEE: bit 1 says "set by the owner", bit 0 clear says "one device".

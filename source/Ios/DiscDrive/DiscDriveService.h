@@ -54,7 +54,7 @@ enum class DriveReply : std::uint8_t
 class DiscDriveService
 {
 public:
-    // The drive's description. These are the numbers of the drive of the reference console, which the System Menu keeps in its cache file.
+    // The drive's description. These are the numbers of the drive of a real console, which the System Menu keeps in its cache file.
     DriveInformation Inquire() const;
 
     // Resets the drive. The drive forgets its last error.

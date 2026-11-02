@@ -57,7 +57,7 @@ class IosFeatureTable
 public:
     explicit IosFeatureTable(std::vector<FeatureRow> tableRows);
 
-    // The table of the reference console, written by hand from docs/research/IosVersions.md (the matrix of section 7).
+    // The table of the reference console, a real Wii with System Menu 4.3U, written by hand.
     static const IosFeatureTable& OfReferenceConsole();
 
     const std::vector<FeatureRow>& Rows() const;

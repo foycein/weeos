@@ -22,7 +22,6 @@ struct AddressRange
 };
 
 // What the kernel tells the PowerPC about the second memory (MEM2), in the low memory block that Boot writes.
-// The names are those of docs/research/BootChain.md, appendix B.
 struct KernelMemoryAddresses
 {
     // The end of the MEM2 that the PowerPC can address (0x80003120).
@@ -51,7 +50,7 @@ struct EsCommandSet
 };
 
 // What a running IOS offers: its number and version and everything in which the working IOS versions differ.
-// The services read it and never look at an IOS number. docs/audit/Ios.md says which service reads which feature.
+// The services read it and never look at an IOS number.
 struct IosProfile
 {
     IosNumber number = 0;

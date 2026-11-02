@@ -7,7 +7,6 @@ namespace Ios
 
 // The ways in which the working IOS versions differ from each other. What all of them share is not a feature.
 // A feature is a flag (an IOS has it or not), a number, or one of the kinds below.
-// docs/research/IosVersions.md (sections 5 and 7) explains how each difference was found in the dump.
 enum class Feature
 {
     // A number: the build date of the kernel, as the kernel stores it. Boot writes it into the low memory block.

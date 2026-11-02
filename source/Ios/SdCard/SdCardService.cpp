@@ -18,7 +18,7 @@ namespace
 constexpr std::uintmax_t BytesPerGibibyte = 1024ull * 1024 * 1024;
 constexpr std::uintmax_t StandardCardCapacityLimit = 2 * BytesPerGibibyte;
 
-// What a high capacity card gives back in a slot whose driver cannot start it (docs/audit/OpenPoints/Ios.md, SD2). Assumed.
+// What a high capacity card gives back in a slot whose driver cannot start it. Assumed.
 constexpr IosError UnstartedCardError = IosError::StorageFailure;
 
 // The card is as big as the volume that holds its folder. When the volume cannot be measured the insert reports the folder.

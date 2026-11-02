@@ -23,7 +23,7 @@ constexpr int DefaultMicrophoneSensitivity = 3;
 constexpr int MicrophoneSensitivityStepCount = HighestMicrophoneSensitivity - LowestMicrophoneSensitivity + 1;
 
 // The gain of each sensitivity step, in decibels. The original gives the step to the signal processor inside the accessory, whose
-// gains are not known (docs/audit/OpenPoints/Channels.md CHN-10, Assumed): 6 decibels a step around the middle.
+// gains are not known (Assumed): 6 decibels a step around the middle.
 constexpr std::array<float, MicrophoneSensitivityStepCount> SensitivityGainsInDecibels = {-12.0f, -6.0f, 0.0f, 6.0f, 12.0f};
 
 // The service keeps at most this much of what was heard and not taken yet; older samples are dropped, as a full buffer of the
@@ -41,7 +41,7 @@ enum class MicrophoneOpenResult
     DeviceProblem,
 };
 
-// The Wii Speak accessory on the USB port, in place of /dev/usb/oh0 and the microphone library above it (docs/research/Channels.md 8).
+// The Wii Speak accessory on the USB port, in place of /dev/usb/oh0 and the microphone library above it.
 //
 // The platform attaches what hears (a MicrophoneSource). A program opens the microphone, which starts a capture session of the
 // source, takes the samples that were heard since it last asked, and closes it again. The accessory's own settings are here too:

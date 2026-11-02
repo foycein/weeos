@@ -30,7 +30,7 @@ struct CipherResult
 };
 
 // Who this console is: its number, its certificate, its private key and the keys it protects data with.
-// It takes the place of the parts of ES that belong to the console, and of the crypto core of IOS that ES asks (docs/audit/Ios.md).
+// It takes the place of the parts of ES that belong to the console, and of the crypto core of IOS that ES asks.
 //
 // The identity is read from the files keys.txt, device.cert and seeprom.bin (IdentityFiles.h): a real console's, or one that WeeOS made.
 // A console that WeeOS made also has authority.cert: the authority of WeeOS that signed its device certificate, which it trusts.
@@ -52,7 +52,7 @@ public:
     const Formats::Bytes& GetDeviceCertificate() const;
 
     // Signs the SHA-1 hash of the data with the private key of the console. The certificate in the answer checks the signature.
-    // (The console makes a new key and a certificate of its own for every signature; this one signs with its device key, docs/audit/OpenPoints/Ios.md 6.)
+    // (The console makes a new key and a certificate of its own for every signature; this one signs with its device key.)
     SignedData Sign(Formats::ByteView data) const;
 
     // Checks a signature that the last certificate of the chain has made over the SHA-1 hash of the data. The certificates are given

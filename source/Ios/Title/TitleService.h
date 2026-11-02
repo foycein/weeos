@@ -47,7 +47,7 @@ struct LaunchPlan
 };
 
 // The title service of IOS, ES in the original: it knows the titles on the NAND, their tickets and contents,
-// and the program that runs. It takes the place of /dev/es. It follows the ES module of IOS80 (docs/audit/Ios.md).
+// and the program that runs. It takes the place of /dev/es. It follows the ES module of IOS80.
 //
 // It reads and writes the NAND as the kernel does, through the file system service, which must outlive it.
 // The identity of the console tells which tickets are for this console.

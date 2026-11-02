@@ -42,7 +42,7 @@ constexpr std::uint32_t VerifyDate = 0x08;
 //
 // The module makes TLS connections over sockets of the socket stack. A connection starts with a context (NewContext), takes a
 // socket (Connect), and is then set up (Handshake) before it reads and writes. The TLS is the one of Windows (Schannel, TlsConnection);
-// the checks of the server's certificate are the console's, with its error numbers (docs/audit/Ios.md).
+// the checks of the server's certificate are the console's, with its error numbers.
 //
 // The root certificates built into the module are Nintendo's; WeeOS reaches no Nintendo server, so it does not carry them, and a
 // context that trusts only a built-in root trusts no server. A client certificate is accepted but not kept or shown to a server.

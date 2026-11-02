@@ -47,8 +47,8 @@ struct VolumeCapacity
     std::uint32_t inodeCount;
 };
 
-// The reference console's NAND. The file system area has 0x7EC0 clusters (0x40 to 0x7EFF) and the file system tree has 0x17FF entries.
-// The newest superblock of the dump marks 16 of the clusters as bad and 752 as reserved, which leaves 31680 clusters for data.
+// The NAND of a real console. The file system area has 0x7EC0 clusters (0x40 to 0x7EFF) and the file system tree has 0x17FF entries.
+// Its newest superblock marks 16 of the clusters as bad and 752 as reserved, which leaves 31680 clusters for data.
 constexpr std::uint32_t ConsoleClusterCount = 0x7EC0;
 constexpr std::uint32_t ConsoleBadClusterCount = 16;
 constexpr std::uint32_t ConsoleReservedClusterCount = 752;

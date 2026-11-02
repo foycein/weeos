@@ -45,7 +45,7 @@ class IosVersionList
 public:
     explicit IosVersionList(std::vector<IosVersion> versionsOfConsole);
 
-    // The 47 IOS titles of the reference console (assets/console-dump), written by hand from docs/research/IosVersions.md.
+    // The 47 IOS titles of the reference console, a real Wii with System Menu 4.3U, written by hand.
     static const IosVersionList& OfReferenceConsole();
 
     const std::vector<IosVersion>& Versions() const;

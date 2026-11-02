@@ -66,9 +66,9 @@ struct KeyboardEvent
 //   * tells every change in one event that holds all the keys that are down, and tells nothing when a report equals the one before,
 //   * has six places for keys and fills all of them with UsbKey::RollOverError when more keys are down,
 //   * switches the lights of a keyboard off when it is attached.
-// It does not repeat keys. The original does not either: the repeat belongs to the keyboard library of the programs (docs/audit/Ios.md).
+// It does not repeat keys. The original does not either: the repeat belongs to the keyboard library of the programs.
 //
-// Events are kept until a program takes them (deviation D1 in docs/audit/Ios.md).
+// Events are kept until a program takes them.
 class KeyboardService
 {
 public:

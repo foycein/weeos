@@ -35,7 +35,7 @@ struct VolumeStatistics
 
 // The file system of IOS: the whole NAND, kept as plain files and folders on the PC.
 //
-// It takes the place of /dev/fs and of every path outside /dev. It follows the file system module of IOS80 (docs/audit/Ios.md):
+// It takes the place of /dev/fs and of every path outside /dev. It follows the file system module of IOS80:
 // the same limits, the same permission checks in the same order, the same result codes. Every call says who asks.
 // The caller with the user id 0 may do everything. Any other caller is held to the owner, the group and the others of each entry.
 //

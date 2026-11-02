@@ -15,7 +15,7 @@ struct Translation
     int nandLibraryResultCode;
 };
 
-// The rows of the NAND library's table in the System Menu that belong to the errors this part can have (docs/audit/Ios.md).
+// The rows of the NAND library's table in the System Menu that belong to the errors this part can have.
 constexpr Translation Translations[] =
 {
     {IosError::InvalidArgument, -8},

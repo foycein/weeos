@@ -3,7 +3,7 @@
 namespace Ios
 {
 
-// The commands of the title service that not every IOS has (docs/research/IosServices.md, section 3.1).
+// The commands of the title service that not every IOS has.
 // IosProfile::EsCommands says which of them an IOS answers.
 constexpr int GetStoredContentsCommand = 0x33;
 constexpr int GetStoredTitleMetadataCommand = 0x35;
