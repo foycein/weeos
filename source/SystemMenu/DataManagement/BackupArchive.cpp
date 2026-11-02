@@ -300,14 +300,14 @@ void CheckArchiveSignature(const DataManagementServices& services, Formats::Byte
 Formats::Bytes EncryptForCard(const Ios::ConsoleIdentityService& identity, Formats::ByteView plainBytes)
 {
     Ios::Result<Ios::CipherResult> encrypted =
-        identity.Encrypt(Ios::ConsoleIdentityService::SdCardKeyNumber, Formats::SdCardInitializationVector, plainBytes);
+        identity.Encrypt(Ios::ConsoleIdentityService::SdCardKeyNumber, identity.GetSdCardInitializationVector(), plainBytes);
     return Require(encrypted, "encrypt for the SD card").data;
 }
 
 Formats::Bytes DecryptFromCard(const Ios::ConsoleIdentityService& identity, Formats::ByteView encryptedBytes)
 {
     Ios::Result<Ios::CipherResult> decrypted =
-        identity.Decrypt(Ios::ConsoleIdentityService::SdCardKeyNumber, Formats::SdCardInitializationVector, encryptedBytes);
+        identity.Decrypt(Ios::ConsoleIdentityService::SdCardKeyNumber, identity.GetSdCardInitializationVector(), encryptedBytes);
     if (decrypted.Failed())
         FailAsDamaged("the header cannot be decrypted");
 

@@ -6,10 +6,8 @@
 #include "Formats/EllipticCurve.h"
 #include "Formats/FileBytes.h"
 #include "Formats/FormatError.h"
-#include "Formats/SdCardBackup.h"
 #include "Formats/SerialEeprom.h"
 #include "Formats/Sha1.h"
-#include "Formats/WiiKeys.h"
 
 #include <algorithm>
 #include <format>
@@ -105,14 +103,13 @@ Formats::Bytes WriteSignedCertificate(Formats::EllipticCurveCertificateFields fi
     return Formats::WriteEllipticCurveCertificate(fields);
 }
 
-// The keys that every Wii has, and the ones that only the NAND of a real console needs (they stay unused in a NAND folder).
-Formats::ConsoleKeys MakeSharedKeys()
+Formats::ConsoleKeys StartWithSharedKeys(const SharedKeys& sharedKeys)
 {
     Formats::ConsoleKeys keys{};
-    keys.commonKey = Formats::WiiCommonKey;
-    keys.sdKey = Formats::WiiSdKey;
-    keys.sdInitializationVector = Formats::SdCardInitializationVector;
-    keys.md5Blanker = Formats::HeaderDigestPlaceholder;
+    keys.commonKey = sharedKeys.commonKey;
+    keys.sdKey = sharedKeys.sdKey;
+    keys.sdInitializationVector = sharedKeys.sdInitializationVector;
+    keys.md5Blanker = sharedKeys.md5Blanker;
     return keys;
 }
 
@@ -127,7 +124,7 @@ void WriteIdentityFiles(const std::filesystem::path& identityFolder, const Forma
 
 }
 
-void WriteNewIdentity(const std::filesystem::path& identityFolder)
+void WriteNewIdentity(const SharedKeys& sharedKeys, const std::filesystem::path& identityFolder)
 {
     std::array<Formats::Byte, Formats::EllipticCurvePrivateKeySize> authorityPrivateKey = MakePrivateKey();
     Formats::EllipticCurveCertificateFields authority;
@@ -137,7 +134,7 @@ void WriteNewIdentity(const std::filesystem::path& identityFolder)
     authority.publicKey = Formats::DerivePublicKey(authorityPrivateKey);
     Formats::Bytes authorityCertificate = WriteSignedCertificate(authority, authorityPrivateKey);
 
-    Formats::ConsoleKeys keys = MakeSharedKeys();
+    Formats::ConsoleKeys keys = StartWithSharedKeys(sharedKeys);
     keys.consoleId = MakeRandomNumber();
     keys.ellipticCurvePrivateKey = MakePrivateKey();
     keys.nandHmacKey = MakeRandomArray<Formats::NandHmacKeySize>();
@@ -165,14 +162,14 @@ void WriteNewIdentity(const std::filesystem::path& identityFolder)
     Formats::WriteFileBytes(identityFolder / AuthorityCertificateFileName, authorityCertificate);
 }
 
-void WriteIdentityFromKeyBlock(Formats::ByteView keyBlock, const std::optional<MacAddress>& macAddress,
+void WriteIdentityFromKeyBlock(Formats::ByteView keyBlock, const std::optional<MacAddress>& macAddress, const SharedKeys& sharedKeys,
     const std::filesystem::path& identityFolder)
 {
     Formats::BootMiiKeyBlock block = Formats::ReadBootMiiKeyBlock(keyBlock);
     const Formats::OneTimeProgrammable& memory = block.oneTimeProgrammable;
     const Formats::SerialEeprom& eeprom = block.serialEeprom;
 
-    Formats::ConsoleKeys keys = MakeSharedKeys();
+    Formats::ConsoleKeys keys = StartWithSharedKeys(sharedKeys);
     keys.boot1Hash = memory.boot1Hash;
     keys.commonKey = memory.commonKey;
     keys.consoleId = memory.consoleId;

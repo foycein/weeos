@@ -35,7 +35,8 @@ std::optional<Formats::ChannelPlaces> ReadPlacesFile(DataManagementServices& ser
         if (encrypted.size() != Formats::ChannelPlacesFileSize)
             return std::nullopt;
 
-        return Formats::ReadChannelPlaces(DecryptFromCard(services.identity, encrypted));
+        Formats::Bytes plainFile = DecryptFromCard(services.identity, encrypted);
+        return Formats::ReadChannelPlaces(plainFile, services.identity.GetSdCardDigestPlaceholder());
     }
     catch (const DataError&)
     {
@@ -106,7 +107,8 @@ DataResult WriteChannelPlaces(DataManagementServices& services, const Formats::C
 {
     try
     {
-        Formats::Bytes encrypted = EncryptForCard(services.identity, Formats::WriteChannelPlaces(places));
+        Formats::Bytes plainFile = Formats::WriteChannelPlaces(places, services.identity.GetSdCardDigestPlaceholder());
+        Formats::Bytes encrypted = EncryptForCard(services.identity, plainFile);
         for (std::string_view path : PlacesFilePaths)
         {
             Ios::SdPath file = MakeSdPath(path);

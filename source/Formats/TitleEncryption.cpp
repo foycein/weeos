@@ -3,7 +3,6 @@
 #include "Formats/Alignment.h"
 #include "Formats/FormatError.h"
 #include "Formats/Sha1.h"
-#include "Formats/WiiKeys.h"
 
 #include <algorithm>
 #include <format>
@@ -44,7 +43,7 @@ AesBlock MakeContentInitializationVector(std::uint16_t contentIndex)
 
 }
 
-AesKey DecryptTitleKey(const Ticket& ticket)
+AesKey DecryptTitleKey(const Ticket& ticket, const AesKey& commonKey)
 {
     if (ticket.commonKeyIndex != CommonKeyIndex)
     {
@@ -59,7 +58,7 @@ AesKey DecryptTitleKey(const Ticket& ticket)
     }
 
     AesBlock initializationVector = MakeTitleKeyInitializationVector(ticket.titleId);
-    Bytes titleKeyBytes = DecryptAes128Cbc(ticket.encryptedTitleKey, WiiCommonKey, initializationVector);
+    Bytes titleKeyBytes = DecryptAes128Cbc(ticket.encryptedTitleKey, commonKey, initializationVector);
 
     AesKey titleKey;
     std::copy(titleKeyBytes.begin(), titleKeyBytes.end(), titleKey.begin());

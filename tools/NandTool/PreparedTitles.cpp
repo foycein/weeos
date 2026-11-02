@@ -22,11 +22,11 @@ std::string ContentFileName(std::uint32_t contentId)
 
 }
 
-std::filesystem::path PrepareTitleFromWad(Formats::ByteView wadFile, const std::filesystem::path& wiiFilesFolder)
+std::filesystem::path PrepareTitleFromWad(Formats::ByteView wadFile, const Formats::AesKey& commonKey, const std::filesystem::path& wiiFilesFolder)
 {
     Formats::WadSections sections = Formats::ReadWadSections(wadFile);
     Formats::TitleMetadata metadata = Formats::ReadTitleMetadata(sections.titleMetadata);
-    Formats::AesKey titleKey = Formats::DecryptTitleKey(Formats::ReadTicket(sections.ticket));
+    Formats::AesKey titleKey = Formats::DecryptTitleKey(Formats::ReadTicket(sections.ticket), commonKey);
 
     std::filesystem::path titleFolder = wiiFilesFolder / std::format("{:016x}", metadata.titleId);
     std::filesystem::create_directories(titleFolder);

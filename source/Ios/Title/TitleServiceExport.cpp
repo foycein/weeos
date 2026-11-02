@@ -20,7 +20,7 @@ Result<Formats::AesKey> TitleService::ReadTitleKey(TitleId titleId) const
 
     try
     {
-        return Formats::DecryptTitleKey(tickets.Value().front());
+        return Formats::DecryptTitleKey(tickets.Value().front(), identity.GetCommonKey());
     }
     catch (const Formats::FormatError&)
     {

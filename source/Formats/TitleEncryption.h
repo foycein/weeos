@@ -8,8 +8,8 @@
 namespace Formats
 {
 
-// Decrypts the title key of a ticket with the common key. Tickets bound to one console are not supported.
-AesKey DecryptTitleKey(const Ticket& ticket);
+// Decrypts the title key of a ticket with the common key of the console. Tickets bound to one console are not supported.
+AesKey DecryptTitleKey(const Ticket& ticket, const AesKey& commonKey);
 
 // Decrypts one content of a title, cuts it to the size the title metadata gives
 // and checks the SHA-1 hash. A wrong key or damaged data throws a FormatError.

@@ -252,7 +252,7 @@ bool HasConsole(const Ios::IosFolders& folders)
 void MakeNewConsole(const Ios::IosFolders& folders, const std::filesystem::path& wiiFilesFolder)
 {
     if (!std::filesystem::exists(folders.identityFolder / Ios::KeysFileName))
-        Ios::WriteNewIdentity(folders.identityFolder);
+        Ios::WriteNewIdentity(Ios::FindSharedKeysInWiiFiles(wiiFilesFolder), folders.identityFolder);
 
     Ios::IosFolders newFolders = folders;
     newFolders.nandFolder += NewNandFolderEnding;

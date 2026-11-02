@@ -17,8 +17,10 @@ using NandPicker = std::function<std::optional<std::filesystem::path>()>;
 
 // Writes the console of a BootMii backup into the folders: its whole NAND with the complete import (PlanCompleteImport), and its
 // identity from the keys of the backup (keys.bin beside nand.bin, or the key block at the end of nand.bin; the address of the network
-// card from keys.txt when it is there). The folders must be empty or not exist.
-// Throws an exception with a message for the person when the backup cannot be read or the folders cannot be written.
+// card from keys.txt when it is there). The keys for the SD card come from the imported System Menu and its IOS (Ios::FindSharedKeysInNand).
+// The folders must be empty or not exist.
+// Throws an exception with a message for the person when the backup cannot be read, its System Menu does not hold the keys, or the
+// folders cannot be written.
 void ImportConsole(const std::filesystem::path& nandImagePath, const Ios::IosFolders& targetFolders);
 
 // The import of WeeOS.exe: it runs in the background into folders beside the console's folders. When it is done, the program

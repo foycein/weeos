@@ -248,6 +248,21 @@ Result<CipherResult> ConsoleIdentityService::Decrypt(std::uint32_t keyNumber, co
     return result;
 }
 
+const Formats::AesKey& ConsoleIdentityService::GetCommonKey() const
+{
+    return keys.commonKey;
+}
+
+const Formats::AesBlock& ConsoleIdentityService::GetSdCardInitializationVector() const
+{
+    return keys.sdInitializationVector;
+}
+
+const Formats::Md5Digest& ConsoleIdentityService::GetSdCardDigestPlaceholder() const
+{
+    return keys.md5Blanker;
+}
+
 std::uint32_t ConsoleIdentityService::GetBootTwoVersion() const
 {
     return bootTwoVersion;

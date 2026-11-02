@@ -59,7 +59,8 @@ Formats::SaveBanner ReadBannerOrFail(Formats::ByteView banner)
 // The header goes encrypted before the archive. A file that could not be written whole is deleted again.
 void WriteBackupFile(DataManagementServices& services, const Ios::SdPath& file, const Formats::SaveBackupHeader& header, Formats::ByteView archive)
 {
-    Formats::Bytes backup = EncryptForCard(services.identity, Formats::WriteSaveBackupHeader(header));
+    Formats::Bytes plainHeader = Formats::WriteSaveBackupHeader(header, services.identity.GetSdCardDigestPlaceholder());
+    Formats::Bytes backup = EncryptForCard(services.identity, plainHeader);
     backup.insert(backup.end(), archive.begin(), archive.end());
     try
     {
@@ -197,7 +198,7 @@ Formats::SaveBackupHeader ReadHeaderOrFail(const DataManagementServices& service
     Formats::SaveBackupHeader header;
     try
     {
-        header = Formats::ReadSaveBackupHeader(plainHeader);
+        header = Formats::ReadSaveBackupHeader(plainHeader, services.identity.GetSdCardDigestPlaceholder());
     }
     catch (const Formats::FormatError& error)
     {
