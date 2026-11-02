@@ -5,6 +5,7 @@
 #include "Formats/RgbaImage.h"
 
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <string_view>
 
@@ -71,6 +72,10 @@ bool IsPictureOfWords(std::string_view textureFileName, const Formats::RgbaImage
 
 // Draws the picture with pixelsPerUnit pixels for every pixel of the original.
 Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
+
+// The picture drawn with pixelsPerUnit pixels per pixel of the original, drawn once and kept: every layout that shows it, and every new
+// opening of a screen, gets the same drawing until a screen of another size needs another one. Safe to call from several threads.
+std::shared_ptr<const Formats::RgbaImage> KeptSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
 
 // How many pixels per pixel of the original the picture needs on a screen that shows a layout unit with screenPixelsPerUnit pixels,
 // so it is never stretched by the graphics card. At least 1, at most MostPixelsPerUnit.

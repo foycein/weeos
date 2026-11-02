@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
+#include <mutex>
 
 namespace SharpArt
 {
@@ -163,6 +165,33 @@ Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint3
     if (sharpPicture.channels == Intensity)
         TurnIntoIntensity(picture);
     return picture;
+}
+
+namespace
+{
+
+// The latest drawing of each sharp picture and its pixels per unit.
+struct KeptDrawing
+{
+    std::uint32_t pixelsPerUnit = 0;
+    std::shared_ptr<const Formats::RgbaImage> picture;
+};
+
+std::mutex keptDrawingsLock;
+std::map<const SharpPicture*, KeptDrawing> keptDrawings;
+
+}
+
+std::shared_ptr<const Formats::RgbaImage> KeptSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit)
+{
+    std::lock_guard lock(keptDrawingsLock);
+    KeptDrawing& kept = keptDrawings[&sharpPicture];
+    if (kept.picture && kept.pixelsPerUnit == pixelsPerUnit)
+        return kept.picture;
+
+    kept.picture = std::make_shared<const Formats::RgbaImage>(DrawSharpPicture(sharpPicture, pixelsPerUnit));
+    kept.pixelsPerUnit = pixelsPerUnit;
+    return kept.picture;
 }
 
 std::uint32_t PixelsPerUnitFor(const SharpPicture& sharpPicture, float screenPixelsPerUnit)

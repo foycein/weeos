@@ -266,19 +266,12 @@ constexpr Point SettingsButtonFlatCorner = {40, 46};
 
 const std::vector<ColorStop> SettingsButtonBevelByDistance = {
     {0.5f, Gray(220)},
-    {1.5f, Gray(215)},
     {2.5f, Gray(211)},
-    {3.5f, Gray(205)},
     {4.5f, Gray(198)},
-    {5.5f, Gray(188)},
     {6.5f, Gray(177)},
-    {7.5f, Gray(167)},
     {8.5f, Gray(153)},
-    {9.5f, Gray(140)},
     {10.5f, Gray(130)},
-    {11.5f, Gray(122)},
     {12.5f, Gray(115)},
-    {13.5f, Gray(111)},
     {14.5f, Gray(99)},
 };
 
