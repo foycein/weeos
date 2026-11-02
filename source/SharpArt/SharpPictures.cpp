@@ -45,6 +45,7 @@ constexpr Color TransparentBlack = {0, 0, 0, 0};
 constexpr Color TransparentDiscGray = {160, 160, 160, 0};
 constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
+constexpr Color TransparentScrollGray = {102, 102, 102, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, 0xFD378172, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -129,6 +130,12 @@ constexpr std::array AllPictures = {
     SharpPicture{"fs_glassPlate_space.tpl", 156, 34, 0x97C72315, ShownAtItsSize, ColorAndAlpha, DrawSpaceKey},
     SharpPicture{"fs_glassPlate_space2.tpl", 70, 66, 0x23934903, ShownAtItsSize, ColorAndAlpha, DrawTallKey},
     SharpPicture{"fs_roundPlate_a.tpl", 32, 32, 0x68BB31AE, ShownAtItsSize, ColorAndAlpha, DrawRoundPlate},
+    SharpPicture{"fs_VK_backspace_a.tpl", 56, 32, 0xFBDEBF2C, ShownAtItsSize, Intensity, DrawBackspaceSign},
+    SharpPicture{"fs_VK_lineFeed_a.tpl", 56, 48, 0x79C90790, ShownAtItsSize, Intensity, DrawEnterSign},
+    SharpPicture{"fs_VK_shiftCaps_a.tpl", 56, 32, 0x573FF594, ShownAtItsSize, ColorAndAlpha, DrawShiftSign},
+    SharpPicture{"fs_qwertyIcon_a.tpl", 64, 32, 0xFDAAE7C1, ShownAtItsSize, ColorAndAlpha, DrawFullKeyboardSign},
+    SharpPicture{"fs_cellPhoneIcon_a.tpl", 64, 32, 0x71DA0D73, ShownAtItsSize, ColorAndAlpha, DrawTenKeySign},
+    SharpPicture{"fs_scrollAllow_a.tpl", 48, 48, 0x77E9B61E, ShownAtItsSize, ColorAndAlpha, DrawScrollArrowSign, TransparentScrollGray},
     SharpPicture{"defcursor_final64_a.tpl", 64, 64, 0x19BCCC5B, HandMagnification, ColorAndAlpha, DrawPointingHand},
     SharpPicture{"defcursor_final64_b.tpl", 64, 64, 0x8AC8ECB8, HandMagnification, ColorAndAlpha, DrawGrabbingHand},
     SharpPicture{"defcursor_final64_c.tpl", 64, 64, 0x226F18A6, HandMagnification, ColorAndAlpha, DrawOpenHand},
