@@ -14,6 +14,9 @@ constexpr int SamplesPerRow = 16;
 
 constexpr float FullByte = 255;
 
+// The full coverage is summed from its changes, which may leave a rounding error where it should be 0.
+constexpr float SmallestCoverage = 0.0001f;
+
 float ByteToShare(Formats::Byte value)
 {
     return value / FullByte;
@@ -38,19 +41,30 @@ bool CrossingAt(Point from, Point to, float y, float& crossingX)
     return true;
 }
 
-// Adds the share of every pixel of the row that the span from start to end covers, times the weight.
-void AddSpan(std::vector<float>& rowCoverage, float spanStart, float spanEnd, float weight)
+// Adds the coverage of the span from start to end, times the weight, to the row. The pixels it covers only in part get their share in
+// partCoverage; for the pixels it covers fully, only where they start and end is noted in fullCoverageChanges (+weight and -weight), so
+// a long span costs as little as a short one. The sum of the changes up to a pixel is its full coverage.
+void AddSpan(std::vector<float>& partCoverage, std::vector<float>& fullCoverageChanges, float spanStart, float spanEnd, float weight)
 {
-    auto firstColumn = static_cast<std::size_t>(std::floor(spanStart));
-    for (std::size_t column = firstColumn; column < rowCoverage.size(); ++column)
-    {
-        float columnStart = static_cast<float>(column);
-        if (columnStart >= spanEnd)
-            break;
+    if (spanEnd <= spanStart)
+        return;
 
-        float covered = std::min(spanEnd, columnStart + 1) - std::max(spanStart, columnStart);
-        rowCoverage[column] += covered * weight;
+    float firstFullColumn = std::ceil(spanStart);
+    float endOfFullColumns = std::floor(spanEnd);
+    auto startColumn = static_cast<std::size_t>(std::floor(spanStart));
+    if (firstFullColumn > endOfFullColumns)
+    {
+        partCoverage[startColumn] += (spanEnd - spanStart) * weight;
+        return;
     }
+
+    if (firstFullColumn > spanStart)
+        partCoverage[startColumn] += (firstFullColumn - spanStart) * weight;
+    if (spanEnd > endOfFullColumns)
+        partCoverage[static_cast<std::size_t>(endOfFullColumns)] += (spanEnd - endOfFullColumns) * weight;
+
+    fullCoverageChanges[static_cast<std::size_t>(firstFullColumn)] += weight;
+    fullCoverageChanges[static_cast<std::size_t>(endOfFullColumns)] -= weight;
 }
 
 // Paints the source color over the color that is there, with the source alpha times the coverage.
@@ -94,6 +108,7 @@ VectorCanvas::VectorCanvas(std::uint32_t width, std::uint32_t height, std::uint3
     emptyPixel.alpha = 0;
     picture.pixels.assign(static_cast<std::size_t>(picture.width) * picture.height, emptyPixel);
     rowCoverage.assign(picture.width, 0);
+    fullCoverageChanges.assign(static_cast<std::size_t>(picture.width) + 1, 0);
 }
 
 std::uint32_t VectorCanvas::UnitWidth() const
@@ -205,18 +220,23 @@ void VectorCanvas::FillRow(const std::vector<Edge>& edges, std::uint32_t row, co
         {
             float spanStart = std::clamp(crossings[index], 0.0f, rowWidth);
             float spanEnd = std::clamp(crossings[index + 1], 0.0f, rowWidth);
-            AddSpan(rowCoverage, spanStart, spanEnd, sampleWeight);
+            AddSpan(rowCoverage, fullCoverageChanges, spanStart, spanEnd, sampleWeight);
         }
     }
 
     auto firstColumn = static_cast<std::uint32_t>(std::clamp(std::floor(leftmost), 0.0f, rowWidth));
     auto endColumn = static_cast<std::uint32_t>(std::clamp(std::ceil(rightmost), 0.0f, rowWidth));
+    float fullCoverage = 0;
     for (std::uint32_t column = firstColumn; column < endColumn; ++column)
     {
-        if (rowCoverage[column] > 0)
-            PaintPixel(column, row, rowCoverage[column], paint, painting);
+        fullCoverage += fullCoverageChanges[column];
+        float coverage = rowCoverage[column] + fullCoverage;
+        if (coverage > SmallestCoverage)
+            PaintPixel(column, row, coverage, paint, painting);
         rowCoverage[column] = 0;
+        fullCoverageChanges[column] = 0;
     }
+    fullCoverageChanges[endColumn] = 0;
 }
 
 void VectorCanvas::PaintPixel(std::uint32_t column, std::uint32_t row, float coverage, const Paint& paint, Painting painting)

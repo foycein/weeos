@@ -53,6 +53,7 @@ constexpr Color TransparentDiscGray = {160, 160, 160, 0};
 constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 constexpr Color TransparentScrollGray = {102, 102, 102, 0};
+constexpr Color TransparentCardGray = {238, 238, 238, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, 0xFD378172, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -194,6 +195,7 @@ constexpr std::array AllPictures = {
     SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
     SharpPicture{"sk_MiiLogo_00.tpl", 72, 48, 0x33D2EED2, ChannelMagnification, ColorAndAlpha, DrawMiiLogoColors},
     SharpPicture{"sk_MiiLogo_01.tpl", 72, 48, 0x9CC69756, ChannelMagnification, Intensity, DrawMiiLogoShape},
+    SharpPicture{"frame.tpl", 208, 148, 0x64CF1EF6, ChannelMagnification, ColorAndAlpha, DrawPhotoFrame, TransparentCardGray},
 };
 
 constexpr float FullByte = 255;
