@@ -16,4 +16,9 @@ void DrawShopSmallHandleEdge(VectorCanvas& canvas);
 void DrawShopLogoCard(VectorCanvas& canvas);
 void DrawShopDarkLogoCard(VectorCanvas& canvas);
 
+// The white backgrounds of the banner with windows in the shape of cards and the word Wii in each: many cards in rows that grow
+// towards the right (943 by 565), and one card (187 by 138).
+void DrawShopBackground(VectorCanvas& canvas);
+void DrawShopSmallBackground(VectorCanvas& canvas);
+
 }

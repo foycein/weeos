@@ -202,6 +202,8 @@ constexpr std::array AllPictures = {
     SharpPicture{"banner_handle02.tpl", 88, 93, 0xC52FC46F, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandle, TransparentSmallHandleBlue},
     SharpPicture{"banner_handle_white.tpl", 116, 145, 0xD3376710, ChannelMagnification, ColorAndAlpha, DrawShopHandleEdge, TransparentWhite},
     SharpPicture{"banner_handle_white02.tpl", 96, 101, 0x04745AFC, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandleEdge, TransparentWhite},
+    SharpPicture{"banner_bg05.tpl", 943, 565, 0x73A0B8D5, ChannelMagnification, ColorAndAlpha, DrawShopBackground, TransparentWhite},
+    SharpPicture{"banner_bg07.tpl", 187, 138, 0x4EE644F2, ChannelMagnification, ColorAndAlpha, DrawShopSmallBackground, TransparentWhite},
     SharpPicture{"logo_pic01.tpl", 131, 127, 0xE37F7EC8, ChannelMagnification, ColorAndAlpha, DrawShopLogoCard, TransparentWhite},
     SharpPicture{"logo_pic02.tpl", 131, 127, 0x8F06960A, ChannelMagnification, ColorAndAlpha, DrawShopDarkLogoCard, TransparentWhite},
     SharpPicture{"frame.tpl", 208, 148, 0x64CF1EF6, ChannelMagnification, ColorAndAlpha, DrawPhotoFrame, TransparentCardGray},
