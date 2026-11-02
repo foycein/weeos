@@ -180,7 +180,7 @@ void HomeButtonMenu::StopRumble(int player)
     remotes.SetRumble(player, false);
 }
 
-// The menu turns the amplifier of the speaker up while it is open and scales the samples with the volume instead (INP-01).
+// The menu turns the amplifier of the speaker up while it is open and scales the samples with the volume instead.
 void HomeButtonMenu::PlaySpeakerSound(int player, const Input::SpeakerSound& sound)
 {
     Input::SpeakerSound scaledSound = sound;

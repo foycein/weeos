@@ -372,7 +372,7 @@ void HomeButtonMenu::SetText(const std::string& paneName, const std::u16string& 
     pane.textBox->text = text;
 }
 
-// As every layout of the menu: stretched on a wide screen, with the panes that adjust their location squeezed back (SYS-17).
+// As every layout of the menu: stretched on a wide screen, with the panes that adjust their location squeezed back.
 void HomeButtonMenu::FitToScreenShape()
 {
     Formats::Vector2 stretch = display.LayoutStretch();
