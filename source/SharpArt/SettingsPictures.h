@@ -31,4 +31,10 @@ void DrawKeyboardArrowDown(VectorCanvas& canvas);
 // the top that fades to white, and a soft shadow on the right and at the bottom.
 void DrawBigSettingsButton(VectorCanvas& canvas);
 
+// The strength of the signal (40 by 40): a red icon without bars, an orange one with one bar, and green ones with two and three bars.
+void DrawSignalNone(VectorCanvas& canvas);
+void DrawSignalWeak(VectorCanvas& canvas);
+void DrawSignalMiddle(VectorCanvas& canvas);
+void DrawSignalStrong(VectorCanvas& canvas);
+
 }

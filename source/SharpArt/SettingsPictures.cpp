@@ -1,5 +1,6 @@
 #include "SharpArt/SettingsPictures.h"
 
+#include <array>
 #include <vector>
 
 namespace SharpArt
@@ -320,6 +321,100 @@ void DrawBigSettingsButton(VectorCanvas& canvas)
     canvas.Fill(FrameInset(FrameInsideInset), FrameInsidePaint());
     FillShadow(canvas, {RightShadowStart, insideTop}, {insideRight, insideTop}, RightShadowAlpha);
     FillShadow(canvas, {insideLeft, BottomShadowStart}, {insideLeft, insideBottom}, BottomShadowAlpha);
+}
+
+// ---- The strength of the signal on the page of the connection test
+
+namespace
+{
+
+// A dark rounded square with a colored band at the top and the bottom, and between them a flag on a pole and three bars that grow to the
+// right; the bars that the signal reaches are dark, the others light gray.
+constexpr Color SignalDark = {33, 24, 16, 255};
+constexpr Color UnlitBarGray = Gray(206);
+constexpr Color LineBelowTheTopBand = {231, 231, 200, 255};
+constexpr Color WeakRed = {255, 0, 0, 255};
+constexpr Color MiddleOrange = {255, 173, 0, 255};
+constexpr Color StrongGreen = {24, 231, 41, 255};
+constexpr float IconSize = 40;
+constexpr float IconCornerRadius = 7;
+constexpr float IconEdgeWidth = 1;
+constexpr float IconBottomEdgeWidth = 0.4f;
+constexpr float TopBandBottom = 7;
+constexpr float BottomBandTop = 32.6f;
+constexpr float BarBottom = 29;
+constexpr float BarWidth = 4;
+
+struct Bar
+{
+    float left = 0;
+    float top = 0;
+};
+
+constexpr std::array SignalBars = {Bar{17, 20}, Bar{24, 15}, Bar{31, 10}};
+
+void FillBox(VectorCanvas& canvas, float left, float top, float right, float bottom, const Paint& paint)
+{
+    VectorPath box;
+    box.AddRectangle(left, top, right - left, bottom - top);
+    canvas.Fill(box, paint);
+}
+
+void DrawSignalIcon(VectorCanvas& canvas, Color bandColor, std::size_t litBarCount)
+{
+    constexpr float InsideWidth = IconSize - 2 * IconEdgeWidth;
+    constexpr float InsideHeight = IconSize - IconEdgeWidth - IconBottomEdgeWidth;
+    constexpr float InsideRight = IconSize - IconEdgeWidth;
+
+    VectorPath icon;
+    icon.AddRoundedRectangle(0, 0, IconSize, IconSize, IconCornerRadius);
+    canvas.Fill(icon, SolidPaint(SignalDark));
+
+    VectorPath bands;
+    bands.AddRoundedRectangle(IconEdgeWidth, IconEdgeWidth, InsideWidth, InsideHeight, IconCornerRadius - IconEdgeWidth);
+    canvas.Fill(bands, SolidPaint(bandColor));
+
+    Paint whiteFading = VerticalGradient({{11.5f, White}, {BottomBandTop - 1, Gray(212)}});
+    FillBox(canvas, IconEdgeWidth, TopBandBottom, InsideRight, BottomBandTop, whiteFading);
+    FillBox(canvas, IconEdgeWidth, TopBandBottom, InsideRight, TopBandBottom + 1, SolidPaint(LineBelowTheTopBand));
+
+    constexpr float FlagLeft = 5;
+    constexpr float FlagTop = 10;
+    constexpr float FlagSize = 9;
+    constexpr float FlagCornerRadius = 0.8f;
+    VectorPath flag;
+    flag.AddRoundedRectangle(FlagLeft, FlagTop, FlagSize, FlagSize, FlagCornerRadius);
+    canvas.Fill(flag, SolidPaint(SignalDark));
+    FillBox(canvas, 5.5f, 11, 13.5f, 18.5f, SolidPaint(bandColor));
+    FillBox(canvas, 8.1f, FlagTop + FlagSize, 11, BarBottom, SolidPaint(SignalDark));
+
+    for (std::size_t index = 0; index < SignalBars.size(); ++index)
+    {
+        Color barColor = index < litBarCount ? SignalDark : UnlitBarGray;
+        FillBox(canvas, SignalBars[index].left, SignalBars[index].top, SignalBars[index].left + BarWidth, BarBottom, SolidPaint(barColor));
+    }
+}
+
+}
+
+void DrawSignalNone(VectorCanvas& canvas)
+{
+    DrawSignalIcon(canvas, WeakRed, 0);
+}
+
+void DrawSignalWeak(VectorCanvas& canvas)
+{
+    DrawSignalIcon(canvas, MiddleOrange, 1);
+}
+
+void DrawSignalMiddle(VectorCanvas& canvas)
+{
+    DrawSignalIcon(canvas, StrongGreen, 2);
+}
+
+void DrawSignalStrong(VectorCanvas& canvas)
+{
+    DrawSignalIcon(canvas, StrongGreen, 3);
 }
 
 }
