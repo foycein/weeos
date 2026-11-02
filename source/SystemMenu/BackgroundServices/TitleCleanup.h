@@ -11,7 +11,7 @@
 namespace SystemMenu
 {
 
-// The helpers of the menu that delete titles and keep their title metadata (ESMisc of the original, iplESMisc.cpp,
+// The functions of the menu that delete titles and keep their title metadata (ESMisc of the original, iplESMisc.cpp,
 // 0x81365704 to 0x81368758). The title metadata of every title the menu deletes goes into the backup file tmds.sys first,
 // so that the title can be set up again when it comes back from the SD card.
 class TitleCleanup
