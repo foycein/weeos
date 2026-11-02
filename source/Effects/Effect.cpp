@@ -20,7 +20,7 @@ using Formats::ParticleDrawType;
 namespace
 {
 
-// Emit flags of features that only effects of the owner's server use: the distance from the camera changes the amount, the emitter
+// Emit flags of features that only effects of WeeOS's own server use: the distance from the camera changes the amount, the emitter
 // turns to the camera.
 constexpr std::uint32_t EmitterTurnsToTheCamera = 0x8000;
 constexpr std::uint32_t EmitterTurnsToTheCameraOnY = 0x10000;

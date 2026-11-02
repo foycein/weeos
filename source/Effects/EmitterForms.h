@@ -20,7 +20,7 @@ struct FormPlacement
 };
 
 // True for the forms that WeeOS builds: the point, the disc and the cylinder with random places. The others (line, cube, sphere,
-// torus, and the cylinder with even steps) are only used by effects of the owner's server (the Wii Speak lobby).
+// torus, and the cylinder with even steps) are only used by effects of WeeOS's own server (the Wii Speak lobby).
 bool IsFormBuilt(const Formats::EmitterSettings& settings);
 
 // The places of the particles of one emission.
