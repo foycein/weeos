@@ -22,7 +22,7 @@ constexpr double MillisecondsPerStep = 1001.0 / 60.0;
 constexpr double HighestIconAlpha = 255.9;
 
 // Where the picture lies, in the layout units of the 4:3 picture: the corner at the top left.
-// Assumed: the same place on a 16:9 screen (docs/audit/OpenPoints/SystemMenu.md SYS-61).
+// Assumed: the same place on a 16:9 screen.
 constexpr float IconLeft = -256;
 constexpr float IconTop = 188;
 constexpr float IconRight = -200;

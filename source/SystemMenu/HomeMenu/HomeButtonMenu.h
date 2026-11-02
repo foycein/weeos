@@ -73,7 +73,7 @@ constexpr int HighestSpeakerVolumeStep = 10;
 
 // The HOME Button Menu: the bar at the top with Close, the big button "Wii Menu" with its question, and the bar at the bottom with the
 // batteries of the four remotes, which opens the Wii Remote Settings (volume of the speaker, rumble, connection of the remotes).
-// This is the HBM library inside the System Menu (0x81371B74 to 0x81378000, docs/audit/SystemMenu.md). The hands are drawn by the
+// This is the HBM library inside the System Menu (0x81371B74 to 0x81378000). The hands are drawn by the
 // cursor manager: its layouts are the same files as the hands of the HOME menu.
 class HomeButtonMenu
 {

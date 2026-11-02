@@ -30,7 +30,7 @@ struct HomeMenuTexts
     std::vector<std::u16string> buttonQuestions;
 };
 
-// The files of the HOME Button Menu in the resource content of the System Menu (docs/research/SystemMenuStructure.md 4.13).
+// The files of the HOME Button Menu in the resource content of the System Menu.
 struct HomeMenuFiles
 {
     // The layout, its animations and its pictures: the English archive layout/eng/homeBtn1.ash and the common one
