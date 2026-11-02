@@ -39,7 +39,7 @@ constexpr std::size_t AiffBitsPerSampleOffset = 6;
 constexpr std::size_t AiffSampleRateOffset = 8;
 constexpr std::size_t SoundDataHeaderSize = 8;
 
-// Assumed (SND-10): the sample sizes that a message can carry.
+// Assumed: the sample sizes that a message can carry.
 constexpr std::uint16_t EightBitSamples = 8;
 constexpr std::uint16_t SixteenBitSamples = 16;
 
