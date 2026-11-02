@@ -63,7 +63,7 @@ constexpr float RunArrivalDistance = 10.0f;
 // The walk animation runs 0.6 / length of the body frames per unit of distance (80022BD0); the run animation the same.
 constexpr float WalkFramesPerUnit = 0.6f;
 
-// The lengths of the animations of Character.szs, in frames (AnimationFramesOf; MiiChannelTest compares them with the file).
+// The lengths of the animations of Character.szs, in frames (AnimationFramesOf).
 constexpr float WalkAnimationFrames = 40.0f;
 constexpr float RunAnimationFrames = 40.0f;
 constexpr float WaitAnimationFrames = 120.0f;
