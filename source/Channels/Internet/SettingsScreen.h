@@ -16,7 +16,7 @@ namespace Channels
 
 // The settings of the Internet Channel that mean something on a PC (preferences.html with the widescreen prefernces.css, the manual
 // page 7): Toolbar Display, Search Engine and Delete Cookies. Each setting is a button; a button with choices opens below itself and
-// shows its choices as radio buttons. The settings that the PC decides are left out: the proxy (DECISIONS.md: no proxy), the width of
+// shows its choices as radio buttons. The settings that the PC decides are left out: the proxy, the width of
 // the display (the picture of WeeOS is always whole) and the zoom type (the zoom of the page is the engine's).
 class SettingsScreen
 {

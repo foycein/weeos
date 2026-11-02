@@ -10,7 +10,7 @@ namespace Channels
 {
 
 // The picture of a favorite: 90 x 68 pixels, as the Internet Channel keeps it in bmarks.bmp (each place holds a Windows bitmap of this
-// size with 24 bits a pixel, found in the reference console's bmarks.bmp) and as favorites.css shows it.
+// size with 24 bits a pixel, found in the bmarks.bmp of a real console) and as favorites.css shows it.
 constexpr std::uint32_t ThumbnailWidth = 90;
 constexpr std::uint32_t ThumbnailHeight = 68;
 

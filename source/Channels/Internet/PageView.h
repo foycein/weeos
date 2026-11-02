@@ -19,7 +19,7 @@ class PageView
 {
 public:
     // The engine draws two of its pixels for every layout unit, so the page stays sharp in a window up to 1664 pixels wide and is
-    // still smooth in a full 4K screen (Assumed, docs/audit/Browser.md).
+    // still smooth in a full 4K screen (Assumed).
     static constexpr double PixelsPerUnit = 2;
 
     // The steps of the zoom of + and - (Assumed: the original's steps were not read).

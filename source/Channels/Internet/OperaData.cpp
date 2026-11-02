@@ -36,7 +36,7 @@ constexpr std::size_t NumberLine = 4;
 constexpr int FirstPosition = 1;
 constexpr int FirstNumber = 1;
 
-// The pictures of the favorites (the reference console's data folder): bmarks.bmp beside opera.vff has 140 places of 18560 bytes,
+// The pictures of the favorites (the channel's data folder of a real console): bmarks.bmp beside opera.vff has 140 places of 18560 bytes,
 // each a bitmap of 90 x 68 pixels; BMARKS.TXT in opera.vff has a line for every place, the name of its picture or "*" for a free place.
 // The name of a picture is WeeOS's own: the number of the favorite in eight hexadecimal digits (Assumed: the original's names were not
 // traced to the favorites).

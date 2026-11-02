@@ -16,8 +16,8 @@ std::string AddressOfTypedText(std::u16string_view typedText);
 // The address of a search for the words with the chosen engine; the words are written in UTF-8 with the signs of an address escaped.
 std::string SearchAddressOf(SearchEngine engine, std::u16string_view words);
 
-// The hosts of Nintendo's services for the Wii: their pages go to the owner's server, and fail while there is none (docs/DECISIONS.md,
-// Online). Assumed: the services the channel's own pages and favorites lead to.
+// The hosts of Nintendo's services for the Wii: their pages go to WeeOS's own server, and fail while there is none.
+// Assumed: the services the channel's own pages and favorites lead to.
 std::vector<std::string> WiiServiceHosts();
 
 }

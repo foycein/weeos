@@ -20,7 +20,7 @@ constexpr std::uint16_t BitsPerPixel = 24;
 constexpr std::uint32_t BytesPerPixel = 3;
 constexpr std::uint32_t RowAlignment = 4;
 
-// 72 dots per inch, in dots per meter, as the reference console's pictures say.
+// 72 dots per inch, in dots per meter, as the pictures of a real console say.
 constexpr std::uint32_t DotsPerMeter = 2834;
 
 // The fields of the header that are always zero: the reserved field, no compression, and 0 for "all colors are used and important".
