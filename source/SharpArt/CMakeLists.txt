@@ -1,9 +1,11 @@
 add_library(SharpArt STATIC
+    ChannelBannerPictures.cpp
     ClockPictures.cpp
     CursorPictures.cpp
     DataManagementPictures.cpp
     DialogPictures.cpp
     HomeMenuPictures.cpp
+    InternetChannelPictures.cpp
     KeyboardPictures.cpp
     Paint.cpp
     RemotePictures.cpp
