@@ -28,7 +28,7 @@ constexpr FilterMode ConsoleScalingFilter = FilterMode::Linear;
 constexpr Canvas ConsoleCanvas = {832, 456};
 
 // Which way the console sends its picture to the television. The vertical filter of the copy depends on it.
-// The console of the dump has no setting for the progressive mode, so it sends 480i.
+// The reference console has no setting for the progressive mode, so it sends 480i.
 enum class ConsoleScan : std::uint8_t
 {
     Progressive,
