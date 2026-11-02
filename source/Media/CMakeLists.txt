@@ -18,5 +18,5 @@ add_library(Media STATIC
 
 target_link_libraries(Media PUBLIC Formats)
 
-# Windows' own AAC decoder, allowed by the owner for music files (docs/DECISIONS.md).
+# Windows' own AAC decoder, only for music files.
 target_link_libraries(Media PRIVATE mfplat mfreadwrite mfuuid shlwapi ole32)
