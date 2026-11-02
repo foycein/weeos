@@ -15,7 +15,7 @@ namespace
 // The music of the Mii Channel, the one sequence of NigaoeSound.brsar on the player of the music (80018A2C), until the channel ends.
 constexpr std::string_view Music = "SEQ_TMP_BGM";
 
-// The channel's archive has two sounds for its keyboard: the focus of a key, and a press for everything else (Assumed, CHN-75).
+// The channel's archive has two sounds for its keyboard: the focus of a key, and a press for everything else (Assumed).
 constexpr std::string_view KeyboardFocusSound = "SEQ_KEYBOARD_FORCUS";
 constexpr std::string_view KeyboardPushSound = "SEQ_KEYBOARD_PUSH";
 
@@ -39,7 +39,7 @@ SystemMenu::KeyboardButtonTexts KeyboardTextsOf(const Formats::NumberedMessageFi
 
 // The Mii Channel's hand (EffectManager 0x80028878): only the first player's, in the box of the flat effects, with the shadow 3 units
 // right and 3 down, made 4/3 wider (0x80029A54, 0x800295B0). The closed hand rises above the pointer while it holds a Mii (0x80029264:
-// 80 units, or 95 with another camera; MiiChannelHoldingLift, EFF-12, Assumed).
+// 80 units, or 95 with another camera; MiiChannelHoldingLift, Assumed).
 constexpr Formats::Vector2 HandShadowOffset = {3.0f * 4 / 3, -3};
 constexpr float MiiChannelHoldingLift = 80;
 constexpr EffectHandsLook MiiChannelHandsLook = {
@@ -394,7 +394,7 @@ void MiiChannel::FollowNewMiiQuestions()
 }
 
 // The face of a look-alike becomes a new Mii without names, and like the templates of "Start from scratch" it may not travel
-// (Assumed, CHN-69).
+// (Assumed).
 void MiiChannel::FollowLookAlike()
 {
     std::optional<LookAlikeResult> result = lookAlike.TakeResult();

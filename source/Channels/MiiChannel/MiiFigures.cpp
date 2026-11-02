@@ -14,14 +14,14 @@ namespace
 
 constexpr std::string_view StandingAnimation = "bodyWait";
 
-// A Mii in the hand is lifted above the ground (Assumed, CHN-66).
+// A Mii in the hand is lifted above the ground (Assumed).
 constexpr float HeldLift = 80.0f;
 
-// The shadows lie a unit above the ground, so that the ground's depth does not hide them (Assumed, CHN-80). A held Mii's shadow stays
+// The shadows lie a unit above the ground, so that the ground's depth does not hide them (Assumed). A held Mii's shadow stays
 // on the ground.
 constexpr float ShadowLift = 1.0f;
 
-// Assumed (MII-20): the camera of the editor's Mii looks at it from the front and shows the tallest one whole.
+// Assumed: the camera of the editor's Mii looks at it from the front and shows the tallest one whole.
 constexpr Formats::Vector3 StandingEye = {0.0f, 110.0f, 700.0f};
 constexpr Formats::Vector3 StandingTarget = {0.0f, 110.0f, 0.0f};
 constexpr float StandingViewDegrees = 19.5f;
@@ -38,7 +38,7 @@ constexpr float HeadFar = 700.0f;
 constexpr Formats::Vector3 Upward = {0.0f, 1.0f, 0.0f};
 
 // The ground reaches from 0 to 5400 in depth with the middle of its paving at 2700; it lies with that middle under the middle of the plaza
-// (Assumed, CHN-71).
+// (Assumed).
 constexpr Formats::Vector3 GroundPlace = {0.0f, 0.0f, -2700.0f};
 
 // The faces of Mii::MiiExpression, from Normal to OpenMouth.

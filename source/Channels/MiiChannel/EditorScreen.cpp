@@ -220,7 +220,7 @@ constexpr std::uint32_t MingleOnWord = 200802;
 constexpr std::uint32_t EnterNickname = 300001;
 constexpr std::uint32_t EnterCreatorName = 300007;
 
-// Assumed (CHN-67): the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
+// Assumed: the original marks the chosen part by colors of its button that were not traced; WeeOS tints the chosen button.
 constexpr Formats::Rgba8Color ChosenTint = {255, 210, 90, 255};
 constexpr Formats::Rgba8Color NotChosenTint = {255, 255, 255, 255};
 constexpr std::uint8_t ChosenColorAlpha = 255;

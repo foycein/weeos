@@ -20,7 +20,7 @@ constexpr float WideHalfWidth = 3050.0f;
 constexpr float FrontLimit = 2050.0f;
 constexpr float BackLimit = -1850.0f;
 
-// The Mii Parade (800258d4, 800260b4, 8002548c; CHN-84): at most 100 Miis walk at a time (75 in 4:3). Each comes in behind the last one,
+// The Mii Parade (800258d4, 800260b4, 8002548c): at most 100 Miis walk at a time (75 in 4:3). Each comes in behind the last one,
 // at least at z -700 (just above the picture), from 1 unit nearer to 9 units farther, at a random place within 720 units of the middle of
 // the road (540 in 4:3), and walks to z 700 (below the picture); a place within 90 units of a Mii less than 120 in front of it is tried
 // again, up to 20 times. One in a hundred walks up to 100 units to the side on its way. At the start the Miis come in one at a time,
@@ -153,15 +153,15 @@ constexpr int SlipChances = 7200;
 constexpr float SlipFreeDistance = 200.0f;
 constexpr float SlideSpeedKeptPerStep = 0.94f;
 
-// The talking mouth opens and closes every 8 steps (Assumed, CHN-82).
+// The talking mouth opens and closes every 8 steps (Assumed).
 constexpr int MouthSteps = 8;
 
-// Assumed (CHN-63): how long a Mii stands and how fast it turns; the rules that choose them were not traced.
+// Assumed: how long a Mii stands and how fast it turns; the rules that choose them were not traced.
 constexpr int ShortestWaitSteps = 120;
 constexpr int LongestWaitSteps = 600;
 constexpr float TurnDegreesPerStep = 8.0f;
 
-// The whistle's lines (Assumed, CHN-64): ten Miis to a line, 160 units apart, the first line in front.
+// The whistle's lines (Assumed): ten Miis to a line, 160 units apart, the first line in front.
 constexpr int MiisPerLine = 10;
 constexpr float LineSpacing = 160.0f;
 constexpr float FirstLineZ = 700.0f;
@@ -185,7 +185,7 @@ constexpr float NearDistance = 10.0f;
 constexpr float FarDistance = 100000.0f;
 constexpr float WideAspect = 16.0f / 9.0f;
 
-// The D-pad moves the camera 15 units a step (8001295C). The eye glides a tenth of the way to its destination every step (Assumed, CHN-62).
+// The D-pad moves the camera 15 units a step (8001295C). The eye glides a tenth of the way to its destination every step (Assumed).
 constexpr float ScrollPerStep = 15.0f;
 constexpr float GlidePerStep = 0.1f;
 
@@ -1001,7 +1001,7 @@ void MiiPlaza::ChooseIdleMoment(PlazaMii& plazaMii)
 
 // The talker looks for a Mii in front of it among a third of the Miis; when the one it finds is near, the two turn to each other
 // and talk, else the talker walks to it first (8002B840 marks it with the partner, 0x728 = 3). Miis that the whistle lined up keep
-// their places (Assumed, CHN-81).
+// their places (Assumed).
 void MiiPlaza::StartTalk(PlazaMii& talker)
 {
     if (miis.size() < 2)
@@ -1034,7 +1034,7 @@ void MiiPlaza::StartTalk(PlazaMii& talker)
     }
 }
 
-// The talker keeps walking toward its partner while the partner is free; near it, they talk (Assumed, CHN-81: the partner that gets
+// The talker keeps walking toward its partner while the partner is free; near it, they talk (Assumed: the partner that gets
 // busy on the way is given up and the talker walks on to where it saw it).
 void MiiPlaza::WalkToTheTalkPartner(PlazaMii& talker)
 {

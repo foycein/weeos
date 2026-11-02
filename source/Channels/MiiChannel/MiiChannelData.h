@@ -17,7 +17,7 @@ namespace Channels
 constexpr std::string_view MiiDatabasePath = "/shared2/menu/FaceLib/RFL_DB.dat";
 constexpr std::string_view MiiChannelSavePath = "/title/00010002/48414341/data/NigaoeCh.dat";
 
-// The format of the channel clears its record of 0x60 bytes (8001A618, CHN-21 and CHN-72); WeeOS keeps only the flags word in it.
+// The format of the channel clears its record of 0x60 bytes (8001A618); WeeOS keeps only the flags word in it.
 constexpr std::size_t MiiChannelSaveSize = 0x60;
 constexpr std::size_t ChannelFlagsOffset = 0x40;
 

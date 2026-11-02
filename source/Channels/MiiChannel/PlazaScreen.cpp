@@ -31,7 +31,7 @@ constexpr std::array<std::string_view, 3> ArrivalPanes = {"RootPane", "squButton
 
 // The focus of the buttons (the table at 8023B9F0 bound by 80041024): the left buttons with anmSQUMenuFocusL, the right ones with
 // anmSQUMenuFocusR, each on its squPrBtnNull pane; the whistle with its icon and its text; each sort button with anmSQUSortFocus. The
-// round buttons sound big, the two small ones small and the whistle's the editor's (Assumed, CHN-83).
+// round buttons sound big, the two small ones small and the whistle's the editor's (Assumed).
 constexpr std::string_view BigFocusSound = "SEQ_BUT_SELECT_BIG";
 constexpr std::string_view SmallFocusSound = "SEQ_BUT_SELECT_SMALL";
 constexpr std::string_view WhistleFocusSound = "SEQ_EDIT_BUT_SELECT";
@@ -79,14 +79,14 @@ constexpr std::string_view BalloonPane = "balAnimNull_00";
 constexpr std::string_view BalloonName = "balloonText_00";
 constexpr std::string_view BalloonCreator = "balText_00";
 
-// Assumed (CHN-05, CHN-68): how long the plaza shows "Reading..." of a Wii Remote and the search for a Nintendo DS before their answers.
+// Assumed: how long the plaza shows "Reading..." of a Wii Remote and the search for a Nintendo DS before their answers.
 constexpr int RemoteReadingSteps = 60;
 constexpr int DsSearchSteps = 300;
 
-// The name balloon stays for 3 seconds after A on a Mii (Assumed, CHN-66).
+// The name balloon stays for 3 seconds after A on a Mii (Assumed).
 constexpr int BalloonSteps = 180;
 
-// B held with the hand near an edge scrolls the plaza (Assumed, CHN-62): beyond 70 percent of the way from the middle to the edge.
+// B held with the hand near an edge scrolls the plaza (Assumed): beyond 70 percent of the way from the middle to the edge.
 constexpr float EdgeScrollFraction = 0.7f;
 
 constexpr std::string_view ButtonPushSound = "SEQ_HIROBA_BUT_PUSH";

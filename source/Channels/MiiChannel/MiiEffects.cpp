@@ -21,8 +21,8 @@ constexpr int FadePerStep = 17;
 // The channel shrinks the balloons of a talk and the splash of a sneeze to 0.8 (0x803BE364).
 constexpr float TalkAndSneezeScale = 0.8f;
 
-// The sneeze and the Zzz stand in a frame of the Mii that turns with it and whose origin lies this far below the head (EFF-13,
-// Assumed): the head of a Mii of the default size stands 94.5 units above its feet (MiiBodyTest), and the effects' own translations
+// The sneeze and the Zzz stand in a frame of the Mii that turns with it and whose origin lies this far below the head
+// (Assumed): the head of a Mii of the default size stands 94.5 units above its feet, and the effects' own translations
 // (110 and 60 units up) are measured from the feet.
 constexpr float HeadHeightAboveTheFeet = 94.5f;
 

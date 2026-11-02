@@ -40,7 +40,7 @@ struct PlazaGroundModel
 PlazaGroundModel ReadPlazaGroundModel(Formats::ByteView brres);
 PlazaGroundModel ReadParadeRoadModel(Formats::ByteView brres);
 
-// Beyond the ground the plaza and the parade are white, the color their edges fade into (Assumed, CHN-71): the whole canvas in white.
+// Beyond the ground the plaza and the parade are white, the color their edges fade into (Assumed): the whole canvas in white.
 void DrawWhiteBackground(Graphics::GraphicsDevice& device, Graphics::Canvas canvas);
 
 // A ground on the graphics card, its picture faded into white by the corner alpha.

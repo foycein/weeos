@@ -18,7 +18,7 @@
 namespace Channels
 {
 
-// The effects of the Mii Channel (EffectManager.cpp of the original, CHN-94): the effects of the Miis among the 3D models (the balloons
+// The effects of the Mii Channel (EffectManager.cpp of the original): the effects of the Miis among the 3D models (the balloons
 // of a talk, dust, the sneeze, the Zzz of a nap, the sparkles of the editor) and the favorite mark over the layouts.
 class MiiEffects
 {

@@ -98,7 +98,7 @@ constexpr float RoadScaledTurn = 4.9497475f;
 constexpr Graphics::TextureMatrix RoadMatrix = {{{{RoadScaledTurn, -RoadScaledTurn, 0.0f}, {RoadScaledTurn, RoadScaledTurn, 0.0f}}}};
 
 // The second texture of mt_road, alpha_tex, is scaled by 2 about the middle of the road and clamped at its edges (the SRT of the
-// material: scale 2, no turn; CHN-84), so the road shows in the middle half of road_model and fades to white at its sides.
+// material: scale 2, no turn), so the road shows in the middle half of road_model and fades to white at its sides.
 constexpr std::string_view SideFadeTexture = "alpha_tex";
 constexpr float SideFadeScale = 2.0f;
 constexpr float SideFadeShift = 0.5f - SideFadeScale * 0.5f;

@@ -112,7 +112,7 @@ struct PlazaMii
     bool leavesTheRoad = false;
 };
 
-// A moment of a plaza Mii that an effect shows (EffectManager.cpp of the original, CHN-94).
+// A moment of a plaza Mii that an effect shows (EffectManager.cpp of the original).
 enum class PlazaMoment
 {
     // A talking Mii lets out a balloon: at the start of a talk and now and then while it lasts.

@@ -42,7 +42,7 @@ struct MiiChannelFiles
     // The hands of the HOME Button Menu, which show while it is open.
     Formats::Bytes handArchive;
 
-    // The particle effects of Character.szs: the channel's own hands and the effects of the Miis (CHN-94).
+    // The particle effects of Character.szs: the channel's own hands and the effects of the Miis.
     Formats::Bytes handEffects;
     Formats::Bytes handPictures;
     Formats::Bytes miiEffects;

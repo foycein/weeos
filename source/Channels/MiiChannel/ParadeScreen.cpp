@@ -40,7 +40,7 @@ constexpr std::array<FocusedButton, 5> ParadeButtonFocus = {{
     {ParadeScreen::SpeedButton, "squPrBtnNull_01", "anmURAMenuFocusR", FocusSound},
 }};
 
-// The count of the parade, "Miis in the parade / Miis it holds" (Assumed, CHN-84).
+// The count of the parade, "Miis in the parade / Miis it holds" (Assumed).
 constexpr std::string_view CountText = "numberText_00";
 
 // The two pictures of "Speed": walking and running.
