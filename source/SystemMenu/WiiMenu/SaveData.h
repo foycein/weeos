@@ -43,7 +43,7 @@ struct SavedSlot
 // The bytes of iplsave.bin that the menu keeps as they are: what lies between the places and the digest.
 constexpr std::size_t OtherDataSize = 0x1A0;
 
-// The menu's own save file, /title/00000001/00000002/data/iplsave.bin (docs/audit/OpenPoints/SystemMenu.md SYS-01).
+// The menu's own save file, /title/00000001/00000002/data/iplsave.bin.
 // It holds the places of the channel grid in the order of the pages. The page that the menu shows is not stored in the file
 // while the menu runs. A channel that starts remembers its page here, so that the menu can open on it when the channel ends.
 struct SaveData

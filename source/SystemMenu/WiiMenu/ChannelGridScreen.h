@@ -57,7 +57,7 @@ enum class GridState
     ComingFromTheBoard,
 };
 
-// The channel grid of the Wii Menu (screen 0x02, docs/research/SystemMenuStructure.md 4.3): four pages of twelve televisions on a
+// The channel grid of the Wii Menu (screen 0x02): four pages of twelve televisions on a
 // strip that slides sideways, the clock below them, the balloon with the name of a channel, and the hands that press, turn the
 // pages and move channels.
 //

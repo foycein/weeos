@@ -96,12 +96,12 @@ constexpr std::string_view BannerFilePath = "meta/banner.bin";
 constexpr std::string_view SoundFilePath = "meta/sound.bin";
 constexpr std::string_view DiscStartAnimation = "my_DiskCh_a_Start";
 
-// The empty drive shows the discs it takes. WeeOS takes no GameCube disc (DECISIONS.md, scope), so its disc, shade, reflection and
+// The empty drive shows the discs it takes. WeeOS takes no GameCube disc, so its disc, shade, reflection and
 // window stay hidden (SYS-89).
 constexpr std::array<std::string_view, 4> GameCubeDiscPanes = {"N_GC0", "ShadeGC", "N_RefGC", "W_GC"};
 constexpr std::string_view NoDiscSound = "WIPL_ME_NO_DISC_BANNER";
 
-// The scripts of two banners (docs/research/Channels.md 1.6): the News Channel without save data shows the text textT0, the Photo
+// The scripts of two banners: the News Channel without save data shows the text textT0, the Photo
 // Channel loops its first animation from this frame.
 constexpr std::string_view NewsTextWithoutSaveData = "textT0";
 constexpr float FirstFrameOfThePhotoBannerLoop = 40;
@@ -282,7 +282,7 @@ void ChannelStartWindowScreen::BuildTheBanner()
 
 // Every banner shows its English panes (0x813B63EC calls 0x813B24C0). A banner without a script plays banner_Start once and then
 // banner_Loop, or banner over and over. A banner that a script or a module drives shows what the script shows while the channel has
-// no data of its own: its start, or its first animation on the group Rso0 (docs/research/Channels.md 1.6, SYS-92).
+// no data of its own: its start, or its first animation on the group Rso0.
 void ChannelStartWindowScreen::BuildTheChannelBanner()
 {
     bannerLayout = std::make_unique<MenuLayout>(services.display, *bannerArchive, std::string(BannerLayout));
@@ -298,7 +298,7 @@ void ChannelStartWindowScreen::BuildTheChannelBanner()
         bannerLoop = bannerLayout->BindAnimationToPane(*animations.loop, RootPaneName, Layout::PlaybackMode::Loop);
 }
 
-// The News Channel's script shows the text for a channel without save data (docs/research/Channels.md 1.6).
+// The News Channel's script shows the text for a channel without save data.
 void ChannelStartWindowScreen::BuildTheBannerScript(const std::string& animationName)
 {
     std::vector<Formats::Pane*> panes = bannerLayout->Live().PanesOfGroup(ScriptGroupOfBanners);
@@ -570,7 +570,7 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonEvent& event)
     }
 }
 
-// What Start does (0x813B9488 and 0x813B6F10). WeeOS has no system update and no parental controls (docs/DECISIONS.md, Settings), so the
+// What Start does (0x813B9488 and 0x813B6F10). WeeOS has no system update and no parental controls, so the
 // original's Update button of an old channel and its PIN dialog are not there. The original asks a channel that needs the Internet whether
 // to set the Internet up first while no connection has passed its test; the PC's connection counts as set up, so that question never
 // comes either (SYS-93).
@@ -594,7 +594,7 @@ void ChannelStartWindowScreen::PressStart()
     BeginStart();
 }
 
-// WeeOS shows the menu's own message for a channel that it has no program for yet (DECISIONS.md), in a dialog instead of the error screen
+// WeeOS shows the menu's own message for a channel that it has no program for yet, in a dialog instead of the error screen
 // of the original, so that the user can go back.
 void ChannelStartWindowScreen::ShowMessage(std::uint16_t messageNumber)
 {

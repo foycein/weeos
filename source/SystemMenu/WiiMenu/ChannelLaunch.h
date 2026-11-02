@@ -15,7 +15,7 @@
 namespace SystemMenu
 {
 
-// What the channel start window needs to know about a channel before it starts it (docs/research/SystemMenuStructure.md 4.5).
+// What the channel start window needs to know about a channel before it starts it.
 
 // The title as the title service lists it. Nothing when it is not installed.
 std::optional<InstalledTitle> FindInstalledTitle(MenuConsole& console, Ios::TitleId titleId);

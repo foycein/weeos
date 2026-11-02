@@ -78,7 +78,7 @@ enum class BarChange
     LetterShowsWithButton,    // 0x11: 3640 to 3653
 };
 
-// The bar at the bottom of the Wii Menu (screen 0x05, docs/research/SystemMenuStructure.md 4.3): the Wii button, the Message Board
+// The bar at the bottom of the Wii Menu (screen 0x05): the Wii button, the Message Board
 // button and the arrows that turn the pages. The bar answers to the hands itself: a button that a hand comes onto grows and glows,
 // plays WIPL_SE_BT_TARGETTING and, after a moment, shows a balloon with its name. The channel grid asks the bar which button lies
 // under a pointer and answers the presses, as in the original.

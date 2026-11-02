@@ -15,7 +15,7 @@
 namespace SystemMenu
 {
 
-// The Wii Menu (screen 0x04, docs/research/SystemMenuStructure.md 4.3). It is the frame of the menu: it draws the background with the
+// The Wii Menu (screen 0x04). It is the frame of the menu: it draws the background with the
 // date below the clock and opens the bottom bar (0x05), the channel grid (0x02) and the bar overlay (0x06) as its children.
 // When all three are there, the picture fades in. The same screen is the Message Board: when the envelope of the bar sends the
 // channel grid away, the board (BoardView) shows its letters on the same background.

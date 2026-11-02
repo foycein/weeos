@@ -54,7 +54,7 @@ enum class StartWindowState
     ZoomingOut,
 };
 
-// The window that opens when a channel of the grid is pressed (screen 0x03, chanTtl.ash, docs/research/SystemMenuStructure.md 4.5):
+// The window that opens when a channel of the grid is pressed (screen 0x03, chanTtl.ash):
 // the banner of the channel with its sound, or the Disc Channel without a disc, and the buttons Wii Menu and Start. Start runs the
 // launch of the channel: the play record is written, the picture fades to black and the console starts the title. Plus and Minus, and
 // the arrows of the bar, change the window to the next channel of the grid or the one before.

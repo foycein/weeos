@@ -40,7 +40,7 @@ struct LocalTime
 };
 
 // How the clock of the menu writes the time of day: the hours of 12 with AM and PM, as a console of the USA does, or the hours of 24,
-// with or without a 0 in front of the hours below 10. WeeOS follows the PC (docs/DECISIONS.md, Settings).
+// with or without a 0 in front of the hours below 10. WeeOS follows the PC.
 struct ClockFormat
 {
     bool usesTwentyFourHours = false;

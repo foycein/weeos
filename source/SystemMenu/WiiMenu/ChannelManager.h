@@ -45,7 +45,7 @@ struct LoadedChannel
     // The animation that the tile plays, for example "icon". Nothing when the icon has none that the menu starts.
     std::optional<std::string> iconAnimation;
 
-    // True when a script or a module of the channel drives the icon (docs/research/Channels.md 1.6).
+    // True when a script or a module of the channel drives the icon.
     bool isIconDrivenByCode = false;
 
     // What WeeOS does instead of the script, and the numbers of the animations icon_Rso0 to icon_Rso15 that the icon has for it.
@@ -63,7 +63,7 @@ std::optional<std::string> ChooseIconAnimation(const Formats::U8Archive& iconFil
 // The numbers of the animations icon_Rso0 to icon_Rso15 that the files of icon.bin hold.
 std::vector<int> ListScriptAnimations(const Formats::U8Archive& iconFiles);
 
-// The channel grid as the menu keeps it (the ChannelManager and the SaveDataManager of the original, docs/research/SystemMenuStructure.md 5.1):
+// The channel grid as the menu keeps it (the ChannelManager and the SaveDataManager of the original):
 // four pages of twelve places, the page that is shown, and the files of the channels in the places.
 // The places are saved in iplsave.bin as soon as they change.
 class ChannelManager

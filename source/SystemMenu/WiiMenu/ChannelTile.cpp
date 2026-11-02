@@ -67,7 +67,7 @@ ChannelTile::ChannelTile(Display& menuDisplay, TileKind tileKind, std::unique_pt
 }
 
 // Every icon shows the panes of its language (0x813B2B18 calls 0x813B24C0). An icon that a script drives then gets what its script
-// does, run once when the tile is made (docs/research/Channels.md 1.6, CHN-03).
+// does, run once when the tile is made.
 std::unique_ptr<ChannelTile> ChannelTile::MakeChannel(Display& display, const TileArchives& archives, const LoadedChannel& channel,
     const std::u16string& name, std::uint32_t randomNumber)
 {

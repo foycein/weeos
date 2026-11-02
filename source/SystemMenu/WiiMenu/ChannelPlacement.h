@@ -8,8 +8,7 @@
 namespace SystemMenu
 {
 
-// Brings the places of the channel grid up to date with the titles that are installed, as the menu does when it starts
-// (docs/audit/OpenPoints/SystemMenu.md SYS-04):
+// Brings the places of the channel grid up to date with the titles that are installed, as the menu does when it starts:
 //  - Only titles that the grid shows are considered, and not the empty stand-ins of the system channels.
 //  - Of the Photo Channel in its three versions exactly one is shown.
 //  - A place keeps its channel when that is installed. When the channel was only the first version, the letter A, and a later

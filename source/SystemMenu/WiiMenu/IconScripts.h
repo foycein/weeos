@@ -14,7 +14,7 @@
 namespace SystemMenu
 {
 
-// Four system channels bring a script for their icon (icon.cs, docs/research/Channels.md 1.6). The menu runs it when it makes the
+// Four system channels bring a script for their icon (icon.cs). The menu runs it when it makes the
 // tile, and again every ten minutes. WeeOS runs no script: it does here, as plain code, what each script does while its channel has
 // no data of its own, which is always the case in WeeOS (no WiiConnect24, nothing posted to the Wii Menu); without data a later run
 // changes nothing. The scripts were read in their byte code.

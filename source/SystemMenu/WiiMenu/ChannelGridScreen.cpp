@@ -85,7 +85,7 @@ constexpr ButtonSet PickUpHoldButtons = {Input::RemoteButtons::B, Input::Classic
 constexpr ButtonSet NextPageButtons = {Input::RemoteButtons::Plus, Input::ClassicButtons::Plus | Input::ClassicButtons::RightTrigger};
 constexpr ButtonSet PreviousPageButtons = {Input::RemoteButtons::Minus, Input::ClassicButtons::Minus | Input::ClassicButtons::LeftTrigger};
 
-// The sounds of the grid, by their names in the sound archive (docs/research/SystemMenuStructure.md 4.3).
+// The sounds of the grid, by their names in the sound archive.
 constexpr std::string_view TargetingSound = "WIPL_SE_CH_TARGETTING";
 constexpr std::string_view BalloonSound = "WIPL_SE_BALLOON";
 constexpr std::string_view PageSound = "WSD_SELECT";
@@ -758,7 +758,7 @@ void ChannelGridScreen::DrawTheGrid()
     auto isMiddlePane = [&](const Formats::Pane& pane) { return !isBackPane(pane) && !isFrontMask(pane); };
 
     // The strip holds the pages beside the one that shows; on a screen wider than 16:9 they go on beside the picture, the televisions
-    // of the next page in their holes, so the sheet of the grid continues instead of ending at the edge (docs/DECISIONS.md, Settings).
+    // of the next page in their holes, so the sheet of the grid continues instead of ending at the edge.
     Graphics::GraphicsDevice& device = services.display.Device();
     device.SetScissor(device.WholeArea());
     DrawPanes(*strip, services.display, placedPanes, isBackPane);
