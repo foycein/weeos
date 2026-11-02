@@ -4,7 +4,6 @@
 #include <cmath>
 #include <numbers>
 #include <initializer_list>
-#include <utility>
 #include <vector>
 
 namespace SharpArt
@@ -140,11 +139,17 @@ void FillBox(VectorCanvas& canvas, float left, float top, float right, float bot
 }
 
 // A row of white keys of the keyboard sign: their tops, bottoms and the left and right sides of each key.
+struct KeySides
+{
+    float left = 0;
+    float right = 0;
+};
+
 struct KeyRow
 {
     float top = 0;
     float bottom = 0;
-    std::vector<std::pair<float, float>> keys;
+    std::vector<KeySides> keys;
 };
 
 }
@@ -194,8 +199,8 @@ void DrawFullKeyboardSign(VectorCanvas& canvas)
     };
     for (const KeyRow& row : rows)
     {
-        for (const auto& [left, right] : row.keys)
-            FillBox(canvas, left, row.top, right, row.bottom, White);
+        for (const KeySides& key : row.keys)
+            FillBox(canvas, key.left, row.top, key.right, row.bottom, White);
     }
 }
 
