@@ -14,7 +14,7 @@ namespace Boot
 constexpr std::uint32_t Mem1Size = 0x01800000;
 constexpr std::uint32_t Mem2Size = 0x04000000;
 
-// The hardware version word of the console (low memory 0x80003138). The dump does not tell it. The System Menu only separates
+// The hardware version word of the console (low memory 0x80003138). The console's NAND does not tell it. The System Menu only separates
 // the values 0, 1, 2, 0x10, 0x11 and larger ones, and 0x11 is the one of the first model.
 constexpr std::uint32_t HollywoodVersionWord = 0x00000011;
 

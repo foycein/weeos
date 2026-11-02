@@ -46,7 +46,7 @@ Ios::IosProfile ProfileOfTitle(const Formats::TitleMetadata& titleMetadata, Ios:
     }
 }
 
-// A version of Nintendo's update server that has the code of the version of the dump, with the build date of its kernel.
+// A version of Nintendo's update server that has the code of a known version, with the build date of its kernel.
 struct SameCodeVersion
 {
     Ios::IosNumber number;
@@ -54,13 +54,13 @@ struct SameCodeVersion
     std::uint32_t kernelBuildDate;
 };
 
-// IOS80 v6944, the one a new WeeOS installs, has the title service, the file system and the modules of the dump's v7200 byte for byte; only
+// IOS80 v6944, the one a new WeeOS installs, has the title service, the file system and the modules of v7200 byte for byte; only
 // the build text, the build date of the kernel and two waits for the SEEPROM differ.
 constexpr SameCodeVersion SameCodeVersions[] = {
     {80, 6944, 0x00030310},
 };
 
-// The behavior of IOS is known for the versions of the dump. Another version of the same IOS on the NAND would start with a wrong profile,
+// The behavior of IOS is known for the versions of the reference console. Another version of the same IOS on the NAND would start with a wrong profile,
 // unless it has the same code: then the profile takes its version and its build date.
 void AdoptKnownIosVersion(const IosBootContent& kernel, Ios::IosProfile& profile)
 {
