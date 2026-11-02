@@ -12,7 +12,7 @@
 namespace SystemMenu
 {
 
-// The rights of the files that the menu makes, as the dump shows them.
+// The rights of the files that the menu makes, as a real console has them.
 constexpr Ios::EntryPermissions EverybodyReadsAndWrites = {Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite};
 constexpr Ios::EntryPermissions OthersOnlyRead = {Ios::AccessRights::ReadWrite, Ios::AccessRights::Read, Ios::AccessRights::Read};
 constexpr Ios::EntryPermissions OthersHaveNoRights = {Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::None};
