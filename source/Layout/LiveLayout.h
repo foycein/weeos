@@ -74,7 +74,7 @@ public:
 
     // The picture of the texture file on the graphics device. The device keeps one copy for every combination of
     // texture file and wrap modes, because the device fixes the wrap modes when it receives a picture.
-    // When WeeOS draws a sharp picture for the file (docs/audit/SharpArt.md), the device gets that one instead, as fine as the screen
+    // When WeeOS draws a sharp picture for the file, the device gets that one instead, as fine as the screen
     // needs it, and again when the screen changes its size; its width and height stay those of the original.
     // Throws a LayoutError when the picture source does not have the file.
     LoadedTexture ObtainTexture(const std::string& textureFileName, Graphics::WrapMode horizontalWrap, Graphics::WrapMode verticalWrap);

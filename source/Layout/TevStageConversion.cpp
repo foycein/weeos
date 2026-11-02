@@ -254,7 +254,7 @@ Graphics::TevConstant ReadConstantAlpha(const Formats::TevStage& record)
 
 // The last four bytes are the indirect part, which moves the place where the stage reads its texture. WeeOS draws what the water of
 // the Wii Speak Channel's chat room uses: the indirect stage 0 of 8 bit texels less 128, through the first indirect matrix, without
-// wrapping, adding or alpha (docs/audit/WiiSpeak.md).
+// wrapping, adding or alpha.
 bool ReadIsMovedByIndirectTexture(const Formats::TevStage& record)
 {
     unsigned matrix = Formats::ExtractBits(record[IndirectBiasAndMatrixByte], IndirectMatrixBit, IndirectMatrixBitCount);
