@@ -39,7 +39,7 @@ enum class BoardState
     LeavingForTheChannels,
 };
 
-// The Message Board: the main frame (screen 0x04) when the channel grid has left (docs/research/SystemMenuStructure.md 4.6; the states
+// The Message Board: the main frame (screen 0x04) when the channel grid has left (the states
 // of 0x8138F168). It shows the letters of one day on the pictures of my_IplTop_c, turns the days with the arrows of the bar and with
 // Plus and Minus, opens a letter, lets a letter be dragged to another place, and opens the calendar (0x07) and the memo writer (0x0A).
 // The way back to the channels is the button on the right of the bar.
