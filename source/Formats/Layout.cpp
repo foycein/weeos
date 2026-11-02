@@ -14,7 +14,7 @@ namespace
 {
 
 constexpr std::string_view DataDescription = "Layout";
-// The System Menu and the channels write version 8. The Internet Channel's cursors are version 10 with the same sections (LAY-08).
+// The System Menu and the channels write version 8. The Internet Channel's cursors are version 10 with the same sections.
 constexpr std::uint16_t SupportedVersion = 8;
 constexpr std::uint16_t LaterSupportedVersion = 10;
 constexpr int MaximumNestingDepth = 64;

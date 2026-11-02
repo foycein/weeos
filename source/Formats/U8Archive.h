@@ -30,7 +30,7 @@ struct U8Archive
     std::vector<U8Entry> entries;
 
     // Returns the data of the file with this path (a leading slash is allowed), or nothing when there is no such file.
-    // Upper and lower case letters are the same, and the path parts . and .. are followed, as in the original (FMT-07).
+    // Upper and lower case letters are the same, and the path parts . and .. are followed, as in the original.
     // The data stays inside the archive, so it is only valid while the archive exists.
     std::optional<ByteView> FindFile(std::string_view path) const&;
     std::optional<ByteView> FindFile(std::string_view path) const&& = delete;

@@ -219,7 +219,7 @@ void AddPathPart(std::vector<std::string>& parts, std::string_view part)
     parts.push_back(lowerCasePart);
 }
 
-// The original's archive lookup walks the parts . and .. and compares the letters in lower case (FMT-07).
+// The original's archive lookup walks the parts . and .. and compares the letters in lower case.
 std::string ComparablePath(std::string_view path)
 {
     std::vector<std::string> parts;

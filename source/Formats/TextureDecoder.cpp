@@ -249,7 +249,7 @@ void DecodePalette14Block(ByteView block, std::size_t pixelCount, const std::vec
 }
 
 // How the colors in between are made from the two colors of a sub block: the weights of the first and of the second color.
-// Thirds and the middle, as Yet Another Gamecube Documentation (17.14.1) gives them. Assumed: the division drops the rest (FMT-04).
+// Thirds and the middle, as Yet Another Gamecube Documentation (17.14.1) gives them. Assumed: the division drops the rest.
 struct MixWeights
 {
     unsigned first;
