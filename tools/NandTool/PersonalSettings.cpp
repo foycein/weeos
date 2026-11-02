@@ -27,8 +27,8 @@ constexpr Formats::Byte FactoryHighestAllowedRating = 0x14;
 constexpr std::size_t CountryCodeSize = 1;
 
 // The channel grid of the System Menu has 48 slots. One count says how many hold a tile, the other how many are free (the menu
-// writes the second as 48 minus the first, 0x8156A874 and 0x813515A4). The Disc Channel is one of the tiles: the dump's console has it and
-// 27 channels, which is the 28 in its file. The menu counts the tiles again whenever it builds the grid and writes both numbers when
+// writes the second as 48 minus the first, 0x8156A874 and 0x813515A4). The Disc Channel is one of the tiles: a console with it and
+// 27 channels has 28 in its file. The menu counts the tiles again whenever it builds the grid and writes both numbers when
 // they differ (0x81339ABC), so these values only hold until the first start.
 // Likely: the tiles of the system the import keeps are the Disc Channel, Photo, Mii, Wii Shop, Forecast, News and the Internet Channel.
 constexpr std::uint64_t ChannelGridSlotCount = 48;
