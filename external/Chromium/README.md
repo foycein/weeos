@@ -1,7 +1,7 @@
 # Chromium through WebView2
 
-The Internet Channel shows real web pages with Microsoft Edge WebView2, the Chromium engine that comes with Windows 11
-(`docs/DECISIONS.md`, Direction and Online). This folder holds the part of Microsoft's software development kit that WeeOS needs to talk
+The Internet Channel shows real web pages with Microsoft Edge WebView2, the Chromium engine that comes with Windows 11.
+This folder holds the part of Microsoft's software development kit that WeeOS needs to talk
 to that engine. Nothing here is our code; our own readable wrapper is `source/Browser`.
 
 | What | Where |
