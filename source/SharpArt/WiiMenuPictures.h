@@ -13,6 +13,11 @@ void DrawEnvelope(VectorCanvas& canvas);
 void DrawRoundButton(VectorCanvas& canvas);
 void DrawWiiButton(VectorCanvas& canvas);
 
+// The round buttons of the SD Card Menu and the Message Board (80 by 80): the Wii button with the word cut out of a dark plate, and the
+// help button with a question mark.
+void DrawWiiPlateButton(VectorCanvas& canvas);
+void DrawQuestionButton(VectorCanvas& canvas);
+
 // The soft white ring around a button of the bar that the hand points at (80 by 80), an intensity picture.
 void DrawButtonGlowRing(VectorCanvas& canvas);
 

@@ -75,6 +75,8 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_TopBtn_a0.tpl", 48, 32, 0x4B6F0A3E, ShownAtItsSize, Intensity, DrawEnvelope},
     SharpPicture{"my_TopBtn_a.tpl", 80, 80, 0xD054B06E, ShownAtItsSize, ColorAndAlpha, DrawRoundButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_c.tpl", 80, 80, 0x1ED4FB29, ShownAtItsSize, ColorAndAlpha, DrawWiiButton, TransparentButtonGray},
+    SharpPicture{"my_TopBtn_b.tpl", 80, 80, 0x3548752A, ShownAtItsSize, ColorAndAlpha, DrawWiiPlateButton, TransparentButtonGray},
+    SharpPicture{"mn_TopBtn_h.tpl", 80, 80, 0x01FD5F06, ShownAtItsSize, ColorAndAlpha, DrawQuestionButton, TransparentButtonGray},
     SharpPicture{"my_TopBtn_h.tpl", 80, 80, 0x4A42E90D, ShownAtItsSize, Intensity, DrawButtonGlowRing},
     SharpPicture{"mn_Top_SdCard_b.tpl", 38, 48, 0x88BBE31B, ShownAtItsSize, ColorAndAlpha, DrawSdCard, TransparentCardBlue},
     SharpPicture{"my_DiskChIcon_a.tpl", 96, 96, 0x6A586F24, ShownAtItsSize, ColorAndAlpha, DrawDiscChannelDisc, TransparentDiscGray},

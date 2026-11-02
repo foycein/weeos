@@ -102,6 +102,21 @@ constexpr Color WordShadow = {0, 0, 0, 59};
 constexpr Point WordOffset = {18.22f, 27.95f};
 constexpr float WordScale = 0.61f;
 
+// The plate with the word Wii and the question mark darken the ball more.
+constexpr Color MarkShadow = {0, 0, 0, 82};
+
+void DrawRimHighlight(VectorCanvas& canvas)
+{
+    constexpr float Radius = RimHighlightRadius;
+    VectorPath rimHighlight;
+    rimHighlight.ArcTo(ButtonCenter, Radius, Radius, RimHighlightStartDegrees, RimHighlightEndDegrees);
+    rimHighlight.ArcTo(RimHighlightInnerCenter, Radius, Radius, RimHighlightInnerStartDegrees, RimHighlightInnerEndDegrees);
+    rimHighlight.Close();
+
+    Paint fadingIn = RadialGradient(ButtonCenter, RimHighlightClear, RimHighlightFadeEndRadius, RimHighlight, RimHighlightFadeStartRadius);
+    canvas.Fill(rimHighlight, fadingIn);
+}
+
 void DrawButtonBall(VectorCanvas& canvas, float ballRadius)
 {
     VectorPath ball;
@@ -114,15 +129,27 @@ void DrawButtonBall(VectorCanvas& canvas, float ballRadius)
     lightPart.ArcTo(ButtonCenter, ballRadius, ballRadius, DivisionUpperRightDegrees, DivisionLowerLeftDegreesOverTheTop);
     lightPart.Close();
     canvas.Fill(lightPart, RadialGradient(ButtonCenter, ButtonLight, ShadingRadius, ButtonLightRim, LightRimStartRadius));
+    DrawRimHighlight(canvas);
+}
 
-    constexpr float Radius = RimHighlightRadius;
-    VectorPath rimHighlight;
-    rimHighlight.ArcTo(ButtonCenter, Radius, Radius, RimHighlightStartDegrees, RimHighlightEndDegrees);
-    rimHighlight.ArcTo(RimHighlightInnerCenter, Radius, Radius, RimHighlightInnerStartDegrees, RimHighlightInnerEndDegrees);
-    rimHighlight.Close();
+// The ball of the Wii button of the SD Card Menu has no division: it is lit from the upper left and darkens evenly towards the lower
+// right, where it turns a little blue.
+void DrawEvenlyLitBall(VectorCanvas& canvas)
+{
+    constexpr Point LightCenter = {33, 33};
+    constexpr Color Light = {235, 235, 235, 255};
+    constexpr Color Middle = {214, 214, 214, 255};
+    constexpr Color Darker = {206, 206, 206, 255};
+    constexpr Color DarkestBlueGray = {189, 198, 198, 255};
+    constexpr float LightUpTo = 20;
+    constexpr float MiddleAt = 28;
+    constexpr float DarkerAt = 34;
+    constexpr float DarkestAt = 42;
 
-    Paint fadingIn = RadialGradient(ButtonCenter, RimHighlightClear, RimHighlightFadeEndRadius, RimHighlight, RimHighlightFadeStartRadius);
-    canvas.Fill(rimHighlight, fadingIn);
+    VectorPath ball;
+    ball.AddCircle(ButtonCenter, WiiButtonRadius);
+    canvas.Fill(ball, RadialGradientByDistance(LightCenter, {{LightUpTo, Light}, {MiddleAt, Middle}, {DarkerAt, Darker}, {DarkestAt, DarkestBlueGray}}));
+    DrawRimHighlight(canvas);
 }
 
 // The glow ring rises from nothing to its brightest, stays there for a while and falls to nothing again, in straight steps along the
@@ -326,6 +353,57 @@ void DrawWiiButton(VectorCanvas& canvas)
     VectorPath word;
     AddWiiWord(word, WordOffset, WordScale);
     canvas.Fill(word, SolidPaint(WordShadow));
+}
+
+// The Wii button of the SD Card Menu and the Message Board: the word Wii is cut out of a dark plate that darkens the ball under it.
+void DrawWiiPlateButton(VectorCanvas& canvas)
+{
+    constexpr float PlateLeft = 18.2f;
+    constexpr float PlateTop = 23.3f;
+    constexpr float PlateRight = 62;
+    constexpr float PlateBottom = 56.8f;
+    constexpr float PlateCornerRadius = 3.5f;
+    constexpr Point PlateWordOffset = {20.3f, 28.75f};
+    constexpr float PlateWordScale = 0.59f;
+
+    DrawEvenlyLitBall(canvas);
+
+    VectorPath plate;
+    plate.AddRoundedRectangle(PlateLeft, PlateTop, PlateRight - PlateLeft, PlateBottom - PlateTop, PlateCornerRadius);
+    AddWiiWord(plate, PlateWordOffset, PlateWordScale);
+    canvas.Fill(plate, SolidPaint(MarkShadow));
+}
+
+// The help button of the SD Card Menu: a question mark that darkens the ball. Its hook is one outline: the outer edge of the arc, the
+// slant down to the stem, the stem, and back up along the inner edge of the arc.
+void DrawQuestionButton(VectorCanvas& canvas)
+{
+    constexpr Point HookCenter = {40.1f, 33.6f};
+    constexpr float OuterRadiusX = 9.6f;
+    constexpr float OuterRadiusY = 9;
+    constexpr float InnerRadiusX = 5.6f;
+    constexpr float InnerRadiusY = 5;
+    constexpr float HookStartDegrees = 180;
+    constexpr float HookEndDegrees = 400;
+    constexpr float StemLeft = 38;
+    constexpr float StemRight = 42.3f;
+    constexpr float StemBottom = 47.8f;
+    constexpr float DotTop = 50.6f;
+    constexpr float DotBottom = 56;
+
+    DrawButtonBall(canvas, WiiButtonRadius);
+
+    VectorPath mark;
+    mark.ArcTo(HookCenter, OuterRadiusX, OuterRadiusY, HookStartDegrees, HookEndDegrees);
+    mark.LineTo({StemRight, 44});
+    mark.LineTo({StemRight, StemBottom});
+    mark.LineTo({StemLeft, StemBottom});
+    mark.LineTo({StemLeft, 42.6f});
+    mark.LineTo({40.2f, 39.6f});
+    mark.ArcTo(HookCenter, InnerRadiusX, InnerRadiusY, HookEndDegrees, HookStartDegrees);
+    mark.Close();
+    mark.AddRectangle(StemLeft, DotTop, StemRight - StemLeft, DotBottom - DotTop);
+    canvas.Fill(mark, SolidPaint(MarkShadow));
 }
 
 void DrawButtonGlowRing(VectorCanvas& canvas)
