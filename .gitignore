@@ -1,15 +1,14 @@
-assets/
-data/
-tools/.venv/
 build/
-build*/
 out/
-dist/
+.vs/
+.vscode/
+*.user
+nand.bin
+keys.bin
+NAND/
+Identity/
+SDCard/
+WiiFiles/
 __pycache__/
 *.pyc
-Worktrees/
-reference/
-tools/jdk/
-
-# Pictures written by end-to-end runs
-EndToEndPictures/
+dist/
