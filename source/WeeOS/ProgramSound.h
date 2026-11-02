@@ -46,7 +46,7 @@ public:
     // cannot play sound; the program says why on its console once, and the menu runs without sound.
     Sound::SoundSystem* Start(Formats::ByteView menuSoundArchive);
 
-    // A channel plays its own sound archives (CHN-30): each one gets a sound system of its own, which plays beside the menu's into the
+    // A channel plays its own sound archives: each one gets a sound system of its own, which plays beside the menu's into the
     // same output. Gives nothing before Start or when the PC cannot play sound.
     Sound::SoundSystem* StartTitleArchive(Formats::ByteView titleSoundArchive);
 
