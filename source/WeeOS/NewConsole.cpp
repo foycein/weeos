@@ -30,24 +30,24 @@ namespace
 constexpr std::string_view CertificatesFileName = "certificates.bin";
 constexpr std::string_view NewNandFolderEnding = " (being made)";
 
-// The System Menu runs as this user and group; the files it keeps belong to it, as on the reference console.
+// The System Menu runs as this user and group; the files it keeps belong to it, as on a real console.
 constexpr Ios::Caller SystemMenuOwner = {Ios::SystemMenuUserId, Ios::SystemMenuGroupId};
 
-// The network configuration module owns its folders and its file (user and group 13 on the reference console).
+// The network configuration module owns its folders and its file (user and group 13 on a real console).
 constexpr Ios::Caller NetworkModuleOwner = {13, 13};
 
 constexpr Ios::EntryPermissions ReadOnlyForEveryone = {Ios::AccessRights::Read, Ios::AccessRights::Read, Ios::AccessRights::Read};
 constexpr Ios::EntryPermissions ReadWriteForSystem = {Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::Read};
 
-// The facts about the console in setting.txt (docs/research/ConsoleDump.md 6): a console of the USA, the model of the reference console.
+// The facts about the console in setting.txt: a console of the USA, the first model (RVL-101).
 // Assumed: the serial number is made for the install, nine digits after the code of its factory.
 constexpr std::string_view FactoryCode = "LU";
 constexpr int SerialNumberDigitCount = 9;
 
-// The settings of a new WeeOS, in the order of the reference console's SYSCONF. Arrays start with zeros. The values are the ones the
-// first start of the System Menu writes (docs/research/ConsoleDump.md 6.1) and the owner's choices (docs/DECISIONS.md): English,
-// 16:9, the sensor bar below the television, the setup done (WeeOS has no setup pages), the user agreements accepted.
-// Assumed: IPL.UPT, NET.WCFG and IPL.IDL as the reference console has them; nothing in WeeOS reads them.
+// The settings of a new WeeOS, in the order of a real console's SYSCONF. Arrays start with zeros. The values are the ones the
+// first start of the System Menu writes and WeeOS's own choices: English, 16:9,
+// the sensor bar below the television, the setup done (WeeOS has no setup pages), the user agreements accepted.
+// Assumed: IPL.UPT, NET.WCFG and IPL.IDL as a real console has them; nothing in WeeOS reads them.
 struct NewSetting
 {
     std::string_view name;
