@@ -1,6 +1,7 @@
 #include "SharpArt/SharpPictures.h"
 
 #include "SharpArt/ClockPictures.h"
+#include "SharpArt/DataManagementPictures.h"
 #include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
 #include "SharpArt/RemotePictures.h"
@@ -53,6 +54,9 @@ constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_b0.tpl", 48, 32, 0xD4773177, ClockMagnification, Intensity, DrawClockAm},
     SharpPicture{"my_Clock_b1.tpl", 48, 32, 0xB538DE0E, ClockMagnification, Intensity, DrawClockPm},
     SharpPicture{"it_Setting_a.tpl", 256, 200, 0x55B890A4, ShownAtItsSize, ColorAndAlpha, DrawWiiSettingsButton, TransparentWhite},
+    SharpPicture{"it_DataManage_a.tpl", 256, 200, 0x7B3DBB26, ShownAtItsSize, ColorAndAlpha, DrawDataManagementButton, TransparentWhite},
+    SharpPicture{"it_Savedata_a.tpl", 256, 200, 0x8D222129, ShownAtItsSize, ColorAndAlpha, DrawSaveDataButton, TransparentWhite},
+    SharpPicture{"it_DataWii_a.tpl", 256, 200, 0x9F9AD0BE, ShownAtItsSize, ColorAndAlpha, DrawWiiSaveDataButton, TransparentWhite},
     SharpPicture{"it_BarWii_a.tpl", 72, 33, 0x9988B105, ShownAtItsSize, ColorAndAlpha, DrawWiiLogoOfTheSettings, TransparentWhite},
     SharpPicture{"my_TopBtn_a0.tpl", 48, 32, 0x4B6F0A3E, ShownAtItsSize, Intensity, DrawEnvelope},
     SharpPicture{"my_TopBtn_a.tpl", 80, 80, 0xD054B06E, ShownAtItsSize, ColorAndAlpha, DrawRoundButton, TransparentButtonGray},

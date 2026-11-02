@@ -86,30 +86,6 @@ void FillRectangle(VectorCanvas& canvas, float left, float top, float right, flo
     canvas.Fill(rectangle, paint);
 }
 
-void DrawButtonFrame(VectorCanvas& canvas)
-{
-    constexpr float RightShadowStart = 236.5f;
-    constexpr float BottomShadowStart = 182.5f;
-    constexpr Formats::Byte RightShadowAlpha = 54;
-    constexpr Formats::Byte BottomShadowAlpha = 74;
-    constexpr float CaptionLineTop = 140;
-
-    FillRoundedRectangle(canvas, FrameLeft, FrameTop, FrameRight, FrameBottom, FrameCornerRadius, SolidPaint(White));
-    FillRoundedRectangle(canvas, RimLeft, RimTop, RimRight, RimBottom, RimCornerRadius, SolidPaint(RimBlue));
-    FillRoundedRectangle(canvas, InsideLeft, InsideTop, InsideRight, InsideBottom, InsideCornerRadius, InsideColors());
-    FillRoundedRectangle(canvas, DarkBandLeft, DarkBandTop, InsideRight, DarkBandBottom, DarkBandCornerRadius,
-        VerticalGradient(DarkBandFadeStartY, Gray(189), DarkBandBottom, Gray(198)));
-
-    FillRectangle(canvas, InsideLeft, CaptionLineTop, InsideRight, CaptionLineTop + 1, SolidPaint(Gray(239)));
-    FillRectangle(canvas, InsideLeft, CaptionLineTop + 1, InsideRight, CaptionLineTop + 2, SolidPaint(Gray(231)));
-    FillRectangle(canvas, InsideLeft, CaptionLineTop + 2, InsideRight, CaptionLineTop + 3, SolidPaint(Gray(206)));
-
-    FillRectangle(canvas, RightShadowStart, InsideTop, InsideRight, InsideBottom,
-        LinearGradient({RightShadowStart, 0}, Shadow(0), {InsideRight, 0}, Shadow(RightShadowAlpha)));
-    FillRectangle(canvas, InsideLeft, BottomShadowStart, InsideRight, InsideBottom,
-        VerticalGradient(BottomShadowStart, Shadow(0), InsideBottom, Shadow(BottomShadowAlpha)));
-}
-
 // The wrench of Wii Settings: a gray body, a dark outline drawn along the middle of its edges, a light bevel inside the upper right
 // edges, and a hole in the end of the handle. The corners go around clockwise from the tip of the upper jaw.
 constexpr Color WrenchBody = {198, 198, 198, 255};
@@ -186,9 +162,33 @@ void DrawWrench(VectorCanvas& canvas)
 
 }
 
+void DrawBigOptionButtonFrame(VectorCanvas& canvas)
+{
+    constexpr float RightShadowStart = 236.5f;
+    constexpr float BottomShadowStart = 182.5f;
+    constexpr Formats::Byte RightShadowAlpha = 54;
+    constexpr Formats::Byte BottomShadowAlpha = 74;
+    constexpr float CaptionLineTop = 140;
+
+    FillRoundedRectangle(canvas, FrameLeft, FrameTop, FrameRight, FrameBottom, FrameCornerRadius, SolidPaint(White));
+    FillRoundedRectangle(canvas, RimLeft, RimTop, RimRight, RimBottom, RimCornerRadius, SolidPaint(RimBlue));
+    FillRoundedRectangle(canvas, InsideLeft, InsideTop, InsideRight, InsideBottom, InsideCornerRadius, InsideColors());
+    FillRoundedRectangle(canvas, DarkBandLeft, DarkBandTop, InsideRight, DarkBandBottom, DarkBandCornerRadius,
+        VerticalGradient(DarkBandFadeStartY, Gray(189), DarkBandBottom, Gray(198)));
+
+    FillRectangle(canvas, InsideLeft, CaptionLineTop, InsideRight, CaptionLineTop + 1, SolidPaint(Gray(239)));
+    FillRectangle(canvas, InsideLeft, CaptionLineTop + 1, InsideRight, CaptionLineTop + 2, SolidPaint(Gray(231)));
+    FillRectangle(canvas, InsideLeft, CaptionLineTop + 2, InsideRight, CaptionLineTop + 3, SolidPaint(Gray(206)));
+
+    FillRectangle(canvas, RightShadowStart, InsideTop, InsideRight, InsideBottom,
+        LinearGradient({RightShadowStart, 0}, Shadow(0), {InsideRight, 0}, Shadow(RightShadowAlpha)));
+    FillRectangle(canvas, InsideLeft, BottomShadowStart, InsideRight, InsideBottom,
+        VerticalGradient(BottomShadowStart, Shadow(0), InsideBottom, Shadow(BottomShadowAlpha)));
+}
+
 void DrawWiiSettingsButton(VectorCanvas& canvas)
 {
-    DrawButtonFrame(canvas);
+    DrawBigOptionButtonFrame(canvas);
     DrawWrench(canvas);
 }
 

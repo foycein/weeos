@@ -1,5 +1,6 @@
 #include "SharpArt/RemotePictures.h"
 
+#include "SharpArt/SmallWords.h"
 #include "SharpArt/WiiLogoPictures.h"
 
 #include <vector>
@@ -201,88 +202,16 @@ void DrawNumberTwo(VectorCanvas& canvas)
     DrawLines(canvas, curve, 1.1f, SignGray);
 }
 
-// ---- The small words: capital letters three units high, drawn with a thin pen
+// ---- The small words
 
+constexpr float WordHeight = 2.8f;
+constexpr float WordLetterWidth = 2.1f;
+constexpr float WordLetterPitch = 2.95f;
 constexpr float WordPenWidth = 1;
 
-struct LetterBox
+void DrawWord(VectorCanvas& canvas, std::string_view word, Point topLeft)
 {
-    float left;
-    float top;
-    float width;
-    float height;
-
-    Point At(float shareX, float shareY) const
-    {
-        return {left + width * shareX, top + height * shareY};
-    }
-};
-
-void DrawLetterP(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLines(canvas, {box.At(0, 1), box.At(0, 0), box.At(0.75f, 0), box.At(1, 0.25f), box.At(0.75f, 0.5f), box.At(0, 0.5f)}, WordPenWidth, SignGray);
-}
-
-void DrawLetterO(VectorCanvas& canvas, const LetterBox& box)
-{
-    VectorPath ring;
-    Point center = box.At(0.5f, 0.5f);
-    float radiusX = box.width / 2;
-    float radiusY = box.height / 2;
-    float halfPen = WordPenWidth / 2;
-    ring.AddEllipse(center, radiusX + halfPen, radiusY + halfPen);
-    ring.AddEllipse(center, radiusX - halfPen, radiusY - halfPen);
-    canvas.Fill(ring, SolidPaint(SignGray));
-}
-
-void DrawLetterW(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLines(canvas, {box.At(0, 0), box.At(0.25f, 1), box.At(0.5f, 0.2f), box.At(0.75f, 1), box.At(1, 0)}, WordPenWidth, SignGray);
-}
-
-void DrawLetterE(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLines(canvas, {box.At(1, 0), box.At(0, 0), box.At(0, 1), box.At(1, 1)}, WordPenWidth, SignGray);
-    DrawLines(canvas, {box.At(0, 0.5f), box.At(0.85f, 0.5f)}, WordPenWidth, SignGray);
-}
-
-void DrawLetterR(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLetterP(canvas, box);
-    DrawLines(canvas, {box.At(0.5f, 0.5f), box.At(1, 1)}, WordPenWidth, SignGray);
-}
-
-void DrawLetterH(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLines(canvas, {box.At(0, 0), box.At(0, 1)}, WordPenWidth, SignGray);
-    DrawLines(canvas, {box.At(1, 0), box.At(1, 1)}, WordPenWidth, SignGray);
-    DrawLines(canvas, {box.At(0, 0.5f), box.At(1, 0.5f)}, WordPenWidth, SignGray);
-}
-
-void DrawLetterM(VectorCanvas& canvas, const LetterBox& box)
-{
-    DrawLines(canvas, {box.At(0, 1), box.At(0, 0), box.At(0.5f, 0.7f), box.At(1, 0), box.At(1, 1)}, WordPenWidth, SignGray);
-}
-
-constexpr float PowerWordTop = 39.9f;
-constexpr float HomeWordTop = 169.7f;
-constexpr float WordHeight = 2.8f;
-
-void DrawWordPower(VectorCanvas& canvas)
-{
-    DrawLetterP(canvas, {20.2f, PowerWordTop, 2.2f, WordHeight});
-    DrawLetterO(canvas, {23.5f, PowerWordTop, 2.4f, WordHeight});
-    DrawLetterW(canvas, {26.5f, PowerWordTop, 3.6f, WordHeight});
-    DrawLetterE(canvas, {30.8f, PowerWordTop, 1.8f, WordHeight});
-    DrawLetterR(canvas, {33.3f, PowerWordTop, 2.2f, WordHeight});
-}
-
-void DrawWordHome(VectorCanvas& canvas)
-{
-    DrawLetterH(canvas, {40.1f, HomeWordTop, 2, WordHeight});
-    DrawLetterO(canvas, {43, HomeWordTop, 2.4f, WordHeight});
-    DrawLetterM(canvas, {46.2f, HomeWordTop, 2.6f, WordHeight});
-    DrawLetterE(canvas, {49.7f, HomeWordTop, 1.8f, WordHeight});
+    DrawSmallWord(canvas, word, {topLeft, WordLetterWidth, WordHeight, WordLetterPitch, WordPenWidth, SignGray});
 }
 
 // ---- The speaker and the lights
@@ -372,7 +301,7 @@ void DrawRemoteBody(VectorCanvas& canvas)
 void DrawRemoteButtons(VectorCanvas& canvas)
 {
     DrawRing(canvas, PowerButtonCenter, SmallButtonRadius, OutlinePenWidth, Black);
-    DrawWordPower(canvas);
+    DrawWord(canvas, "POWER", {20.2f, 39.9f});
     DrawCross(canvas);
     DrawRing(canvas, AButtonCenter, AButtonRadius, AButtonPenWidth, Black);
     DrawLetterA(canvas);
@@ -381,7 +310,7 @@ void DrawRemoteButtons(VectorCanvas& canvas)
     DrawRing(canvas, {HomeButtonX, SmallButtonsY}, SmallButtonRadius, OutlinePenWidth, Black);
     DrawRing(canvas, {PlusButtonX, SmallButtonsY}, SmallButtonRadius, OutlinePenWidth, Black);
     DrawMinusAndPlusSigns(canvas);
-    DrawWordHome(canvas);
+    DrawWord(canvas, "HOME", {40.3f, 169.7f});
 
     DrawSpeakerHoles(canvas);
     DrawRing(canvas, {NumberButtonsX, OneButtonY}, NumberButtonRadius, NumberButtonPenWidth, Black);
