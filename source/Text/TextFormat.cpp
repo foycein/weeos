@@ -169,4 +169,10 @@ std::u16string ReplacePlaceholder(std::u16string_view text, std::u16string_view 
     return replacedText;
 }
 
+std::u16string NumberText(std::int64_t number)
+{
+    std::string digits = std::to_string(number);
+    return std::u16string(digits.begin(), digits.end());
+}
+
 }

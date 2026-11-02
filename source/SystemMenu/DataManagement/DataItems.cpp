@@ -23,7 +23,6 @@ namespace
 
 constexpr std::string_view IconFileName = "meta/icon.bin";
 constexpr std::string_view SaveBannerFileName = "banner.bin";
-constexpr std::uint16_t BannerContentIndex = 0;
 
 void TakeChannelName(DataItem& item, const std::array<Formats::ChannelName, Formats::BannerLanguageCount>& names)
 {
@@ -44,16 +43,6 @@ void TakeSaveBanner(DataItem& item, Formats::ByteView bannerFile)
         Formats::TextureFormat::Rgb5A3, Formats::SaveBannerPictureWidth, Formats::SaveBannerPictureHeight, banner.picture, std::nullopt);
 }
 
-Formats::Bytes ReadBannerContentOf(DataManagementServices& services, Ios::TitleId titleId)
-{
-    std::vector<Ios::TicketView> views = Require(services.titles.ListTicketViews(titleId), "read the tickets");
-    if (views.empty())
-        throw DataError(DataResult::Failed, "the channel has no ticket");
-
-    Ios::ContentStream stream = Require(services.titles.OpenContent(titleId, views.front(), BannerContentIndex), "open the banner");
-    return stream.Read(stream.GetLength());
-}
-
 DataItem NandChannelItem(DataManagementServices& services, Ios::TitleId titleId)
 {
     DataItem item;
@@ -62,7 +51,7 @@ DataItem NandChannelItem(DataManagementServices& services, Ios::TitleId titleId)
     item.blocks = BlocksOfBytes(NandChannelBytes(services, titleId));
     try
     {
-        Formats::Bytes content = ReadBannerContentOf(services, titleId);
+        Formats::Bytes content = ReadBannerContent(services, titleId);
         Formats::BannerContent banner = Formats::ReadBannerContent(content);
         TakeChannelName(item, banner.names);
 

@@ -13,6 +13,7 @@
 #include "Input/RemoteButtons.h"
 #include "Layout/LayoutError.h"
 #include "Text/MessageCatalog.h"
+#include "Text/TextFormat.h"
 
 #include <algorithm>
 #include <chrono>
@@ -121,12 +122,6 @@ constexpr std::u16string_view DamagedName = u"???";
 std::string SlotPaneName(std::size_t slotIndex)
 {
     return std::format("N_Data_b_{:02}", slotIndex);
-}
-
-std::u16string NumberText(std::uint64_t number)
-{
-    std::string digits = std::to_string(number);
-    return std::u16string(digits.begin(), digits.end());
 }
 
 }
@@ -394,7 +389,7 @@ void DataEditorScreen::ShowFreeBlocks()
     }
 
     std::u16string text = services.messages.Find(BlocksOpenMessage);
-    text += NumberText(freeBlocks);
+    text += Text::NumberText(freeBlocks);
     listLayout->SetText("T_Capa_00", text);
 }
 
@@ -651,13 +646,13 @@ void DataEditorScreen::OpenWindow(std::size_t itemIndex)
         windowLayout->PaneNamed(panes.hiddenPart).isVisible = false;
         windowLayout->SetText(panes.firstLine, firstLine);
         windowLayout->SetText(panes.secondLine, secondLine);
-        windowLayout->SetText(panes.blocks, NumberText(item.blocks));
+        windowLayout->SetText(panes.blocks, Text::NumberText(item.blocks));
     }
     else
     {
         windowLayout->SetText("T_Title_00", firstLine);
         windowLayout->SetText("T_Title_01", secondLine);
-        windowLayout->SetText("T_Block_00", NumberText(item.blocks));
+        windowLayout->SetText("T_Block_00", Text::NumberText(item.blocks));
     }
 
     bool isMoveOff = item.mayNotBeCopied;

@@ -11,6 +11,7 @@
 
 #include "Layout/LiveLayout.h"
 #include "Text/MessageCatalog.h"
+#include "Text/TextFormat.h"
 
 #include <algorithm>
 #include <format>
@@ -92,12 +93,6 @@ constexpr int Saturday = 6;
 constexpr std::string_view ScrollSound = "WIPL_SE_CALENDAR_SCROLL";
 constexpr std::string_view SelectSound = "WIPL_SE_DATE_SELECT";
 constexpr std::string_view FocusSound = "WIPL_SE_DATE_FOCUS";
-
-std::u16string NumberText(int number)
-{
-    std::string digits = std::to_string(number);
-    return std::u16string(digits.begin(), digits.end());
-}
 
 float WeekdayFrameOf(BoardDay day)
 {
@@ -296,7 +291,7 @@ void CalendarScreen::ShowTheMonth(int shownYear, int shownMonth, std::array<std:
     std::string_view gridLetter)
 {
     std::uint16_t monthMessage = static_cast<std::uint16_t>(JanuaryMessage + shownMonth - 1);
-    std::u16string title = services.messages.Find(monthMessage) + u" " + NumberText(shownYear);
+    std::u16string title = services.messages.Find(monthMessage) + u" " + Text::NumberText(shownYear);
     layout->SetText(std::format("T_CalMonth_{}", gridLetter), title);
 
     BoardDay today = DayOf(services.wiiMenu.console.GetLocalTime());
@@ -306,7 +301,7 @@ void CalendarScreen::ShowTheMonth(int shownYear, int shownMonth, std::array<std:
         const SystemMenu::CalendarCell& cellOfThePage = page[index];
         bool hasLetters = cellOfThePage.isInTheMonth && data.store.HasLettersOnDay(cellOfThePage.day);
         monthCells[index]->ShowDay(cellOfThePage.day, cellOfThePage.isInTheMonth, cellOfThePage.day == today, hasLetters,
-            NumberText(cellOfThePage.day.day));
+            Text::NumberText(cellOfThePage.day.day));
     }
     PlaceCells(monthCells, gridLetter);
 }

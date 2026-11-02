@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <initializer_list>
 #include <string>
 #include <string_view>
@@ -25,5 +26,8 @@ std::u16string FormatText(std::u16string_view format, std::initializer_list<Text
 // Some messages hold a placeholder that the menu replaces, for example "****" for a number of blocks.
 // This replaces the first place where the placeholder stands. A TextError is thrown when the text has no such place.
 std::u16string ReplacePlaceholder(std::u16string_view text, std::u16string_view placeholder, std::u16string_view replacement);
+
+// The digits of a whole number as menu text, for example u"42".
+std::u16string NumberText(std::int64_t number);
 
 }

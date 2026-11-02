@@ -6,6 +6,7 @@
 #include "SystemMenu/SoundRequests.h"
 
 #include "Formats/Alignment.h"
+#include "Text/TextFormat.h"
 
 #include <array>
 #include <format>
@@ -29,12 +30,6 @@ constexpr ButtonSet LeaveButtons = {Input::RemoteButtons::B, Input::ClassicButto
 
 // The pages before and after the page that shows; they are only seen while the pages slide.
 constexpr std::array<std::string_view, 2> NeighborPages = {"N_Nigaoe_01", "N_Nigaoe_02"};
-
-std::u16string NumberText(int number)
-{
-    std::string digits = std::to_string(number);
-    return std::u16string(digits.begin(), digits.end());
-}
 
 std::string PictureOfPlace(std::size_t place)
 {
@@ -116,9 +111,9 @@ void MiiChooserScreen::ShowThePage()
             layout->ShowTexture(PictureOfPlace(place), *face);
     }
 
-    layout->SetText(PageText, NumberText(page + 1));
+    layout->SetText(PageText, Text::NumberText(page + 1));
     layout->SetText(PageSlashText, u"/");
-    layout->SetText(PageCountText, NumberText(std::max(1, PageCount())));
+    layout->SetText(PageCountText, Text::NumberText(std::max(1, PageCount())));
     layout->PaneNamed("N_ArwR").isVisible = page + 1 < PageCount();
     layout->PaneNamed("N_ArwL").isVisible = page > 0;
 }

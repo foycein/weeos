@@ -45,16 +45,6 @@ struct InstalledChannelBanner
     Formats::Bytes icon;
 };
 
-Formats::Bytes ReadBannerContent(const DataManagementServices& services, Ios::TitleId titleId)
-{
-    std::vector<Ios::TicketView> views = Require(services.titles.ListTicketViews(titleId), "read the tickets of the channel");
-    if (views.empty())
-        throw DataError(DataResult::Failed, "the channel has no ticket");
-
-    Ios::ContentStream stream = Require(services.titles.OpenContent(titleId, views.front(), BannerContentIndex), "open the banner of the channel");
-    return stream.Read(stream.GetLength());
-}
-
 Formats::Bytes CopyBannerHeader(Formats::ByteView content)
 {
     Formats::ByteReader reader(content, "Banner content");
@@ -282,6 +272,16 @@ DataResult CopyToNand(DataManagementServices& services, std::uint32_t lowPart)
     return DataResult::Done;
 }
 
+}
+
+Formats::Bytes ReadBannerContent(const DataManagementServices& services, Ios::TitleId titleId)
+{
+    std::vector<Ios::TicketView> views = Require(services.titles.ListTicketViews(titleId), "read the tickets of the channel");
+    if (views.empty())
+        throw DataError(DataResult::Failed, "the channel has no ticket");
+
+    Ios::ContentStream stream = Require(services.titles.OpenContent(titleId, views.front(), BannerContentIndex), "open the banner of the channel");
+    return stream.Read(stream.GetLength());
 }
 
 Ios::SdPath ChannelBackupPath(std::uint32_t lowPart)

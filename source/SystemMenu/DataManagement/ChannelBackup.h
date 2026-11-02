@@ -21,6 +21,9 @@ Ios::SdPath ChannelBackupPath(std::uint32_t lowPart);
 // The console has slots for 48 channels.
 constexpr std::size_t ChannelSlotCount = 48;
 
+// The whole banner content (content 0) of an installed channel.
+Formats::Bytes ReadBannerContent(const DataManagementServices& services, Ios::TitleId titleId);
+
 DataResult CopyChannelToSdCard(DataManagementServices& services, Ios::TitleId titleId);
 DataResult CopyChannelToNand(DataManagementServices& services, std::uint32_t lowPart);
 

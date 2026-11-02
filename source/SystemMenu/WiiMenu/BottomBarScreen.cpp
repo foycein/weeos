@@ -12,6 +12,7 @@
 #include "Layout/LiveLayout.h"
 #include "SystemMenu/DataManagement/DataManagementServices.h"
 #include "Text/MessageCatalog.h"
+#include "Text/TextFormat.h"
 
 #include <algorithm>
 #include <string>
@@ -137,12 +138,6 @@ constexpr std::string_view CardOutSound = "WIPL_SE_SDCARD_OUT";
 
 // The message "SD Card Menu" (0x81694BA0).
 constexpr std::uint16_t SdCardMenuMessage = 161;
-
-std::u16string NumberText(int number)
-{
-    std::string digits = std::to_string(number);
-    return std::u16string(digits.begin(), digits.end());
-}
 
 std::size_t NumberOf(BarButton button)
 {
@@ -447,7 +442,7 @@ void BottomBarScreen::SetTrashText(std::u16string_view text)
 void BottomBarScreen::ShowMessageCount(int count)
 {
     int shownCount = std::min(count, LargestMessageCount);
-    layout->SetText(MessageCountText, shownCount > 0 ? NumberText(shownCount) : std::u16string());
+    layout->SetText(MessageCountText, shownCount > 0 ? Text::NumberText(shownCount) : std::u16string());
     if (shownCount == 0)
         messageSignal->Show(FrameOfTheWiiMenu);
     else if (!messageSignal->IsPlaying())
