@@ -10,7 +10,7 @@ namespace Input
 namespace
 {
 
-// Assumed (docs/audit/OpenPoints/Controllers.md, CTL-01): a remote that sends nothing for 2 seconds while it should send 100
+// Assumed: a remote that sends nothing for 2 seconds while it should send 100
 // reports in every second is off, and a silent one is asked every second whether it is there.
 constexpr double SilenceBeforeLost = 2.0;
 constexpr double SecondsBetweenProbes = 1.0;

@@ -13,7 +13,7 @@
 namespace Input
 {
 
-// The camera sensitivity of a console without the setting BT.SENS is 2 (OpenPoints/Input.md, INP-02).
+// The camera sensitivity of a console without the setting BT.SENS is 2.
 constexpr int UsualCameraSensitivity = 2;
 
 // A real Wii Remote, over Bluetooth or through a Dolphin Bar in its Wii Remote mode: Windows shows both as a device of the class

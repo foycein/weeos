@@ -12,7 +12,7 @@ namespace Input
 {
 
 // Turns the dots that the camera of a Wii Remote sees into the pointer, the roll and the distance, the work of the pointer library
-// of the console (docs/audit/OpenPoints/Input.md, INP-02 and INP-06):
+// of the console:
 //
 // * the dots go into camera units: x from -1 to 1 and y from -0.75 to 0.75, y downward;
 // * the line through the two dots of the sensor bar gives the roll; the middle of the dots is turned back by the roll;

@@ -63,7 +63,7 @@ inline constexpr auto DefaultKeyMap = std::to_array<KeyBinding>({
     {VirtualKey::Escape, RemoteButtons::B},
 });
 
-// A notch of the mouse wheel away from the user presses Plus, a notch towards the user presses Minus (docs/DECISIONS.md, PC controls).
+// A notch of the mouse wheel away from the user presses Plus, a notch towards the user presses Minus.
 constexpr ButtonMask WheelAwayButton = RemoteButtons::Plus;
 constexpr ButtonMask WheelTowardsButton = RemoteButtons::Minus;
 

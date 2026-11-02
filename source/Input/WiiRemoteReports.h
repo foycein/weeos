@@ -184,7 +184,7 @@ std::optional<WiiRemoteStatus> ReadStatusReport(std::span<const std::uint8_t> re
 std::optional<MemoryData> ReadMemoryDataReport(std::span<const std::uint8_t> report);
 std::optional<WiiRemoteData> ReadDataReport(std::span<const std::uint8_t> report);
 
-// The level 0 to 4 of the byte of the battery in a status report (docs/audit/OpenPoints/Input.md, INP-01).
+// The level 0 to 4 of the byte of the battery in a status report.
 int BatteryLevelOfByte(std::uint8_t batteryByte);
 
 AccelerationCalibration ReadAccelerationCalibration(std::span<const std::uint8_t, AccelerationCalibrationSize> bytes);

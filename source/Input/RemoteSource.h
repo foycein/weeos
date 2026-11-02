@@ -9,7 +9,7 @@
 namespace Input
 {
 
-// Where the owner put the sensor bar, as the sensor bar setting of the console says.
+// Where the sensor bar stands, as the sensor bar setting of the console says.
 // Real remotes need it to find the screen from the two dots of the bar.
 enum class SensorBarPosition : std::uint8_t
 {

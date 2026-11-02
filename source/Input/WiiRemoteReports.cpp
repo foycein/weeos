@@ -92,7 +92,7 @@ constexpr std::uint8_t SpeakerFormatAdpcm = 0x00;
 constexpr std::uint8_t SpeakerRateLowByte = 0xD0;
 constexpr std::uint8_t SpeakerRateHighByte = 0x07;
 
-// Likely (docs/audit/OpenPoints/Controllers.md, CTL-03): the volume of the example of WiiBrew. The menu scales its samples itself.
+// Likely: the volume of the example of WiiBrew. The menu scales its samples itself.
 constexpr std::uint8_t SpeakerVolume = 0x40;
 
 // Writing these two values starts an extension without encryption (WiiBrew, Extension Controllers, "The New Way").

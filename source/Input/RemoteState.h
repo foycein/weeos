@@ -13,11 +13,11 @@ namespace Input
 constexpr int RemoteChannelCount = 4;
 
 // A remote counts its battery in levels from 0 (empty) to 4 (full). The HOME menu shows one bar for each level
-// and warns below level 2 (OpenPoints/Input.md, INP-01).
+// and warns below level 2.
 constexpr int MaximumBatteryLevel = 4;
 
 // The distance between the remote and the sensor bar, in meters. The pointer library works it out from the two dots of the sensor bar
-// as 0.2 / tan(21 degrees) / the separation of the dots in the picture of the camera (OpenPoints/Input.md, INP-06). The menu never asks for it.
+// as 0.2 / tan(21 degrees) / the separation of the dots in the picture of the camera. The menu never asks for it.
 // Assumed: what a remote without a sensor bar reports. A couch is about 2 meters from the television.
 constexpr float UsualDistanceInMeters = 2.0f;
 

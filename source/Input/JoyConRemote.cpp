@@ -11,7 +11,7 @@ namespace
 // A stick pushed this far counts as a press of the cross in its direction.
 constexpr float StickAsCrossFrom = 0.5f;
 
-// Assumed (docs/audit/OpenPoints/Controllers.md, CTL-10): a Joy-Con held like a Wii Remote, its top pointing at the screen and its
+// Assumed: a Joy-Con held like a Wii Remote, its top pointing at the screen and its
 // buttons up, turns right around its z axis (the one out of its face) the negative way, and up around its y axis (across it); the
 // left Joy-Con's y axis points the other way.
 struct TurnAxes

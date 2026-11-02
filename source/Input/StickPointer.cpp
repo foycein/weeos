@@ -10,7 +10,7 @@ namespace Input
 namespace
 {
 
-// Assumed (docs/audit/OpenPoints/Controllers.md, CTL-07): a stick pushed all the way moves the hand by this many picture widths
+// Assumed: a stick pushed all the way moves the hand by this many picture widths
 // in a second, for the speeds 1 to 5; a stick less than 0.2 from its middle moves nothing, and the move grows with the square of
 // the push beyond that, so that small moves are precise.
 constexpr auto PictureWidthsPerSecond = std::to_array<float>({0.4f, 0.6f, 0.8f, 1.1f, 1.5f});

@@ -15,7 +15,7 @@ namespace Input
 // reads its new state, and forgets a device that sends nothing for 60 reads in a row.
 // Channel numbers outside 0 to 3 throw an InputError.
 //
-// This class does the part of the original WPAD library that does not depend on the device (OpenPoints/Input.md):
+// This class does the part of the original WPAD library that does not depend on the device:
 // it lights the light of the channel number when a device connects and turns the lights off before it disconnects one,
 // and it drops the requests to rumble while the vibration setting is off.
 class RemoteChannels

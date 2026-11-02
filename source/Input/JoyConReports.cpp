@@ -51,7 +51,7 @@ constexpr int ByteShift = 8;
 constexpr int NibbleShift = 4;
 constexpr int LowNibble = 0x0F;
 
-// Assumed (docs/audit/OpenPoints/Controllers.md, CTL-09): a Joy-Con without its calibration has the middle of its 12 bits and
+// Assumed: a Joy-Con without its calibration has the middle of its 12 bits and
 // reaches 1300 to both sides; a stick within 0.15 of its middle rests.
 constexpr int UsualStickMiddle = 2048;
 constexpr int UsualStickRange = 1300;

@@ -9,8 +9,8 @@ namespace Input
 {
 
 // Remote 1 while a real controller is the first one: the controller and the mouse and keyboard together, so the PC's own controls
-// never stop working. The buttons of both count. The hand is the pointer source "Auto" of the owner's decisions
-// (OpenPoints/Input.md, INP-12): the real controller's while it points at the screen, unless the mouse moved after it did.
+// never stop working. The buttons of both count. The hand follows the pointer source "Auto":
+// the real controller's while it points at the screen, unless the mouse moved after it did.
 class SharedRemote final : public RemoteSource
 {
 public:

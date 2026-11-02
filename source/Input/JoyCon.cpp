@@ -8,7 +8,7 @@ namespace Input
 namespace
 {
 
-// Assumed (docs/audit/OpenPoints/Controllers.md, CTL-01): a Joy-Con sends 60 reports in a second; after 2 seconds of silence it is
+// Assumed: a Joy-Con sends 60 reports in a second; after 2 seconds of silence it is
 // not connected and is set up again.
 constexpr double SilenceBeforeLost = 2.0;
 
