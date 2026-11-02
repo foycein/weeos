@@ -8,7 +8,7 @@ namespace Ios
 namespace
 {
 
-// The radio of the console reports these values. Nothing in the dump records them, so they are the values of a console
+// The radio of the console reports these values. Nothing on the NAND records them, so they are the values of a console
 // that was sold in the USA: the channels 1 to 11, and for the Nintendo DS the channels 1 and 7.
 constexpr std::uint16_t UsaEnabledChannelMask = 0x0FFE;
 constexpr std::uint16_t UsaNintendoDsChannelMask = 0x0082;

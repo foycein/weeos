@@ -90,7 +90,7 @@ enum class EsCommandLevel
 };
 
 // The build of the file system module. The names are the names in the build tag of the module.
-// The dump shows no functional difference except one: the flavors without P (FS and FFS) have /dev/flash.
+// The flavors show no functional difference except one: the flavors without P (FS and FFS) have /dev/flash.
 enum class FileSystemFlavor
 {
     Fs,
