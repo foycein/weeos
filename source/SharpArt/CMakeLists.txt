@@ -1,5 +1,6 @@
 add_library(SharpArt STATIC
     ClockPictures.cpp
+    DialogPictures.cpp
     HomeMenuPictures.cpp
     Paint.cpp
     RemotePictures.cpp

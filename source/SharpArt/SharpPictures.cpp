@@ -1,6 +1,7 @@
 #include "SharpArt/SharpPictures.h"
 
 #include "SharpArt/ClockPictures.h"
+#include "SharpArt/DialogPictures.h"
 #include "SharpArt/HomeMenuPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/WiiLogoPictures.h"
@@ -70,6 +71,18 @@ constexpr std::array AllPictures = {
     SharpPicture{"th_12Btn_on_b.tpl", 24, 24, 0x42CD25AB, ShownAtItsSize, ColorAndAlpha, DrawBlinkingDisc, TransparentBlack},
     SharpPicture{"th_frm_b.tpl", 16, 16, 0x2B442FA5, ShownAtItsSize, ColorAndAlpha, DrawWindowCorner, TransparentWhite},
     SharpPicture{"th_frm_b.tpl", 16, 16, 0x1138DF97, ShownAtItsSize, ColorAndAlpha, DrawWindowCorner, TransparentWhite},
+    SharpPicture{"my_ComBtn_c0.tpl", 32, 80, 0x6E41274A, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonLeftEnd, TransparentBlack},
+    SharpPicture{"my_ComBtn_c2.tpl", 8, 80, 0xD81B90BE, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonMiddle, TransparentBlack},
+    SharpPicture{"my_ComBtn_c1.tpl", 32, 80, 0xC0B4D0E8, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonRightEnd, TransparentBlack},
+    SharpPicture{"my_ComBtn_c0.tpl", 32, 80, 0x561F5E94, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonLeftEnd, TransparentBlack},
+    SharpPicture{"my_ComBtn_c2.tpl", 8, 80, 0x2E984DC9, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonMiddle, TransparentBlack},
+    SharpPicture{"my_ComBtn_c1.tpl", 32, 80, 0x4E55D53E, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonRightEnd, TransparentBlack},
+    SharpPicture{"my_ComBtn_c0.tpl", 32, 80, 0xB28E6CBB, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonLeftEnd, TransparentBlack},
+    SharpPicture{"my_ComBtn_c2.tpl", 8, 80, 0x0638E2CF, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonMiddle, TransparentBlack},
+    SharpPicture{"my_ComBtn_c1.tpl", 32, 80, 0x70F8C03A, ShownAtItsSize, ColorAndAlpha, DrawAnswerButtonRightEnd, TransparentBlack},
+    SharpPicture{"my_DialogWindow_a.tpl", 16, 32, 0xEA070FC1, ShownAtItsSize, ColorAndAlpha, DrawDialogWindowTopCorner, TransparentBlack},
+    SharpPicture{"my_DialogWindow_b.tpl", 16, 16, 0x4C7E7234, ShownAtItsSize, Intensity, DrawDialogWindowMiddle},
+    SharpPicture{"my_DialogWindow_c.tpl", 16, 32, 0xD8EE093E, ShownAtItsSize, ColorAndAlpha, DrawDialogWindowBottomCorner, TransparentBlack},
     SharpPicture{"rv_cntrl_back_b.tpl", 96, 328, 0xF1D30CE4, ShownAtItsSize, ColorAndAlpha, DrawRemoteBody, TransparentBlack},
     SharpPicture{"rv_cntrl_btn_d.tpl", 96, 328, 0xD3CF1AF5, ShownAtItsSize, ColorAndAlpha, DrawRemoteButtons, TransparentBlack},
     SharpPicture{"rv_cntrl_home_a.tpl", 16, 16, 0x5DCAF0A4, ShownAtItsSize, Intensity, DrawRemoteHomeSign},
