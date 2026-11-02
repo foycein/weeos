@@ -97,7 +97,7 @@ constexpr std::string_view SoundFilePath = "meta/sound.bin";
 constexpr std::string_view DiscStartAnimation = "my_DiskCh_a_Start";
 
 // The empty drive shows the discs it takes. WeeOS takes no GameCube disc, so its disc, shade, reflection and
-// window stay hidden (SYS-89).
+// window stay hidden.
 constexpr std::array<std::string_view, 4> GameCubeDiscPanes = {"N_GC0", "ShadeGC", "N_RefGC", "W_GC"};
 constexpr std::string_view NoDiscSound = "WIPL_ME_NO_DISC_BANNER";
 
@@ -573,7 +573,7 @@ void ChannelStartWindowScreen::ReactToButton(const ButtonEvent& event)
 // What Start does (0x813B9488 and 0x813B6F10). WeeOS has no system update and no parental controls, so the
 // original's Update button of an old channel and its PIN dialog are not there. The original asks a channel that needs the Internet whether
 // to set the Internet up first while no connection has passed its test; the PC's connection counts as set up, so that question never
-// comes either (SYS-93).
+// comes either.
 void ChannelStartWindowScreen::PressStart()
 {
     if (!CanStart())

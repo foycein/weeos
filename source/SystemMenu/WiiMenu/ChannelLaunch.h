@@ -34,7 +34,7 @@ struct BannerAnimations
 constexpr std::string_view ScriptGroupOfBanners = "Rso0";
 
 // A banner plays banner_Start once when it has it (0x813B83D8), then banner_Loop, or banner when it has no banner_Loop. A banner that a
-// script or a module drives loops the first animation of the script, banner_Rso0, while the channel has no data of its own (SYS-92).
+// script or a module drives loops the first animation of the script, banner_Rso0, while the channel has no data of its own.
 // The files are the files of banner.bin.
 BannerAnimations ChooseBannerAnimations(const Formats::U8Archive& bannerFiles, bool isBannerDrivenByCode);
 

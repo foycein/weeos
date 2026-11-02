@@ -42,7 +42,7 @@ constexpr std::string_view PostedPhotoTexture = "plate1.tpl";
 constexpr std::string_view PostedPhotoPane = "pic_photo";
 
 // The pane of the posted photo is 1 x 1 in the file; the script gives it the size of the photo on the cork. That size was not read
-// from the byte code: a 4:3 photo as high as the middle photo of the default animation, 55 units (Assumed, CHN-33).
+// from the byte code: a 4:3 photo as high as the middle photo of the default animation, 55 units (Assumed).
 constexpr float PostedPhotoHeight = 55;
 constexpr float PostedPhotoWidth = PostedPhotoHeight * 4 / 3;
 
