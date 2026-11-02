@@ -38,7 +38,7 @@ enum class SdWindowState
 // name, with the buttons Wii Menu and Start, which opens and closes with the zoom of the list of the card like the channel start window
 // with the zoom of the grid. The original starts a channel of the card as a temporary title that it copies to the NAND (IPL.TID), and
 // makes room with Auto Manage first. WeeOS has no program for any channel that the card can hold, so Start shows the menu's message that
-// the channel cannot be used (SYS-76).
+// the channel cannot be used.
 class SdChannelWindowScreen : public Screen
 {
 public:

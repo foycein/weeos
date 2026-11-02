@@ -46,7 +46,7 @@ constexpr std::string_view HoldSound = "WIPL_SE_CH_HOLD";
 constexpr std::string_view SetSound = "WIPL_SE_CH_SET";
 constexpr std::string_view NotMovedSound = "WIPL_SE_CH_NOT_MOVE";
 
-// A channel is pressed with A; B held down while A goes down picks it up, as in the channel grid (0x813E28B4, SYS-82).
+// A channel is pressed with A; B held down while A goes down picks it up, as in the channel grid (0x813E28B4).
 constexpr ButtonSet PickUpHoldButtons = {Input::RemoteButtons::B, Input::ClassicButtons::B};
 
 // A held channel that rests on an arrow of the bar for more than 14 steps turns the page, and again after as many (0x813E168C).
