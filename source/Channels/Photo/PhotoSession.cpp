@@ -24,7 +24,7 @@ constexpr std::string_view FontName = "font_photo.brfnt";
 constexpr std::string_view TexturesPath = "./TPLPhoto.tpl.LZ";
 
 // The hands are the ones of the channel's HOME Button Menu, HomeButton2: the channels' own hand is a NintendoWare effect that WeeOS
-// cannot draw yet (docs/audit/OpenPoints/Channels.md CHN-26).
+// cannot draw yet.
 constexpr std::string_view HandArchivePath = "./HomeButton2/LZ77_homeBtn.arc";
 
 // Every text and every picture with words is there once per language: the part of the pane, then T (text), I (picture with

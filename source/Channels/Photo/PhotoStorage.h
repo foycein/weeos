@@ -46,7 +46,7 @@ constexpr int IconPictureHeight = 120;
 constexpr int PreviewPictureWidth = 480;
 constexpr int PreviewPictureHeight = 272;
 
-// The files of the channel's data folder (docs/audit/Photo.md "The files"). Every file is made at the first start with its full size,
+// The files of the channel's data folder. Every file is made at the first start with its full size,
 // as the original makes them (0x80009E20, 0x8001AA2C).
 class PhotoStorage
 {

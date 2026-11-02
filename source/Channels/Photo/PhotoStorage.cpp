@@ -21,11 +21,11 @@ constexpr std::string_view SaveFileName = "savedata.dat";
 constexpr std::string_view IconFileName = "photo_i.dat";
 constexpr std::string_view PreviewFileName = "photo_b.dat";
 
-// The sizes of the files in the dump of the reference console.
+// The sizes of the files on a real console.
 constexpr std::size_t SaveFileSize = 64160;
 
 // The save file has no header; its last four bytes are the CRC-32 of the rest (0x8001AAC8). The places of the settings in it were
-// not read from the program; they are WeeOS's own (Assumed, docs/audit/OpenPoints/Channels.md CHN-33).
+// not read from the program; they are WeeOS's own (Assumed).
 constexpr std::size_t OrderPlace = 0;
 constexpr std::size_t EffectPlace = 1;
 constexpr std::size_t SongPlace = 2;
@@ -34,7 +34,7 @@ constexpr std::size_t PuzzleRecordsPlace = 4;
 constexpr Formats::Byte PieceCountMayBeChosenFlag = 0x01;
 constexpr std::size_t ChecksumSize = 4;
 
-// The rights of the folder noerase and of its files on the reference console: everybody may read them, so that the menu's icon of the
+// The rights of the folder noerase and of its files on a real console: everybody may read them, so that the menu's icon of the
 // channel can show the posted photo.
 const Ios::EntryPermissions SaveFileRights{Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::Read};
 constexpr std::uint8_t NoAttributeFlags = 0;

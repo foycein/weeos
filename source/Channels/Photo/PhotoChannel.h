@@ -9,7 +9,7 @@
 namespace Channels
 {
 
-// The Photo Channel 1.1 (HAYA, docs/research/Channels.md 3, docs/audit/Photo.md): the photos and movies of the SD card, offline.
+// The Photo Channel 1.1 (HAYA): the photos and movies of the SD card, offline.
 // It starts with the title screen and the main music; every change of screen fades out and in.
 class PhotoChannel : public Channel
 {

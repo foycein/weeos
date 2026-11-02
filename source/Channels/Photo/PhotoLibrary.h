@@ -34,7 +34,7 @@ struct PhotoFile
     }
 };
 
-// What the search of the SD card found (the original's loader 0x80014510, docs/audit/OpenPoints/Channels.md CHN-07):
+// What the search of the SD card found (the original's loader 0x80014510):
 // photos (.jpg, .jpeg), movies (.mov, .avi) and music (.m4a), in every folder of the card down to ten levels.
 struct PhotoLibrary
 {

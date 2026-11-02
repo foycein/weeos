@@ -3,7 +3,7 @@
 #include <array>
 #include <vector>
 
-// The first screens of the channel (docs/research/Channels.md 3.3, "Title"): the choice between the SD card and the photos of the
+// The first screens of the channel: the choice between the SD card and the photos of the
 // Wii Message Board, and what the channel says about the card on the way to the thumbnails.
 
 namespace Channels
