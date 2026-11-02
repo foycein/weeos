@@ -13,7 +13,7 @@
 namespace Channels
 {
 
-// Where the Miis of the console live (docs/research/Mii.md 2.3), and the Mii Channel's own file in its data folder.
+// Where the Miis of the console live, and the Mii Channel's own file in its data folder.
 constexpr std::string_view MiiDatabasePath = "/shared2/menu/FaceLib/RFL_DB.dat";
 constexpr std::string_view MiiChannelSavePath = "/title/00010002/48414341/data/NigaoeCh.dat";
 

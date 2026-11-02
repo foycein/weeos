@@ -163,8 +163,8 @@ struct PlazaCamera
     int zoomLevel = 1;
 };
 
-// The Mii Plaza: the Miis of the database walking and standing on the ground, the camera above them and the hand that grabs one
-// (docs/audit/MiiChannel.md, "The plaza"). It is plain arithmetic, so the tests run it without a picture.
+// The Mii Plaza: the Miis of the database walking and standing on the ground, the camera above them and the hand that grabs one.
+// It is plain arithmetic, so the tests run it without a picture.
 class MiiPlaza
 {
 public:

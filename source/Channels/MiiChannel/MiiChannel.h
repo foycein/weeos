@@ -23,7 +23,7 @@
 namespace Channels
 {
 
-// The Mii Channel (HACA v6) without a network (docs/audit/MiiChannel.md): the plaza with the Miis of RFL_DB.dat, making a Mii from scratch
+// The Mii Channel (HACA v6) without a network: the plaza with the Miis of RFL_DB.dat, making a Mii from scratch
 // or from a look-alike, the editor with every page, saving and erasing, and the offline answers of the transfers and of the Mii Parade.
 class MiiChannel : public Channel
 {

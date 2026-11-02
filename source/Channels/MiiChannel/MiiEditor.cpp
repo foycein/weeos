@@ -36,7 +36,7 @@ constexpr int MoleTypeCount = 2;
 constexpr int HiddenMoleType = 0;
 constexpr int ShownMoleType = 1;
 
-// February always has 29 days, as the face library's check of a birthday says (docs/research/Mii.md 1.2).
+// February always has 29 days, as the face library's check of a birthday says.
 constexpr std::array<int, Mii::MonthCount> DaysInMonth = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 // The default Miis that "Start from scratch" begins with.

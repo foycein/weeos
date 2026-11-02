@@ -28,7 +28,7 @@ constexpr float StandingViewDegrees = 19.5f;
 constexpr float StandingNear = 100.0f;
 constexpr float StandingFar = 2000.0f;
 
-// The camera of the face library's icons (docs/research/Mii.md 9.2): 600 units in front of the face, 9.88 degrees high.
+// The camera of the face library's icons: 600 units in front of the face, 9.88 degrees high.
 constexpr Formats::Vector3 HeadEye = {0.0f, 34.5f, 600.0f};
 constexpr Formats::Vector3 HeadTarget = {0.0f, 34.5f, 0.0f};
 constexpr float HeadViewDegrees = 9.88f;

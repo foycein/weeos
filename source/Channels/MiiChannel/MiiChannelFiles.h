@@ -19,7 +19,7 @@ namespace Channels
 {
 
 // The Mii Channel 6 (HACA): content 2 holds the channel's files, content 3 is the face library's parts RFL_Res.dat, content 4 the
-// shared HOME Button Menu (docs/research/Channels.md 2.1).
+// shared HOME Button Menu.
 constexpr std::uint16_t MiiChannelFilesContent = 2;
 constexpr std::uint16_t MiiChannelFacePartsContent = 3;
 constexpr std::uint16_t MiiChannelHomeMenuContent = 4;

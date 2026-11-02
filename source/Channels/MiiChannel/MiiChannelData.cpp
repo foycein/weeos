@@ -14,7 +14,7 @@ namespace Channels
 namespace
 {
 
-// RFL makes its folders readable and writable by everybody (permissions 0x3F, docs/research/Mii.md 2.3).
+// RFL makes its folders readable and writable by everybody (permissions 0x3F).
 constexpr std::array<std::string_view, 2> DatabaseFolders = {"/shared2/menu", "/shared2/menu/FaceLib"};
 constexpr Ios::EntryPermissions EverybodyReadsAndWrites = {
     Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite, Ios::AccessRights::ReadWrite};

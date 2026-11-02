@@ -438,7 +438,7 @@ void MiiChannel::FollowEditor()
     ShowPlaza();
 }
 
-// A new Mii gets its create id when it is made: the time in four-second steps and the system id of this console (docs/research/Mii.md 1.4),
+// A new Mii gets its create id when it is made: the time in four-second steps and the system id of this console,
 // so the editor shows it with the gray pants of an own Mii.
 Mii::MiiRecord MiiChannel::AsNewMiiOfThisConsole(Mii::MiiRecord record) const
 {

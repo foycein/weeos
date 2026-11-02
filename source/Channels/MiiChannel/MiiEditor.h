@@ -89,12 +89,12 @@ int ColorCount(ColorPart part);
 int TypeAtGridPlace(EditorPart part, int place);
 int GridPlaceOfType(EditorPart part, int type);
 
-// "Start from scratch" (docs/research/Mii.md 3.2): default Mii 2 with the lightest skin for a man, default Mii 5 for a woman, both with
+// "Start from scratch": default Mii 2 with the lightest skin for a man, default Mii 5 for a woman, both with
 // the favorite color red, no names and no create id yet. They may not travel.
 Mii::MiiRecord MakeScratchMii(Mii::Gender gender);
 
 // The Mii that the editor works on, and every change the pages of the editor make to it. The editor keeps every value inside the range
-// that the face library accepts (docs/research/Mii.md 1.1), so the Mii it gives back is always valid once it has a nickname.
+// that the face library accepts, so the Mii it gives back is always valid once it has a nickname.
 class MiiEditor
 {
 public:
