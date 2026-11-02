@@ -30,7 +30,7 @@ struct SequenceGlobals
 };
 
 // Plays one sequence: it runs the commands of the tracks tick by tick, starts a voice for every note, and keeps the voices
-// up to date with the settings of their track. Every sound frame of 3 milliseconds the owner calls Update.
+// up to date with the settings of their track. Update is called every sound frame of 3 milliseconds.
 //
 // The time of a sequence is counted in ticks, 48 for every beat. How many ticks a sound frame has depends on the tempo, the
 // beats per minute, which a command can change. Notes start and stop at the ticks, so music is timed in steps of one frame.

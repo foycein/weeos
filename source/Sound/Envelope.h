@@ -27,7 +27,7 @@ double FallRate(std::uint8_t parameter);
 //   release  after the key is let go, the loudness falls to silence. 127 is at once, 0 is the slowest.
 //
 // The loudness is kept in tenths of a decibel, from -904 (silence) up to 0 (full). Time is counted in milliseconds,
-// and the owner moves the envelope on by 3 milliseconds for every sound frame.
+// and the caller moves the envelope on by 3 milliseconds for every sound frame.
 class Envelope
 {
 public:
