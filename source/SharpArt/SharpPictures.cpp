@@ -11,6 +11,7 @@
 #include "SharpArt/MessageBoardPictures.h"
 #include "SharpArt/RemotePictures.h"
 #include "SharpArt/SettingsPictures.h"
+#include "SharpArt/ShopChannelPictures.h"
 #include "SharpArt/WaitingMarkPictures.h"
 #include "SharpArt/WiiLogoPictures.h"
 #include "SharpArt/WiiMenuPictures.h"
@@ -54,6 +55,8 @@ constexpr Color TransparentNavy = {0, 17, 85, 0};
 constexpr Color TransparentButtonGrayOfHome = {102, 102, 102, 0};
 constexpr Color TransparentScrollGray = {102, 102, 102, 0};
 constexpr Color TransparentCardGray = {238, 238, 238, 0};
+constexpr Color TransparentHandleBlue = {0, 187, 255, 0};
+constexpr Color TransparentSmallHandleBlue = {0, 119, 255, 0};
 
 constexpr std::array AllPictures = {
     SharpPicture{"my_Clock_a0.tpl", 48, 48, 0xFD378172, ClockMagnification, Intensity, DrawClockDigitZero},
@@ -195,6 +198,12 @@ constexpr std::array AllPictures = {
     SharpPicture{"ist_icon_011.tpl", 64, 64, 0xBB7305F3, ChannelMagnification, ColorAndAlpha, DrawInternetLock, TransparentWhite},
     SharpPicture{"sk_MiiLogo_00.tpl", 72, 48, 0x33D2EED2, ChannelMagnification, ColorAndAlpha, DrawMiiLogoColors},
     SharpPicture{"sk_MiiLogo_01.tpl", 72, 48, 0x9CC69756, ChannelMagnification, Intensity, DrawMiiLogoShape},
+    SharpPicture{"banner_handle.tpl", 104, 134, 0xF0EECF01, ChannelMagnification, ColorAndAlpha, DrawShopHandle, TransparentHandleBlue},
+    SharpPicture{"banner_handle02.tpl", 88, 93, 0xC52FC46F, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandle, TransparentSmallHandleBlue},
+    SharpPicture{"banner_handle_white.tpl", 116, 145, 0xD3376710, ChannelMagnification, ColorAndAlpha, DrawShopHandleEdge, TransparentWhite},
+    SharpPicture{"banner_handle_white02.tpl", 96, 101, 0x04745AFC, ChannelMagnification, ColorAndAlpha, DrawShopSmallHandleEdge, TransparentWhite},
+    SharpPicture{"logo_pic01.tpl", 131, 127, 0xE37F7EC8, ChannelMagnification, ColorAndAlpha, DrawShopLogoCard, TransparentWhite},
+    SharpPicture{"logo_pic02.tpl", 131, 127, 0x8F06960A, ChannelMagnification, ColorAndAlpha, DrawShopDarkLogoCard, TransparentWhite},
     SharpPicture{"frame.tpl", 208, 148, 0x64CF1EF6, ChannelMagnification, ColorAndAlpha, DrawPhotoFrame, TransparentCardGray},
 };
 
