@@ -27,7 +27,7 @@ struct MiiHeadModel
     bool hairIsMirrored = false;
 };
 
-// Puts the parts of the record together the way the face library does (docs/research/Mii.md section 6): hair, cap and
+// Puts the parts of the record together the way the face library does: hair, cap and
 // forehead of the hair type on the hair point of the face, the beard on its beard point, nose and glasses scaled and moved
 // from its nose point.
 MiiHeadModel BuildMiiHead(const MiiResources& resources, const MiiRecord& record);

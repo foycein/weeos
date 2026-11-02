@@ -11,7 +11,7 @@ namespace Mii
 namespace
 {
 
-// Assumed (docs/audit/OpenPoints/Mii.md MII-20): the camera of the Mii Plaza was not traced. This one looks at the Mii from the
+// Assumed: the camera of the Mii Plaza was not traced. This one looks at the Mii from the
 // front and shows the tallest one (about 220 units with its hair) whole.
 struct StandingMiiCamera
 {

@@ -99,7 +99,7 @@ struct BodyShadow
     Formats::RgbaImage picture;
 };
 
-// What the Mii Channel's body model holds that a standing Mii needs (docs/research/Mii.md section 10): the bones, the shirt
+// What the Mii Channel's body model holds that a standing Mii needs: the bones, the shirt
 // (with hands and neck), the pants (with shoes), the first frame of the standing animation and the lit sphere that shades both.
 struct MiiBodyFile
 {

@@ -7,7 +7,7 @@
 namespace Mii
 {
 
-// The colors of the face library (docs/research/Mii.md section 9.1). A record's color field is the index into its table.
+// The colors of the face library. A record's color field is the index into its table.
 // The hair table also colors the eyebrows and the facial hair.
 extern const std::array<Formats::Rgba8Color, 6> SkinColors;
 extern const std::array<Formats::Rgba8Color, 8> HairColors;

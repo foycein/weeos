@@ -16,7 +16,7 @@ constexpr std::size_t MiiSlotCount = 100;
 constexpr std::size_t HiddenMiiCapacity = 10000;
 constexpr std::size_t MiiDatabaseFileSize = 779968;
 
-// The Mii database of the console, /shared2/menu/FaceLib/RFL_DB.dat (docs/research/Mii.md section 2): 100 Miis, the switch of the
+// The Mii database of the console, /shared2/menu/FaceLib/RFL_DB.dat: 100 Miis, the switch of the
 // Mii Parade and the hidden Miis of the Mii Parade. The object holds the bytes of the file and reads and changes them in place,
 // so whatever it does not change is written back exactly as it was read.
 class MiiDatabase

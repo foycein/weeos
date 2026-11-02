@@ -5,7 +5,7 @@
 namespace Mii
 {
 
-// The faces a Mii can make. They only change the face texture: other eyes, eyebrows or mouth (docs/research/Mii.md section 7.5).
+// The faces a Mii can make. They only change the face texture: other eyes, eyebrows or mouth.
 enum class MiiExpression
 {
     Normal,

@@ -30,7 +30,7 @@ struct FaceFeatureQuad
 };
 
 // The eight quads of a face texture of size x size pixels, in the order they are drawn: the mustache's left and right half,
-// the mouth, the left and right eyebrow, the left and right eye, the mole (docs/research/Mii.md section 7.2).
+// the mouth, the left and right eyebrow, the left and right eye, the mole.
 // "Left" is the left of the picture.
 std::vector<FaceFeatureQuad> LayOutFace(const MiiRecord& record, float textureSize);
 

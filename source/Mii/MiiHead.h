@@ -29,7 +29,7 @@ public:
     MiiHead(const MiiHead&) = delete;
     MiiHead& operator=(const MiiHead&) = delete;
 
-    // Draws the opaque parts and then the translucent ones the way the face library does (docs/research/Mii.md section 8).
+    // Draws the opaque parts and then the translucent ones the way the face library does.
     // The placement gives the matrices and the light; the head sets the culling and the depth of each part itself.
     void Draw(const Graphics::MeshPlacement& placement) const;
 

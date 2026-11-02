@@ -1,7 +1,7 @@
 #include "Mii/RandomMiiTables.h"
 
-// The tables of the random generator of the face library, as the Mii Channel and the System Menu hold them
-// (docs/research/Mii.md section 4). Each row lists the choices for one kind of Mii; a value that is listed more often is
+// The tables of the random generator of the face library, as the Mii Channel and the System Menu hold them.
+// Each row lists the choices for one kind of Mii; a value that is listed more often is
 // drawn more often. The comment names the kind of Mii of the row.
 
 namespace Mii

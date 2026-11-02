@@ -11,7 +11,7 @@
 namespace Mii
 {
 
-// A Mii as the Wii stores it: 74 bytes of bit fields (docs/research/Mii.md section 1).
+// A Mii as the Wii stores it: 74 bytes of bit fields.
 constexpr std::size_t MiiRecordSize = 74;
 constexpr std::size_t MiiNameLength = 10;
 

@@ -82,7 +82,7 @@ constexpr std::size_t NoseAnchor = 0;
 constexpr std::size_t BeardAnchor = 1;
 constexpr std::size_t HairAnchor = 2;
 
-// RFL_Res.dat, the parts of the faces (docs/research/Mii.md section 5). It is content 0xb of the System Menu.
+// RFL_Res.dat, the parts of the faces. It is content 0xb of the System Menu.
 class MiiResources
 {
 public:

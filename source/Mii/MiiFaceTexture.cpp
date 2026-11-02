@@ -15,7 +15,7 @@ namespace
 using Graphics::TevAlphaInput;
 using Graphics::TevColorInput;
 
-// Assumed (docs/audit/OpenPoints/Mii.md MII-16): where the Wii samples a pixel of this picture is not documented; the quads are
+// Assumed: where the Wii samples a pixel of this picture is not documented; the quads are
 // placed as they are and Vulkan samples at the middle of the pixel.
 constexpr float PixelCenterOffset = 0.0f;
 

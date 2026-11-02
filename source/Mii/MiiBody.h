@@ -12,7 +12,7 @@
 namespace Mii
 {
 
-// How long and how thick the bones of a Mii are: height makes them longer, weight thicker (docs/research/Mii.md section 10.3).
+// How long and how thick the bones of a Mii are: height makes them longer, weight thicker.
 struct BodySize
 {
     float length = 1;
@@ -52,7 +52,7 @@ struct BodyPose
 BodyPose PoseBody(const MiiBodyFile& file, const MiiRecord& record, const BodyStance& stance);
 
 // The matrix that places the head of a posed body: the head stands on the head bone in its own size and turns with the bone, whose x
-// axis is the head's up and whose y axis is the head's front (docs/research/Mii.md 10.4). Upright in a standing body, it leans, nods and
+// axis is the head's up and whose y axis is the head's front. Upright in a standing body, it leans, nods and
 // falls with the body in the other animations.
 Graphics::Matrix4 HeadMatrixOf(const BodyPose& pose);
 
