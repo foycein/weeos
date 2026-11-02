@@ -22,7 +22,7 @@
 //   Browser              the cache and the cookies of the browser engine of the Internet Channel
 // Folders on the command line are for tests and development; the SD card is then the folder SDCard beside the NAND folder.
 // --silent opens the sound output with nothing but silence, and --hidden draws into a window that is never shown, for the runs of
-// development (docs/HelperRules.md). Without them WeeOS plays its sound and shows its window. --import gives the nand.bin of the
+// development. Without them WeeOS plays its sound and shows its window. --import gives the nand.bin of the
 // first start's import instead of the file picker.
 // When WeeOS cannot start it says why in a message box, except with --silent, where nobody may be asked anything: there the reason
 // only goes to the error output.

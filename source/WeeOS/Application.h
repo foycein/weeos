@@ -33,7 +33,7 @@ std::optional<std::filesystem::path> PickNandWithWindows();
 
 // What the program takes from the PC besides the folders of the console. WeeOS.exe uses the clock and the regional settings of
 // Windows, the file WeeOS.settings.txt and the Wii files beside the program, the file picker and the connection of Windows, and shows
-// its window; a test gives its own, and its window is never shown (docs/HelperRules.md).
+// its window; a test gives its own, and its window is never shown.
 struct HostEnvironment
 {
     Settings::PcClock clock = Settings::ConsoleClock::ReadWindowsClock;
@@ -46,7 +46,7 @@ struct HostEnvironment
     // Who picks the NAND of a Wii to import.
     NandPicker pickNand = PickNandWithWindows;
 
-    // Whether the PC is connected: the console is online through it (docs/DECISIONS.md, Online).
+    // Whether the PC is connected: the console is online through it.
     Ios::PcConnectionCheck isPcConnected = Ios::IsWindowsConnected;
     Platform::WindowVisibility windowVisibility = Platform::WindowVisibility::Hidden;
 
@@ -59,7 +59,7 @@ struct HostEnvironment
 // channel, IOS restarts with the IOS of the channel and the channel's program runs in the window, until it asks for the Wii Menu
 // (Boot::ConsoleStartup::LaunchTitle).
 // The mouse over the window is the hand of remote 1: the left button is A, the right one B, the wheel Plus and Minus; the keys of the
-// PC press the other buttons (docs/DECISIONS.md, PC controls). Real controllers take the remotes 1 to 4 as they connect; the first one
+// PC press the other buttons. Real controllers take the remotes 1 to 4 as they connect; the first one
 // shares remote 1 with the mouse and the keys. Closing the window asks "Turn off WeeOS?" and Yes is the POWER button.
 // The window starts where the settings of the PC say, in fullscreen unless they say otherwise, and they remember where the user puts it.
 class Application

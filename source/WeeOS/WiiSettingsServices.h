@@ -16,7 +16,7 @@ namespace WeeOS
 // What Wii Settings works with in WeeOS.exe: the settings of the console, the network, and the settings of the PC in the file
 // WeeOS.settings.txt beside the program. It is also the part of the program that makes a change of the settings of the PC come true
 // at once: the window, the keys and the mouse of the virtual Wii Remote, the gamepads and Joy-Cons, the sound device, the volume and the rumble.
-// The picture is always 16:9 (docs/DECISIONS.md, Settings), so its shape is no setting.
+// The picture is always 16:9, so its shape is no setting.
 class WiiSettingsServices : public Settings::PcSettingsTarget
 {
 public:

@@ -60,7 +60,7 @@ SystemMenu::ClockFormat ClockFormatOf(const Platform::RegionalSettings& regional
 constexpr std::string_view BrowserFolderName = "Browser";
 
 // A channel starts when WeeOS has a program for it and its IOS is installed. A new console without the IOS of a channel
-// (docs/audit/Portable.md) shows the menu's message that the channel cannot be used, as for a channel without a program.
+// shows the menu's message that the channel cannot be used, as for a channel without a program.
 bool CanStart(const Ios::TitleService& titles, Ios::TitleId titleId)
 {
     if (!Channels::HasNativeProgram(titleId))

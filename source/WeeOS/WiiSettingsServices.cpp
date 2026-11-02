@@ -79,7 +79,7 @@ std::vector<std::u16string> WiiSettingsServices::ListAudioDevices() const
     return Sound::ListPlaybackDeviceNames();
 }
 
-// The console is where the PC is (docs/DECISIONS.md, Settings). The file is written only when the country changed.
+// The console is where the PC is. The file is written only when the country changed.
 void WiiSettingsServices::TakeTheCountryOfThePc(const Platform::RegionalSettings& regionalSettings)
 {
     std::uint8_t countryCode = Settings::CountryCodeOfThePc(regionalSettings.countryLetters);
