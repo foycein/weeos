@@ -27,7 +27,7 @@ enum class SoundMode : std::uint8_t
 // The name of a console that has none, as a fresh WeeOS is.
 constexpr std::u16string_view FreshConsoleNickname = u"WeeOS";
 
-// The volume of the speakers of the remotes (BT.SPKV, 0 to 127) of a console that has no such setting (INP-01).
+// The volume of the speakers of the remotes (BT.SPKV, 0 to 127) of a console that has no such setting.
 constexpr std::uint8_t DefaultSpeakerVolume = 0x59;
 
 // Where the sensor bar stands. The remote needs to know to find the screen.
