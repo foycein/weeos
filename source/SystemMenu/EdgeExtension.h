@@ -18,6 +18,9 @@ namespace SystemMenu
 // The quad itself stays as it is. The parts beyond the canvas are quads of their own that continue it: the texture goes on as its wrap
 // mode says (the edge pixels again, or the pattern again), and the colors of the corners stay the colors of the edge they continue.
 // Only quads whose sides run along the edges of the picture are continued; a turned quad is never a background.
+// True for a background: an upright quad that reaches across the whole width or the whole height of the canvas.
+bool IsBackground(const Graphics::Quad& quad, const Graphics::ScissorRectangle& canvasArea);
+
 std::vector<Graphics::Quad> MakeEdgeExtensions(const Graphics::Quad& quad, const Graphics::ScissorRectangle& canvasArea,
     const Graphics::ScissorRectangle& wholeArea);
 

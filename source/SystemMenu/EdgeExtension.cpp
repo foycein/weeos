@@ -133,6 +133,11 @@ Graphics::Quad MakePart(const Graphics::Quad& quad, const Box& box, Stretch colu
     return part;
 }
 
+bool IsSameArea(const Graphics::ScissorRectangle& first, const Graphics::ScissorRectangle& second)
+{
+    return first.left == second.left && first.right == second.right && first.bottom == second.bottom && first.top == second.top;
+}
+
 Graphics::ScissorRectangle AreaOfCanvas(const Graphics::Canvas& canvas)
 {
     float halfWidth = canvas.width / 2;
@@ -142,12 +147,11 @@ Graphics::ScissorRectangle AreaOfCanvas(const Graphics::Canvas& canvas)
 
 }
 
-std::vector<Graphics::Quad> MakeEdgeExtensions(const Graphics::Quad& quad, const Graphics::ScissorRectangle& canvasArea,
-    const Graphics::ScissorRectangle& wholeArea)
+bool IsBackground(const Graphics::Quad& quad, const Graphics::ScissorRectangle& canvasArea)
 {
     std::optional<Box> found = BoxOfUprightQuad(quad);
     if (!found)
-        return {};
+        return false;
 
     const Box& box = *found;
     bool reachesLeft = box.left <= canvasArea.left + EdgeTolerance;
@@ -157,8 +161,20 @@ std::vector<Graphics::Quad> MakeEdgeExtensions(const Graphics::Quad& quad, const
 
     bool isAcrossTheWidth = reachesLeft && reachesRight;
     bool isAcrossTheHeight = reachesTop && reachesBottom;
-    if (!isAcrossTheWidth && !isAcrossTheHeight)
+    return isAcrossTheWidth || isAcrossTheHeight;
+}
+
+std::vector<Graphics::Quad> MakeEdgeExtensions(const Graphics::Quad& quad, const Graphics::ScissorRectangle& canvasArea,
+    const Graphics::ScissorRectangle& wholeArea)
+{
+    if (!IsBackground(quad, canvasArea))
         return {};
+
+    const Box box = *BoxOfUprightQuad(quad);
+    bool reachesLeft = box.left <= canvasArea.left + EdgeTolerance;
+    bool reachesRight = box.right >= canvasArea.right - EdgeTolerance;
+    bool reachesTop = box.top >= canvasArea.top - EdgeTolerance;
+    bool reachesBottom = box.bottom <= canvasArea.bottom + EdgeTolerance;
 
     bool goesLeft = reachesLeft && wholeArea.left < box.left - EdgeTolerance;
     bool goesRight = reachesRight && wholeArea.right > box.right + EdgeTolerance;
@@ -252,18 +268,23 @@ void EdgeExtendingDevice::ClearScissor()
     target.ClearScissor();
 }
 
+// A background is drawn with the scissor of the whole screen, also when the quad itself already reaches beyond the canvas (the bars of
+// the HOME menu are wider than the canvas): the scissor of the canvas would cut it off at the edges of the 16:9 picture.
 void EdgeExtendingDevice::DrawQuad(const Graphics::Quad& quad, const Graphics::Material& material)
 {
-    target.DrawQuad(quad, material);
-
     Graphics::ScissorRectangle wholeArea = target.WholeArea();
-    std::vector<Graphics::Quad> extensions = MakeEdgeExtensions(quad, canvasArea, wholeArea);
-    if (extensions.empty())
-        return;
-
     Graphics::ScissorRectangle limit = scissor.value_or(canvasArea);
-    target.SetScissor(ExtendScissor(limit, canvasArea, wholeArea));
-    for (const Graphics::Quad& extension : extensions)
+    Graphics::ScissorRectangle extendedLimit = ExtendScissor(limit, canvasArea, wholeArea);
+    bool reachesBeyondTheCanvas = IsBackground(quad, canvasArea) && !IsSameArea(extendedLimit, limit);
+    if (!reachesBeyondTheCanvas)
+    {
+        target.DrawQuad(quad, material);
+        return;
+    }
+
+    target.SetScissor(extendedLimit);
+    target.DrawQuad(quad, material);
+    for (const Graphics::Quad& extension : MakeEdgeExtensions(quad, canvasArea, wholeArea))
         target.DrawQuad(extension, material);
 
     if (scissor)
