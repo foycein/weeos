@@ -19,18 +19,10 @@ namespace Formats
 // or the files of the save data, and at the end the signature of the console.
 //
 // All numbers are big endian. docs/audit/SystemMenu.md (Data Management) says where every field comes from.
-
-// The initialization vector that goes with the SD key of the console. Every encrypted header starts a chain of its own with it.
-inline constexpr AesBlock SdCardInitializationVector = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-
-// A header keeps the MD5 digest of itself. The digest is computed while these bytes stand in its place.
-inline constexpr Md5Digest HeaderDigestPlaceholder = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
+//
+// Every encrypted header starts a chain of its own with the initialization vector of the SD card (sd_iv of keys.txt).
+// A header keeps the MD5 digest of itself. The digest is computed while the digest placeholder of the console (md5_blanker of keys.txt)
+// stands in its place.
 
 // The header of data.bin: the title, and the file banner.bin of its save data with the rights and the flags it had on the NAND.
 constexpr std::size_t SaveBackupHeaderSize = 0xF0C0;
@@ -47,10 +39,10 @@ struct SaveBackupHeader
 };
 
 // The plain header with its digest. Throws a FormatError when the banner is too big.
-Bytes WriteSaveBackupHeader(const SaveBackupHeader& header);
+Bytes WriteSaveBackupHeader(const SaveBackupHeader& header, const Md5Digest& digestPlaceholder);
 
 // Reads a decrypted header. Throws a FormatError when the digest is wrong or the banner is no save banner.
-SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader);
+SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader, const Md5Digest& digestPlaceholder);
 
 // The header of content.bin: the title, the icon of the channel and the header of its banner, which holds the names of the channel.
 constexpr std::size_t ChannelBackupHeaderSize = 0x640;
@@ -74,10 +66,10 @@ struct ChannelBackupHeader
 };
 
 // The plain header with its digest. Throws a FormatError when the banner header is too big.
-Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header);
+Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header, const Md5Digest& digestPlaceholder);
 
 // Reads a decrypted header. Throws a FormatError when the digest is wrong.
-ChannelBackupHeader ReadChannelBackupHeader(ByteView plainHeader);
+ChannelBackupHeader ReadChannelBackupHeader(ByteView plainHeader, const Md5Digest& digestPlaceholder);
 
 // The names of a channel in the ten languages, from the banner header that content.bin keeps.
 // Throws a FormatError when the bytes are no banner header.
@@ -171,10 +163,10 @@ constexpr std::size_t ChannelPlacesFileSize = 0x3E0;
 using ChannelPlaces = std::array<std::uint32_t, ChannelPlaceCount>;
 
 // The plain file with its digest.
-Bytes WriteChannelPlaces(const ChannelPlaces& places);
+Bytes WriteChannelPlaces(const ChannelPlaces& places, const Md5Digest& digestPlaceholder);
 
 // Reads a decrypted file. Throws a FormatError when the digest is wrong. The console does not look at the tag.
-ChannelPlaces ReadChannelPlaces(ByteView plainFile);
+ChannelPlaces ReadChannelPlaces(ByteView plainFile, const Md5Digest& digestPlaceholder);
 
 // The random numbers of the C library the System Menu was built with. The console fills the gaps of a backup archive with them
 // and takes the initialization vectors of the files from them, starting from the low half of the title id.

@@ -49,22 +49,22 @@ constexpr int HighBitsShift = 17;
 constexpr std::uint32_t LowBitsMask = 0x3;
 
 // Computes the digest of a plain header with the placeholder in the place of the digest.
-Md5Digest DigestOfHeader(ByteView plainHeader, std::size_t digestOffset)
+Md5Digest DigestOfHeader(ByteView plainHeader, std::size_t digestOffset, const Md5Digest& digestPlaceholder)
 {
     Bytes copy(plainHeader.begin(), plainHeader.end());
-    std::copy(HeaderDigestPlaceholder.begin(), HeaderDigestPlaceholder.end(), copy.begin() + digestOffset);
+    std::copy(digestPlaceholder.begin(), digestPlaceholder.end(), copy.begin() + digestOffset);
     return ComputeMd5(copy);
 }
 
-void PutDigest(Bytes& plainHeader, std::size_t digestOffset)
+void PutDigest(Bytes& plainHeader, std::size_t digestOffset, const Md5Digest& digestPlaceholder)
 {
-    Md5Digest digest = DigestOfHeader(plainHeader, digestOffset);
+    Md5Digest digest = DigestOfHeader(plainHeader, digestOffset, digestPlaceholder);
     std::copy(digest.begin(), digest.end(), plainHeader.begin() + digestOffset);
 }
 
-void CheckDigest(ByteReader& reader, ByteView plainHeader, std::size_t digestOffset)
+void CheckDigest(ByteReader& reader, ByteView plainHeader, std::size_t digestOffset, const Md5Digest& digestPlaceholder)
 {
-    Md5Digest expected = DigestOfHeader(plainHeader, digestOffset);
+    Md5Digest expected = DigestOfHeader(plainHeader, digestOffset, digestPlaceholder);
     ByteView stored = plainHeader.subspan(digestOffset, Md5DigestSize);
     if (!std::equal(stored.begin(), stored.end(), expected.begin()))
         reader.Fail("the MD5 digest of the header is wrong");
@@ -96,7 +96,7 @@ std::u16string ReadNameLine(ByteReader& reader)
 
 }
 
-Bytes WriteSaveBackupHeader(const SaveBackupHeader& header)
+Bytes WriteSaveBackupHeader(const SaveBackupHeader& header, const Md5Digest& digestPlaceholder)
 {
     std::size_t room = SaveBackupHeaderSize - SaveBackupBannerOffset;
     if (header.banner.size() > room)
@@ -112,17 +112,17 @@ Bytes WriteSaveBackupHeader(const SaveBackupHeader& header)
     writer.WriteBytes(header.banner);
 
     Bytes plainHeader = PadWithZeros(writer, SaveBackupHeaderSize);
-    PutDigest(plainHeader, SaveBackupDigestOffset);
+    PutDigest(plainHeader, SaveBackupDigestOffset, digestPlaceholder);
     return plainHeader;
 }
 
-SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader)
+SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader, const Md5Digest& digestPlaceholder)
 {
     ByteReader reader(plainHeader, "Header of data.bin");
     if (plainHeader.size() != SaveBackupHeaderSize)
         reader.Fail(std::format("the header has {:#x} bytes instead of {:#x}", plainHeader.size(), SaveBackupHeaderSize));
 
-    CheckDigest(reader, plainHeader, SaveBackupDigestOffset);
+    CheckDigest(reader, plainHeader, SaveBackupDigestOffset, digestPlaceholder);
 
     SaveBackupHeader header;
     header.titleId = reader.ReadUint64();
@@ -141,7 +141,7 @@ SaveBackupHeader ReadSaveBackupHeader(ByteView plainHeader)
     return header;
 }
 
-Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header)
+Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header, const Md5Digest& digestPlaceholder)
 {
     if (header.bannerHeader.size() > BiggestBannerHeaderSize)
         throw FormatError(
@@ -156,17 +156,17 @@ Bytes WriteChannelBackupHeader(const ChannelBackupHeader& header)
     writer.WriteBytes(header.bannerHeader);
 
     Bytes plainHeader = PadWithZeros(writer, ChannelBackupHeaderSize);
-    PutDigest(plainHeader, ChannelBackupHeaderDigestOffset);
+    PutDigest(plainHeader, ChannelBackupHeaderDigestOffset, digestPlaceholder);
     return plainHeader;
 }
 
-ChannelBackupHeader ReadChannelBackupHeader(ByteView plainHeader)
+ChannelBackupHeader ReadChannelBackupHeader(ByteView plainHeader, const Md5Digest& digestPlaceholder)
 {
     ByteReader reader(plainHeader, "Header of content.bin");
     if (plainHeader.size() != ChannelBackupHeaderSize)
         reader.Fail(std::format("the header has {:#x} bytes instead of {:#x}", plainHeader.size(), ChannelBackupHeaderSize));
 
-    CheckDigest(reader, plainHeader, ChannelBackupHeaderDigestOffset);
+    CheckDigest(reader, plainHeader, ChannelBackupHeaderDigestOffset, digestPlaceholder);
 
     ChannelBackupHeader header;
     header.titleId = reader.ReadUint64();
@@ -304,7 +304,7 @@ BackupFileHeader ReadBackupFileHeader(ByteView bytes)
     return header;
 }
 
-Bytes WriteChannelPlaces(const ChannelPlaces& places)
+Bytes WriteChannelPlaces(const ChannelPlaces& places, const Md5Digest& digestPlaceholder)
 {
     ByteWriter writer;
     writer.WriteBytes(ByteView(reinterpret_cast<const Byte*>(ChannelPlacesTag.data()), ChannelPlacesTag.size()));
@@ -313,17 +313,17 @@ Bytes WriteChannelPlaces(const ChannelPlaces& places)
         writer.WriteUint32(code);
 
     Bytes file = PadWithZeros(writer, ChannelPlacesFileSize);
-    PutDigest(file, ChannelPlacesDigestOffset);
+    PutDigest(file, ChannelPlacesDigestOffset, digestPlaceholder);
     return file;
 }
 
-ChannelPlaces ReadChannelPlaces(ByteView plainFile)
+ChannelPlaces ReadChannelPlaces(ByteView plainFile, const Md5Digest& digestPlaceholder)
 {
     ByteReader reader(plainFile, "Places of the channels of the SD card");
     if (plainFile.size() != ChannelPlacesFileSize)
         reader.Fail(std::format("the file has {:#x} bytes instead of {:#x}", plainFile.size(), ChannelPlacesFileSize));
 
-    CheckDigest(reader, plainFile, ChannelPlacesDigestOffset);
+    CheckDigest(reader, plainFile, ChannelPlacesDigestOffset, digestPlaceholder);
 
     reader.MoveTo(ChannelPlacesDigestOffset + Md5DigestSize);
     ChannelPlaces places;

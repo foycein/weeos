@@ -121,7 +121,8 @@ DataResult CopyToCard(DataManagementServices& services, Ios::TitleId titleId)
     header.iconDigest = Formats::ComputeMd5(iconBlock);
     header.bannerHeader = banner.bannerHeader;
 
-    Formats::Bytes backup = EncryptForCard(services.identity, Formats::WriteChannelBackupHeader(header));
+    Formats::Bytes plainHeader = Formats::WriteChannelBackupHeader(header, services.identity.GetSdCardDigestPlaceholder());
+    Formats::Bytes backup = EncryptForCard(services.identity, plainHeader);
     Formats::Bytes encryptedIcon = EncryptForCard(services.identity, iconBlock);
     backup.insert(backup.end(), encryptedIcon.begin(), encryptedIcon.end());
     backup.insert(backup.end(), archive.begin(), archive.end());
@@ -147,7 +148,7 @@ ChannelOnCard ReadHeaderAndIcon(const DataManagementServices& services, Formats:
     try
     {
         Formats::Bytes plainHeader = DecryptFromCard(services.identity, backupStart.first(Formats::ChannelBackupHeaderSize));
-        channel.header = Formats::ReadChannelBackupHeader(plainHeader);
+        channel.header = Formats::ReadChannelBackupHeader(plainHeader, services.identity.GetSdCardDigestPlaceholder());
     }
     catch (const Formats::FormatError& error)
     {

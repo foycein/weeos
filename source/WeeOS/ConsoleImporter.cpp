@@ -94,8 +94,9 @@ void ImportConsole(const std::filesystem::path& nandImagePath, const Ios::IosFol
     Formats::BootMiiKeyBlock keys = Formats::ReadBootMiiKeyBlock(keyBlock);
 
     Formats::NandFileSystem fileSystem(image, keys.oneTimeProgrammable.nandAesKey);
+    Ios::SharedKeys sharedKeys = Ios::FindSharedKeysInNand(fileSystem);
     WriteImport(fileSystem, PlanCompleteImport(fileSystem), targetFolders.nandFolder);
-    Ios::WriteIdentityFromKeyBlock(keyBlock, ReadMacAddressBeside(nandImagePath), targetFolders.identityFolder);
+    Ios::WriteIdentityFromKeyBlock(keyBlock, ReadMacAddressBeside(nandImagePath), sharedKeys, targetFolders.identityFolder);
 }
 
 ConsoleImporter::ConsoleImporter(Ios::IosFolders consoleFolders, NandPicker nandPicker)

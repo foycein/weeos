@@ -3,6 +3,7 @@
 #include "Formats/Aes128.h"
 #include "Formats/Bytes.h"
 #include "Formats/Certificate.h"
+#include "Formats/Md5.h"
 #include "Formats/SignatureVerification.h"
 #include "Formats/ConsoleKeys.h"
 #include "Ios/Result.h"
@@ -68,6 +69,14 @@ public:
     // and for data that is not whole blocks of 16 bytes.
     Result<CipherResult> Encrypt(std::uint32_t keyNumber, const Formats::AesBlock& initializationVector, Formats::ByteView data) const;
     Result<CipherResult> Decrypt(std::uint32_t keyNumber, const Formats::AesBlock& initializationVector, Formats::ByteView data) const;
+
+    // The common key, which decrypts the title keys of tickets.
+    const Formats::AesKey& GetCommonKey() const;
+
+    // What the System Menu uses with the SD card key: the initialization vector of the encrypted headers, and the bytes that stand in
+    // the place of the digest of a header while the digest is computed (sd_iv and md5_blanker of keys.txt).
+    const Formats::AesBlock& GetSdCardInitializationVector() const;
+    const Formats::Md5Digest& GetSdCardDigestPlaceholder() const;
 
     // The version of boot2.
     std::uint32_t GetBootTwoVersion() const;
