@@ -8,11 +8,8 @@ Everything goes into the staging folder out/Release of this repository:
     WeeOS-<version>-portable.zip   that folder as a zip
     weeossetup.exe              the installer, which carries the zip (tools/Setup)
 
---to-release also copies the clean source (the files of the last commit, which leaves out assets, reference, the worktrees, the build
-folders and personal data, because git ignores them) and the three things above into D:/Projects/WeeOS/RELEASE. It needs a work tree
-without uncommitted changes, so that the program and the source are the same.
-
-tools/Release/CheckRelease.py checks what this script made.
+--to-release also copies the clean source (the files of the last commit) and the three things above into the folder RELEASE beside
+this repository. It needs a work tree without uncommitted changes, so that the program and the source are the same.
 """
 
 import re
