@@ -5,6 +5,7 @@
 #include "Formats/RgbaImage.h"
 
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <string_view>
 
@@ -52,8 +53,12 @@ struct SharpPicture
 // Every sharp picture that WeeOS has.
 std::span<const SharpPicture> AllSharpPictures();
 
-// The sharp picture for the texture file, or nothing when WeeOS draws none for it.
-const SharpPicture* FindSharpPicture(std::string_view textureFileName);
+// True when WeeOS draws a sharp picture for a texture file of this name (for one of its originals at least).
+bool HasSharpPicture(std::string_view textureFileName);
+
+// The sharp picture for the original picture of the texture file, or nothing when WeeOS draws none for it. Files of the same name in
+// other archives may hold other pictures: each original that WeeOS replaces has an entry of its own.
+const SharpPicture* FindSharpPicture(std::string_view textureFileName, const Formats::RgbaImage& original);
 
 // The CRC-32 of the red, green, blue and alpha bytes of every pixel, row by row.
 std::uint32_t FingerprintOf(const Formats::RgbaImage& picture);
@@ -61,8 +66,16 @@ std::uint32_t FingerprintOf(const Formats::RgbaImage& picture);
 // True when the picture is the original that the sharp picture replaces: the same size and the same fingerprint.
 bool IsTheOriginalOf(const SharpPicture& sharpPicture, const Formats::RgbaImage& picture);
 
+// True for a picture of words: its file name starts with "tx_" (the words of the HOME menu) and it is an intensity picture. Words
+// cannot be drawn again without copying the font, so such a picture gets the sharp edges of the fonts instead (docs/audit/SharpArt.md).
+bool IsPictureOfWords(std::string_view textureFileName, const Formats::RgbaImage& picture);
+
 // Draws the picture with pixelsPerUnit pixels for every pixel of the original.
 Formats::RgbaImage DrawSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
+
+// The picture drawn with pixelsPerUnit pixels per pixel of the original, drawn once and kept: every layout that shows it, and every new
+// opening of a screen, gets the same drawing until a screen of another size needs another one. Safe to call from several threads.
+std::shared_ptr<const Formats::RgbaImage> KeptSharpPicture(const SharpPicture& sharpPicture, std::uint32_t pixelsPerUnit);
 
 // How many pixels per pixel of the original the picture needs on a screen that shows a layout unit with screenPixelsPerUnit pixels,
 // so it is never stretched by the graphics card. At least 1, at most MostPixelsPerUnit.

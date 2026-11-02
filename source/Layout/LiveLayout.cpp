@@ -176,17 +176,20 @@ LoadedTexture LiveLayout::ObtainTexture(const std::string& textureFileName, Grap
     texture.width = picture->width;
     texture.height = picture->height;
 
-    const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName);
-    if (sharpPicture && SharpArt::IsTheOriginalOf(*sharpPicture, *picture))
+    const SharpArt::SharpPicture* sharpPicture = SharpArt::FindSharpPicture(textureFileName, *picture);
+    if (sharpPicture)
     {
         std::uint32_t pixelsPerUnit = SharpArt::PixelsPerUnitFor(*sharpPicture, device.ScreenPixelsPerUnit());
-        texture.handle = SendPicture(SharpArt::DrawSharpPicture(*sharpPicture, pixelsPerUnit), horizontalWrap, verticalWrap);
+        texture.handle = SendPicture(*SharpArt::KeptSharpPicture(*sharpPicture, pixelsPerUnit), horizontalWrap, verticalWrap);
         sharpTextures[key] = {sharpPicture, pixelsPerUnit};
     }
     else
     {
         texture.handle = SendPicture(*picture, horizontalWrap, verticalWrap);
     }
+
+    if (SharpArt::IsPictureOfWords(textureFileName, *picture))
+        texture.edgeSharpening = Graphics::EdgeSharpening::ColorAndAlpha;
 
     loadedTextures.emplace(key, texture);
     return texture;
