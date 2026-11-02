@@ -55,7 +55,7 @@ constexpr float BreakSize = 21;
 constexpr float NoticeSize = 34;
 
 constexpr std::u16string_view Logo = u"WeeOS";
-constexpr std::u16string_view Description = u"A hand-written reconstruction\nof the Wii system for the PC";
+constexpr std::u16string_view Description = u"The Wii system,\nreconstructed natively for Windows";
 constexpr std::u16string_view Author = u"Made by foycein";
 constexpr std::u16string_view Contact = u"Discord: foycein     GitHub: foycein";
 constexpr std::u16string_view BreakReminder = u"Playing is fun, and so is a break now and then.";
