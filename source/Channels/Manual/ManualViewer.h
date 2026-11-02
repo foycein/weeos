@@ -36,7 +36,7 @@ struct ManualLocation
     ManualSounds sounds;
 };
 
-// The electronic manual of a channel, its "Operations Guide" (docs/audit/OpenPoints/Channels.md CHN-13): pages of HTML that the
+// The electronic manual of a channel, its "Operations Guide": pages of HTML that the
 // channel's browser shows. WeeOS lays them out natively (PageLayout) and draws them with the console's bitmap font.
 //  - The pointer over a link or a button runs its onmouseover: the pictures and backgrounds change and the focus sound plays.
 //  - A on a link runs its onclick and opens its page. A new page comes in over 15 steps: from the side for Back and Next
