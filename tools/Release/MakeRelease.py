@@ -150,7 +150,7 @@ def WriteReadme(releaseFolder, version):
 
 
 # RELEASE holds only what this script puts there (and the README that waited for it). Anything else in it stops the copy, so nothing
-# of the owner's is replaced.
+# that was put there by hand is replaced.
 def CopyToRelease(version):
     RequireCommittedWork()
     releaseFolder = FindReleaseFolder()
